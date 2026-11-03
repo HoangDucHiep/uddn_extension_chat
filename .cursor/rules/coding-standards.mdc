@@ -1,0 +1,62 @@
+---
+description: Coding standards — TypeScript strict, ESLint/Prettier, cấu trúc file, đặt tên, không any, không hardcode màu, comment tiếng Việt. Luôn áp dụng.
+alwaysApply: true
+---
+
+# Coding Standards
+
+## TypeScript
+
+- `strict: true`, `noUncheckedIndexedAccess: true`, `exactOptionalPropertyTypes: true`.
+- **Không dùng `any`.** Dùng `unknown` + type guard, hoặc define type thật.
+- Không dùng `!` (non-null assertion) trừ khi đã kiểm tra null bằng if.
+- Kiểu dữ liệu dùng chung giữa extension/server/eval **phải nằm trong `packages/shared`**.
+- Validate input bằng **Zod** ở biên (route handler, SSE event, message từ client).
+
+## Cấu trúc file
+
+- 1 file = 1 mô đ responsibilities rõ ràng. File > 300 dòng → tách.
+- Component React: 1 component chính / file. Sub-component nhỏ đặt cùng file.
+- Tên file: `PascalCase.tsx` cho component, `camelCase.ts` cho logic, `kebab-case.ts` cho type-only file.
+- Import: dùng **type-only import** (`import type { X }`) khi chỉ là type.
+
+## Đặt tên
+
+- Component: `PascalCase` — `ContextChips`, `CitationChip`, `ToolCallBlock`.
+- Hook: `useXxx` — `useChat`, `useSseStream`.
+- Store (Zustand): `useXxxStore`.
+- Route handler: `verbNoun` — `listConversations`, `createSkill`.
+- Biến: `camelCase`. Hằng số: `UPPER_SNAKE`.
+- **Tiếng Anh cho tên identifier**, tiếng Việt cho comment và user-facing text.
+
+## Style
+
+- ESLint + Prettier: không có `eslint-disable` trừ khi có comment giải thích lý do.
+- 2 space indent, không dấu chấm phẩy cuối dòng, single quote.
+- Import **không** dùng `*` wildcard.
+
+## UI — quan trọng
+
+- **Không hardcode màu/giá trị.** Dùng design token: `var(--color-accent)`, `bg-accent`, `text-muted-foreground`.
+- Dùng component shadcn/ui đã copy trong `apps/extension/src/components/ui/` — **không cài thêm thư viện UI mới** mà không trao đổi trước.
+- Icon: dùng `lucide-react`. Icon-button bắt buộc có `aria-label` tiếng Việt.
+- Mọi interactive element phải có focus ring rõ; **không** `outline: none` mà không thay thế.
+- Tôn trọng `prefers-reduced-motion`.
+
+## Backend
+
+- Route handler mỏng: validate → gọi service → trả response. Business logic để trong `src/<domain>/`.
+- **Không log API key hay nội dung nhạy cảm** vào console. Log request đầy đủ đi qua `requestLogger` vào DB (tắt mặc định).
+- Query DB: luôn dùng **parameterized query** (Drizzle đã lo) — không nối chuỗi SQL thủ công.
+- Mọi lỗi ra ngoài phải map về error code chuẩn trong `packages/shared/src/errors.ts`.
+
+## Comment
+
+- Comment viết bằng **tiếng Việt**.
+- Comment giải thích **tại sao**, không mô tả **cái gì** (code đã nói rõ cái gì).
+- TODO phải có mã task: `// TODO(T-M2-10): hỗ trợ truy vấn theo ngày`.
+
+## Git
+
+- Mỗi task = 1 commit. Không commit file rác, log, `.env`.
+- Không commit `apps/eval/results/raw/` (dữ liệu thô). **Có** commit `docs/EVAL_REPORT.md`.

@@ -1,0 +1,58 @@
+---
+description: Tóm tắt dự án Sidekick AI — stack, kiến trúc, lệnh, trạng thái. Luôn áp dụng để agent có context đầy đủ.
+alwaysApply: true
+---
+
+# Project Overview — Sidekick AI
+
+Chrome Extension (MV3) chat-bot sidebar cho đồ án. Mục tiêu: **feature parity** với Edge Copilot Sidebar + Chrome Gemini in Chrome, cộng tính năng độc quyền (BYOK, multi-provider, MCP, RAG, log có cấu trúc, self-host, scheduler).
+
+**Bằng chứng bắt buộc nộp:** `docs/EVAL_REPORT.md` so sánh với Edge Copilot & Chrome Gemini.
+
+## Stack (đã chốt, không đổi)
+
+| Hạng mục | Chọn |
+|---|---|
+| Extension | Chrome MV3, Side Panel API, Chrome ≥ 114 |
+| UI | React 18 + TypeScript + Vite + Tailwind CSS + shadcn/ui (Radix, copy vào repo) |
+| Client state | Zustand |
+| Backend | BFF Node 20 + Express + TS, local qua Docker Compose |
+| DB | PostgreSQL 16 + Drizzle ORM + pgvector |
+| Repo | pnpm workspace: `apps/extension`, `apps/server`, `apps/eval`, `packages/shared` |
+| Test | Vitest, Playwright (Chrome for Testing) |
+
+## Kiến trúc rút gọn
+
+```
+Side Panel (React) ──HTTPS+SSE──▶ BFF (Express) ──▶ PostgreSQL (+pgvector)
+       │                              │
+       ├── chrome.* ──▶ Service Worker │──▶ Provider APIs / Ollama
+       └── scripting ─▶ Content Script └──▶ Tools / MCP
+```
+
+## Ràng buộc kỹ thuật quan trọng
+
+- Streaming **trực tiếp** Side Panel → BFF. **Không** proxy qua service worker.
+- `activeTab` không dùng được trong side panel → cần `tabs` + `scripting` + `sidePanel` + `storage` + `<all_urls>`.
+- `chrome.sidePanel.open()` chỉ trong **user gesture**. Chỉ 1 panel mỗi cửa sổ.
+- 3 nguồn key: `K1` team (`.env`) · `K2` BYOK mã hoá trong Postgres · `K3` BYOK direct trong `chrome.storage.local` (fallback khi BFF down).
+
+## Lệnh
+
+```bash
+pnpm install && docker compose up -d && pnpm db:migrate
+pnpm dev            # extension + server
+pnpm dev:ext        # chỉ extension
+pnpm dev:server     # chỉ BFF
+pnpm build          # build tất cả
+pnpm typecheck && pnpm lint && pnpm test
+pnpm eval:run       # eval harness
+```
+
+## Ưu tiên
+
+`parity (M1) > advanced (M2) > polish (M3) > workflow (M4)`
+
+## Trạng thái hiện tại
+
+Xem bảng milestone trong `AGENTS.md` §6 và chi tiết task trong `docs/IMPLEMENTATION_PLAN.md`.

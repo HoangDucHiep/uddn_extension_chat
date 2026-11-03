@@ -1,0 +1,22 @@
+# .cursorrules — Sidekick AI (bản compact)
+# Nguồn chính: AGENTS.md ở thư mục gốc. Đọc AGENTS.md trước.
+
+Project: Chrome MV3 chat-bot sidebar (đồ án) — parity với Edge Copilot + Chrome Gemini.
+Stack: React 18 + TS + Vite + Tailwind + shadcn/ui · Zustand · Node/Express BFF (Docker) · Postgres 16 + Drizzle + pgvector · pnpm monorepo (apps/extension, apps/server, apps/eval, packages/shared).
+
+Ràng buộc MV3 (đừng phá):
+- Streaming trực tiếp Side Panel → BFF, KHÔNG qua service worker (SW bị kill ~30s).
+- activeTab không dùng được trong side panel → cần tabs + scripting + sidePanel + storage + <all_urls>.
+- sidePanel.open() chỉ trong user gesture. 1 panel/cửa sổ.
+
+Quy tắc bắt buộc:
+1. Sau mỗi phần code → cập nhật docs tương ứng + docs/CHANGELOG.md + commit. Task chưa cập nhật docs = chưa Done.
+2. Ưu tiên: M1 parity > M2 advanced > M3 polish > M4 workflow (M4 sau cùng).
+3. Không phá parity (checklist §E trong docs/COMPARISON_MATRIX.md).
+4. TS strict, không any, không hardcode màu (dùng design token), không eval/remote code.
+5. Comment tiếng Việt. Tên identifier tiếng Anh.
+6. Task = 1 commit: feat(scope): / fix(scope): / docs: / chore:.
+
+Lệnh: pnpm install · docker compose up -d · pnpm db:migrate · pnpm dev · pnpm dev:ext · pnpm dev:server · pnpm build · pnpm typecheck · pnpm lint · pnpm test · pnpm eval:run
+
+Docs: docs/REQUIREMENTS.md · docs/SYSTEM_DESIGN.md · docs/IMPLEMENTATION_PLAN.md · docs/DESIGN_SYSTEM_BRIEF.md · docs/COMPARISON_MATRIX.md · docs/EVAL_PLAN.md · docs/HANDOFF.md · docs/CHANGELOG.md · docs/README.md

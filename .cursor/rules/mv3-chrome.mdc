@@ -1,0 +1,73 @@
+---
+description: Ràng buộc kỹ thuật Chrome Manifest V3 — side panel, quyền, service worker lifecycle, CSP, user gesture. Luôn áp dụng.
+alwaysApply: true
+---
+
+# Chrome MV3 Constraints
+
+Những điều dưới đây là **giới hạn kỹ thuật của Chrome**, không phải sở thích. Vi phạm → tính năng hỏng, không sửa được bằng code.
+
+## 1. Quyền (permissions)
+
+`manifest.json` cần:
+
+```json
+{
+  "permissions": ["sidePanel", "scripting", "storage", "tabs", "contextMenus", "notifications"],
+  "host_permissions": ["<all_urls>"]
+}
+```
+
+- **`activeTab` KHÔNG dùng được** khi user tương tác trong side panel → không đủ quyền đọc trang. Phải có `tabs` + `scripting` + `<all_urls>`.
+- Chỉ xin quyền khi thực sự dùng. `notifications` chỉ cần khi có M4 workflow.
+- Không có `default_popup` — dùng `side_panel.default_path`.
+
+## 2. Service worker lifecycle
+
+- MV3 SW bị terminate sau **~30s idle**. Mọi state trong SW là **ephemeral**.
+- **Không** proxy streaming chat qua SW. Side Panel tự `fetch` tới BFF và đọc `ReadableStream`.
+- Không giữ conversation state trong SW — state nằm ở side panel + `chrome.storage.local` + Postgres.
+- SW chỉ nên làm: mở/toggle panel, context menu, command shortcut, notification, đồng bộ cấu hình.
+- Mọi handler SW phải **idempotent** và chịu được việc bị kill giữa chừng.
+
+## 3. User gesture
+
+- `chrome.sidePanel.open()` **chỉ** hoạt động trong user gesture: click action icon, click context menu item, hoặc keyboard shortcut command.
+- Không gọi được từ response của `fetch`, từ `setTimeout`, hay từ message của SW.
+- `chrome.windows.create({type:'panel'})` là workaround cũ — không dùng.
+
+## 4. Side panel
+
+- Chỉ **1 side panel** mỗi cửa sổ browser.
+- `browser.sidePanel` alias chỉ có từ Chrome 148 — dùng `chrome.sidePanel` để tương thích rộng.
+- `chrome.sidePanel.close({ tabId })` từ Chrome 141; `getLayout()` từ 140; `onOpened` từ 141; `onClosed` từ 142.
+- Panel **không** tự đóng khi đổi tab — đó là hành vi mong muốn (parity với Edge/Gemini).
+- Content script không chạy trên `chrome://` và các trang store của Chrome → phải xử lý lỗi gracefully.
+
+## 5. CSP & bảo mật
+
+```json
+"content_security_policy": {
+  "extension_pages": "script-src 'self'; object-src 'self'"
+}
+```
+
+- **Không** `unsafe-eval`, **không** remote script, **không** `innerHTML` với dữ liệu người dùng.
+- Markdown: `react-markdown` + `remark-gfm` + `rehype-sanitize`.
+- Link trong nội dung: `rel="noopener noreferrer"`, `target="_blank"`.
+- Không nhúng secret trong bundle Vite. Không có secret trong `manifest.json`.
+
+## 6. Build
+
+- Vite build extension: `base: './'` — đường dẫn asset phải là relative.
+- Output `dist/` — load unpacked từ `apps/extension/dist`.
+- Không dùng Node API trong code chạy trong side panel (chỉ content script/SW mới được import chrome polyfill cần thiết).
+- `web_accessible_resources` chỉ khai báo tối thiểu.
+
+## 7. Kiểm tra trước khi kết luận "xong"
+
+- [ ] Panel mở được từ toolbar icon **và** từ keyboard shortcut
+- [ ] Không lỗi console khi mở/đóng panel
+- [ ] Đọc được nội dung trang thật (không phải `chrome://` URL)
+- [ ] Streaming không đứt khi SW bị kill (test: để idle > 30s giữa 2 lượt)
+- [ ] Manifest không có quyền thừa không dùng

@@ -1,0 +1,63 @@
+# ===== Node / pnpm =====
+node_modules/
+.pnpm-store/
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# ===== Secrets — KHÔNG BAO GIỜ COMMIT =====
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets.json
+
+# ===== Eval: giữ kết quả đã xử lý, bỏ dữ liệu thô =====
+apps/eval/results/raw/
+apps/eval/results/**/*.tmp
+!apps/eval/results/.gitkeep
+
+# ===== Logs =====
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-error.log*
+logs/
+
+# ===== Docker =====
+docker-compose.override.yml
+.pgdata/
+postgres-data/
+
+# ===== Test / coverage =====
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+screenshots/
+.vitest/
+
+# ===== Editor / OS =====
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# ===== Cache =====
+.cache/
+.eslintcache
+.prettiercache
+.vite/
+
+# ===== Cursor (giữ rules) =====
+.cursor/*
+!.cursor/rules/
+.cursor/rules/**/.tmp
+
+# ===== Handoff tạm =====
+*.local.md

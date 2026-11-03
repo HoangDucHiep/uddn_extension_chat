@@ -1,0 +1,51 @@
+---
+description: Quy trình làm việc với module Workflow (M4) — approval gate, dry-run, giới hạn an toàn. Chỉ áp dụng khi làm task T-M4-*.
+alwaysApply: false
+---
+
+# Workflow Module Discipline (M4)
+
+Module workflow là **tính năng implement cuối cùng**, chạy nền, có tác dụng phụ. Áp dụng rule này khi làm bất kỳ task `T-M4-*` nào.
+
+## 1. Điều kiện bắt đầu
+
+Chỉ bắt đầu khi **cả ba** điều kiện sau thoả (xem `docs/REQUIREMENTS.md` §9.4):
+
+1. M0–M3 đã xong và **demo được** trước giảng viên.
+2. `docs/EVAL_REPORT.md` đã có bảng + phân tích + kết luận.
+3. Còn **≥ 2 tuần** trước deadline.
+
+Nếu chưa thoả → **không làm**. Đây là quyết định đã chốt, không phải đề xuất.
+
+## 2. An toàn (bắt buộc)
+
+| Quy tắc | Giá trị |
+|---|---|
+| Số bước tối đa mỗi workflow | 10 |
+| Số lần chạy tối đa / ngày / workflow | 20 |
+| Hành động có tác dụng phụ | **Luôn** cần approval gate + diff preview |
+| Dry-run | Bắt buộc hỗ trợ; dry-run **không** được side-effect |
+| Timeout mỗi bước | 60s |
+| Retry | Tối đa 2 lần, exponential backoff |
+
+## 3. Approval gate
+
+- Workflow chạy tới bước có side-effect → **dừng**, ghi `status = 'awaiting_approval'`.
+- UI hiển thị: nội dung sẽ thay đổi (diff), tác dụng phụ dự kiến, nút **Phê duyệt** / **Từ chối**.
+- Không có approval → bước đó **không chạy**, workflow kết thúc với `status = 'denied'`.
+- Approval chỉ có hiệu lực cho **đúng bước đó**, không áp dụng lần chạy sau.
+
+## 4. Quy trình làm task
+
+1. Đọc `docs/REQUIREMENTS.md` §4.7 (FR-WORKFLOW) và `docs/SYSTEM_DESIGN.md` §6 (schema `workflows`, `workflow_runs`, `workflow_step_runs`).
+2. Viết **test cho giới hạn an toàn trước** (số bước, quota, timeout, approval chặn).
+3. Implement.
+4. Test tay bằng **≥ 1 workflow thật** chạy với scheduler thật (không mock) — xác nhận fire đúng giờ khi panel **đóng**.
+5. Cập nhật docs + `docs/CHANGELOG.md` + commit.
+
+## 5. Cạm bẫy thường gặp
+
+- **Scheduler chạy trong container BFF** → phải đảm bảo container không bị restart giữa lúc demo. Nếu chạy `docker compose down` trước demo → mất lịch.
+- Job chạy khi **panel đóng** là yêu cầu bắt buộc (đây là điểm khác biệt với M365 Tasks/Gemini Apps) → phải test đúng tình huống này.
+- Kết quả workflow phải nằm trong **conversation riêng**, có `workflow_id` gắn vào — không trộn vào chat chính.
+- Token/cost của workflow phải được ghi vào `workflow_step_runs` → nếu không, sẽ không giải thích được khi token bị trừ.

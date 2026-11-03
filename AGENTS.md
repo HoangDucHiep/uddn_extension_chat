@@ -1,0 +1,151 @@
+# AGENTS.md — Sidekick AI
+
+> **Đọc file này đầu tiên khi bắt đầu chat mới.** Nó chứa đủ context để làm việc mà không cần đọc lại toàn bộ `docs/`.
+> Nếu chi tiết cần → mở đúng file docs được trỏ tới ở §7.
+
+---
+
+## 1. Dự án là gì
+
+**Sidekick AI** — Chrome Extension (Manifest V3) chat-bot sidebar cho đồ án môn học.
+Mục tiêu: **feature parity** với **Edge Copilot Sidebar** và **Chrome Gemini in Chrome**, cộng thêm các tính năng mà 2 hệ thống đó không có (BYOK, multi-provider, MCP, RAG, log có cấu trúc, self-host, scheduler).
+
+**Bắt buộc nộp:** bộ eval so sánh với Edge Copilot & Chrome Gemini (`docs/EVAL_REPORT.md`).
+
+---
+
+## 2. Stack đã chốt (KHÔNG đổi)
+
+| Hạng mục | Chọn |
+|---|---|
+| Extension | Chrome **Manifest V3**, Side Panel API, Chrome ≥ 114 |
+| UI | **React 18 + TypeScript + Vite + Tailwind CSS + shadcn/ui** (Radix, copy code vào repo) |
+| Client state | **Zustand** |
+| Backend | **BFF**: Node 20 + Express + TypeScript, chạy local qua **Docker Compose** |
+| DB | **PostgreSQL 16 + Drizzle ORM + pgvector** |
+| Repo | **Monorepo pnpm workspace**: `apps/extension`, `apps/server`, `apps/eval`, `packages/shared` |
+| Shared | `packages/shared` — TypeScript types + Zod + SSE event union + error codes |
+| Test | Vitest (unit/integration), Playwright + Chrome for Testing (E2E) |
+| LLM | Multi-provider: Gemini (mặc định), OpenAI, Anthropic, OpenRouter, Groq, Ollama |
+
+---
+
+## 3. Kiến trúc (rút gọn)
+
+```mermaid
+flowchart LR
+    SP["Side Panel<br/>(React)"] -->|"HTTPS + SSE"| RT["BFF<br/>(Express)"]
+    SP <--> SW["Service Worker"]
+    SP --> CS["Content Script"]
+    RT --> DB[("PostgreSQL<br/>+ pgvector")]
+    RT --> PV["Provider APIs<br/>+ Ollama"]
+    RT --> TL["Tools / MCP"]
+```
+
+**Điểm mấu chốt (đừng phá):**
+- Streaming **trực tiếp** Side Panel → BFF. **Không** proxy qua service worker (SW bị kill sau ~30s).
+- `activeTab` **không** dùng được khi user tương tác trong side panel → cần `tabs` + `scripting` + `sidePanel` + `storage` + `<all_urls>`.
+- `chrome.sidePanel.open()` chỉ chạy được trong **user gesture** (click icon / context menu / command).
+- Chỉ **1 side panel** mỗi cửa sổ browser.
+- **3 nguồn API key**: `K1` team key (`.env` BFF) · `K2` BYOK mã hoá trong Postgres (qua BFF) · `K3` BYOK trực tiếp trong `chrome.storage.local` (dùng khi BFF down).
+
+---
+
+## 4. Lệnh quan trọng
+
+```bash
+pnpm install                 # cài deps (root)
+docker compose up -d         # Postgres 16 + pgvector
+pnpm db:migrate              # chạy migration Drizzle
+
+pnpm dev                     # extension + server song song
+pnpm dev:ext                 # chỉ extension (vite HMR)
+pnpm dev:server              # chỉ BFF (tsx watch)
+
+pnpm build                   # build tất cả
+pnpm typecheck               # tsc --noEmit
+pnpm lint                    # eslint
+pnpm test                    # unit + integration
+pnpm test:e2e                # Playwright
+pnpm eval:run                # chạy eval harness
+```
+
+> `pnpm` chưa có? → `corepack enable` (Windows: `corepack enable pnpm`). Fallback: dùng `npm` — cấu trúc thư mục không đổi.
+
+---
+
+## 5. Quy ước BẮT BUỘC (violate = task không Done)
+
+1. **Sau mỗi phần viết code → cập nhật docs tương ứng**, rồi commit. Cụ thể:
+   - đổi hành vi sản phẩm → `docs/REQUIREMENTS.md`
+   - đổi API / schema / kiến trúc → `docs/SYSTEM_DESIGN.md`
+   - đổi UI / token / component → `docs/DESIGN_SYSTEM_BRIEF.md`
+   - đổi kế hoạch / task → `docs/IMPLEMENTATION_PLAN.md`
+   - luôn thêm 1 dòng vào `docs/CHANGELOG.md`
+   - cập nhật trạng thái ở `docs/HANDOFF.md` nếu task dang dở
+2. **Ưu tiên:** parity (M1) > advanced (M2) > polish (M3) > workflow (M4).
+3. **Không phá parity.** Nếu một thay đổi làm mất tính năng đã có trong checklist §E của `COMPARISON_MATRIX.md` → không được merge.
+4. **Workflow (M4) implement cuối cùng**, chỉ khi thỏa `REQUIREMENTS.md` §9.4.
+5. **Không hardcode màu/giá trị UI** — dùng design token (`var(--...)` hoặc class map tới token).
+6. **Không dùng `any`** trong TypeScript. Không `eval`, không remote code.
+7. **Không commit `.env`, key, hay transcript thô** (`apps/eval/results/raw/` bị ignore; `docs/EVAL_REPORT.md` thì **giữ**).
+8. Comment viết bằng **tiếng Việt**.
+9. Mỗi task = 1 commit. Message: `feat(scope):`, `fix(scope):`, `docs:`, `chore:`.
+
+---
+
+## 6. Trạng thái hiện tại
+
+| Milestone | Trạng thái | Ghi chú |
+|---|---|---|
+| **M0 — Foundation** | 📋 Chưa bắt đầu | Docs đã xong; code chưa có |
+| **M1 — Parity** | ⬜ Chưa bắt đầu | |
+| **M2 — Advanced & Eval** | ⬜ Chưa bắt đầu | `EVAL_REPORT.md` là deliverable bắt buộc |
+| **M3 — Polish & Deliverable** | ⬜ Chưa bắt đầu | |
+| **M4 — Workflow** | ⬜ Tuỳ chọn | Chỉ sau M3 + đã có eval report |
+
+**Trạng thái docs:** ✅ Requirements · ✅ Design System Brief · ✅ System Design · ✅ Implementation Plan · ✅ Comparison Matrix · ✅ Eval Plan
+
+**Việc tiếp theo:** bắt đầu **T-M0-01** theo [`IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) §2.
+
+---
+
+## 7. Đọc file nào khi nào
+
+| Tình huống | Đọc file |
+|---|---|
+| Bắt đầu chat mới / cần context | File này + `docs/HANDOFF.md` |
+| Làm UI | `docs/DESIGN_SYSTEM_BRIEF.md` |
+| Viết API / DB / backend | `docs/SYSTEM_DESIGN.md` |
+| Biết cần làm task gì tiếp | `docs/IMPLEMENTATION_PLAN.md` |
+| Cần biết FR nào ứng với ý tưởng | `docs/REQUIREMENTS.md` |
+| So sánh với Edge/Gemini | `docs/COMPARISON_MATRIX.md` |
+| Làm phần eval | `docs/EVAL_PLAN.md` |
+| Thêm thay đổi vào docs | `docs/CHANGELOG.md` (xem format) |
+
+---
+
+## 8. Cấu trúc thư mục (rút gọn)
+
+```text
+apps/extension/    src/{sidepanel,background,content,lib}
+apps/server/       src/{routes,providers,tools,rag,scheduler,db,middleware}
+apps/eval/         dataset/ runners/ judge/ metrics/ results/ reports/
+packages/shared/   types/ schemas/ events.ts errors.ts constants.ts
+design/            tokens.json tokens.css components.md patterns.md
+docs/              8 file tài liệu + HANDOFF + CHANGELOG
+```
+
+---
+
+## 9. Link nhanh
+
+- Requirements: `docs/REQUIREMENTS.md`
+- Comparison: `docs/COMPARISON_MATRIX.md`
+- Eval plan: `docs/EVAL_PLAN.md`
+- Design system: `docs/DESIGN_SYSTEM_BRIEF.md`
+- System design: `docs/SYSTEM_DESIGN.md`
+- Implementation plan: `docs/IMPLEMENTATION_PLAN.md`
+- Handoff: `docs/HANDOFF.md`
+- Changelog: `docs/CHANGELOG.md`
+- Docs index: `docs/README.md`

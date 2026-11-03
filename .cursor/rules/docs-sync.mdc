@@ -1,0 +1,77 @@
+---
+description: Quy tắc BẮT BUỘC cập nhật docs sau mỗi thay đổi code, và format changelog/handoff. Luôn áp dụng.
+alwaysApply: true
+---
+
+# Docs Sync Rule — BẮT BUỘC
+
+Mỗi thay đổi code **phải** đi kèm cập nhật docs. Task chưa cập nhật docs = **chưa Done**.
+
+## 1. Khi nào update file nào
+
+| Thay đổi | File phải update |
+|---|---|
+| Hành vi sản phẩm, thêm/bớt FR, đổi ưu tiên | `docs/REQUIREMENTS.md` |
+| API endpoint, request/response shape, SSE event, DB schema, kiến trúc, thư viện mới | `docs/SYSTEM_DESIGN.md` |
+| UI mới, component mới, đổi token, đổi hành vi state, a11y | `docs/DESIGN_SYSTEM_BRIEF.md` |
+| Task mới, task đổi trạng thái, đổi estimate, đổi milestone scope | `docs/IMPLEMENTATION_PLAN.md` |
+| Đối chiếu tính năng Edge/Gemini, parity checklist | `docs/COMPARISON_MATRIX.md` |
+| Thay đổi phần eval, dataset, metric, rubric | `docs/EVAL_PLAN.md` |
+| Trạng thái tổng quan repo, cách chạy | `docs/README.md` |
+| **Mọi thay đổi** | `docs/CHANGELOG.md` |
+| Task dang dở / context cần mang sang chat sau | `docs/HANDOFF.md` |
+
+## 2. Format `docs/CHANGELOG.md`
+
+Thêm entry mới **ở trên cùng**, giữ thứ tự mới → cũ:
+
+```markdown
+## [Unreleased]
+
+### Added
+- **T-M1-08** — Citation chip + popover hiển thị đoạn nguồn (`apps/extension/src/sidepanel/components/context/`)
+
+### Changed
+- `POST /chat` giờ trả thêm `citations[]` trong response body (`docs/SYSTEM_DESIGN.md` §4.1)
+
+### Fixed
+- Sửa lỗi context chip không cập nhật khi đổi tab
+
+### Docs
+- Cập nhật `REQUIREMENTS.md` §4.4 sau khi chốt hành vi context toggle
+```
+
+## 3. Format `docs/HANDOFF.md`
+
+Cập nhật khi: task dang dở, quyết định mới, hoặc chuẩn bị kết thúc phiên chat.
+
+```markdown
+### Đang làm dở
+- **T-M1-08** — Citation popover: đã xong chip, còn phần copy link nguồn.
+
+### Quyết định mới trong phiên này
+- Chọn `pgvector` thay `sqlite-vec` vì chung DB → backup được.
+
+### Câu hỏi cần hỏi lại user
+- Dataset eval có cần thêm nhóm ngôn ngữ tiếng Anh không?
+```
+
+## 4. Quy trình commit
+
+```bash
+# 1. code
+git add -A
+# 2. docs (bắt buộc)
+git add docs/
+# 3. commit
+git commit -m "feat(context): citation chip hiển thị đoạn nguồn"
+```
+
+Commit message: `feat(<scope>):` · `fix(<scope>):` · `docs:` · `chore:` · `refactor(<scope>):`
+
+## 5. Quy tắc "docs chỉ mô tả hiện thực"
+
+- Không ghi vào docs điều **chưa** làm → dùng "TODO" hoặc để trong backlog.
+- Nếu phát hiện docs mâu thuẫn với code → **code là nguồn sự thật**, sửa docs ngay.
+- Khi đổi số (version, số task, số FR) → cập nhật **mọi nơi** đang nhắc tới số đó.
+- Mọi `](*.md)` trong docs phải resolve được; mọi tham chiếu `§X.Y` phải tồn tại.
