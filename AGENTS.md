@@ -98,13 +98,13 @@ pnpm eval:run                # chạy eval harness
 
 | Milestone | Trạng thái | Ghi chú |
 |---|---|---|
-| **M0 — Foundation** | 📋 Chưa bắt đầu | Docs đã xong; code chưa có |
+| **M0 — Foundation** | 📋 Chưa bắt đầu | Docs đã xong; code chưa có. Bắt đầu từ T-M0-01 |
 | **M1 — Parity** | ⬜ Chưa bắt đầu | |
 | **M2 — Advanced & Eval** | ⬜ Chưa bắt đầu | `EVAL_REPORT.md` là deliverable bắt buộc |
 | **M3 — Polish & Deliverable** | ⬜ Chưa bắt đầu | |
 | **M4 — Workflow** | ⬜ Tuỳ chọn | Chỉ sau M3 + đã có eval report |
 
-**Trạng thái docs:** ✅ Requirements · ✅ Design System Brief · ✅ System Design · ✅ Implementation Plan · ✅ Comparison Matrix · ✅ Eval Plan
+**Trạng thái docs:** ✅ Requirements · ✅ Design System Brief · ✅ System Design · ✅ Implementation Plan · ✅ Comparison Matrix · ✅ Eval Plan · ✅ Handoff · ✅ Changelog
 
 **Việc tiếp theo:** bắt đầu **T-M0-01** theo [`IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) §2.
 

@@ -25,13 +25,19 @@
 |---|---|
 | Docs | ✅ Đầy đủ 9 file (`docs/`) + `AGENTS.md` ở root |
 | Code | ❌ Chưa bắt đầu |
-| Git | ✅ Đã init, có commit đầu |
+| Git | ✅ Đã init (`main`), 2 commit — `db03b26` (khởi tạo) · `b21debc` (sửa tham chiếu §) |
 | Milestone hiện tại | **M0 — Foundation** |
 | Task tiếp theo | **T-M0-01** (init monorepo pnpm workspace) |
 
 ### Đang làm dở
 
 _(Chưa có — cập nhật ở đây khi task dang dở)_
+
+### Việc đã xong trong phiên gần nhất
+
+- Hoàn thiện bộ 9 tài liệu: `DESIGN_SYSTEM_BRIEF` (viết lại), `SYSTEM_DESIGN` (mới), `IMPLEMENTATION_PLAN` (mới), `HANDOFF` (mới), `CHANGELOG` (mới); đồng bộ `REQUIREMENTS`, `COMPARISON_MATRIX`, `EVAL_PLAN`, `README`.
+- Tạo setup files: `AGENTS.md` (118 dòng), `.cursor/rules/*.mdc` (5 file), `.cursorrules`, `.gitignore`, `.editorconfig`, `.npmrc`, `.nvmrc`.
+- Kiểm tra toàn repo: **0 link chết**, **0 tham chiếu `§X.Y` không resolve**.
 
 ### Quyết định đã chốt trong các phiên trước
 
