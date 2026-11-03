@@ -852,7 +852,7 @@ Chỉ bắt đầu M4 khi **đồng thời** thỏa:
 | Chrome Gemini feature list | `COMPARISON_MATRIX.md` §B → FR-SKILL, FR-CONTEXT-03 |
 | Chrome Side Panel API docs | §6.3 → FR-UX-01 |
 | MV3 service worker lifecycle | §6.3, R-04 → NFR-REL-01 |
-| Yêu cầu eval của giảng viên | `EVAL_PLAN.md` → NFR-MAINT-04, §7.2 (`request_logs`) |
+| Yêu cầu eval của giảng viên | `EVAL_PLAN.md` → NFR-MAINT-04, `REQUIREMENTS.md` §7.2 (`request_logs`) |
 | Design System | `DESIGN_SYSTEM_BRIEF.md` §2 (tokens), §3 (components), §5 (a11y) → FR-UX-06, FR-SETTINGS-01/02, NFR-A11Y-01/02 |
 | System Design | `SYSTEM_DESIGN.md` §4 (API + SSE), §5 (data model), §6 (bảo mật) → FR-PROVIDER-*, FR-TOOLS-*, NFR-REL-* |
 | Implementation Plan | `IMPLEMENTATION_PLAN.md` → mapping task-level ↔ FR, gate từng milestone |

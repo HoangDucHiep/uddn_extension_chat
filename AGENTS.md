@@ -133,7 +133,9 @@ apps/server/       src/{routes,providers,tools,rag,scheduler,db,middleware}
 apps/eval/         dataset/ runners/ judge/ metrics/ results/ reports/
 packages/shared/   types/ schemas/ events.ts errors.ts constants.ts
 design/            tokens.json tokens.css components.md patterns.md
-docs/              8 file tài liệu + HANDOFF + CHANGELOG
+docs/              9 file tài liệu (README, REQUIREMENTS, SYSTEM_DESIGN,
+                  IMPLEMENTATION_PLAN, DESIGN_SYSTEM_BRIEF, COMPARISON_MATRIX,
+                  EVAL_PLAN, HANDOFF, CHANGELOG)
 ```
 
 ---

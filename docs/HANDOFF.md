@@ -23,7 +23,7 @@
 
 | Hạng mục | Trạng thái |
 |---|---|
-| Docs | ✅ Đầy đủ 8 file |
+| Docs | ✅ Đầy đủ 9 file (`docs/`) + `AGENTS.md` ở root |
 | Code | ❌ Chưa bắt đầu |
 | Git | ✅ Đã init, có commit đầu |
 | Milestone hiện tại | **M0 — Foundation** |

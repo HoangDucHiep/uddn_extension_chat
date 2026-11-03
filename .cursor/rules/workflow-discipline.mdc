@@ -37,7 +37,7 @@ Nếu chưa thoả → **không làm**. Đây là quyết định đã chốt, k
 
 ## 4. Quy trình làm task
 
-1. Đọc `docs/REQUIREMENTS.md` §4.7 (FR-WORKFLOW) và `docs/SYSTEM_DESIGN.md` §6 (schema `workflows`, `workflow_runs`, `workflow_step_runs`).
+1. Đọc `docs/REQUIREMENTS.md` §4.7 (FR-WORKFLOW) và `docs/SYSTEM_DESIGN.md` §5 (data model: `workflows`, `workflow_runs`, `workflow_step_runs`).
 2. Viết **test cho giới hạn an toàn trước** (số bước, quota, timeout, approval chặn).
 3. Implement.
 4. Test tay bằng **≥ 1 workflow thật** chạy với scheduler thật (không mock) — xác nhận fire đúng giờ khi panel **đóng**.

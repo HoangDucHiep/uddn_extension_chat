@@ -74,4 +74,4 @@ Commit message: `feat(<scope>):` · `fix(<scope>):` · `docs:` · `chore:` · `r
 - Không ghi vào docs điều **chưa** làm → dùng "TODO" hoặc để trong backlog.
 - Nếu phát hiện docs mâu thuẫn với code → **code là nguồn sự thật**, sửa docs ngay.
 - Khi đổi số (version, số task, số FR) → cập nhật **mọi nơi** đang nhắc tới số đó.
-- Mọi `](*.md)` trong docs phải resolve được; mọi tham chiếu `§X.Y` phải tồn tại.
+- Mọi link Markdown trỏ tới file `.md` trong docs phải resolve được; mọi tham chiếu `§X.Y` phải tồn tại.
