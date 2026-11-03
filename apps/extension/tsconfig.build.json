@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "./dist-tsc",
+    "tsBuildInfoFile": "./dist-tsc/.tsbuildinfo",
+    "declaration": false,
+    "declarationMap": false
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "exclude": ["node_modules", "dist", "dist-tsc", "e2e", "**/*.test.ts", "**/*.test.tsx"]
+}

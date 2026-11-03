@@ -1,0 +1,12 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+# pnpm 12 doc cac setting o day (khong phai trong package.json).
+# Cho phep esbuild chay postinstall de vite/tsx hoat dong.
+allowBuilds:
+  esbuild: true
+
+# Repo dung cac package vua publish (Vite 8, Tailwind 4.3, lucide-react 1.67)
+# nen tat kiem tra "tuoi toi thieu" mac dinh cua pnpm de build lap la duoc.
+minimumReleaseAge: 0

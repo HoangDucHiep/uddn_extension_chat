@@ -1,0 +1,6 @@
+node_modules/
+dist/
+coverage/
+pnpm-lock.yaml
+pnpm-workspace.yaml
+apps/eval/results/raw/
