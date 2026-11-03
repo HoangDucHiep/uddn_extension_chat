@@ -9,7 +9,6 @@
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'
 
 const ALGORITHM = 'aes-256-gcm'
-const KEY_LENGTH_BYTES = 32
 const IV_LENGTH_BYTES = 12
 const AUTH_TAG_LENGTH_BYTES = 16
 
