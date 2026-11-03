@@ -59,8 +59,23 @@ export default tseslint.config(
     },
   },
   {
-    // Script node ESM: cho phep console.log
+    // Server: log ra console la chu dich (khong phai debug trai).
+    files: ['apps/server/src/**/*.ts'],
+    rules: {
+      'no-console': 'off',
+    },
+  },
+  {
+    // Script node ESM (.mjs): cho phep console.log + globals cua Node 22.
     files: ['scripts/**/*.mjs', 'scripts/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 2023,
+      sourceType: 'module',
+      globals: {
+        ...globals.node,
+        ...globals.browser,
+      },
+    },
     rules: {
       'no-console': 'off',
     },

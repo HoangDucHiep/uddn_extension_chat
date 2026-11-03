@@ -71,6 +71,11 @@ export class GeminiProvider implements ProviderAdapter {
     }
   }
 
+  /** Model mac dinh cua provider khi client khong chi dinh. */
+  resolveModel(requestedModel?: string): string {
+    return requestedModel ?? this.options.defaultModel
+  }
+
   async *stream(request: ProviderStreamRequest): AsyncGenerator<ProviderChunk, void, undefined> {
     const candidates = this.buildModelCandidates(request.model)
     let lastError: ProviderChunk | undefined
@@ -134,6 +139,9 @@ export class GeminiProvider implements ProviderAdapter {
         ...(request.maxOutputTokens !== undefined
           ? { maxOutputTokens: request.maxOutputTokens }
           : {}),
+        // Model 3.x la "thinking model" — mac dinh dung phan lon token cho reasoning
+        // nen user chi nhan duoc text rong. Tat thinking de cau tra loi nhanh va dung.
+        thinkingConfig: { thinkingBudget: 0 },
       },
     }
 

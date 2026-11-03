@@ -4,27 +4,49 @@
  */
 
 import { createApp } from './app.js'
-import { getAllowedOrigins, loadEnv } from './config/env.js'
+import { getAllowedOrigins, getGeminiFallbackModels, getProviderFallbacks, loadEnv } from './config/env.js'
 import { createDatabase } from './db/index.js'
+import { ProviderRegistry } from './providers/registry.js'
+import type { ProviderId } from '@sidekick/shared'
 
 const VERSION = '0.1.0'
 
 async function main(): Promise<void> {
   const env = loadEnv()
   const allowedOrigins = getAllowedOrigins(env)
-  const { pool } = createDatabase(env.DATABASE_URL)
+  const { db, pool } = createDatabase(env.DATABASE_URL)
+
+  const registry = new ProviderRegistry({
+    defaultProvider: env.DEFAULT_PROVIDER,
+    fallbacks: getProviderFallbacks(env) as ProviderId[],
+    groqModel: env.GROQ_MODEL,
+    openRouterModel: env.OPENROUTER_MODEL,
+    geminiModel: env.GEMINI_MODEL,
+    geminiFallbackModels: getGeminiFallbackModels(env),
+  })
 
   const app = createApp({
+    db,
     pool,
+    registry,
+    envKeys: {
+      groq: env.GROQ_API_KEY,
+      openrouter: env.OPENROUTER_API_KEY,
+      gemini: env.GEMINI_API_KEY,
+    },
+    masterKey: env.MASTER_KEY,
+    logFullContent: false,
+    logRequests: env.LOG_REQUESTS,
     version: VERSION,
     allowedOrigins,
     logLevel: env.LOG_LEVEL,
-    listProviders: () => [env.DEFAULT_PROVIDER, ...env.PROVIDER_FALLBACKS.split(',').filter(Boolean)],
+    listProviders: () => registry.getFallbackChain(),
   })
 
   const server = app.listen(env.PORT, env.HOST, () => {
     console.log(`Sidekick BFF v${VERSION} lang nghe tai http://${env.HOST}:${env.PORT}`)
     console.log(`Allowed origins: ${allowedOrigins.join(', ')}`)
+    console.log(`Provider chain: ${registry.getFallbackChain().join(' -> ')}`)
   })
 
   // Tat sach: dong server truoc, dong pool sau.

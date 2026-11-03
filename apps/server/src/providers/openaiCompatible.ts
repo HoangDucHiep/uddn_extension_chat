@@ -69,6 +69,11 @@ export class OpenAiCompatibleProvider implements ProviderAdapter {
     }
   }
 
+  /** Model mac dinh cua provider khi client khong chi dinh. */
+  resolveModel(requestedModel?: string): string {
+    return requestedModel ?? this.options.defaultModel
+  }
+
   async *stream(request: ProviderStreamRequest): AsyncGenerator<ProviderChunk, void, undefined> {
     const candidates = this.buildModelCandidates(request.model)
 

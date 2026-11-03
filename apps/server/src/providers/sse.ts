@@ -35,7 +35,9 @@ export async function* readSseData(
       const { done, value } = await reader.read()
       if (done) break
 
-      buffer += decoder.decode(value, { stream: true })
+      // Chu hoa \r\n thanh \n truoc khi tach — mot so provider (Gemini) dung
+      // \r\n\r\n lam separator, neu khong chuan hoa thi indexOf('\n\n') khong match.
+      buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, '\n')
 
       let separatorIndex = buffer.indexOf('\n\n')
       while (separatorIndex !== -1) {

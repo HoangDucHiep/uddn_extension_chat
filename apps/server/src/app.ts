@@ -11,8 +11,10 @@ import { createCorsOptions, createOriginGuard } from './middleware/origin.js'
 import { errorHandler, notFoundHandler } from './middleware/error.js'
 import { createRequestLogger, type LogLevel } from './middleware/requestLogger.js'
 import { createHealthRouter } from './routes/health.js'
+import { createChatRouter } from './routes/chat.js'
+import type { ChatServiceDeps } from './services/chatService.js'
 
-export interface AppDeps {
+export interface AppDeps extends ChatServiceDeps {
   pool: Pool
   version: string
   allowedOrigins: string[]
@@ -31,9 +33,12 @@ export function createApp(deps: AppDeps): Express {
   app.use(express.json({ limit: '2mb' }))
 
   const healthRouter = createHealthRouter(deps)
+  const chatRouter = createChatRouter(deps)
+
   // `/api/health` la endpoint chinh; `/health` la alias de smoke test nhanh.
   app.use(API_BASE_PATH, healthRouter)
   app.use('/', healthRouter)
+  app.use(API_BASE_PATH, chatRouter)
 
   app.use(notFoundHandler)
   app.use(errorHandler)

@@ -24,6 +24,12 @@ export interface ProviderAdapter {
   listModels(): Promise<string[]>
 
   /**
+   * Chon model se duoc dung thuc te cho request.
+   * Neu client khong chi dinh model -> dung model mac dinh cua provider.
+   */
+  resolveModel(requestedModel?: string): string
+
+  /**
    * Stream tra loi. Yield cac chunk da chuan hoa.
    * Adapter tu xu ly retry/fallback model noi bo.
    */

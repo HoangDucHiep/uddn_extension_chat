@@ -37,6 +37,11 @@ export class MockProvider implements ProviderAdapter {
     return ['mock-model']
   }
 
+  /** Mock khong quan tam model — luon dung ten co dinh. */
+  resolveModel(requestedModel?: string): string {
+    return requestedModel ?? 'mock-model'
+  }
+
   async *stream(request: ProviderStreamRequest): AsyncGenerator<ProviderChunk, void, undefined> {
     const text = this.options.response ?? DEFAULT_RESPONSE
     const delayMs = this.options.delayMs ?? 10
