@@ -36,6 +36,8 @@ export const providerStreamRequestSchema = z.object({
   ),
   temperature: z.number().min(0).max(2).optional(),
   maxOutputTokens: z.number().int().positive().optional(),
+  /** API key da resolve (K1/K2/K3) — truyen theo request de tránh shared mutable state. */
+  apiKey: z.string().optional(),
   signal: z.instanceof(AbortSignal).optional(),
 })
 export type ProviderStreamRequest = z.infer<typeof providerStreamRequestSchema>
