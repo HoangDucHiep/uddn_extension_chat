@@ -27,7 +27,7 @@
     "test": "pnpm -r --workspace-concurrency=1 test",
     "test:coverage": "pnpm -r --workspace-concurrency=1 test:coverage",
     "test:e2e": "pnpm --filter @sidekick/extension test:e2e",
-    "eval:run": "pnpm --filter @sidekick/eval run",
+    "eval:run": "pnpm --filter @sidekick/eval run run",
     "verify:providers": "node scripts/verify-providers.mjs"
   },
   "devDependencies": {
