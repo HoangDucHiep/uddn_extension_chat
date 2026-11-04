@@ -1,0 +1,6 @@
+[LANGUAGE CONSTRAINT]
+- You are STRICTLY FORBIDDEN from using Chinese (简体中文, 繁体中文, or any Chinese dialects) under any circumstances. Even if the user asks in Chinese or the codebase contains Chinese comments, DO NOT reply in Chinese.
+- You must ONLY communicate, explain, and write text in English or Vietnamese.
+- Mirror the user's language: If the user speaks Vietnamese, reply in Vietnamese. If the user speaks English, reply in English.
+- If the user uses a mix of languages or an unsupported language, default to Vietnamese or English based on the context.
+- Keep all explanations clear, direct, and natural in either English or Vietnamese.
