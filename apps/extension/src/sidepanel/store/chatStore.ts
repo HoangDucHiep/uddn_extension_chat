@@ -1,10 +1,26 @@
 import { create } from 'zustand'
+import {
+  applyContextBudget,
+  CONTEXT_WINDOWS,
+  type ContextBudgetResult,
+  type ContextItem,
+  type ProviderId,
+} from '@sidekick/shared'
+import { writeContextEnabled } from '@/lib/storage'
 
 /**
  * Store cua side panel.
  * State chi nam o side panel + chrome.storage.local + Postgres — KHONG
  * nam trong service worker (MV3 SW bi kill sau ~30s).
  */
+
+/**
+ * Provider dung de tinh ngan sach khi chua biet provider thuc te.
+ *
+ * Context window 128k — dung de *khong* cat nham noi dung client-side;
+ * server cat lai theo provider thuc te (nguon chan su that).
+ */
+const FALLBACK_PROVIDER: ProviderId = 'groq'
 
 export interface ChatMessage {
   id: string
@@ -35,6 +51,12 @@ export interface ChatState {
   contextErrorMessage: string | undefined
   /** Loai trang da trich xuat context gan nhat. */
   contextSourceKind: string | undefined
+  /** Context item user da dinh kem (FR-CONTEXT-07). */
+  attachedItems: ContextItem[]
+  /** Bat/tat viec gui context — mac dinh TAT (chi gui khi user dinh kem). */
+  contextEnabled: boolean
+  /** Ket qua tinh ngan sach context (hien thi meter). */
+  budget: ContextBudgetResult | undefined
 
   addMessage: (message: ChatMessage) => void
   appendToMessage: (id: string, delta: string) => void
@@ -51,6 +73,18 @@ export interface ChatState {
     message?: string | undefined
     sourceKind?: string | undefined
   }) => void
+  /** Them context item (tu nguon dinh kem: tab / selection / file). */
+  attachItem: (item: ContextItem) => void
+  /** Xoa context item theo id. */
+  removeItem: (id: string) => void
+  /** Xoa toan bo context item da dinh kem. */
+  clearAttachedItems: () => void
+  /** Bat/tat gui context + luu vao `chrome.storage.local`. */
+  setContextEnabled: (enabled: boolean) => void
+  /** Nap trang thai bat/tat context da luu (goi 1 lan khi mo panel). */
+  hydrateContextEnabled: (enabled: boolean) => void
+  /** Tinh lai ngan sach context (goi sau khi items/provider doi). */
+  recomputeBudget: () => void
   reset: () => void
 }
 
@@ -64,9 +98,12 @@ const initialState = {
   contextError: undefined,
   contextErrorMessage: undefined,
   contextSourceKind: undefined,
+  attachedItems: [] as ContextItem[],
+  contextEnabled: false,
+  budget: undefined as ContextBudgetResult | undefined,
 }
 
-export const useChatStore = create<ChatState>((set) => ({
+export const useChatStore = create<ChatState>((set, get) => ({
   ...initialState,
 
   addMessage: (message) =>
@@ -90,12 +127,14 @@ export const useChatStore = create<ChatState>((set) => ({
 
   setStreaming: (isStreaming) => set({ isStreaming }),
 
-  setActive: ({ provider, model, keySource }) =>
+  setActive: ({ provider, model, keySource }) => {
     set({
       activeProvider: provider ?? undefined,
       activeModel: model ?? undefined,
       keySource: keySource ?? undefined,
-    }),
+    })
+    get().recomputeBudget()
+  },
 
   setContextError: ({ error, message, sourceKind }) =>
     set({
@@ -104,5 +143,64 @@ export const useChatStore = create<ChatState>((set) => ({
       contextSourceKind: sourceKind ?? undefined,
     }),
 
-  reset: () => set({ ...initialState }),
+  attachItem: (item) => {
+    set((state) => ({
+      attachedItems: [...state.attachedItems.filter((existing) => existing.id !== item.id), item],
+      // Dinh kem item = user chu dong muon dung context → bat context.
+      contextEnabled: true,
+    }))
+    void writeContextEnabled(true)
+    get().recomputeBudget()
+  },
+
+  removeItem: (id) => {
+    set((state) => ({
+      attachedItems: state.attachedItems.filter((item) => item.id !== id),
+    }))
+    get().recomputeBudget()
+  },
+
+  clearAttachedItems: () => {
+    set({ attachedItems: [] })
+    get().recomputeBudget()
+  },
+
+  setContextEnabled: (enabled) => {
+    set({ contextEnabled: enabled })
+    void writeContextEnabled(enabled)
+    get().recomputeBudget()
+  },
+
+  hydrateContextEnabled: (enabled) => {
+    set({ contextEnabled: enabled })
+    get().recomputeBudget()
+  },
+
+  recomputeBudget: () => {
+    const state = get()
+    if (state.attachedItems.length === 0) {
+      set({ budget: undefined })
+      return
+    }
+
+    const provider = (state.activeProvider ?? FALLBACK_PROVIDER) as ProviderId
+    const contextWindow = CONTEXT_WINDOWS[provider] ?? CONTEXT_WINDOWS[FALLBACK_PROVIDER]
+
+    set({
+      budget: applyContextBudget(state.attachedItems, {
+        contextWindow,
+        reservedOutputTokens: 2_048,
+      }),
+    })
+  },
+
+  reset: () =>
+    set((state) => ({
+      ...initialState,
+      // Giu nguyen context da dinh kem + trang thai bat/tat (clear khong xoa
+      // nguon context cua user).
+      attachedItems: state.attachedItems,
+      contextEnabled: state.contextEnabled,
+      budget: state.budget,
+    })),
 }))

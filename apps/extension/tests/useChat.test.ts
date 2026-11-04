@@ -72,10 +72,13 @@ const doneEvent: ChatEvent = {
 
 beforeEach(() => {
   useChatStore.getState().reset()
+  // Reset giu nguyen context da dinh kem → don de dam bao test doc lap.
+  useChatStore.getState().clearAttachedItems()
+  useChatStore.getState().setContextEnabled(false)
   streamChatMock.mockReset()
   captureTabContextMock.mockReset()
   getActiveTabIdMock.mockReset()
-  // Mac dinh khong co tab active → khong gui context.
+  // Mac dinh khong co tab active → khong tao item nao.
   getActiveTabIdMock.mockResolvedValue(undefined)
 })
 
@@ -254,7 +257,7 @@ describe('useChat', () => {
     expect(useChatStore.getState().messages).toHaveLength(0)
   })
 
-  it('gui kem context trang hien tai (FR-CONTEXT-01)', async () => {
+  it('khong gui context khi user chua dinh kem gi (FR-CONTEXT-07)', async () => {
     getActiveTabIdMock.mockResolvedValue(42)
     captureTabContextMock.mockResolvedValue({
       url: 'https://example.com/bai-viet',
@@ -276,16 +279,21 @@ describe('useChat', () => {
       await result.current.send('test')
     })
 
-    const request = streamChatMock.mock.calls[0]?.[0] as {
-      context?: { url: string; text?: string; tabId?: number }
-    }
-    expect(request.context?.url).toBe('https://example.com/bai-viet')
-    expect(request.context?.text).toBe('Noi dung chinh cua trang.')
-    expect(request.context?.tabId).toBe(42)
+    const request = streamChatMock.mock.calls[0]?.[0] as { context?: unknown }
+    // Khong tu capture tab → chat thuan LLM.
+    expect(request.context).toBeUndefined()
+    expect(captureTabContextMock).not.toHaveBeenCalled()
   })
 
-  it('khong gui context khi khong lay duoc tab active', async () => {
-    getActiveTabIdMock.mockResolvedValue(undefined)
+  it('gui context khi user da dinh kem tab', async () => {
+    getActiveTabIdMock.mockResolvedValue(42)
+    captureTabContextMock.mockResolvedValue({
+      url: 'https://example.com/bai-viet',
+      title: 'Tieu de bai viet',
+      tabId: 42,
+      text: 'Noi dung chinh cua trang.',
+      excerpt: 'Noi dung chinh cua trang.',
+    })
 
     streamChatMock.mockImplementation(
       (
@@ -295,13 +303,55 @@ describe('useChat', () => {
     )
 
     const { result } = renderHook(() => useChat())
+
+    await act(async () => {
+      await result.current.attachCurrentTab()
+    })
+
+    await act(async () => {
+      await result.current.send('test')
+    })
+
+    const request = streamChatMock.mock.calls[0]?.[0] as {
+      context?: { items?: Array<{ tier?: string; url?: string; text?: string }> }
+    }
+    expect(request.context?.items).toHaveLength(1)
+    expect(request.context?.items?.[0]?.tier).toBe('attachment')
+    expect(request.context?.items?.[0]?.url).toBe('https://example.com/bai-viet')
+    expect(request.context?.items?.[0]?.text).toBe('Noi dung chinh cua trang.')
+  })
+
+  it('tat context → khong gui context du co item dinh kem', async () => {
+    getActiveTabIdMock.mockResolvedValue(42)
+    captureTabContextMock.mockResolvedValue({
+      url: 'https://example.com/bai-viet',
+      title: 'Tieu de bai viet',
+      tabId: 42,
+      text: 'Noi dung chinh cua trang.',
+    })
+
+    streamChatMock.mockImplementation(
+      (
+        _request: unknown,
+        options: { onEvent?: (event: ChatEvent) => void },
+      ) => makeStream([metaEvent, doneEvent], options.onEvent),
+    )
+
+    const { result } = renderHook(() => useChat())
+
+    await act(async () => {
+      await result.current.attachCurrentTab()
+    })
+    act(() => {
+      result.current.setContextEnabled(false)
+    })
+
     await act(async () => {
       await result.current.send('test')
     })
 
     const request = streamChatMock.mock.calls[0]?.[0] as { context?: unknown }
     expect(request.context).toBeUndefined()
-    expect(captureTabContextMock).not.toHaveBeenCalled()
   })
 
   it('chat van chay duoc khi capture context that bai', async () => {

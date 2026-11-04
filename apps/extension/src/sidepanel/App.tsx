@@ -3,6 +3,8 @@ import { MessageBubble } from './components/MessageBubble'
 import { Composer } from './components/Composer'
 import { PanelHeader } from './components/PanelHeader'
 import { ContextNotice } from './components/context/ContextNotice'
+import { ContextChips } from './components/context/ContextChips'
+import { ContextBudget } from './components/context/ContextBudget'
 import { useChat } from './hooks/useChat'
 
 /**
@@ -18,11 +20,18 @@ export function App() {
     keySource,
     contextError,
     contextErrorMessage,
+    attachedItems,
+    contextEnabled,
+    budget,
+    attachCurrentTab,
+    removeItem,
+    setContextEnabled,
     send,
     stop,
     clear,
   } = useChat()
   const [input, setInput] = useState('')
+  const [isAttaching, setIsAttaching] = useState(false)
   const threadRef = useRef<HTMLDivElement>(null)
 
   // Tu cuon xuong khi co tin nhan moi.
@@ -37,6 +46,13 @@ export function App() {
     if (input.trim().length === 0) return
     void send(input)
     setInput('')
+  }
+
+  const handleAddCurrentTab = (): void => {
+    setIsAttaching(true)
+    void attachCurrentTab().finally(() => {
+      setIsAttaching(false)
+    })
   }
 
   return (
@@ -59,7 +75,8 @@ export function App() {
               Chao ban!
             </p>
             <p className="max-w-[280px] text-[length:var(--font-size-sm)] text-[var(--text-secondary)]">
-              Sidekick AI tro loi ve trang web ban dang xem. Hay hoi mot cau.
+              Ban co the hoi bat ky cau hoi nao. Neu muon Sidekick AI dung noi dung
+              trang dang xem, hay bam &quot;Them trang nay&quot;.
             </p>
           </div>
         ) : (
@@ -70,6 +87,17 @@ export function App() {
       {contextError !== undefined && (
         <ContextNotice errorCode={contextError} message={contextErrorMessage} />
       )}
+
+      <ContextChips
+        items={attachedItems}
+        enabled={contextEnabled}
+        onToggle={setContextEnabled}
+        onAddCurrentTab={handleAddCurrentTab}
+        onRemove={removeItem}
+        isAttaching={isAttaching}
+      />
+
+      <ContextBudget budget={budget} />
 
       <Composer
         value={input}

@@ -1,7 +1,15 @@
-import { useCallback, useRef } from 'react'
-import type { ChatEvent, PageContext } from '@sidekick/shared'
+import { useCallback, useEffect, useRef } from 'react'
+import {
+  applyContextBudget,
+  CONTEXT_WINDOWS,
+  type ChatEvent,
+  type ChatRequest,
+  type ContextBundle,
+  type ProviderId,
+} from '@sidekick/shared'
 import { streamChat } from '@/lib/sseClient'
-import { captureTabContext, getActiveTabId } from '@/lib/pageContext'
+import { attachCurrentTab as attachTab } from '@/lib/contextAttach'
+import { readContextEnabled } from '@/lib/storage'
 import { useChatStore, type ChatMessage } from '../store/chatStore'
 
 /**
@@ -9,6 +17,18 @@ import { useChatStore, type ChatMessage } from '../store/chatStore'
  *
  * Docs: docs/SYSTEM_DESIGN.md §4.3
  */
+
+/**
+ * Provider dung de tinh ngan sach khi chua biet provider thuc te.
+ *
+ * Context window 128k → client chi cat khi context that lon; server cat lai
+ * theo provider thuc te truoc khi goi LLM (nguon chan su that).
+ */
+const FALLBACK_PROVIDER: ProviderId = 'groq'
+
+/** Token danh rieng cho output (khop voi `DEFAULT_MAX_OUTPUT_TOKENS` cua server). */
+const RESERVED_OUTPUT_TOKENS = 2_048
+
 export function useChat() {
   const messages = useChatStore((state) => state.messages)
   const isStreaming = useChatStore((state) => state.isStreaming)
@@ -18,6 +38,9 @@ export function useChat() {
   const keySource = useChatStore((state) => state.keySource)
   const contextError = useChatStore((state) => state.contextError)
   const contextErrorMessage = useChatStore((state) => state.contextErrorMessage)
+  const attachedItems = useChatStore((state) => state.attachedItems)
+  const contextEnabled = useChatStore((state) => state.contextEnabled)
+  const budget = useChatStore((state) => state.budget)
 
   const addMessage = useChatStore((state) => state.addMessage)
   const appendToMessage = useChatStore((state) => state.appendToMessage)
@@ -25,6 +48,43 @@ export function useChat() {
   const setConversationId = useChatStore((state) => state.setConversationId)
   const setStreaming = useChatStore((state) => state.setStreaming)
   const setActive = useChatStore((state) => state.setActive)
+  const setContextError = useChatStore((state) => state.setContextError)
+  const attachItem = useChatStore((state) => state.attachItem)
+  const removeItem = useChatStore((state) => state.removeItem)
+  const clearAttachedItems = useChatStore((state) => state.clearAttachedItems)
+  const setContextEnabled = useChatStore((state) => state.setContextEnabled)
+  const hydrateContextEnabled = useChatStore((state) => state.hydrateContextEnabled)
+
+  // Nap trang thai bat/tat context da luu trong `chrome.storage.local`.
+  // Chi ap dung khi user chua dinh kem gi → khong ghi de lua chon cua user.
+  useEffect(() => {
+    let cancelled = false
+    void readContextEnabled().then((enabled) => {
+      if (cancelled) return
+      const state = useChatStore.getState()
+      if (state.attachedItems.length > 0) return
+      hydrateContextEnabled(enabled)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [hydrateContextEnabled])
+
+  // Dinh kem tab dang active vao context (chi khi user bam nut).
+  // Tab da dinh kem roi → khong capture lai (tiet kiem + tranh trung).
+  const attachCurrentTab = useCallback(async () => {
+    const state = useChatStore.getState()
+    const result = await attachTab(state.attachedItems)
+    setContextError({
+      error: result.error,
+      message: result.errorMessage,
+      sourceKind: result.sourceKind,
+    })
+    if (result.item !== undefined) {
+      attachItem(result.item)
+    }
+    return result.item
+  }, [attachItem, setContextError])
 
   // Giu AbortController de "Dung" huy stream.
   const abortRef = useRef<AbortController | undefined>(undefined)
@@ -73,9 +133,10 @@ export function useChat() {
 
       let sawDone = false
 
-      // Lay context trang hien tai (FR-CONTEXT-01).
-      // KHONG de loi lam chat that bai — context la thong tin bonus.
-      const context = await captureActiveContext()
+      // Context chi duoc gui khi user dinh kem item (FR-CONTEXT-07).
+      // KHONG tu capture tab active — panel hoat dong nhu LLM thuan neu
+      // user khong dinh kem gi.
+      const context = buildRequestContext()
       const handleEvent = (event: ChatEvent): void => {
         switch (event.type) {
           case 'meta':
@@ -163,6 +224,13 @@ export function useChat() {
     keySource,
     contextError,
     contextErrorMessage,
+    attachedItems,
+    contextEnabled,
+    budget,
+    attachCurrentTab,
+    removeItem,
+    clearAttachedItems,
+    setContextEnabled,
     send,
     stop,
     clear,
@@ -170,32 +238,31 @@ export function useChat() {
 }
 
 /**
- * Capture context cua tab dang active.
+ * Xay dung `context` cho request.
  *
- * Tra `undefined` khi khong lay duoc (khong co tab, trang khong doc duoc)
- * de request van gui len BFF binh thuong — context chi la du lieu bonus.
+ * - `contextEnabled === false` → khong gui `context` (chat thuan LLM).
+ * - Khong co item nao → khong gui `context`.
+ * - Nguoc lai → ap dung ngan sach context roi gui `context.items`.
  *
- * Loi trich xuat context (PDF scan, video khong co caption) duoc gan vao store
- * de panel hien thi `ContextNotice` — khong nem loi, khong lam chat that bai.
+ * Client cat theo context window *uoc luong*; server cat lai theo provider
+ * thuc te nen day chi la lop hien thi + tiet kiem bang thong.
  */
-async function captureActiveContext(): Promise<PageContext | undefined> {
-  try {
-    const tabId = await getActiveTabId()
-    if (tabId === undefined) return undefined
+function buildRequestContext(): ContextBundle | undefined {
+  const state = useChatStore.getState()
+  if (!state.contextEnabled) return undefined
+  if (state.attachedItems.length === 0) return undefined
 
-    const context = await captureTabContext(tabId)
+  const provider = (state.activeProvider ?? FALLBACK_PROVIDER) as ProviderId
+  const contextWindow = CONTEXT_WINDOWS[provider] ?? CONTEXT_WINDOWS[FALLBACK_PROVIDER]
 
-    useChatStore.getState().setContextError({
-      error: context.contextError,
-      message: context.contextErrorMessage,
-      sourceKind: context.sourceKind,
-    })
+  const budget = applyContextBudget(state.attachedItems, {
+    contextWindow,
+    reservedOutputTokens: RESERVED_OUTPUT_TOKENS,
+  })
 
-    // Trang rong (khong co url/title/text) → bo qua, khong gui context rong.
-    if (context.url.length === 0 && context.title.length === 0) return undefined
+  useChatStore.getState().recomputeBudget()
 
-    return context
-  } catch {
-    return undefined
-  }
+  if (budget.items.length === 0) return undefined
+
+  return { items: budget.items }
 }
