@@ -86,6 +86,55 @@ describe('applyContextBudget', () => {
     expect(item?.tokens).toBeLessThanOrEqual(result.maxTokens)
   })
 
+  it('cat GIU phan dau (head slice) — khong cat phan cuoi', () => {
+    const original = 'ABCDEFGHIJKLMNOP'
+    const items = [makeItem({ id: 'a', tier: 'attachment', text: original })]
+
+    // 2 token → 8 ky tu duoc giu.
+    const result = applyContextBudget(items, { maxTokens: 2, contextWindow: 0, reservedOutputTokens: 0 })
+    const item = result.items[0]
+
+    expect(item?.text).toBe('ABCDEFGH')
+    // Ky tu dau tien giu nguyen → phan dau khong bi mat.
+    expect(item?.text?.startsWith('ABCD')).toBe(true)
+    // Ky tu cuoi bi cat.
+    expect(item?.text).not.toContain('P')
+    expect(item?.droppedChars).toBe(original.length - 8)
+  })
+
+  it('cat bao giu ky tu dau tien cua text', () => {
+    const original = 'a'.repeat(100)
+    const items = [makeItem({ id: 'a', tier: 'attachment', text: original })]
+
+    const result = applyContextBudget(items, { maxTokens: 10, contextWindow: 0, reservedOutputTokens: 0 })
+    const item = result.items[0]
+
+    expect(item?.text).toBe('a'.repeat(40))
+    expect(item?.text?.startsWith('a')).toBe(true)
+  })
+
+  it('cat dung so ky tu = token con lai * CHARS_PER_TOKEN', () => {
+    const items = [makeItem({ id: 'a', tier: 'attachment', text: 'x'.repeat(1_000) })]
+
+    const result = applyContextBudget(items, { maxTokens: 7, contextWindow: 0, reservedOutputTokens: 0 })
+    const item = result.items[0]
+
+    expect(item?.text?.length).toBe(7 * CHARS_PER_TOKEN)
+    expect(item?.droppedChars).toBe(1_000 - 7 * CHARS_PER_TOKEN)
+  })
+
+  it('item khong duoc cat → truncated false, text nguyen ven', () => {
+    const original = 'short'
+    const items = [makeItem({ id: 'a', tier: 'attachment', text: original })]
+
+    const result = applyContextBudget(items, { maxTokens: 100, contextWindow: 0, reservedOutputTokens: 0 })
+    const item = result.items[0]
+
+    expect(item?.truncated).toBe(false)
+    expect(item?.text).toBe(original)
+    expect(item?.droppedChars).toBe(0)
+  })
+
   it('historyBudget la phan du sau khi cat context', () => {
     const items = [makeItem({ id: 'a', tier: 'attachment', text: 'x'.repeat(400) })]
 

@@ -374,4 +374,81 @@ describe('useChat', () => {
     expect(assistant?.status).toBe('done')
     expect(assistant?.content).toBe('ok')
   })
+
+  it('attachTab dinh kem mot tab bat ky vao context (T-M1-05)', async () => {
+    captureTabContextMock.mockResolvedValue({
+      url: 'https://example.com/bai-viet',
+      title: 'Bai viet mau',
+      tabId: 77,
+      text: 'Noi dung bai viet.',
+      excerpt: 'Noi dung bai viet.',
+      sourceKind: 'html',
+    })
+
+    const { result } = renderHook(() => useChat())
+
+    await act(async () => {
+      await result.current.attachTab(77)
+    })
+
+    const items = useChatStore.getState().attachedItems
+    expect(items).toHaveLength(1)
+    expect(items[0]?.id).toBe('tab-77')
+    expect(items[0]?.tabId).toBe(77)
+    expect(items[0]?.tier).toBe('attachment')
+  })
+
+  it('attachTab KHONG capture lai tab da dinh kem roi', async () => {
+    captureTabContextMock.mockResolvedValue({
+      url: 'https://example.com/bai-viet',
+      title: 'Bai viet mau',
+      tabId: 77,
+    })
+
+    const { result } = renderHook(() => useChat())
+
+    await act(async () => {
+      await result.current.attachTab(77)
+    })
+    captureTabContextMock.mockClear()
+
+    await act(async () => {
+      await result.current.attachTab(77)
+    })
+
+    expect(captureTabContextMock).not.toHaveBeenCalled()
+    expect(useChatStore.getState().attachedItems).toHaveLength(1)
+  })
+
+  it('attachTab gui item dinh kem len BFF khi gui tin nhan', async () => {
+    captureTabContextMock.mockResolvedValue({
+      url: 'https://example.com/bai-viet',
+      title: 'Bai viet mau',
+      tabId: 77,
+      text: 'Noi dung bai viet.',
+    })
+
+    streamChatMock.mockImplementation(
+      (
+        _request: unknown,
+        options: { onEvent?: (event: ChatEvent) => void },
+      ) => makeStream([metaEvent, doneEvent], options.onEvent),
+    )
+
+    const { result } = renderHook(() => useChat())
+
+    await act(async () => {
+      await result.current.attachTab(77)
+    })
+    await act(async () => {
+      await result.current.send('test')
+    })
+
+    const request = streamChatMock.mock.calls[0]?.[0] as {
+      context?: { items?: Array<{ url?: string; tier?: string }> }
+    }
+    expect(request.context?.items).toHaveLength(1)
+    expect(request.context?.items?.[0]?.url).toBe('https://example.com/bai-viet')
+    expect(request.context?.items?.[0]?.tier).toBe('attachment')
+  })
 })

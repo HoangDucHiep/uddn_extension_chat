@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { LIMITS } from '../src/constants.js'
-import { chatRequestSchema, pageContextSchema } from '../src/schemas/chat.js'
+import { chatRequestSchema, contextItemSchema, pageContextSchema } from '../src/schemas/chat.js'
 
 describe('pageContextSchema', () => {
   it('accept context toi thieu co url + title', () => {
@@ -133,6 +133,112 @@ describe('chatRequestSchema', () => {
 
   it('reject message rong', () => {
     const parsed = chatRequestSchema.safeParse({ messages: [{ role: 'user', content: '' }] })
+    expect(parsed.success).toBe(false)
+  })
+
+  it('reject role khong hop le', () => {
+    const parsed = chatRequestSchema.safeParse({
+      messages: [{ role: 'robot', content: 'Xin chao' }],
+    })
+    expect(parsed.success).toBe(false)
+  })
+
+  it('reject role thieu', () => {
+    const parsed = chatRequestSchema.safeParse({ messages: [{ content: 'Xin chao' }] })
+    expect(parsed.success).toBe(false)
+  })
+
+  it('accept cac role hop le', () => {
+    for (const role of ['user', 'assistant', 'system'] as const) {
+      const parsed = chatRequestSchema.safeParse({ messages: [{ role, content: 'Xin chao' }] })
+      expect(parsed.success).toBe(true)
+    }
+  })
+
+  it('reject messages rong (khong co luot nao)', () => {
+    const parsed = chatRequestSchema.safeParse({ messages: [] })
+    expect(parsed.success).toBe(false)
+  })
+
+  it('reject messages vuot gioi han lich su', () => {
+    const messages = Array.from({ length: LIMITS.MAX_HISTORY_MESSAGES + 1 }, () => ({
+      role: 'user' as const,
+      content: 'x',
+    }))
+
+    const parsed = chatRequestSchema.safeParse({ messages })
+    expect(parsed.success).toBe(false)
+  })
+
+  it('accept messages bang dung gioi han lich su', () => {
+    const messages = Array.from({ length: LIMITS.MAX_HISTORY_MESSAGES }, () => ({
+      role: 'user' as const,
+      content: 'x',
+    }))
+
+    const parsed = chatRequestSchema.safeParse({ messages })
+    expect(parsed.success).toBe(true)
+  })
+})
+
+describe('contextItemSchema', () => {
+  it('reject id rong', () => {
+    const parsed = contextItemSchema.safeParse({
+      id: '',
+      kind: 'tab',
+      tier: 'attachment',
+      title: 'T',
+    })
+    expect(parsed.success).toBe(false)
+  })
+
+  it('reject id thieu', () => {
+    const parsed = contextItemSchema.safeParse({
+      kind: 'tab',
+      tier: 'attachment',
+      title: 'T',
+    })
+    expect(parsed.success).toBe(false)
+  })
+
+  it('reject kind khong hop le', () => {
+    const parsed = contextItemSchema.safeParse({
+      id: 'a',
+      kind: 'screenshot',
+      tier: 'attachment',
+      title: 'T',
+    })
+    expect(parsed.success).toBe(false)
+  })
+
+  it('reject tier khong hop le', () => {
+    const parsed = contextItemSchema.safeParse({
+      id: 'a',
+      kind: 'tab',
+      tier: 'lowPriority',
+      title: 'T',
+    })
+    expect(parsed.success).toBe(false)
+  })
+
+  it('reject title vuot gioi han', () => {
+    const parsed = contextItemSchema.safeParse({
+      id: 'a',
+      kind: 'tab',
+      tier: 'attachment',
+      title: 'x'.repeat(1001),
+    })
+    expect(parsed.success).toBe(false)
+  })
+
+  it('reject tabId khong phai so nguyen', () => {
+    const parsed = contextItemSchema.safeParse({
+      id: 'a',
+      kind: 'tab',
+      tier: 'attachment',
+      title: 'T',
+      tabId: 1.5,
+    })
     expect(parsed.success).toBe(false)
   })
 })

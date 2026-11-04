@@ -164,4 +164,125 @@ describe('extractPageContent', () => {
     expect(doc.querySelector('nav')).not.toBeNull()
     expect(doc.querySelector('article')).not.toBeNull()
   })
+
+  it('FALLBACK THAT: khi moi node diem < 20 → dung body', () => {
+    // Moi block < MIN_BLOCK_LENGTH (25) → moi node diem 0 → khong co candidate
+    // → phai fallback sang body. Neu nhanh fallback bi xoa, ket qua se la
+    // strategy 'empty' va test nay fail.
+    const doc = parseHtml(`
+      <html>
+        <body>
+          <div>
+            <p>Ngan.</p>
+            <p>Van ngan.</p>
+            <p>Van ngan nua.</p>
+          </div>
+        </body>
+      </html>
+    `)
+
+    const result = extractPageContent(doc)
+
+    expect(result.strategy).toBe('body')
+    expect(result.text).toContain('Ngan.')
+    expect(result.text).toContain('Van ngan nua.')
+    expect(result.wordCount).toBeGreaterThan(0)
+  })
+
+  it('dedup block long: blockquote chua <p> khong bi lap noi dung', () => {
+    const doc = parseHtml(`
+      <html>
+        <body>
+          <article>
+            <p>Doan van dau cua bai viet, noi dung chinh cua trang day.</p>
+            <blockquote><p>Trich dan trong blockquote, do la noi dung trich.</p></blockquote>
+            <p>Doan van cuoi cua bai viet, van la noi dung chinh cua trang.</p>
+          </article>
+        </body>
+      </html>
+    `)
+
+    const result = extractPageContent(doc)
+
+    expect(result.text).toContain('Trich dan trong blockquote')
+    // Noi dung blockquote chi xuat hien MOT lan (khong bi lap do <p> ben trong).
+    const occurrences = result.text.split('Trich dan trong blockquote').length - 1
+    expect(occurrences).toBe(1)
+  })
+
+  it('loai bo vung nhieu (class/id am) NGUOI TRONG candidate node', () => {
+    const doc = parseHtml(`
+      <html>
+        <body>
+          <article class="post">
+            <p>Doan van chinh cua bai viet, noi dung dung de tinh diem.</p>
+            <div class="ad-banner"><p>Quang cao nen bi loai bo khoi noi dung chinh.</p></div>
+            <div class="comment"><p>Comment cua nguoi dung cung bi loai bo.</p></div>
+          </article>
+        </body>
+      </html>
+    `)
+
+    const result = extractPageContent(doc)
+
+    expect(result.strategy).toBe('article')
+    expect(result.text).toContain('Doan van chinh cua bai viet')
+    expect(result.text).not.toContain('Quang cao nen bi loai bo')
+    expect(result.text).not.toContain('Comment cua nguoi dung')
+  })
+
+  it('bien: trang chi co <title> → text rong, strategy empty', () => {
+    const doc = parseHtml(`
+      <html>
+        <head><title>Chi co tieu de</title></head>
+        <body></body>
+      </html>
+    `)
+
+    const result = extractPageContent(doc)
+
+    expect(result.title).toBe('Chi co tieu de')
+    expect(result.strategy).toBe('empty')
+    expect(result.text).toBe('')
+    expect(result.wordCount).toBe(0)
+  })
+
+  it('bien: trang chi co <h1> → lay text h1 qua fallback body', () => {
+    const doc = parseHtml(`
+      <html>
+        <head><title>Tieu de</title></head>
+        <body>
+          <h1>Tieu de don</h1>
+        </body>
+      </html>
+    `)
+
+    const result = extractPageContent(doc)
+
+    expect(result.strategy).toBe('body')
+    expect(result.text).toBe('Tieu de don')
+    expect(result.wordCount).toBe(3)
+  })
+
+  it('bien: trang link density cao → khong coi la bai viet', () => {
+    const links = Array.from(
+      { length: 12 },
+      (_value, index) => `<a href="/muc-${index}">Muc so ${index}</a>`,
+    ).join('')
+
+    const doc = parseHtml(`
+      <html>
+        <body>
+          <div class="link-list">${links}</div>
+        </body>
+      </html>
+    `)
+
+    const result = extractPageContent(doc)
+
+    // Diem bi truong 0 → fallback body, khong dung nhanh "article".
+    expect(result.strategy).toBe('body')
+    expect(result.text).toContain('Muc so 0')
+    expect(result.wordCount).toBeGreaterThan(0)
+  })
 })

@@ -31,6 +31,9 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['tests/**/*.test.ts', 'src/**/*.test.ts'],
+    // PDF/YouTube extractor parse file thuoc → cham hon giay. Khi chay song
+    // song nhieu worker, may tai thap bi timeout gia (5s mac dinh).
+    testTimeout: 30_000,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
