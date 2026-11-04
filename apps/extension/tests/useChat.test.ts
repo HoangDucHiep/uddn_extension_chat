@@ -107,6 +107,31 @@ describe('useChat', () => {
     expect(useChatStore.getState().messages).toHaveLength(0)
   })
 
+  it('khong gui message assistant rong len BFF (server yeu cau content >= 1 ky tu)', async () => {
+    streamChatMock.mockImplementation(
+      (
+        _request: unknown,
+        options: { onEvent?: (event: ChatEvent) => void },
+      ) => makeStream([metaEvent, doneEvent], options.onEvent),
+    )
+
+    const { result } = renderHook(() => useChat())
+    await act(async () => {
+      await result.current.send('Xin chao')
+    })
+
+    const request = streamChatMock.mock.calls[0]?.[0] as {
+      messages: Array<{ role: string; content: string }>
+    }
+    expect(request.messages).toHaveLength(1)
+    expect(request.messages[0]?.role).toBe('user')
+    expect(request.messages[0]?.content).toBe('Xin chao')
+    // Moi message gui len deu co content khong rong.
+    for (const message of request.messages) {
+      expect(message.content.trim().length).toBeGreaterThan(0)
+    }
+  })
+
   it('event error gan errorMessage va status error', async () => {
     const errorEvent: ChatEvent = {
       type: 'error',

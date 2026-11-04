@@ -55,9 +55,14 @@ export function useChat() {
       abortRef.current = controller
 
       // Lich su gui len BFF — chi gui role/content, khong gui metadata noi bo.
+      // Phai loai message assistant "placeholder" (content rong) va noi dung rong,
+      // vi server validate `content` toi thieu 1 ky tu.
       const history = useChatStore
         .getState()
-        .messages.filter((message) => message.role !== 'system')
+        .messages.filter(
+          (message) =>
+            message.role !== 'system' && message.content.trim().length > 0,
+        )
         .map((message) => ({
           role: message.role === 'assistant' ? ('assistant' as const) : ('user' as const),
           content: message.content,

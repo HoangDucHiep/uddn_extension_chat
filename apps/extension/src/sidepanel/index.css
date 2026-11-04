@@ -1,54 +1,57 @@
-@import '../../../../design/tokens.css';
-/* `source(none)` tat tu dong scan — chi scan `src/` de build nhanh. */
 @import 'tailwindcss' source(none);
 @source '../';
+
+/* Design token la nguon su that duy nhat cho mau sac / typography.
+   Import tokens.css SAU tailwindcss de no ghi de cac bien mac dinh
+   cua Tailwind (vd --font-sans) — cac bien trong tokens.css khong duoc
+   khai bao lai trong @theme de tranh vong lap var(). */
+@import '../../../../design/tokens.css';
 
 /* Tailwind v4 mac dinh dark variant theo prefers-color-scheme.
    Sidekick dung class `.dark` tren <html> → can custom variant. */
 @custom-variant dark (&:where(.dark, .dark *));
 
-@theme inline {
-  /* Chi khai bao cac token KHONG trung ten voi raw token trong design/tokens.css
-     (tranh self-reference trong CSS). Mau sac component dung truc tiep
-     `var(--color-*)` / `var(--surface-*)` theo convention cua design system. */
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-mono);
+/* Typography nen dat o `#root` chu KHONG dat o `body`:
+   Chrome inject rule `font` cho `body` o trang extension, de len
+   moi thuoc tinh font cua body (ke ca font-family/font-size).
+   `#root` la div -> chi nhan font tu rule cua chung ta.
+   KHONG dung @layer de rule nay luon thang cac rule inject. */
+html,
+body,
+#root {
+  height: 100%;
 }
 
-@layer base {
-  html,
-  body,
-  #root {
-    height: 100%;
-  }
+#root {
+  background-color: var(--surface-panel);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: calc(var(--font-size-md) * var(--font-scale));
+  line-height: var(--line-height-base);
+  -webkit-font-smoothing: antialiased;
+}
 
-  body {
-    margin: 0;
-    background-color: var(--surface-panel);
-    color: var(--text-primary);
-    font-family: var(--font-sans);
-    font-size: calc(var(--font-size-md) * var(--font-scale));
-    line-height: var(--line-height-base);
-    -webkit-font-smoothing: antialiased;
-  }
+body {
+  margin: 0;
+  background-color: var(--surface-panel);
+}
 
-  /* Focus luon rõ va nhin thay (WCAG 2.2 AA). */
-  :focus-visible {
-    outline: 2px solid var(--border-focus);
-    outline-offset: var(--focus-ring-offset);
-  }
+/* Focus luon rõ va nhin thay (WCAG 2.2 AA). */
+:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: var(--focus-ring-offset);
+}
 
-  ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
 
-  ::-webkit-scrollbar-thumb {
-    background-color: var(--border-strong);
-    border-radius: var(--radius-full);
-  }
+::-webkit-scrollbar-thumb {
+  background-color: var(--border-strong);
+  border-radius: var(--radius-full);
+}
 
-  ::-webkit-scrollbar-track {
-    background-color: transparent;
-  }
+::-webkit-scrollbar-track {
+  background-color: transparent;
 }

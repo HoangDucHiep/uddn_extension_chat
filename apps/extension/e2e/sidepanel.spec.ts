@@ -33,5 +33,39 @@ test('gui prompt nhan token tu BFF', async ({ sidePanel }) => {
   // Provider chip phai hien thi (DP-6 — trust by transparency).
   await expect(sidePanel.getByTestId('provider-chip')).toBeVisible()
 
-  await sidePanel.screenshot({ path: 'test-results/sidepanel-stream.png' })
+  // Design token phai duoc apply (Tailwind v4 + tokens.css) — khong phai trang trang.
+  const styles = await sidePanel.evaluate(() => {
+    const root = document.getElementById('root')
+    const header = document.querySelector('[data-testid="panel-header"]')
+    const rootStyle = root === null ? null : window.getComputedStyle(root)
+    const headerStyle = header === null ? null : window.getComputedStyle(header)
+    const rootVars = window.getComputedStyle(document.documentElement)
+    return {
+      rootFontFamily: rootStyle?.fontFamily ?? '',
+      rootFontSize: rootStyle?.fontSize ?? '',
+      rootBackground: rootStyle?.backgroundColor ?? '',
+      headerHeight: headerStyle?.height ?? '',
+      headerBackground: headerStyle?.backgroundColor ?? '',
+      accentToken: rootVars.getPropertyValue('--color-accent').trim(),
+      surfaceToken: rootVars.getPropertyValue('--surface-panel').trim(),
+    }
+  })
+
+  // Token phai ton tai va duoc resolve (khong rong).
+  expect(styles.accentToken).not.toBe('')
+  expect(styles.surfaceToken).not.toBe('')
+
+  // Typography phai theo design token (Inter), khong phai font mac dinh cua Chromium.
+  expect(styles.rootFontFamily.toLowerCase()).toContain('inter')
+  expect(styles.rootFontSize).toBe('13px')
+
+  // Header phai dung token: chieu cao 48px va nen dung mau surface.
+  expect(Number.parseFloat(styles.headerHeight)).toBeGreaterThan(20)
+  expect(styles.headerBackground).not.toBe('rgba(0, 0, 0, 0)')
+  expect(styles.rootBackground).not.toBe('rgba(0, 0, 0, 0)')
+
+  await sidePanel.screenshot({
+    path: 'test-results/sidepanel-stream.png',
+    fullPage: false,
+  })
 })

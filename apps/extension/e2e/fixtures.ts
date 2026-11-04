@@ -9,7 +9,8 @@ const EXTENSION_PATH = resolve(__dirname, '..', 'dist')
 /**
  * Fixture Playwright — launch Chrome voi extension load unpacked.
  *
- * Chi ho tro extension trong headed mode (hoac headless=new cua Chrome >= 112).
+ * Dung `channel: 'chromium'` vi day la ban Chromium moi ho tro
+ * `--load-extension`; Chromium cu (headless shell) khong nap duoc.
  * Docs: docs/SYSTEM_DESIGN.md §7 (E2E)
  */
 export interface ExtensionFixtures {
@@ -19,14 +20,15 @@ export interface ExtensionFixtures {
 }
 
 export const test = base.extend<ExtensionFixtures>({
-  context: async (_fixtures, use) => {
+  // Playwright yeu cau tham so dau tien la object destructuring.
+  context: async ({ browserName: _browserName }, use) => {
     if (!existsSync(join(EXTENSION_PATH, 'manifest.json'))) {
       throw new Error('Chua build extension. Chay `pnpm build:ext` truoc khi chay E2E.')
     }
 
     const context = await chromium.launchPersistentContext('', {
       channel: 'chromium',
-      headless: false,
+      headless: true,
       args: [
         `--disable-extensions-except=${EXTENSION_PATH}`,
         `--load-extension=${EXTENSION_PATH}`,
