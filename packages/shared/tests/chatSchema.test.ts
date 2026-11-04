@@ -60,6 +60,77 @@ describe('chatRequestSchema', () => {
     expect(parsed.success).toBe(true)
   })
 
+  it('shape cu (flat) duoc chuan hoa thanh bundle items[]', () => {
+    const parsed = chatRequestSchema.safeParse({
+      messages: [{ role: 'user', content: 'Xin chao' }],
+      context: {
+        url: 'https://a.b',
+        title: 'T',
+        text: 'Noi dung trang',
+      },
+    })
+
+    expect(parsed.success).toBe(true)
+    if (parsed.success) {
+      const context = parsed.data.context
+      expect(context?.items).toHaveLength(1)
+      expect(context?.items[0]?.tier).toBe('currentTab')
+      expect(context?.items[0]?.text).toBe('Noi dung trang')
+    }
+  })
+
+  it('shape cu co selectedText → them item tier selection', () => {
+    const parsed = chatRequestSchema.safeParse({
+      messages: [{ role: 'user', content: 'Xin chao' }],
+      context: {
+        url: 'https://a.b',
+        title: 'T',
+        selectedText: 'Doan boi den',
+      },
+    })
+
+    expect(parsed.success).toBe(true)
+    if (parsed.success) {
+      const tiers = parsed.data.context?.items.map((item) => item.tier)
+      expect(tiers).toContain('selection')
+      expect(tiers).toContain('currentTab')
+    }
+  })
+
+  it('shape moi (bundle items[]) duoc giu nguyen', () => {
+    const parsed = chatRequestSchema.safeParse({
+      messages: [{ role: 'user', content: 'Xin chao' }],
+      context: {
+        items: [
+          {
+            id: 'tab-1',
+            kind: 'tab',
+            tier: 'attachment',
+            title: 'T',
+            text: 'Noi dung',
+          },
+        ],
+      },
+    })
+
+    expect(parsed.success).toBe(true)
+    if (parsed.success) {
+      expect(parsed.data.context?.items).toHaveLength(1)
+      expect(parsed.data.context?.items[0]?.tier).toBe('attachment')
+    }
+  })
+
+  it('khong co context → khong co key context', () => {
+    const parsed = chatRequestSchema.safeParse({
+      messages: [{ role: 'user', content: 'Xin chao' }],
+    })
+
+    expect(parsed.success).toBe(true)
+    if (parsed.success) {
+      expect(parsed.data.context).toBeUndefined()
+    }
+  })
+
   it('reject message rong', () => {
     const parsed = chatRequestSchema.safeParse({ messages: [{ role: 'user', content: '' }] })
     expect(parsed.success).toBe(false)

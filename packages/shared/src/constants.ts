@@ -34,6 +34,32 @@ export const LIMITS = {
   EXTRACT_FETCH_TIMEOUT_MS: 15_000,
 } as const
 
+/**
+ * Context window (token) cua tung provider.
+ *
+ * Dung de tinh ngan sach context (FR-CONTEXT-07) — server cat theo context
+ * window cua provider thuc te, extension hien thi meter theo provider dang
+ * dung. Docs: docs/SYSTEM_DESIGN.md §8
+ */
+export const CONTEXT_WINDOWS: Record<ProviderId, number> = {
+  mock: 8_000,
+  groq: 128_000,
+  openrouter: 128_000,
+  gemini: 1_000_000,
+  ollama: 32_000,
+}
+
+/**
+ * Margin an toan (token) giu lai khi tinh ngan sach context.
+ *
+ * Token uoc luong bang heuristic nen can dem cho phan sinh output + prompt
+ * he thong de tranh tran context window cua provider.
+ */
+export const CONTEXT_SAFETY_MARGIN_TOKENS = 2_000
+
+/** So context item toi da trong 1 request. */
+export const MAX_CONTEXT_ITEMS = 20
+
 /** Endpoint cua BFF. */
 export const API_BASE_PATH = '/api'
 

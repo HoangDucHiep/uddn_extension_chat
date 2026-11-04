@@ -4,6 +4,7 @@
  */
 
 export * from './constants.js'
+export * from './contextBudget.js'
 export * from './errors.js'
 export * from './events.js'
 export * from './pageKind.js'
