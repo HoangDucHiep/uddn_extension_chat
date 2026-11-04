@@ -7,6 +7,15 @@
 ---
 
 ## [Unreleased]
+### Added
+- **T-M1-21 / T-M1-22 — Trích xuất PDF & transcript YouTube (contract `packages/shared`)** — chuẩn hoá 2 nhánh trích xuất context mới về cùng shape `context.text` với nhánh HTML.
+  - `packages/shared/src/pageKind.ts` — `detectPageKind(url)` → `'html' | 'pdf' | 'youtube' | 'unknown'` · `extractYouTubeVideoId(url)` (hỗ trợ `/watch?v=`, `/shorts/`, `/live/`, `/embed/`, `youtu.be/`) · `isPdfUrl(url)`.
+  - `packages/shared/src/schemas/extract.ts` — `extractRequestSchema` (`{ kind: 'pdf' | 'youtube', url }`) · `extractResponseSchema` (`{ kind, text, title?, excerpt?, truncated, error?, errorMessage? }`) · `EXTRACT_ERROR_CODES`.
+  - `packages/shared/src/errors.ts` — thêm 4 error code chuẩn: `CONTEXT_PDF_NOT_READABLE` (422) · `CONTEXT_PDF_UNREACHABLE` (502) · `CONTEXT_TRANSCRIPT_UNAVAILABLE` (422) · `CONTEXT_EXTRACT_FAILED` (500).
+  - `packages/shared/src/constants.ts` — `LIMITS.MAX_PDF_BYTES = 20_000_000` · `LIMITS.MAX_EXTRACT_TEXT_CHARS = 40_000` · `LIMITS.EXTRACT_FETCH_TIMEOUT_MS = 15_000` · `API_ROUTES.extractPdf` / `API_ROUTES.extractYoutube`.
+  - `packages/shared/src/schemas/chat.ts` — `pageContextSchema` thêm `sourceKind?` · `contextError?` · `contextErrorMessage?` để UI hiển thị lỗi trích xuất.
+  - **Test** — `packages/shared/tests/extractSchema.test.ts` (+15 unit test): 4 loại URL cho `detectPageKind` · `extractYouTubeVideoId` · `isPdfUrl` · validate `extractRequestSchema` / `extractResponseSchema`.
+  - **Docs** — `docs/SYSTEM_DESIGN.md` §4.1 (2 endpoint đã implement, lỗi nghiệp vụ trả HTTP 200) + §7.3.1 (contract + cơ chế `safeFetch` / `pdfExtractor` / `youtubeExtractor`) + §3 (cây thư mục `apps/server/src/`).
 
 ### Added
 - **Docs — Audit traceability FR ↔ Task (2026-11-04)** — rà soát toàn bộ `docs/` đối chiếu `REQUIREMENTS.md` với `IMPLEMENTATION_PLAN.md`; phát hiện **31 FR + 27 NFR (58 yêu cầu)** chưa được map tới task nào trong cột FR của plan, cộng 2 nhãn FR sai. Đã bổ sung task + bảng traceability đầy đủ.

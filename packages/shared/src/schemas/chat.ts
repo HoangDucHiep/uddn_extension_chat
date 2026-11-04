@@ -5,6 +5,7 @@
 
 import { z } from 'zod'
 import { LIMITS, PROVIDER_IDS } from '../constants.js'
+import { PAGE_KINDS } from '../pageKind.js'
 
 /** Mot turn trong hoi thoai gui len BFF. */
 export const chatTurnSchema = z.object({
@@ -23,6 +24,12 @@ export const pageContextSchema = z.object({
   /** Trich dan ngan de preview trong UI (chip context). */
   excerpt: z.string().max(LIMITS.MAX_EXCERPT_CHARS).optional(),
   tabId: z.number().int().optional(),
+  /** Loai trang da trich xuat — `html` | `pdf` | `youtube` (FR-CONTEXT-05/06). */
+  sourceKind: z.enum(PAGE_KINDS).optional(),
+  /** Error code khi trich xuat that bai — UI hien thi thong bao (khong nem loi). */
+  contextError: z.string().max(200).optional(),
+  /** Thong diep loi thien nhan cho nguoi dung. */
+  contextErrorMessage: z.string().max(500).optional(),
 })
 export type PageContext = z.infer<typeof pageContextSchema>
 

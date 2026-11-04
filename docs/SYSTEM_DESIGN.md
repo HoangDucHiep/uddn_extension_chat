@@ -163,8 +163,7 @@ flowchart TB
 > ├─ vite.content.config.ts          # content script (IIFE, 1 file — §7.4)
 > ├─ vitest.config.ts · playwright.config.ts
 > ```
-> `apps/server/src/` hiện có: `routes/{health,chat}.ts` · `services/chatService.ts` · `providers/*` · `middleware/*` · `config/env.ts` · `db/*` · `lib/crypto.ts`.
-> **Sẽ có (T-M1-21/22):** `routes/extract.ts` · `lib/{pdfExtractor,youtubeExtractor}.ts` — xem §7.3.1.
+> `apps/server/src/` hiện có: `routes/{health,chat,extract}.ts` · `services/chatService.ts` · `providers/*` · `middleware/*` · `config/env.ts` · `db/*` · `lib/{crypto,safeFetch,pdfExtractor,youtubeExtractor}.ts`.
 
 ```text
 uddn_extension_chat/
@@ -349,7 +348,7 @@ X-Request-Id: <uuid v4>            // idempotency + tracing
 
 > Endpoint `/workflows*` chỉ tồn tại khi M4 được implement — extension phải **feature-detect** qua `GET /health` → `capabilities: { workflows: boolean }`.
 >
-> Endpoint `/extract/pdf` và `/extract/youtube` là **thiết kế đích** cho T-M1-21 / T-M1-22 — **chưa implement**. Chi tiết luồng & ràng buộc bảo mật ở §7.3.1. Error code mới (`CONTEXT_PDF_NOT_READABLE`, `CONTEXT_PDF_UNREACHABLE`, `CONTEXT_TRANSCRIPT_UNAVAILABLE`) sẽ thêm vào `packages/shared/src/errors.ts` khi implement.
+> Endpoint `/extract/pdf` và `/extract/youtube` đã **implement** (T-M1-21, T-M1-22). Body request là `{ kind, url }` với `kind ∈ { 'pdf', 'youtube' }` (validate bằng `extractRequestSchema`). **Lỗi nghiệp vụ trả HTTP 200** kèm `{ error, errorMessage }` trong body — client không phân biệt theo status, chỉ 400 khi body sai schema. Chi tiết luồng & ràng buộc bảo mật ở §7.3.1.
 
 ### 4.2 Shape của `ChatRequest`
 
@@ -618,12 +617,23 @@ flowchart LR
 - Chặn `localhost` / mạng nội bộ (`127.0.0.0/8`, `10.0.0.0/8`, `169.254.0.0/16`) trong fetcher.
 - Giới hạn kích thước: PDF ≤ 20 MB · transcript ≤ 40 000 ký tự (khớp `LIMITS.MAX_PAGE_TEXT_CHARS`).
 
-**Contract mới (dự kiến, `packages/shared`):**
-- `pageKindSchema`: `'html' | 'pdf' | 'youtube' | 'unknown'`
-- `extractRequestSchema`: `{ kind: 'pdf' | 'youtube', url: string }`
-- `extractResponseSchema`: `{ text: string, title?: string, excerpt?: string, truncated: boolean, error?: ExtractErrorCode }`
+**Contract mới (`packages/shared` — đã implement):**
+- `pageKind.ts`: `detectPageKind(url)` → `'html' | 'pdf' | 'youtube' | 'unknown'` · `extractYouTubeVideoId(url)` · `isPdfUrl(url)`
+- `schemas/extract.ts`: `extractRequestSchema`: `{ kind: 'pdf' | 'youtube', url: string }` · `extractResponseSchema`: `{ kind, text, title?, excerpt?, truncated, error?, errorMessage? }`
+- `errors.ts`: thêm `CONTEXT_PDF_NOT_READABLE` (422) · `CONTEXT_PDF_UNREACHABLE` (502) · `CONTEXT_TRANSCRIPT_UNAVAILABLE` (422) · `CONTEXT_EXTRACT_FAILED` (500)
+- `constants.ts`: `LIMITS.MAX_PDF_BYTES = 20_000_000` · `LIMITS.MAX_EXTRACT_TEXT_CHARS = 40_000` · `LIMITS.EXTRACT_FETCH_TIMEOUT_MS = 15_000` · `API_ROUTES.extractPdf` / `API_ROUTES.extractYoutube`
+- `schemas/chat.ts`: `pageContextSchema` thêm `sourceKind?` · `contextError?` · `contextErrorMessage?` để UI hiện lỗi trích xuất
 
-> **Chưa implement** — đây là thiết kế đích cho T-M1-21 / T-M1-22. Code hiện tại chỉ có nhánh HTML (T-M1-01 ✅).
+**Cơ chế đã implement (T-M1-21):**
+- `apps/server/src/lib/safeFetch.ts` — lớp chống SSRF: chỉ `http:`/`https:` · resolve DNS rồi chặn loopback (`127/8`) · private (`10/8`, `172.16/12`, `192.168/16`) · link-local (`169.254/16`) · CGNAT (`100.64/10`) · IPv6 (`::1`, `fc00::/7`, `fe80::/10`) · IPv4-mapped (`::ffff:x.x.x.x`) · tự đi theo redirect (tối đa 3 hop, kiểm tra lại từng hop) · timeout 15s · giới hạn size khi đọc stream.
+- `apps/server/src/lib/pdfExtractor.ts` — `pdfjs-dist@^4.10.38` (build `legacy`, Node ≥ 20) · gom text item theo tọa độ Y (`transform[5]`) để giữ newline · truyền `standardFontDataUrl` cho PDF dùng font chuẩn non-embedded · PDF không có text layer → `CONTEXT_PDF_NOT_READABLE`.
+- `apps/server/src/routes/extract.ts` — `POST /extract/pdf` · `POST /extract/youtube` · **luôn trả 200** cho lỗi nghiệp vụ.
+
+**Cơ chế đã implement (T-M1-22):**
+- `apps/server/src/lib/youtubeExtractor.ts` — `GET watch page` (lấy `INNERTUBE_API_KEY` + `VISITOR_DATA` bằng regex) → `POST youtubei/v1/player` với client `ANDROID` (`clientVersion 20.10.38`, `androidSdkVersion 34`, header `X-Youtube-Client-Name: 3`) → đọc `captions.playerCaptionsTracklistRenderer.captionTracks[]` → `fetch captionTracks[].baseUrl` với `User-Agent` Android → parse XML timedtext (`<p t d>` hoặc `<text start dur>`) thành `[mm:ss] text`.
+- Chọn track: ưu tiên ngôn ngữ `vi` → `en` → ngôn ngữ còn lại; trong cùng ngôn ngữ ưu tiên track thủ công (`kind !== 'asr'`).
+
+> **Ghi chú vận hành:** InnerTube là API **không chính thức** của YouTube → có thể đổi. Khi hỏng → `CONTEXT_TRANSCRIPT_UNAVAILABLE` → UI báo rõ, chat vẫn chạy bình thường.
 
 ### 7.4 Build: content script phải là classic script
 
@@ -648,8 +658,8 @@ Lệnh build: `vite build && vite build --config vite.content.config.ts` (đã g
 | TTFT (time to first token) | ≤ 3s p95 | Prewarm provider connection; prompt ngắn gồm; context truncate thông minh |
 | BFF overhead | ≤ 30ms | Keep-alive HTTP agent, connection pool Postgres (max 10) |
 | Content extraction (HTML) | ≤ 800ms | Chạy trong content script, dùng Readability-lite (T-M1-01 ✅). Cache theo URL+hash trong `chrome.storage.local` — **chưa implement** (ưu tiên tối đa 1 lần/trang) |
-| Content extraction (PDF) | ≤ 3s | Fetch bytes + parse ở BFF (T-M1-21 — chưa implement). Giới hạn 20 MB; cache kết quả theo URL+hash |
-| Content extraction (YouTube) | ≤ 2s | Fetch `timedtext` ở BFF (T-M1-22 — chưa implement). Cache theo video id + language |
+| Content extraction (PDF) | ≤ 3s | Fetch bytes + parse ở BFF (T-M1-21 ✅). Giới hạn 20 MB; cache kết quả theo URL+hash — **cache chưa implement** |
+| Content extraction (YouTube) | ≤ 2s | Fetch `timedtext` ở BFF (T-M1-22 ✅). Cache theo video id + language — **cache chưa implement** |
 | Panel mở | ≤ 300ms | Không fetch nặng khi mount; lazy-load settings |
 | Scroll khi streaming | ≥ 50fps | Batch token bằng `requestAnimationFrame`, không render mỗi token |
 
