@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { MessageBubble } from './components/MessageBubble'
 import { Composer } from './components/Composer'
 import { PanelHeader } from './components/PanelHeader'
+import { ContextNotice } from './components/context/ContextNotice'
 import { useChat } from './hooks/useChat'
 
 /**
@@ -9,8 +10,18 @@ import { useChat } from './hooks/useChat'
  * Layout: header / thread / composer (DP-2 — thread chiem >= 90% khong gian).
  */
 export function App() {
-  const { messages, isStreaming, activeProvider, activeModel, keySource, send, stop, clear } =
-    useChat()
+  const {
+    messages,
+    isStreaming,
+    activeProvider,
+    activeModel,
+    keySource,
+    contextError,
+    contextErrorMessage,
+    send,
+    stop,
+    clear,
+  } = useChat()
   const [input, setInput] = useState('')
   const threadRef = useRef<HTMLDivElement>(null)
 
@@ -55,6 +66,10 @@ export function App() {
           messages.map((message) => <MessageBubble key={message.id} message={message} />)
         )}
       </div>
+
+      {contextError !== undefined && (
+        <ContextNotice errorCode={contextError} message={contextErrorMessage} />
+      )}
 
       <Composer
         value={input}

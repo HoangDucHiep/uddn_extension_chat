@@ -173,6 +173,9 @@ Nguồn sự thật: `design/tokens.json` → generate ra `design/tokens.css` (C
 | `SkillMenu` | `/` → chọn skill | FR-SKILL-01 | Điểm parity so với Chrome Gemini |
 | `AttachmentTray` | Ảnh chờ gửi | FR-VISION-01 | |
 | `ProviderBadge` | Chip provider/model + nguồn key đang dùng | FR-PROVIDER-09 | |
+| `ContextNotice` | Banner lỗi trích xuất context (PDF scan, không có caption, không tải được file) — nằm ngay trên Composer, có nút đóng | FR-CONTEXT-05, FR-CONTEXT-06 | Người dùng tưởng chatbot bị hỏng → mất niềm tin |
+
+**`ContextNotice` (đã implement T-M1-21/T-M1-22)** — vị trí: giữa thread và Composer. Token dùng: `--warning-subtle` (nền) · `--warning` (icon) · `--text-secondary` (nội dung) · `--border-default` (đường kẻ) · `--font-size-sm`. Icon `lucide-react`: `FileWarning` (lỗi PDF) · `AlertTriangle` (lỗi chung) · `X` (đóng). A11y: `role="status"` + `aria-live="polite"` · nút đóng có `aria-label` (tiếng Việt) · focus ring theo `--focus-ring`. Không tự động ẩn (người dùng tự đóng).
 
 ### 3.5 Overlays & feedback
 

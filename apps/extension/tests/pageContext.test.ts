@@ -72,14 +72,14 @@ describe('captureTabContext', () => {
 
   it('khong throw khi tab khong truy cap duoc (trang dac biet)', async () => {
     tabsGet.mockRejectedValueOnce(new Error('No tab with id'))
-    executeScript.mockResolvedValueOnce([])
-    executeScript.mockResolvedValueOnce([])
 
     const context = await captureTabContext(7)
 
     expect(context.url).toBe('')
     expect(context.title).toBe('')
     expect(context.tabId).toBe(7)
+    // Khong co URL → khong can inject content script.
+    expect(executeScript).not.toHaveBeenCalled()
   })
 
   it('inject content.js roi thu lai khi content script chua san sang', async () => {
@@ -97,6 +97,14 @@ describe('captureTabContext', () => {
       files?: string[]
     }
     expect(injectCall.files).toEqual(['content.js'])
+  })
+
+  it('gan sourceKind = html khi trich duoc qua content script', async () => {
+    executeScript.mockResolvedValueOnce(injectionResult(SAMPLE_PAGE))
+
+    const context = await captureTabContext(7)
+
+    expect(context.sourceKind).toBe('html')
   })
 
   it('bo qua ket qua khong dung shape', async () => {

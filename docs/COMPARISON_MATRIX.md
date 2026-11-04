@@ -121,7 +121,7 @@ Cột ưu tiên: **M** = Must (M1) · **S** = Should (M2) · **C** = Could (M2/M
 |---|---|---|---|---|
 | Lõi chat (streaming, markdown, code) | ✅ | ✅ | ✅ | — |
 | Context trang | ✅ | ✅ (mặc định bật) | ✅ (chọn lọc) | — |
-| Context PDF / video (transcript) | ✅ (A20) | ✅ (B10) | ⬜ (T-M1-21/22) | Sau M1 |
+| Context PDF / video (transcript) | ✅ (A20) | ✅ (B10) | ✅ (T-M1-21/22) | — |
 | Multi-tab | ✅ không giới hạn | ✅ tối đa 10 | ✅ không giới hạn | — |
 | Selection → hỏi | ✅ | ✅ | ✅ | — |
 | Summarize 1-click | ✅ | ✅ | ✅ | — |
@@ -155,8 +155,8 @@ Dùng làm acceptance checklist cho M1.
 - [ ] Stream token-by-token, hiện dần — ✅ M0
 - [ ] Markdown + bảng + code block + copy + syntax highlight — ⬜ T-M1-07
 - [ ] Đọc nội dung trang hiện tại, bật/tắt được — đọc: ✅ T-M1-01 · bật/tắt: ⬜ T-M1-04
-- [ ] Đọc nội dung file PDF (text-based) — ⬜ T-M1-21
-- [ ] Lấy transcript video YouTube — ⬜ T-M1-22
+- [ ] Đọc nội dung file PDF (text-based) — ✅ T-M1-21
+- [ ] Lấy transcript video YouTube — ✅ T-M1-22
 - [ ] Ngân sách context + cắt bớt thông minh ("đã dùng X/Y token") — ⬜ T-M1-23
 - [ ] Upload ảnh kèm câu hỏi — ⬜ T-M1-24
 - [ ] `@` đính kèm tab (nhiều tab), hiện chip trạng thái — ⬜ T-M1-05

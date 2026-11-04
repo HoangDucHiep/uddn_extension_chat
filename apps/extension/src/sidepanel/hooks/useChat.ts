@@ -16,6 +16,8 @@ export function useChat() {
   const activeProvider = useChatStore((state) => state.activeProvider)
   const activeModel = useChatStore((state) => state.activeModel)
   const keySource = useChatStore((state) => state.keySource)
+  const contextError = useChatStore((state) => state.contextError)
+  const contextErrorMessage = useChatStore((state) => state.contextErrorMessage)
 
   const addMessage = useChatStore((state) => state.addMessage)
   const appendToMessage = useChatStore((state) => state.appendToMessage)
@@ -74,7 +76,6 @@ export function useChat() {
       // Lay context trang hien tai (FR-CONTEXT-01).
       // KHONG de loi lam chat that bai — context la thong tin bonus.
       const context = await captureActiveContext()
-
       const handleEvent = (event: ChatEvent): void => {
         switch (event.type) {
           case 'meta':
@@ -160,6 +161,8 @@ export function useChat() {
     activeProvider,
     activeModel,
     keySource,
+    contextError,
+    contextErrorMessage,
     send,
     stop,
     clear,
@@ -171,6 +174,9 @@ export function useChat() {
  *
  * Tra `undefined` khi khong lay duoc (khong co tab, trang khong doc duoc)
  * de request van gui len BFF binh thuong — context chi la du lieu bonus.
+ *
+ * Loi trich xuat context (PDF scan, video khong co caption) duoc gan vao store
+ * de panel hien thi `ContextNotice` — khong nem loi, khong lam chat that bai.
  */
 async function captureActiveContext(): Promise<PageContext | undefined> {
   try {
@@ -178,6 +184,13 @@ async function captureActiveContext(): Promise<PageContext | undefined> {
     if (tabId === undefined) return undefined
 
     const context = await captureTabContext(tabId)
+
+    useChatStore.getState().setContextError({
+      error: context.contextError,
+      message: context.contextErrorMessage,
+      sourceKind: context.sourceKind,
+    })
+
     // Trang rong (khong co url/title/text) → bo qua, khong gui context rong.
     if (context.url.length === 0 && context.title.length === 0) return undefined
 

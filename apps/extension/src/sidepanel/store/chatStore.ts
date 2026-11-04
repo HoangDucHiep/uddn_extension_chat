@@ -29,6 +29,12 @@ export interface ChatState {
   activeProvider: string | undefined
   activeModel: string | undefined
   keySource: string | undefined
+  /** Error code khi trich xuat context that bai (PDF scan, khong co caption...). */
+  contextError: string | undefined
+  /** Thong diep chi tiet cua loi trich xuat context. */
+  contextErrorMessage: string | undefined
+  /** Loai trang da trich xuat context gan nhat. */
+  contextSourceKind: string | undefined
 
   addMessage: (message: ChatMessage) => void
   appendToMessage: (id: string, delta: string) => void
@@ -40,6 +46,11 @@ export interface ChatState {
     model?: string | undefined
     keySource?: string | undefined
   }) => void
+  setContextError: (info: {
+    error?: string | undefined
+    message?: string | undefined
+    sourceKind?: string | undefined
+  }) => void
   reset: () => void
 }
 
@@ -50,6 +61,9 @@ const initialState = {
   activeProvider: undefined,
   activeModel: undefined,
   keySource: undefined,
+  contextError: undefined,
+  contextErrorMessage: undefined,
+  contextSourceKind: undefined,
 }
 
 export const useChatStore = create<ChatState>((set) => ({
@@ -81,6 +95,13 @@ export const useChatStore = create<ChatState>((set) => ({
       activeProvider: provider ?? undefined,
       activeModel: model ?? undefined,
       keySource: keySource ?? undefined,
+    }),
+
+  setContextError: ({ error, message, sourceKind }) =>
+    set({
+      contextError: error ?? undefined,
+      contextErrorMessage: message ?? undefined,
+      contextSourceKind: sourceKind ?? undefined,
     }),
 
   reset: () => set({ ...initialState }),

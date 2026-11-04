@@ -96,8 +96,8 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | T-M1-18 | Keyboard shortcuts cấu hình được | FR-UX-01 | `settings/ShortcutsSettings.tsx`, `background/commands.ts` | Đổi được phím tắt; tránh xung đột với Chrome mặc định | M | ⬜ |
 | T-M1-19 | Empty / loading / error states | FR-UX-03/04/08, FR-CHAT-14, NFR-REL-02/04 | `sidepanel/components/states/*` | 4 trạng thái có UI riêng, không màn hình trắng; retry 1 lần khi lỗi mạng | M | ⬜ |
 | T-M1-20 | Responsive 320–640px + a11y pass cơ bản | FR-UX-06/07/09/10, NFR-A11Y-01..05, NFR-PERF-03 | style fixes | Không tràn ngang ở 320px; focus ring đủ; icon có aria-label; streaming OK với screen reader | M | ⬜ |
-| T-M1-21 | Trích xuất PDF (text-based) | FR-CONTEXT-05 | `apps/server/src/routes/extract.ts`, `apps/server/src/lib/pdfExtractor.ts`, `apps/extension/src/lib/pageContext.ts` | Detect URL PDF → BFF fetch bytes + parse → `context.text`; PDF scan → báo "không đọc được, hãy upload ảnh"; `file://`/PDF nội bộ → báo rõ | L | ⬜ |
-| T-M1-22 | Transcript YouTube | FR-CONTEXT-06 | `apps/server/src/routes/extract.ts`, `apps/server/src/lib/youtubeExtractor.ts` | Lấy `captionTracks` → `timedtext` → `context.text`; không có caption / geo-block / consent → báo rõ; không crash chat | M | ⬜ |
+| T-M1-21 | Trích xuất PDF (text-based) | FR-CONTEXT-05 | `apps/server/src/routes/extract.ts`, `apps/server/src/lib/pdfExtractor.ts`, `apps/server/src/lib/safeFetch.ts`, `apps/extension/src/lib/pageContext.ts` | Detect URL PDF → BFF fetch bytes + parse → `context.text`; PDF scan → báo "không đọc được, hãy upload ảnh"; `file://`/PDF nội bộ → báo rõ | L | ✅ |
+| T-M1-22 | Transcript YouTube | FR-CONTEXT-06 | `apps/server/src/routes/extract.ts`, `apps/server/src/lib/youtubeExtractor.ts` | Lấy `captionTracks` → `timedtext` → `context.text`; không có caption / geo-block / consent → báo rõ; không crash chat | M | ✅ |
 | T-M1-23 | Ngân sách context & cắt bớt thông minh | FR-CONTEXT-07 | `apps/extension/src/lib/contextBudget.ts`, `sidepanel/components/context/ContextBudget.tsx` | Cắt theo thứ tự selection > tab đính kèm > tab hiện tại > lịch sử chat; UI hiện "đã dùng X/Y token" | M | ⬜ |
 | T-M1-24 | Upload ảnh (paste / drag-drop / file picker) | FR-VISION-01 | `sidepanel/components/composer/ImageAttachment.tsx`, `lib/imageUpload.ts` | Preview trước khi gửi; xoá được; gửi kèm văn bản; giới hạn kích thước | M | ⬜ |
 | T-M1-25 | Onboarding lần đầu (3 bước) | FR-UX-02 | `sidepanel/components/onboarding/*` | Quyền → chọn provider → thử câu hỏi; skippable; cần nhập key hoặc bật Ollama | M | ⬜ |
@@ -123,6 +123,29 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | E2E (toàn bộ) | ✅ 3/3 — extractor · side panel render · gõ prompt nhận token thật |
 
 > **Còn lại của FR-CONTEXT-01:** toggle bật/tắt context (T-M1-04) · cache theo URL+hash trong `chrome.storage.local` (T-M1-06) · context multi-tab (T-M1-05).
+
+### 3.1b Kết quả verify T-M1-21 + T-M1-22 (2026-11-04)
+
+| Hạng mục | Kết quả |
+|---|---|
+| `packages/shared/src/pageKind.ts` | ✅ `detectPageKind()` → `html`/`pdf`/`youtube`/`unknown` · `extractYouTubeVideoId()` (`/watch?v=`, `/shorts/`, `/live/`, `/embed/`, `youtu.be/`) · `isPdfUrl()` |
+| `packages/shared/src/schemas/extract.ts` | ✅ `extractRequestSchema` · `extractResponseSchema` · `EXTRACT_ERROR_CODES` (dùng chung `ERROR_CODES`) |
+| `packages/shared/src/errors.ts` | ✅ 4 error code mới: `CONTEXT_PDF_NOT_READABLE` (422) · `CONTEXT_PDF_UNREACHABLE` (502) · `CONTEXT_TRANSCRIPT_UNAVAILABLE` (422) · `CONTEXT_EXTRACT_FAILED` (500) |
+| `apps/server/src/lib/safeFetch.ts` | ✅ Chống SSRF: chỉ `http(s)` · chặn loopback/private/link-local/CGNAT/IPv6 nội bộ/IPv4-mapped · redirect ≤ 3 hop (kiểm tra lại từng hop) · timeout 15s · size cap khi đọc stream |
+| `apps/server/src/lib/pdfExtractor.ts` | ✅ `pdfjs-dist@^4.10.38` (legacy build) · gom text item theo toa độ Y giữ newline · `standardFontDataUrl` cho font chuẩn non-embedded · PDF scan → `CONTEXT_PDF_NOT_READABLE` |
+| `apps/server/src/lib/youtubeExtractor.ts` | ✅ watch page → InnerTube client `ANDROID` → `captionTracks` → `timedtext` XML → `[mm:ss] text`; ưu tiên `vi` → `en`; track thủ công trước `asr` |
+| `apps/server/src/routes/extract.ts` | ✅ `POST /api/extract/pdf` · `POST /api/extract/youtube`; **lỗi nghiệp vụ trả HTTP 200** kèm `error` trong body (chỉ 400 khi body sai schema) |
+| `apps/extension/src/lib/extractClient.ts` | ✅ Gọi 2 endpoint qua `fetchJson`; **không bao giờ throw** — lỗi thành `{ error, errorMessage }` |
+| `apps/extension/src/lib/pageContext.ts` | ✅ Phân nhánh theo `detectPageKind(url)`: `html` → content script (giữ nguyên T-M1-01) · `pdf`/`youtube` → BFF · `unknown` → context tối thiểu; `sourceKind` + `contextError` |
+| `apps/extension/src/sidepanel/components/context/ContextNotice.tsx` | ✅ Banner lỗi trích xuất trên Composer; token `--warning-subtle`/`--warning`/`--text-secondary`; `role="status"` + `aria-live="polite"`; nút đóng có `aria-label` |
+| Unit test | ✅ +44 test — shared 15 (`extractSchema.test.ts`) · server 30 (`safeFetch` 9 · `pdfExtractor` 5 · `youtubeExtractor` 11 · `extractRoute` 5) · extension 12 (`extractClient` 4 · `extractContext` 7 · `pageContext` +1) |
+| E2E | ✅ +2 kịch bản — `e2e/extract.spec.ts`: stub BFF → panel hiện `ContextNotice` đúng `data-error-code` cho PDF scan & video không caption |
+| `pnpm typecheck` | ✅ pass (shared · server · extension) |
+| `pnpm lint` | ✅ pass (0 error, 0 warning) |
+| `pnpm test` | ✅ pass — shared 36 · server 87 · extension 54 |
+| `pnpm build` | ✅ pass — `dist/content.js` vẫn là **IIFE 1 file, không `import`** (4.81 kB) · `pdfjs-dist` chỉ nằm ở `apps/server` |
+
+> **Rủi ro còn lại:** InnerTube là API không chính thức của YouTube → có thể đổi. Khi hỏng → `CONTEXT_TRANSCRIPT_UNAVAILABLE` → UI báo rõ, chat vẫn chạy. Xem rủi ro đầy đủ ở [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.3.1.
 
 ### 3.2 Traceability FR → Task
 
