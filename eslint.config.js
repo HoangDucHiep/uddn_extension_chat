@@ -66,6 +66,13 @@ export default tseslint.config(
     },
   },
   {
+    // CLI: log ra console la chu dich (CLI dung console de in ket qua).
+    files: ['apps/eval/src/cli.ts'],
+    rules: {
+      'no-console': 'off',
+    },
+  },
+  {
     // Script node ESM (.mjs): cho phep console.log + globals cua Node 22.
     files: ['scripts/**/*.mjs', 'scripts/**/*.js'],
     languageOptions: {
