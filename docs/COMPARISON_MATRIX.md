@@ -45,7 +45,7 @@ Cột ưu tiên: **M** = Must (M1) · **S** = Should (M2) · **C** = Could (M2/M
 | A17 | Trợ lý "so sánh nhiều tab" | So sánh sản phẩm/recipe từ nhiều tab | S |
 | A18 | Browsing history opt-in | Dùng lịch sử duyệt để trả lời ("chiếc hoodie xanh tuần trước") | S |
 | A19 | Tạo podcast / study guide / quiz từ trang | Sinh nội dung học tập | C |
-| A20 | Tóm tắt video / PDF | Tóm tắt nội dung video và PDF | S |
+| A20 | Tóm tắt video / PDF | Tóm tắt nội dung video và PDF | M |
 | A21 | Copilot Daily | Nội dung/digest hằng ngày | C |
 | A22 | Chọn model | Không cho chọn model (chỉ model của Copilot) | 🟢 FR-PROVIDER-03 |
 | A23 | API / BYOK | Không có | 🟢 FR-PROVIDER-02 |
@@ -70,7 +70,7 @@ Cột ưu tiên: **M** = Must (M1) · **S** = Should (M2) · **C** = Could (M2/M
 | B7 | Tạo Skill mới | Từ 1 prompt trong chat history | M |
 | B8 | Library Skill có sẵn | Sẵn nhiều skill mẫu (protein max, check job fit, explain simply…) | S |
 | B9 | Summarize | Tóm tắt trang, bài viết, thread | M |
-| B10 | Tóm tắt video YouTube | Dùng transcript video | S |
+| B10 | Tóm tắt video YouTube | Dùng transcript video | M |
 | B11 | Nano Banana | Tạo/sửa ảnh ngay trong tab | C |
 | B12 | Auto Browse | Agentic: tự duyệt web, làm việc hộ. **Preview, chỉ AI Pro/Ultra** | C |
 | B13 | Connected apps | Tích hợp Gmail, YouTube, Flights, Google apps | C (qua MCP) |
@@ -121,6 +121,7 @@ Cột ưu tiên: **M** = Must (M1) · **S** = Should (M2) · **C** = Could (M2/M
 |---|---|---|---|---|
 | Lõi chat (streaming, markdown, code) | ✅ | ✅ | ✅ | — |
 | Context trang | ✅ | ✅ (mặc định bật) | ✅ (chọn lọc) | — |
+| Context PDF / video (transcript) | ✅ (A20) | ✅ (B10) | ⬜ (T-M1-21/22) | Sau M1 |
 | Multi-tab | ✅ không giới hạn | ✅ tối đa 10 | ✅ không giới hạn | — |
 | Selection → hỏi | ✅ | ✅ | ✅ | — |
 | Summarize 1-click | ✅ | ✅ | ✅ | — |
@@ -154,6 +155,10 @@ Dùng làm acceptance checklist cho M1.
 - [ ] Stream token-by-token, hiện dần — ✅ M0
 - [ ] Markdown + bảng + code block + copy + syntax highlight — ⬜ T-M1-07
 - [ ] Đọc nội dung trang hiện tại, bật/tắt được — đọc: ✅ T-M1-01 · bật/tắt: ⬜ T-M1-04
+- [ ] Đọc nội dung file PDF (text-based) — ⬜ T-M1-21
+- [ ] Lấy transcript video YouTube — ⬜ T-M1-22
+- [ ] Ngân sách context + cắt bớt thông minh ("đã dùng X/Y token") — ⬜ T-M1-23
+- [ ] Upload ảnh kèm câu hỏi — ⬜ T-M1-24
 - [ ] `@` đính kèm tab (nhiều tab), hiện chip trạng thái — ⬜ T-M1-05
 - [ ] Bôi đen → hỏi (selection context) — ⬜ T-M1-02
 - [ ] Nút tóm tắt 1-click — ⬜ T-M1-11
@@ -161,7 +166,8 @@ Dùng làm acceptance checklist cho M1.
 - [ ] Nhiều conversation: tạo / đổi tên / xoá / ghim — ⬜ T-M1-09
 - [ ] Stop / Regenerate / Edit-resend — ⬜ T-M1-10
 - [ ] Export conversation (Markdown / JSON) — ⬜ T-M1-13
-- [ ] Skills `/` + tạo/sửa/xoá skill + library có sẵn + trang duyệt skill library
+- [ ] Skills `/` + tạo/sửa/xoá skill + library có sẵn + trang duyệt skill library — ⬜ T-M2-04/06/21
+- [ ] Onboarding lần đầu 3 bước — ⬜ T-M1-25
 - [ ] Không bắt buộc đăng nhập tài khoản Microsoft/Google (BYOK hoặc local model)
 - [ ] Settings: theme, cỡ chữ, chiều rộng, provider/key, quản lý dữ liệu, i18n VI/EN — ⬜ T-M1-12/16/17
 - [ ] Token/cost hiển thị — ⬜ T-M2-03

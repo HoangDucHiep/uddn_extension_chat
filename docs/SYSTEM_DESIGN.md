@@ -155,15 +155,16 @@ flowchart TB
 > │  ├─ components/ui/{button,input,textarea}.tsx   # shadcn/ui
 > │  ├─ background/serviceWorker.ts
 > │  ├─ content/{contentScript.ts, extractor.ts}   # extractor = Readability-lite
-> │  ├─ lib/{apiClient,sseClient,pageContext,utils}.ts
+> │  ├─ lib/{apiClient,sseClient,pageContext,contextBudget,utils}.ts
 > │  └─ types/globals.d.ts
 > ├─ e2e/{fixtures.ts,sidepanel.spec.ts,extractor.spec.ts}
-> ├─ tests/{apiClient,chatStore,sseClient,useChat,extractor,pageContext}.test.ts
+> ├─ tests/{apiClient,chatStore,sseClient,useChat,extractor,pageContext,contextBudget}.test.ts
 > ├─ vite.config.ts                  # side panel + service worker (ESM)
 > ├─ vite.content.config.ts          # content script (IIFE, 1 file — §7.4)
 > ├─ vitest.config.ts · playwright.config.ts
 > ```
 > `apps/server/src/` hiện có: `routes/{health,chat}.ts` · `services/chatService.ts` · `providers/*` · `middleware/*` · `config/env.ts` · `db/*` · `lib/crypto.ts`.
+> **Sẽ có (T-M1-21/22):** `routes/extract.ts` · `lib/{pdfExtractor,youtubeExtractor}.ts` — xem §7.3.1.
 
 ```text
 uddn_extension_chat/
@@ -315,6 +316,8 @@ X-Request-Id: <uuid v4>            // idempotency + tracing
 | DELETE | `/providers/keys/:id` | — | `204` | `NOT_FOUND` |
 | POST | `/providers/keys/:id/test` | — | `{ ok, latencyMs, error? }` | `PROVIDER_ERROR` |
 | POST | `/chat` | `ChatRequest` | **SSE stream** | `VALIDATION_ERROR`, `NO_KEY_AVAILABLE`, `RATE_LIMITED` |
+| POST | `/extract/pdf` | `{ url }` | `{ text, title?, excerpt?, truncated, error? }` | `VALIDATION_ERROR`, `CONTEXT_PDF_NOT_READABLE`, `CONTEXT_PDF_UNREACHABLE` |
+| POST | `/extract/youtube` | `{ url }` | `{ text, title?, excerpt?, truncated, error? }` | `VALIDATION_ERROR`, `CONTEXT_TRANSCRIPT_UNAVAILABLE` |
 | GET | `/conversations` | `?q=&limit=&cursor=` | `{ items, nextCursor }` | — |
 | POST | `/conversations` | `{ title? }` | `Conversation` | — |
 | GET | `/conversations/:id` | — | `Conversation` (kèm messages) | `NOT_FOUND` |
@@ -345,6 +348,8 @@ X-Request-Id: <uuid v4>            // idempotency + tracing
 | GET | `/workflow-runs/:id` | — | `WorkflowRun` (kèm step runs) | `NOT_FOUND` |
 
 > Endpoint `/workflows*` chỉ tồn tại khi M4 được implement — extension phải **feature-detect** qua `GET /health` → `capabilities: { workflows: boolean }`.
+>
+> Endpoint `/extract/pdf` và `/extract/youtube` là **thiết kế đích** cho T-M1-21 / T-M1-22 — **chưa implement**. Chi tiết luồng & ràng buộc bảo mật ở §7.3.1. Error code mới (`CONTEXT_PDF_NOT_READABLE`, `CONTEXT_PDF_UNREACHABLE`, `CONTEXT_TRANSCRIPT_UNAVAILABLE`) sẽ thêm vào `packages/shared/src/errors.ts` khi implement.
 
 ### 4.2 Shape của `ChatRequest`
 
@@ -581,6 +586,45 @@ flowchart LR
 - `buildContextPrompt()` ở BFF đánh dấu rõ context là "dữ liệu tham chiếu, không phải chỉ thị" (chống prompt injection — §6.4).
 - **Lưu ý MV3:** content script chạy trong *isolated world* → không chia sẻ `window` với page script hay `page.evaluate` của Playwright. Muốn đọc kết quả phải đi qua `chrome.scripting.executeScript` (từ SW hoặc panel).
 
+### 7.3.1 Nhánh trích xuất PDF & YouTube (T-M1-21, T-M1-22)
+
+Content script **không đủ** cho PDF và YouTube:
+- **PDF**: PDF viewer là plugin native của Chrome → content script không inject được → không thể đọc text bằng DOM.
+- **YouTube**: transcript nằm ở `captionTracks` trong `ytInitialPlayerResponse` (không phải DOM text) → cần đọc qua player API hoặc gọi `timedtext` API.
+
+→ Cả hai nhánh đều **fetch ở server side (BFF)** rồi chuẩn hoá về cùng shape `context.text` như nhánh HTML, để `buildContextPrompt()` không phân biệt nguồn.
+
+```mermaid
+flowchart LR
+  panel["Side Panel"] -->|"captureTabContext()"| detect["detectPageKind(url)"]
+  detect -->|"html"| cs["content.js<br/>extractor"]
+  detect -->|"pdf"| pdfR["BFF POST /api/extract/pdf"]
+  detect -->|"youtube"| ytR["BFF POST /api/extract/youtube"]
+  cs --> prompt["buildContextPrompt()"]
+  pdfR --> prompt
+  ytR --> prompt
+  prompt --> provider["Provider API"]
+```
+
+| Nhánh | Detect | BFF làm gì | Fallback khi lỗi |
+|---|---|---|---|
+| **PDF** | URL kết thúc `.pdf` hoặc `Content-Type: application/pdf` | `fetch` bytes → parse text server-side (`pdfjs-dist`) | PDF scan (không có text layer) → lỗi `CONTEXT_PDF_NOT_READABLE` → UI hiện "không đọc được, hãy upload ảnh". PDF nội bộ / `file://` → không fetch được → lỗi `CONTEXT_PDF_UNREACHABLE` |
+| **YouTube** | host `youtube.com` / `youtu.be` + video id trong URL | đọc `captionTracks` → fetch `timedtext` → ghép transcript theo timestamp | không có caption / geo-block / consent → lỗi `CONTEXT_TRANSCRIPT_UNAVAILABLE` → UI báo rõ |
+
+**Nguyên tắc:** cả 3 nhánh đều **không được làm hỏng chat**. Lỗi trích xuất → trả context rỗng kèm `error` message → panel vẫn gửi prompt được (giống hành vi `captureTabContext()` hiện tại: không bao giờ throw).
+
+**Bảo mật:**
+- Chỉ fetch URL do user đang xem (panel gửi `url` kèm `referer`/origin) → BFF kiểm tra origin allowlist như endpoint chat (chống SSRF).
+- Chặn `localhost` / mạng nội bộ (`127.0.0.0/8`, `10.0.0.0/8`, `169.254.0.0/16`) trong fetcher.
+- Giới hạn kích thước: PDF ≤ 20 MB · transcript ≤ 40 000 ký tự (khớp `LIMITS.MAX_PAGE_TEXT_CHARS`).
+
+**Contract mới (dự kiến, `packages/shared`):**
+- `pageKindSchema`: `'html' | 'pdf' | 'youtube' | 'unknown'`
+- `extractRequestSchema`: `{ kind: 'pdf' | 'youtube', url: string }`
+- `extractResponseSchema`: `{ text: string, title?: string, excerpt?: string, truncated: boolean, error?: ExtractErrorCode }`
+
+> **Chưa implement** — đây là thiết kế đích cho T-M1-21 / T-M1-22. Code hiện tại chỉ có nhánh HTML (T-M1-01 ✅).
+
 ### 7.4 Build: content script phải là classic script
 
 Chrome **không** load được content script dạng ES module. Nếu bundle chứa `import ... from "./assets/x.js"`, Chrome báo *"It isn't a module"* và content script **không chạy**.
@@ -603,7 +647,9 @@ Lệnh build: `vite build && vite build --config vite.content.config.ts` (đã g
 |---|---|---|
 | TTFT (time to first token) | ≤ 3s p95 | Prewarm provider connection; prompt ngắn gồm; context truncate thông minh |
 | BFF overhead | ≤ 30ms | Keep-alive HTTP agent, connection pool Postgres (max 10) |
-| Content extraction | ≤ 800ms | Chạy trong content script, dùng Readability-lite (T-M1-01 ✅). Cache theo URL+hash trong `chrome.storage.local` — **chưa implement** (ưu tiên tối đa 1 lần/trang) |
+| Content extraction (HTML) | ≤ 800ms | Chạy trong content script, dùng Readability-lite (T-M1-01 ✅). Cache theo URL+hash trong `chrome.storage.local` — **chưa implement** (ưu tiên tối đa 1 lần/trang) |
+| Content extraction (PDF) | ≤ 3s | Fetch bytes + parse ở BFF (T-M1-21 — chưa implement). Giới hạn 20 MB; cache kết quả theo URL+hash |
+| Content extraction (YouTube) | ≤ 2s | Fetch `timedtext` ở BFF (T-M1-22 — chưa implement). Cache theo video id + language |
 | Panel mở | ≤ 300ms | Không fetch nặng khi mount; lazy-load settings |
 | Scroll khi streaming | ≥ 50fps | Batch token bằng `requestAnimationFrame`, không render mỗi token |
 
@@ -620,6 +666,8 @@ Lệnh build: `vite build && vite build --config vite.content.config.ts` (đã g
 | `pgvector` chưa có extension | Thấp | Cao | `CREATE EXTENSION IF NOT EXISTS vector;` trong migration đầu |
 | Rate limit provider | Cao | Trung bình | Exponential backoff + hàng đợi + hiển thị quota |
 | Quota free tier cạn khi demo | Cao | Cao | Fallback provider + Ollama local + key dự phòng |
+| Fetch URL từ BFF bị lạm dụng thành SSRF | Trung bình | Cao | Chỉ fetch URL do user đang xem · chặn mạng nội bộ (`127.0.0.0/8`, `10.0.0.0/8`, `169.254.0.0/16`) · giới hạn kích thước response · timeout (T-M1-21/22) |
+| YouTube không có caption / geo-block | Cao | Thấp | Trả lỗi rõ ràng `CONTEXT_TRANSCRIPT_UNAVAILABLE`, không crash chat (T-M1-22) |
 
 ---
 

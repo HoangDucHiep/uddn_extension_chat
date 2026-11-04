@@ -1,4 +1,4 @@
-# Implementation Plan — Sidekick AI
+﻿# Implementation Plan — Sidekick AI
 
 **Version:** v1.0 · **Ngày:** 2026-11-03
 **Tổng thời gian ước tính:** 11 tuần (M0–M3 bắt buộc) + 2 tuần tuỳ chọn (M4)
@@ -34,17 +34,17 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | ID | Task | FR | Output files | AC | Est | Status |
 |---|---|---|---|---|---|---|
 | T-M0-01 | Init monorepo pnpm workspace + tooling | — | `pnpm-workspace.yaml`, `package.json` (root), `.npmrc`, `.nvmrc`, `.editorconfig`, `.gitignore` | `pnpm install` chạy ở root, không lỗi | S | ✅ |
-| T-M0-02 | ESLint + Prettier + TS config dùng chung | NFR-MAINT-* | `tsconfig.base.json`, `eslint.config.js`, `.prettierrc` | `pnpm typecheck` pass trên toàn repo | S | ✅ |
+| T-M0-02 | ESLint + Prettier + TS config dùng chung | NFR-MAINT-01, NFR-SEC-08 | `tsconfig.base.json`, `eslint.config.js`, `.prettierrc` | `pnpm typecheck` pass trên toàn repo | S | ✅ |
 | T-M0-03 | `packages/shared`: types + Zod + event union + errors | — | `packages/shared/src/{index.ts,types/,schemas/,events.ts,errors.ts,constants.ts}` | `pnpm build` xong; import được từ app khác | M | ✅ |
 | T-M0-04 | Docker Compose: Postgres 16 + pgvector | §6 | `docker-compose.yml`, `apps/server/Dockerfile` | `docker compose up -d` → `SELECT extversion FROM pg_extension WHERE extname='vector'` OK | S | ✅ |
 | T-M0-05 | Drizzle schema + migration đầu | §7.2 | `apps/server/src/db/schema.ts`, `drizzle.config.ts`, `apps/server/drizzle/0000_adorable_sister_grimm.sql` | `pnpm db:migrate` xong không lỗi | M | ✅ |
-| T-M0-06 | BFF skeleton: express app, `/health`, error middleware, CORS allowlist | NFR-SEC-* | `apps/server/src/{index.ts,app.ts,config/env.ts,middleware/*}` | `/health` → `{status:'ok',db:'up'}`; request sai origin bị 403 | M | ✅ |
-| T-M0-07 | Provider adapter interface + registry + MockProvider | FR-PROVIDER-01 | `apps/server/src/providers/{types.ts,registry.ts,mock.ts}` | Unit test: registry trả provider theo id; mock stream trả token | M | ✅ |
+| T-M0-06 | BFF skeleton: express app, `/health`, error middleware, CORS allowlist | NFR-SEC-05 | `apps/server/src/{index.ts,app.ts,config/env.ts,middleware/*}` | `/health` → `{status:'ok',db:'up'}`; request sai origin bị 403 | M | ✅ |
+| T-M0-07 | Provider adapter interface + registry + MockProvider | FR-PROVIDER-01, NFR-MAINT-03 | `apps/server/src/providers/{types.ts,registry.ts,mock.ts}` | Unit test: registry trả provider theo id; mock stream trả token | M | ✅ |
 | T-M0-08 | Provider adapter Gemini/Groq/OpenRouter (chat + streaming) | FR-PROVIDER-01/03 | `apps/server/src/providers/{gemini.ts,groq.ts,openrouter.ts}` | Gọi API thật với `TEAM_API_KEY` → nhận text | M | ✅ |
 | T-M0-09 | Key resolver K1/K2/K3 + crypto AES-256-GCM | FR-PROVIDER-02/08/09, §4.6.1 | `apps/server/src/lib/crypto.ts`, `providers/keyResolver.ts` | Round-trip encrypt/decrypt đúng; sai MASTER_KEY → `PROVIDER_KEY_INVALID` | M | ✅ |
 | T-M0-10 | `POST /chat` (SSE) + `packages/shared` event union khớp | FR-CHAT-01 | `apps/server/src/routes/chat.ts`, `src/services/chatService.ts` | Test đủ 8 event type; format `event:`/`data:` đúng | L | ✅ |
-| T-M0-11 | Extension scaffold: Vite + React + TS + Tailwind + shadcn | FR-UX-* | `apps/extension/{vite.config.ts,vitest.config.ts,src/sidepanel/App.tsx,src/components/ui/*}` | `pnpm dev:ext` mở panel trống, không lỗi console | M | ✅ |
-| T-M0-12 | Manifest V3 + icons + load unpacked | FR-UX-01 | `apps/extension/public/manifest.json`, `public/icons/*` | Load unpacked OK; mở/toggle side panel bằng toolbar icon | M | ✅ |
+| T-M0-11 | Extension scaffold: Vite + React + TS + Tailwind + shadcn | FR-UX-*, NFR-PERF-06 | `apps/extension/{vite.config.ts,vitest.config.ts,src/sidepanel/App.tsx,src/components/ui/*}` | `pnpm dev:ext` mở panel trống, không lỗi console; bundle unpacked ≤ 3MB | M | ✅ |
+| T-M0-12 | Manifest V3 + icons + load unpacked | FR-UX-01, NFR-SEC-03 | `apps/extension/public/manifest.json`, `public/icons/*` | Load unpacked OK; mở/toggle side panel bằng toolbar icon | M | ✅ |
 | T-M0-13 | `sseClient` phía extension + `useChat` hook tối giản | FR-CHAT-01 | `apps/extension/src/lib/{sseClient.ts,apiClient.ts}`, `hooks/useChat.ts` | Gõ prompt → token hiện dần trong panel | M | ✅ |
 | T-M0-14 | Design tokens: `tokens.json` → `tokens.css` | FR-UX-06, FR-SETTINGS-01/02 | `design/tokens.json`, `design/tokens.css`, `apps/extension/src/sidepanel/index.css` | Token có trong `design/tokens.json` được dùng; light+dark theme switch | M | ✅ |
 | T-M0-15 | `AGENTS.md` + `.cursor/rules` + `docs/HANDOFF.md` | — | `AGENTS.md`, `.cursor/rules/*.mdc`, `docs/HANDOFF.md` | Chat mới đọc `AGENTS.md` là nắm context | S | ✅ |
@@ -76,28 +76,35 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 
 | ID | Task | FR | Output files | AC | Est | Status |
 |---|---|---|---|---|---|---|
-| T-M1-01 | Content script: extractor Readability-lite | FR-CONTEXT-01 | `apps/extension/src/content/extractor.ts` | Trích được title + nội dung chính trên bài blog/docs | L | ✅ |
+| T-M1-01 | Content script: extractor Readability-lite | FR-CONTEXT-01, NFR-PERF-04 | `apps/extension/src/content/extractor.ts` | Trích được title + nội dung chính trên bài blog/docs; ≤ 800ms cho DOM ≤ 2MB | L | ✅ |
 | T-M1-02 | Content script: selection context | FR-CONTEXT-04 | `content/selection.ts` | Bôi đen → panel nhận đúng đoạn text | M | ⬜ |
-| T-M1-03 | Service worker: mở/toggle panel, context menu, shortcut | FR-UX-01/02 | `apps/extension/src/background/*` | Toolbar click toggle; `Ctrl+Shift+K` mở; context menu "Ask Sidekick" | M | ⬜ |
-| T-M1-04 | Context chips + toggle bật/tắt context trang | FR-CONTEXT-02/09 | `sidepanel/components/context/ContextChips.tsx` | Chip hiển thị domain đang share; bỏ chip được | M | ⬜ |
+| T-M1-03 | Service worker: mở/toggle panel, context menu, shortcut | FR-UX-01 | `apps/extension/src/background/*` | Toolbar click toggle; `Ctrl+Shift+K` mở; context menu "Ask Sidekick" | M | ⬜ |
+| T-M1-04 | Context chips + toggle bật/tắt context trang | FR-CONTEXT-02, NFR-SEC-02 | `sidepanel/components/context/ContextChips.tsx` | Chip hiển thị domain đang share; bỏ chip được; tắt → không gửi content | M | ⬜ |
 | T-M1-05 | `@` mention multi-tab | FR-CONTEXT-03 | `context/MentionPopover.tsx`, `hooks/useTabs.ts` | Gõ `@` → list tab (title+favicon), chọn nhiều được | L | ⬜ |
-| T-M1-06 | Truyền context sang BFF (tab list + content) | FR-CONTEXT-01/05 | `apps/server/src/lib/contextBuilder.ts` | Log `request_logs.context_hash` khớp với context đã gửi | M | ⬜ |
-| T-M1-07 | Markdown render + code block + copy + highlight | FR-CHAT-02/03/04 | `sidepanel/components/chat/MessageContent.tsx`, `CodeBlock.tsx`, `MarkdownTable.tsx` | Render table/code; copy → "Đã sao chép"; highlight đúng ngôn ngữ | L | ⬜ |
+| T-M1-06 | Truyền context sang BFF (tab list + content) | FR-CONTEXT-01/02/03, FR-CONTEXT-07 | `apps/server/src/lib/contextBuilder.ts` | Log `request_logs.context_hash` khớp với context đã gửi | M | ⬜ |
+| T-M1-07 | Markdown render + code block + copy + highlight | FR-CHAT-02/03/04, NFR-SEC-04, NFR-PERF-02 | `sidepanel/components/chat/MessageContent.tsx`, `CodeBlock.tsx`, `MarkdownTable.tsx` | Render table/code; copy → "Đã sao chép"; highlight đúng ngôn ngữ; sanitize HTML (chặn XSS) | L | ⬜ |
 | T-M1-08 | Citation chip + popover (đoạn nguồn) | FR-CONTEXT-10 | `context/CitationChip.tsx`, `CitationPopover.tsx` | Click chip → popover hiện đoạn nguồn + mở tab gốc | M | ⬜ |
-| T-M1-09 | Chat CRUD: tạo/đổi tên/xoá/ghim/archives | FR-CHAT-09 | `sidepanel/components/chat/ConversationList.tsx`, store | Thao tác CRUD phản ánh trong UI ngay | L | ⬜ |
-| T-M1-10 | Regenerate / Edit-resend / Stop / Continue | FR-CHAT-05/06/13 | `hooks/useChat.ts`, `chat/MessageActions.tsx` | 4 hành vi đúng AC trong §3.1 | L | ⬜ |
+| T-M1-09 | Chat CRUD: tạo/đổi tên/xoá/ghim/archives | FR-CHAT-08/09/11 | `sidepanel/components/chat/ConversationList.tsx`, store | Thao tác CRUD phản ánh trong UI ngay | L | ⬜ |
+| T-M1-10 | Regenerate / Edit-resend / Stop / Continue | FR-CHAT-05/06/07/12/13, FR-UX-05 | `hooks/useChat.ts`, `chat/MessageActions.tsx` | 4 hành vi đúng AC trong §3.1; Esc dừng; Enter gửi / Shift+Enter xuống dòng | L | ⬜ |
 | T-M1-11 | Prompt gợi ý theo trang + Summarize 1-click | FR-UX-03/04 | `sidepanel/components/chat/PromptGallery.tsx` | Gợi ý đổi theo loại trang (docs/bài báo/forum) | M | ⬜ |
-| T-M1-12 | Settings: theme, cỡ chữ, chiều rộng panel | FR-SETTINGS-01/02/06, FR-UX-06 | `sidepanel/components/settings/*` | Áp dụng ngay, persist qua reload | M | ⬜ |
+| T-M1-12 | Settings: theme, cỡ chữ, chiều rộng, quản lý dữ liệu, endpoint BFF | FR-SETTINGS-01/02/03/04/05/06/07, FR-UX-06, NFR-SEC-07 | `sidepanel/components/settings/*` | Áp dụng ngay, persist qua reload; xoá dữ liệu có confirm; telemetry/history mặc định OFF | M | ⬜ |
 | T-M1-13 | Export conversation (Markdown / JSON) | FR-CHAT-10 | `lib/export.ts` | Xuất đúng nội dung, mở được bằng Notepad/Markdown viewer | S | ⬜ |
-| T-M1-14 | Request logging đầy đủ vào `request_logs` | NFR-MAINT-04, §7.2 | `apps/server/src/lib/requestLogger.ts` | Mỗi lượt chat có 1 dòng log: provider, model, token, cost, ttft, latency | M | ⬜ |
-| T-M1-15 | K3 direct mode (BYOK không cần BFF) | FR-PROVIDER-08/09, NFR-REL-03 | `lib/crypto.ts`, `lib/directProvider.ts`, `state/keyStore.ts` | Tắt Docker → vẫn chat được với key nhập tay; key mã hoá local | L | ⬜ |
-| T-M1-16 | K2 BYOK qua BFF: UI quản lý key | FR-PROVIDER-02 | `settings/ProviderSettings.tsx`, `POST /providers/keys` | Thêm key → test thành công; list key chỉ hiện 4 ký tự cuối | M | ⬜ |
+| T-M1-14 | Request logging đầy đủ vào `request_logs` | NFR-MAINT-04, FR-CONTEXT-12, NFR-REL-01, §7.2 | `apps/server/src/lib/requestLogger.ts` | Mỗi lượt chat có 1 dòng log: provider, model, token, cost, ttft, latency; snapshot context hash để tái lập | M | ⬜ |
+| T-M1-15 | K3 direct mode (BYOK không cần BFF) | FR-PROVIDER-08/09, NFR-REL-03, NFR-SEC-01 | `lib/crypto.ts`, `lib/directProvider.ts`, `state/keyStore.ts` | Tắt Docker → vẫn chat được với key nhập tay; key mã hoá local | L | ⬜ |
+| T-M1-16 | K2 BYOK qua BFF: UI quản lý key | FR-PROVIDER-02, NFR-SEC-01 | `settings/ProviderSettings.tsx`, `POST /providers/keys` | Thêm key → test thành công; list key chỉ hiện 4 ký tự cuối | M | ⬜ |
 | T-M1-17 | i18n VI/EN | FR-SETTINGS-06 | `apps/extension/src/i18n/{vi.ts,en.ts,index.ts}` | Đổi ngôn ngữ → toàn bộ UI đổi | M | ⬜ |
-| T-M1-18 | Keyboard shortcuts cấu hình được | FR-UX-01/02 | `settings/ShortcutsSettings.tsx`, `background/commands.ts` | Đổi được phím tắt; tránh xung đột với Chrome mặc định | M | ⬜ |
-| T-M1-19 | Empty / loading / error states | FR-UX-03/04, FR-CHAT-14 | `sidepanel/components/states/*` | 4 trạng thái có UI riêng, không màn hình trắng | M | ⬜ |
-| T-M1-20 | Responsive 320–640px + a11y pass cơ bản | FR-UX-06, NFR-A11Y-* | style fixes | Không tràn ngang ở 320px; focus ring đủ; icon có aria-label | M | ⬜ |
+| T-M1-18 | Keyboard shortcuts cấu hình được | FR-UX-01 | `settings/ShortcutsSettings.tsx`, `background/commands.ts` | Đổi được phím tắt; tránh xung đột với Chrome mặc định | M | ⬜ |
+| T-M1-19 | Empty / loading / error states | FR-UX-03/04/08, FR-CHAT-14, NFR-REL-02/04 | `sidepanel/components/states/*` | 4 trạng thái có UI riêng, không màn hình trắng; retry 1 lần khi lỗi mạng | M | ⬜ |
+| T-M1-20 | Responsive 320–640px + a11y pass cơ bản | FR-UX-06/07/09/10, NFR-A11Y-01..05, NFR-PERF-03 | style fixes | Không tràn ngang ở 320px; focus ring đủ; icon có aria-label; streaming OK với screen reader | M | ⬜ |
+| T-M1-21 | Trích xuất PDF (text-based) | FR-CONTEXT-05 | `apps/server/src/routes/extract.ts`, `apps/server/src/lib/pdfExtractor.ts`, `apps/extension/src/lib/pageContext.ts` | Detect URL PDF → BFF fetch bytes + parse → `context.text`; PDF scan → báo "không đọc được, hãy upload ảnh"; `file://`/PDF nội bộ → báo rõ | L | ⬜ |
+| T-M1-22 | Transcript YouTube | FR-CONTEXT-06 | `apps/server/src/routes/extract.ts`, `apps/server/src/lib/youtubeExtractor.ts` | Lấy `captionTracks` → `timedtext` → `context.text`; không có caption / geo-block / consent → báo rõ; không crash chat | M | ⬜ |
+| T-M1-23 | Ngân sách context & cắt bớt thông minh | FR-CONTEXT-07 | `apps/extension/src/lib/contextBudget.ts`, `sidepanel/components/context/ContextBudget.tsx` | Cắt theo thứ tự selection > tab đính kèm > tab hiện tại > lịch sử chat; UI hiện "đã dùng X/Y token" | M | ⬜ |
+| T-M1-24 | Upload ảnh (paste / drag-drop / file picker) | FR-VISION-01 | `sidepanel/components/composer/ImageAttachment.tsx`, `lib/imageUpload.ts` | Preview trước khi gửi; xoá được; gửi kèm văn bản; giới hạn kích thước | M | ⬜ |
+| T-M1-25 | Onboarding lần đầu (3 bước) | FR-UX-02 | `sidepanel/components/onboarding/*` | Quyền → chọn provider → thử câu hỏi; skippable; cần nhập key hoặc bật Ollama | M | ⬜ |
 
-**Định mức M1:** 3 tuần · 20 task · ~36 ngày công
+**Định mức M1:** 3 tuần · 25 task · ~41 ngày công
+
+> **Audit 2026-11-04:** M1 tăng từ 20 → 25 task sau khi bổ sung 5 task card còn thiếu (T-M1-21 PDF · T-M1-22 YouTube · T-M1-23 ngân sách context · T-M1-24 upload ảnh · T-M1-25 onboarding). PDF/YouTube được nâng từ **Should → Must** vì Edge Copilot (A20) và Chrome Gemini (B10) đều có ở mức Must để đạt parity. Xem [`REQUIREMENTS.md`](REQUIREMENTS.md) §11.1 (FR → Task đầy đủ).
 
 ### 3.1 Kết quả verify T-M1-01 (2026-11-04)
 
@@ -117,6 +124,30 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 
 > **Còn lại của FR-CONTEXT-01:** toggle bật/tắt context (T-M1-04) · cache theo URL+hash trong `chrome.storage.local` (T-M1-06) · context multi-tab (T-M1-05).
 
+### 3.2 Traceability FR → Task
+
+> Bảng đầy đủ FR → Task (kèm milestone) nằm ở [`REQUIREMENTS.md`](REQUIREMENTS.md) §11.1 — nơi duy nhất cần cập nhật khi thêm/bớt task.
+> Bảng ở đây là **bản rút gọn theo nhóm FR**, dùng để audit nhanh khi sửa plan.
+
+| Nhóm | FR trong nhóm | Task phụ trách | Ghi chú |
+|---|---|---|---|
+| FR-CHAT-01..14 | 14 FR | T-M0-10 · T-M0-13 · T-M1-07/09/10/11/13/19 | FR-CHAT-04 (bảng Markdown) đã nằm trong T-M1-07 |
+| FR-CONTEXT-01..12 | 12 FR | T-M1-01/02/04/05/06/08/14 · **T-M1-21/22/23** · **T-M2-19** | FR-CONTEXT-05/06 nâng lên Must (2026-11-04) |
+| FR-VISION-01..05 | 5 FR | **T-M1-24** (upload) · **T-M2-22** (mở rộng) | FR-VISION-01 nâng lên M |
+| FR-TOOLS-01..06 | 6 FR | T-M2-07/08/09/10/11/18 · **T-M2-20** | FR-TOOLS-03 (web search) tách riêng khỏi tool registry |
+| FR-SKILL-01..07 | 7 FR | T-M2-04/05/06 · **T-M2-21** | FR-SKILL-04 (skill mẫu) + FR-SKILL-06 (điều kiện) tách task |
+| FR-PROVIDER-01..09 | 9 FR | T-M0-07/08 · T-M1-15/16 · T-M2-01/02/03 | FR-PROVIDER-04 (fallback) nằm trong T-M2-02 |
+| FR-WORKFLOW-01..13 | 13 FR | T-M4-01..08 · `FR-WORKFLOW-04` → **M5** | FR-WORKFLOW-04 deferred (rủi ro MV3 `tabs.onUpdated`) |
+| FR-SETTINGS-01..07 | 7 FR | T-M0-14 · T-M1-12/17 · **T-M2-19** (FR-SETTINGS-04) | FR-SETTINGS-03/04/05/07 trước đó không có task → gộp vào T-M1-12 |
+| FR-UX-01..10 | 10 FR | T-M1-03/10/11/12/18/19/20 · **T-M1-25** | FR-UX-02 (onboarding) tách task riêng T-M1-25 |
+| NFR-PERF-01..06 | 6 NFR | T-M0-11 · T-M1-01/07/14/20 · T-M2-13 · T-M3-02/04/09 | NFR là yêu cầu xuyên suốt |
+| NFR-SEC-01..08 | 8 NFR | T-M0-02/06/09/12 · T-M1-04/07/15/16 · **T-M2-19** | NFR-SEC-06 (domain nhạy cảm) → T-M2-19 |
+| NFR-REL-01..05 | 5 NFR | T-M1-10/14/15/19 · **T-M3-10** | NFR-REL-05 (backup DB) tách task M3 |
+| NFR-A11Y-01..05 | 5 NFR | T-M1-20 · T-M3-03 | A11Y pass cơ bản ở M1, audit WCAG đầy đủ ở M3 |
+| NFR-MAINT-01..05 | 5 NFR | T-M0-02/07/10 · T-M1-14 · T-M2-04/07/12..17 · **T-M3-11** | NFR-MAINT-05 (ADR) tách task M3 |
+
+**Kết quả audit 2026-11-04:** trước đó **31 FR + 27 NFR (58 yêu cầu)** chưa được map tới task nào trong cột FR của plan, và 2 nhãn FR sai (T-M1-04, T-M1-06). Sau khi bổ sung task card (T-M1-21..25, T-M2-19..22, T-M3-10..11) và ghi bổ sung FR/NFR vào các task card cũ, **mọi FR/NFR đều có ít nhất 1 task** — trừ `FR-WORKFLOW-04` (chủ động defer sang M5).
+
 ---
 
 ## 4. Milestone M2 — Advanced & Eval (3 tuần)
@@ -126,27 +157,31 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 
 | ID | Task | FR | Output files | AC | Est |
 |---|---|---|---|---|---|
-| T-M2-01 | Multi-provider: OpenAI, Anthropic, OpenRouter, Groq, Ollama | FR-PROVIDER-01/03 | `apps/server/src/providers/{openai,anthropic,openrouter,groq,ollama}.ts` | Mỗi provider stream được; model list lấy động | L |
+| T-M2-01 | Multi-provider: OpenAI, Anthropic, OpenRouter, Groq, Ollama | FR-PROVIDER-01/03/07 | `apps/server/src/providers/{openai,anthropic,openrouter,groq,ollama}.ts` | Mỗi provider stream được; model list lấy động; phát hiện được Ollama local khả dụng | L |
 | T-M2-02 | Model picker + fallback chain | FR-PROVIDER-03/04 | `settings/ModelPicker.tsx`, `providers/fallback.ts` | Provider chính lỗi → tự chuyển provider dự phòng, ghi log | M |
 | T-M2-03 | Token & cost calculator + usage UI + budget cap | FR-PROVIDER-05/06 | `lib/cost.ts`, `settings/DataSettings.tsx`, `chat/UsageBadge.tsx` | Hiện token/cost từng lượt; cảnh báo khi vượt budget | M |
-| T-M2-04 | Skills: menu `/`, CRUD, builtin library | FR-SKILL-01/02/03 | `sidepanel/components/skills/*`, `POST /skills` | `/` → list skill; tạo skill từ message; CRUD đủ | L |
+| T-M2-04 | Skills: menu `/`, CRUD, builtin library | FR-SKILL-01/02/03, NFR-MAINT-03 | `sidepanel/components/skills/*`, `POST /skills` | `/` → list skill; tạo skill từ message; CRUD đủ | L |
 | T-M2-05 | Skill import/export JSON | FR-SKILL-05 | `sidepanel/lib/skillIO.ts` | Export/import round-trip không mất dữ liệu | S |
 | T-M2-06 | Skill library browser nội bộ | FR-SKILL-07 | `sidepanel/components/skills/SkillLibrary.tsx` | Xem/lọc skill theo tag | M |
-| T-M2-07 | Tool registry (builtin: web search, calculator) | FR-TOOLS-01/02 | `apps/server/src/tools/{registry.ts,builtin/*}` | Tool được liệt kê; invoke trả kết quả | L |
+| T-M2-07 | Tool registry (builtin: web search, calculator) | FR-TOOLS-01/02, NFR-MAINT-03 | `apps/server/src/tools/{registry.ts,builtin/*}` | Tool được liệt kê; invoke trả kết quả | L |
 | T-M2-08 | MCP client (stdio transport) + server manager | FR-TOOLS-01/02 | `apps/server/src/tools/mcp/{client.ts,manager.ts}` | Kết nối MCP server, liệt kê tool, gọi tool | L |
 | T-M2-09 | Tool call UI (collapsible block + approval) | FR-TOOLS-02/06, FR-TOOLS-04 | `sidepanel/components/tools/ToolCallBlock.tsx` | Hiện args/result/kết quả lỗi; approval gate chặn hành động | M |
 | T-M2-10 | RAG: embedding + `rag_documents` + search | FR-TOOLS-05 | `apps/server/src/rag/{embedder.ts,retriever.ts,indexer.ts}` | Index lịch sử chat; search trả đoạn liên quan kèm score | L |
 | T-M2-11 | RAG UI: toggle + hiện nguồn trong câu trả lời | FR-TOOLS-05 | `settings/ToolsSettings.tsx`, `CitationChip` (mở rộng) | Bật RAG → câu trả lời có citation tới đoạn đã index | M |
-| T-M2-12 | Eval: dataset 44 task + snapshot trang | NFR-MAINT-04 | `apps/eval/dataset/tasks.json`, `dataset/snapshots/*` | ≥ 40 task, ≥ 80% có `must_include_facts`, ≥ 40% tiếng Việt | L |
-| T-M2-13 | Eval: harness runner cho hệ thống ta | NFR-MAINT-04 | `apps/eval/runners/{ours.ts,aggregate.ts}` | 1 lệnh chạy được; log TTFT/latency/token/cost | L |
+| T-M2-12 | Eval: dataset 48 task + snapshot trang | NFR-MAINT-04 | `apps/eval/dataset/tasks.json`, `dataset/snapshots/*` | ≥ 44 task, ≥ 80% có `must_include_facts`, ≥ 40% tiếng Việt; có nhóm `doc_extract` (PDF) + `video_transcript` (YouTube) | L |
+| T-M2-13 | Eval: harness runner cho hệ thống ta | NFR-MAINT-04, NFR-MAINT-02 | `apps/eval/runners/{ours.ts,aggregate.ts}` | 1 lệnh chạy được; log TTFT/latency/token/cost; coverage ≥ 70% core logic | L |
 | T-M2-14 | Eval: judge prompt + runner + blind mapping | NFR-MAINT-04 | `apps/eval/judge/{prompt.ts,run_judge.ts}` | Judge temperature 0; nhãn ngẫu nhiên; `blind_map.json` | M |
 | T-M2-15 | Eval: thu thập thủ công Edge + Gemini (n=3) | NFR-MAINT-04 | `apps/eval/results/manual/**` | Transcript đúng template; ghi rõ điều kiện phụ thuộc gói | L |
 | T-M2-16 | Eval: chấm tay Tầng B (2 người) + độ tin cậy | NFR-MAINT-04 | `apps/eval/results/human_rubric.csv` | Tính ρ (judge vs human) và κ (human vs human) | M |
 | T-M2-17 | Eval: báo cáo `EVAL_REPORT.md` + radar chart | NFR-MAINT-04 | `docs/EVAL_REPORT.md`, `apps/eval/reports/*` | Có bảng 3 hệ thống, phân tích, kết luận, mục "chỗ ta thua" | L |
 | T-M2-18 | Agentic action (nếu kịp — cắt được) | FR-TOOLS-04 | `apps/server/src/tools/agentic/*` | Diff preview + bước xác nhận trước khi ghi | L |
+| T-M2-19 | Chính sách context theo domain + lịch sử duyệt opt-in + mode "chỉ dùng trang" | FR-CONTEXT-08/09/11, FR-SETTINGS-04, NFR-SEC-02/06 | `sidepanel/components/settings/ContextPolicy.tsx`, `lib/contextPolicy.ts` | Domain bị chặn → không đọc content, hiện badge; lịch sử duyệt **mặc định TẮT**, bật thì cảnh báo rõ + xoá được; toggle "chỉ dùng trang" per-request | M |
+| T-M2-20 | Web search tool (bật/tắt được) | FR-TOOLS-03 | `apps/server/src/tools/builtin/webSearch.ts` | Kết quả có nguồn + ngày; tắt thì model không được gọi tool này | M |
+| T-M2-21 | Skill library built-in + skill gắn điều kiện (tab hiện tại / tab kèm theo) | FR-SKILL-04/06 | `sidepanel/components/skills/builtinLibrary.ts`, `apps/server/src/skills/builtin.ts` | ≥ 8 skill mẫu (tóm tắt, giải thích đơn giản, dịch, so sánh, trích xuất dữ liệu, viết email, sinh quiz, kiểm tra hiểu); skill gắn điều kiện chạy được trên tab chỉ định | M |
+| T-M2-22 | Vision mở rộng: chụp vùng, OCR, image-capable provider, alt text | FR-VISION-02/03/04/05 | `sidepanel/components/composer/RegionCapture.tsx`, `apps/server/src/lib/ocr.ts` | Chọn vùng bằng overlay; OCR trả text; provider không hỗ trợ image → ẩn tính năng không lỗi; alt text lưu lại để tiết kiệm token | L |
 
-**Định mức M2:** 3 tuần · 18 task · ~34 ngày công
-> Nếu trễ: **cắt T-M2-18 (agentic)** → không ảnh hưởng tiêu chí bắt buộc. Cắt T-M2-10/11 (RAG) nếu cần — theo §10.
+**Định mức M2:** 3 tuần · 22 task · ~39 ngày công
+> Nếu trễ: **cắt T-M2-18 (agentic)** → không ảnh hưởng tiêu chí bắt buộc. Cắt T-M2-10/11 (RAG) nếu cần — theo §10. Cắt T-M2-22 (vision mở rộng) trước — chỉ ảnh hưởng tính năng Could.
 
 ---
 
@@ -155,19 +190,20 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 **Mục tiêu:** sản phẩm có thể nộp.
 **Gate:** Lighthouse a11y ≥ 95 · không lỗi console · README + slide + demo video xong.
 
-| ID | Task | Output files | AC | Est |
-|---|---|---|---|---|
-| T-M3-01 | Design system hoàn thiện: `components.md`, `patterns.md` | `design/components.md`, `design/patterns.md` | Mọi component đã dùng có spec | M |
-| T-M3-02 | States hoàn chỉnh: quota, offline, BFF down, long content | `sidepanel/components/states/*` | Mọi state trong `DESIGN_SYSTEM_BRIEF.md` §4 có UI | M |
-| T-M3-03 | Accessibility audit WCAG 2.2 AA | `design/a11y-audit.md` | Lighthouse ≥ 95; không vi phạm nghiêm trọng | M |
-| T-M3-04 | Animation & motion polish + `prefers-reduced-motion` | `apps/extension/src/styles/*` | Không animation khi reduced-motion | S |
-| T-M3-05 | i18n hoàn chỉnh + rà lại text tiếng Việt | `apps/extension/src/i18n/*` | Không còn chuỗi hardcode | S |
-| T-M3-06 | README repo + hướng dẫn cài đặt | `README.md` | Người mới clone → chạy được trong 15 phút | M |
-| T-M3-07 | Demo video (3–5 phút) | `docs/demo/*` | Quay được luồng chính + so sánh 3 hệ thống | L |
-| T-M3-08 | Slide trình bày (10–12 trang) | `docs/slides/*` | Nêu rõ parity + điểm khác biệt + kết quả eval | L |
-| T-M3-09 | Đóng gói extension & chuẩn bị nộp | `dist/`, `docs/SUBMISSION.md` | Load unpacked từ zip OK; manifest hợp lệ | S |
-
-**Định mức M3:** 1 tuần · 9 task · ~12 ngày công
+| ID | Task | FR / NFR | Output files | AC | Est |
+|---|---|---|---|---|---|
+| T-M3-01 | Design system hoàn thiện: `components.md`, `patterns.md` | FR-UX-06 | `design/components.md`, `design/patterns.md` | Mọi component đã dùng có spec | M |
+| T-M3-02 | States hoàn chỉnh: quota, offline, BFF down, long content | NFR-PERF-05 | `sidepanel/components/states/*` | Mọi state trong `DESIGN_SYSTEM_BRIEF.md` §4 có UI; không rò rỉ > 50MB sau 50 lượt | M |
+| T-M3-03 | Accessibility audit WCAG 2.2 AA | NFR-A11Y-01/02/03/04, NFR-MAINT-02 | `design/a11y-audit.md` | Lighthouse ≥ 95; không vi phạm nghiêm trọng | M |
+| T-M3-04 | Animation & motion polish + `prefers-reduced-motion` | FR-UX-10, NFR-PERF-02 | `apps/extension/src/styles/*` | Không animation khi reduced-motion | S |
+| T-M3-05 | i18n hoàn chỉnh + rà lại text tiếng Việt | FR-SETTINGS-06 | `apps/extension/src/i18n/*` | Không còn chuỗi hardcode | S |
+| T-M3-06 | README repo + hướng dẫn cài đặt | NFR-MAINT-01 | `README.md` | Người mới clone → chạy được trong 15 phút | M |
+| T-M3-07 | Demo video (3–5 phút) | NFR-MAINT-04 | `docs/demo/*` | Quay được luồng chính + so sánh 3 hệ thống | L |
+| T-M3-08 | Slide trình bày (10–12 trang) | FR-UX-06 | `docs/slides/*` | Nêu rõ parity + điểm khác biệt + kết quả eval | L |
+| T-M3-09 | Đóng gói extension & chuẩn bị nộp | NFR-PERF-06 | `dist/`, `docs/SUBMISSION.md` | Load unpacked từ zip OK; manifest hợp lệ; bundle unpacked ≤ 3MB | S |
+| T-M3-10 | Backup DB tự động (`pg_dump` cron) | NFR-REL-05 | `apps/server/scripts/backup.sh`, `docker-compose.yml` | Cron trong container chạy hằng ngày; file backup có trong volume; restore được | S |
+| T-M3-11 | ADR — quyết định kiến trúc lớn | NFR-MAINT-05 | `docs/adr/{0001-streaming-via-bff.md,0002-postgres-pgvector.md,0003-rag-strategy.md,0004-mv3-constraints.md}` | ≥ 4 ADR có context · quyết định · hệ quả · trạng thái (accepted) | S |
+**Định mức M3:** 1 tuần · 11 task · ~14 ngày công
 
 ---
 
@@ -183,16 +219,18 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | ID | Task | FR | Output files | AC | Est |
 |---|---|---|---|---|---|
 | T-M4-01 | Scheduler (node-cron) trong BFF | FR-WORKFLOW-03 | `apps/server/src/scheduler/{index.ts,cron.ts}` | Job fire đúng lịch, chạy trong container | L |
-| T-M4-02 | Workflow CRUD + template mẫu | FR-WORKFLOW-01/02 | `apps/server/src/routes/workflows.ts`, `sidepanel/components/workflow/*` | CRUD đủ; có ≥ 3 template | L |
-| T-M4-03 | Multi-step, truyền dữ liệu giữa bước | FR-WORKFLOW-05 | `apps/server/src/workflow/engine.ts` | Bước sau nhận output bước trước | L |
-| T-M4-04 | Run log chi tiết từng bước | FR-WORKFLOW-06 | `workflow_runs`, `workflow_step_runs`, UI log | Xem được từng bước, token, chi phí, lỗi | M |
-| T-M4-05 | Import/export workflow JSON | FR-WORKFLOW-09 | `sidepanel/lib/workflowIO.ts` | Round-trip giữ nguyên | S |
-| T-M4-06 | Notification khi run xong | FR-WORKFLOW-10 | `apps/extension/src/background/notifications.ts` | Notification hiện khi workflow xong (panel đóng) | M |
+| T-M4-02 | Workflow CRUD + template mẫu | FR-WORKFLOW-01/02/08 | `apps/server/src/routes/workflows.ts`, `sidepanel/components/workflow/*` | CRUD đủ (tạo/sửa/xoá/bật-tắt/nhân bản); có ≥ 3 template | L |
+| T-M4-03 | Multi-step, truyền dữ liệu giữa bước + điều kiện phân nhánh | FR-WORKFLOW-05/06 | `apps/server/src/workflow/engine.ts` | Bước sau nhận output bước trước; nhánh if/then do model đánh giá, hiển thị rõ nhánh đã chọn | L |
+| T-M4-04 | Run log chi tiết từng bước | FR-WORKFLOW-09 | `workflow_runs`, `workflow_step_runs`, UI log | Xem được từng bước, token, chi phí, lỗi | M |
+| T-M4-05 | Import/export workflow JSON | FR-WORKFLOW-10 | `sidepanel/lib/workflowIO.ts` | Round-trip giữ nguyên | S |
+| T-M4-06 | Notification khi run xong | FR-WORKFLOW-11 | `apps/extension/src/background/notifications.ts` | Notification hiện khi workflow xong (panel đóng); tắt được | M |
 | T-M4-07 | Approval gate (phê duyệt trước hành động) | FR-WORKFLOW-07 | `sidepanel/components/workflow/ApprovalCard.tsx` | Workflow dừng, hiện diff, chờ Phê duyệt/Từ chối | M |
-| T-M4-08 | An toàn: giới hạn bước, quota/ngày, dry-run | FR-WORKFLOW-08 | `workflow/engine.ts`, settings | ≤ 10 bước; quota chạy/ngày; dry-run không side-effect | M |
+| T-M4-08 | An toàn: giới hạn bước, quota/ngày, dry-run | FR-WORKFLOW-12/13 | `workflow/engine.ts`, settings | ≤ 10 bước; quota chạy/ngày; dry-run không side-effect | M |
 | T-M4-09 | Eval nhóm task `workflow` | NFR-MAINT-04 | `apps/eval/dataset/tasks.workflow.json` | Có số liệu so sánh cho nhóm workflow (nếu kịp) | M |
 
 **Định mức M4:** 2 tuần · 9 task · ~16 ngày công
+
+> **Deferred khỏi M4:** `FR-WORKFLOW-04` (trigger theo sự kiện — tab mới mở / trang chứa từ khoá) → đẩy sang **M5**. Lý do: `chrome.tabs.onUpdated` không đáng tin trong MV3 (SW bị kill ~30s) → phải dùng `chrome.alarms` ≥ 30s hoặc polling danh sách tab; đây là hạng mục rủi ro cao, không nằm trên đường găng. Xem [`REQUIREMENTS.md`](REQUIREMENTS.md) §9.4.
 
 ---
 
@@ -225,11 +263,12 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | W3 | M1 | T-M1-01 → T-M1-05 | A: content script · B: chat UI · C: settings + i18n |
 | W4 | M1 | T-M1-06 → T-M1-12 | A: context+citations · B: chat actions · C: settings/logging |
 | W5 | M1 | T-M1-13 → T-M1-20 + gate | A: K3/K2 key · B: states/a11y · C: export + shortcuts |
+| W5.5 | M1 | T-M1-21 → T-M1-25 | A: PDF + YouTube extractor · B: upload ảnh · C: context budget + onboarding |
 | W6 | M2 | T-M2-01 → T-M2-06 | A: providers · B: skills · C: tools |
 | W7 | M2 | T-M2-07 → T-M2-11 | A: MCP · B: RAG · C: usage UI |
 | W8 | M2 | T-M2-12 → T-M2-17 (eval) | A: dataset · B: harness+judge · C: thu thập thủ công |
-| W9 | M2 | T-M2-17 → T-M2-18 + **EVAL_REPORT** | Cả 3 → viết báo cáo eval |
-| W10 | M3 | T-M3-01 → T-M3-09 | A: DS + a11y · B: README+slide · C: demo video |
+| W9 | M2 | T-M2-18 → T-M2-22 + **EVAL_REPORT** | Cả 3 → viết báo cáo eval + task bổ sung M2 |
+| W10 | M3 | T-M3-01 → T-M3-11 | A: DS + a11y · B: README+slide · C: demo video + backup + ADR |
 | W11 | buffer | Sửa lỗi, nộp bài | Cả 3 |
 | W12–13 | M4 (tuỳ chọn) | T-M4-01 → T-M4-09 | Nếu đủ điều kiện §6 |
 
@@ -239,9 +278,9 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 
 | Vai trò | Trách nhiệm chính | Task chủ yếu |
 |---|---|---|
-| **A — Backend / AI** | BFF, provider adapters, tools, MCP, RAG, scheduler, eval harness | T-M0-03..10, T-M1-06/14/15/16, T-M2-01/02/07/08/10/13/14, T-M4-* |
-| **B — Frontend / UX** | Side panel React, design system, states, a11y, i18n, demo assets | T-M0-11..14, T-M1-01/02/04/05/07/08/09/10/11/19/20, T-M3-01..05/07/08 |
-| **C — Integration / Data / Docs** | Manifest, background, settings, logging, eval dataset + thu thập, docs | T-M0-01/02/04/12/15, T-M1-03/12/13/16/17/18, T-M2-03..06/09/11/12/15/16/17, T-M3-06/09 |
+| **A — Backend / AI** | BFF, provider adapters, extractors (PDF/YouTube), tools, MCP, RAG, scheduler, eval harness | T-M0-03..10, T-M1-06/14/15/16/**21/22/23**, T-M2-01/02/07/08/10/13/14/19/20/21/22, T-M3-10, T-M4-* |
+| **B — Frontend / UX** | Side panel React, design system, states, a11y, i18n, demo assets | T-M0-11..14, T-M1-01/02/04/05/07/08/09/10/11/19/20/**23/24/25**, T-M3-01..05/07/08/11 |
+| **C — Integration / Data / Docs** | Manifest, background, settings, logging, eval dataset + thu thập, docs | T-M0-01/02/04/12/15, T-M1-03/12/13/16/17/18/**21**, T-M2-03..06/09/11/12/15/16/17, T-M3-06/09 |
 
 **Cách phối hợp:** đầu mỗi tuần họp 30 phút chia task. Task giao diện (contract API) chỉ bắt đầu **sau khi** `packages/shared` đã có type tương ứng.
 
@@ -256,11 +295,17 @@ Tuần theo [`REQUIREMENTS.md`](REQUIREMENTS.md) §9.3 — thứ tự cắt an t
 | 1 | **M4 toàn bộ** | T-M4-* | Không ảnh hưởng tiêu chí bắt buộc |
 | 2 | Agentic action | T-M2-18 | Không ảnh hưởng eval bắt buộc |
 | 3 | RAG | T-M2-10, T-M2-11 | Đã có log + export transcript thay thế một phần |
-| 4 | Voice / Vision | (chưa có task riêng) | Đánh dấu N/A trong eval |
-| 5 | Skill library browser | T-M2-06 | Vẫn có CRUD skill cơ bản |
-| 6 | Budget cap / usage chart | T-M2-03 (giảm scope) | Vẫn hiện token/cost từng lượt |
+| 4 | Vision mở rộng (chụp vùng, OCR, alt text) | T-M2-22 | Chỉ ảnh hưởng tính năng Could |
+| 5 | Web search tool | T-M2-20 | Model vẫn trả lời được, chỉ thiếu tool search |
+| 6 | Skill library built-in + điều kiện | T-M2-21 | Vẫn có CRUD skill cơ bản (T-M2-04) |
+| 7 | Chính sách context theo domain | T-M2-19 | Chỉ ảnh hưởng nhóm tính năng riêng tư — đánh dấu N/A trong eval |
+| 8 | Voice | (chưa có task riêng) | Đánh dấu N/A trong eval |
+| 9 | Skill library browser | T-M2-06 | Vẫn có CRUD skill cơ bản |
+| 10 | Budget cap / usage chart | T-M2-03 (giảm scope) | Vẫn hiện token/cost từng lượt |
 
-**Không được cắt:** streaming chat · đọc nội dung trang · multi-tab `@` · selection context · citations · lịch sử conversation · settings · logging đầy đủ · toàn bộ phần eval.
+**Không được cắt:** streaming chat · đọc nội dung trang (HTML) · **trích xuất PDF** (T-M1-21) · **transcript YouTube** (T-M1-22) · **ngân sách context** (T-M1-23) · **upload ảnh** (T-M1-24) · **onboarding** (T-M1-25) · multi-tab `@` · selection context · citations · lịch sử conversation · settings · logging đầy đủ · toàn bộ phần eval.
+
+> **Lưu ý 2026-11-04:** T-M1-21 (PDF) và T-M1-22 (YouTube) được nâng từ **Should → Must** trong [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.2 → **không được cắt** nếu muốn đạt parity với Edge Copilot (A20) và Chrome Gemini (B10). Nếu deadline siết nghiêm trọng, phương án thay thế an toàn: giữ mức Must nhưng dời T-M1-21/22 xuống **đầu M2** (ngay sau gate M1) — phải ghi rõ trong `docs/HANDOFF.md` và báo cáo eval.
 
 ---
 

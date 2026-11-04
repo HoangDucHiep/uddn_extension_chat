@@ -33,6 +33,15 @@
 
 _(Không có — T-M1-01 đã commit, task kế tiếp T-M1-02)_
 
+### Audit docs FR ↔ Task (2026-11-04)
+
+Rà soát toàn bộ `docs/` đối chiếu `REQUIREMENTS.md` ↔ `IMPLEMENTATION_PLAN.md`. Kết quả:
+
+- **Phát hiện:** **31 FR + 27 NFR (58 yêu cầu)** chưa được map tới task nào trong cột FR của plan. Đáng chú ý nhất: `FR-CONTEXT-05` (PDF) và `FR-CONTEXT-06` (YouTube) — không có task card nào dù `REQUIREMENTS.md` §4.2 đã liệt kê (PDF còn bị ghi nhầm vào T-M1-06); `FR-CONTEXT-07` (ngân sách context, **Must**); `FR-VISION-01` (upload ảnh, **Must**); `FR-UX-02` (onboarding, **Must**). Ngoài ra 2 nhãn FR sai: T-M1-04 (`FR-CONTEXT-09`) và T-M1-06 (`FR-CONTEXT-05`).
+- **Đã sửa:** thêm 11 task card mới (T-M1-21..25, T-M2-19..22, T-M3-10..11) · sửa 2 nhãn FR sai · bổ sung FR/NFR vào 12 task card cũ · thêm bảng traceability đầy đủ (83 FR + 29 NFR) ở `REQUIREMENTS.md` §11.1 và bản rút gọn ở `IMPLEMENTATION_PLAN.md` §3.2.
+- **Quyết định:** nâng `FR-CONTEXT-05` / `FR-CONTEXT-06` từ **Should → Must** (Edge A20 + Gemini B10 đều ở mức Must) → M1 tăng 20 → 25 task.
+- **Trạng thái:** chỉ sửa **docs**, chưa viết code. Task implement lần lượt: T-M1-21 → T-M1-22 → T-M1-23 → T-M1-24 → T-M1-25.
+
 ### Việc đã xong gần nhất (T-M1-01 — Content script extractor)
 
 - **T-M1-01** — `apps/extension/src/content/extractor.ts`: Readability-lite (clone `Document` → xoá noise → chấm điểm node → fallback `body`), trả `{ title, byline, url, text, excerpt, strategy, wordCount }`.
@@ -78,6 +87,10 @@ _(Không có — T-M1-01 đã commit, task kế tiếp T-M1-02)_
 | `captureTabContext()` không bao giờ throw | Trang `chrome://` / Web Store không đọc được → panel vẫn phải chat được |
 | Content script build riêng thành IIFE | Chrome KHÔNG load được content script dạng ESM → tách `vite.content.config.ts` (`docs/SYSTEM_DESIGN.md` §7.4) |
 | `@sidekick/shared` có subpath export `./constants` | Content script không cần kéo theo bundle `zod` (101 kB → 4.7 kB) |
+| PDF + YouTube transcript **nâng lên Must** (2026-11-04) | Edge Copilot (A20) và Chrome Gemini (B10) đều có ở mức Must → cần để đạt gate parity M1 (≥90% dòng Must). Đánh đổi: M1 20 → 25 task |
+| PDF/YouTube extract **ở BFF chứ không ở content script** | PDF viewer là plugin native của Chrome (content script không inject được); transcript YouTube nằm ở `captionTracks` chứ không phải DOM text. Cả 2 nhánh chuẩn hoá về cùng shape `context.text` → `buildContextPrompt()` không phân biệt nguồn (`docs/SYSTEM_DESIGN.md` §7.3.1) |
+| Bảng FR ↔ Task đặt ở `REQUIREMENTS.md` §11.1 (không phải trong plan) | FR là nguồn chân lý; plan chỉ giữ bản rút gọn theo nhóm ở §3.2 → tránh trùng lặp 2 nơi dễ lệch |
+| `FR-WORKFLOW-04` (trigger theo sự kiện) defer sang M5 | `chrome.tabs.onUpdated` không đáng tin trong MV3 (SW bị kill ~30s) → phải dùng `chrome.alarms` ≥ 30s hoặc polling; rủi ro cao, không trên đường găng |
 
 ---
 

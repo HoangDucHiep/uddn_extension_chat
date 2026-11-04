@@ -1,7 +1,7 @@
 # Documentation Index — Sidekick AI (Chrome Extension Chat Sidebar)
 
 **Dự án:** Extension chat-bot sidebar cho trình duyệt, cạnh tranh với Edge Copilot Sidebar và Chrome Gemini Sidebar.
-**Giai đoạn hiện tại:** Tài liệu hoàn tất → **M0 (Foundation) đã implement xong** (tag `v0.1`) · đang chuẩn bị M1 (Parity).
+**Giai đoạn hiện tại:** **M0 (Foundation) đã implement xong** (tag `v0.1`) · đang làm **M1 (Parity)** — 1/25 task (T-M1-01 ✅).
 **Entry point cho agent:** [`../AGENTS.md`](../AGENTS.md) · [`HANDOFF.md`](HANDOFF.md)
 
 ---
@@ -10,12 +10,12 @@
 
 | Tài liệu | Vai trò | Nội dung | Đọc khi nào |
 |---|---|---|---|
-| [`REQUIREMENTS.md`](REQUIREMENTS.md) | **Nguồn sự thật cho sản phẩm** | Mục tiêu, parity summary, 14 user stories, 81 FR, 29 NFR, kiến trúc, data model, rủi ro, roadmap M0–M4 | Khi cần biết "cần làm gì" và "vì sao" |
+| [`REQUIREMENTS.md`](REQUIREMENTS.md) | **Nguồn sự thật cho sản phẩm** | Mục tiêu, parity summary, 14 user stories, 83 FR, 29 NFR, kiến trúc, data model, rủi ro, roadmap M0–M4, **bảng FR ↔ Task (§11.1)** | Khi cần biết "cần làm gì" và "vì sao" |
 | [`COMPARISON_MATRIX.md`](COMPARISON_MATRIX.md) | **Đối chiếu & gap** | 28 tính năng Edge (A1–A28), 28 tính năng Chrome Gemini (B1–B28), 15 tính năng độc quyền (C1–C15), nguồn trích dẫn, checklist parity M1 & M4 | Nghiên cứu thêm feature, hoặc nghiên cứu thêm feature để bổ sung |
-| [`EVAL_PLAN.md`](EVAL_PLAN.md) | **Chứng minh chất lượng** | Dataset 44 task, rubric 8 tiêu chí, judge prompt, metrics, quy trình thu thập transcript Edge/Gemini, 11 fairness controls, timeline | **Yêu cầu bắt buộc của giảng viên** — đọc kỹ |
+| [`EVAL_PLAN.md`](EVAL_PLAN.md) | **Chứng minh chất lượng** | Dataset 48 task (5+1 nhóm), rubric 8 tiêu chí, judge prompt, metrics, quy trình thu thập transcript Edge/Gemini, 11 fairness controls, timeline | **Yêu cầu bắt buộc của giảng viên** — đọc kỹ |
 | [`DESIGN_SYSTEM_BRIEF.md`](DESIGN_SYSTEM_BRIEF.md) | **Ràng buộc UI** | 7 design principles, design tokens, component inventory, state chuẩn hoá, checklist WCAG 2.2 AA, traceability ↔ FR | Khi làm UI hoặc thêm component mới |
 | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) | **Cách code** | Kiến trúc tổng thể, 12 ADR, cấu trúc thư mục, hợp đồng API (30 endpoint), giao thức SSE (8 event), data model Drizzle, bảo mật, chiến lược test, rủi ro kỹ thuật | Khi viết API, schema, hoặc backend |
-| [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) | **Kế hoạch thực thi** | 71 task có mã `T-Mx-xx` theo M0–M4, DoD, timeline 13 tuần, phân công 3 thành viên, kịch bản thiếu thời gian | Khi bắt đầu task, cập nhật trạng thái task |
+| [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) | **Kế hoạch thực thi** | 82 task có mã `T-Mx-xx` theo M0–M4, DoD, timeline 13 tuần, phân công 3 thành viên, kịch bản thiếu thời gian, **bảng FR → Task rút gọn (§3.2)** | Khi bắt đầu task, cập nhật trạng thái task |
 | [`HANDOFF.md`](HANDOFF.md) | **Chuyển phiên chat** | Checklist bắt đầu chat mới (≤ 5 phút), trạng thái hiện tại, quyết định đã chốt, mẹo tiết kiệm token | **Đọc đầu tiên khi mở chat mới** |
 | [`CHANGELOG.md`](CHANGELOG.md) | **Lịch sử thay đổi** | Mọi thay đổi docs + code, mới → cũ | Xem gần đây đã làm gì |
 
@@ -99,30 +99,30 @@ Chi tiết lý do & hệ quả: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §2 (12 A
 
 | Tài liệu | Phiên bản | Ngày | Trạng thái |
 |---|---|---|---|
-| REQUIREMENTS.md | v1.0 | 2026-11-03 | ✅ Baseline — chờ giảng viên duyệt |
-| COMPARISON_MATRIX.md | v1.0 | 2026-11-03 | ✅ Baseline |
-| EVAL_PLAN.md | v1.0 | 2026-11-03 | ✅ Draft — cần thảo luận với giảng viên |
+| REQUIREMENTS.md | v1.1 | 2026-11-04 | ✅ Đã cập nhật — nâng PDF/YouTube lên Must + bảng FR ↔ Task (§11.1) |
+| COMPARISON_MATRIX.md | v1.1 | 2026-11-04 | ✅ Đã cập nhật — A20/B10 nâng lên Must + 4 dòng checklist M1 |
+| EVAL_PLAN.md | v1.1 | 2026-11-04 | ✅ Đã cập nhật — thêm nhóm `doc_extract` + `video_transcript` (dataset 48 task) |
 | DESIGN_SYSTEM_BRIEF.md | v1.0 | 2026-11-03 | ✅ Baseline — token & component đã chốt |
-| SYSTEM_DESIGN.md | v1.0 | 2026-11-03 | ✅ Baseline — ADR, API, schema đã chốt |
-| IMPLEMENTATION_PLAN.md | v1.0 | 2026-11-03 | ✅ Baseline — 71 task, sẵn sàng triển khai |
-| HANDOFF.md | v1.0 | 2026-11-03 | ✅ Sẵn sàng dùng |
-| CHANGELOG.md | v1.0 | 2026-11-03 | ✅ Đang theo dõi |
+| SYSTEM_DESIGN.md | v1.1 | 2026-11-04 | ✅ Đã cập nhật — §7.3.1 nhánh PDF/YouTube + 2 endpoint đích |
+| IMPLEMENTATION_PLAN.md | v1.1 | 2026-11-04 | ✅ Đã cập nhật — 82 task, M1 = 25 task, §3.2 traceability |
+| HANDOFF.md | v1.1 | 2026-11-04 | ✅ Đã cập nhật — kết quả audit FR ↔ task |
+| CHANGELOG.md | v1.1 | 2026-11-04 | ✅ Đang theo dõi |
 
 ## Trạng thái milestone
 
 | Milestone | Nội dung | Trạng thái |
 |---|---|---|
-| **M0 — Foundation** (2 tuần) | Monorepo, shared types, Docker/Postgres, Drizzle, BFF skeleton, provider Gemini, SSE, side panel shell | 📋 Chưa bắt đầu |
-| **M1 — Parity** (3 tuần) | Content extraction, context + `@` multi-tab, citations, markdown/code, conversation CRUD, settings, logging, K2/K3 | ⬜ Chưa bắt đầu |
+| **M0 — Foundation** (2 tuần) | Monorepo, shared types, Docker/Postgres, Drizzle, BFF skeleton, provider Gemini, SSE, side panel shell | ✅ Xong (tag `v0.1`) |
+| **M1 — Parity** (3 tuần) | Content extraction (HTML + PDF + YouTube transcript), context + `@` multi-tab, selection, citations, markdown/code, conversation CRUD, settings, upload ảnh, onboarding, logging, K2/K3 | 🚧 Đang làm — 1/25 task (T-M1-01 ✅) |
 | **M2 — Advanced & Eval** (3 tuần) | Multi-provider, skills, tool registry + MCP, RAG, token/cost UI, **EVAL_REPORT** | ⬜ Chưa bắt đầu |
-| **M3 — Polish & Deliverable** (1 tuần) | Design system, states, a11y audit, i18n, demo video, slide, README | ⬜ Chưa bắt đầu |
+| **M3 — Polish & Deliverable** (1 tuần) | Design system, states, a11y audit, i18n, demo video, slide, README, backup DB, ADR | ⬜ Chưa bắt đầu |
 | **M4 — Workflow** (tuỳ chọn, 2 tuần) | Scheduler, workflow CRUD, run log, import/export, notification | ⬜ Ngoài đường găng |
 
 Chi tiết task: [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md).
 
 ---
 
-## Điều kiện cần để bắt đầu implement M0
+## Điều kiện cần để bắt đầu implement M1
 
 - [x] Giảng viên duyệt hướng tiếp cận (requirements + eval plan)
 - [x] Chốt stack UI (Tailwind + shadcn/ui) và data layer (Drizzle + Postgres)

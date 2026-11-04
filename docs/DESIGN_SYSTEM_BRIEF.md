@@ -167,7 +167,8 @@ Nguồn sự thật: `design/tokens.json` → generate ra `design/tokens.css` (C
 | Component | Mô tả | FR liên quan | Rủi ro nếu thiết kế sai |
 |---|---|---|---|
 | `Composer` | Ô nhập auto-grow, send/stop | FR-CHAT-12, FR-CHAT-13 | Ảnh hưởng rubric R4 |
-| `ContextChips` | Chip tab đang share, bỏ được từng cái | FR-CONTEXT-09 | **Vi phạm quyền riêng tư → mất điểm NFR-SEC-02** |
+| `ContextChips` | Chip tab đang share, bỏ được từng cái | FR-CONTEXT-02 | **Vi phạm quyền riêng tư → mất điểm NFR-SEC-02** |
+| `ContextBudget` | Hiện "đã dùng X/Y token" + cảnh báo khi sắp vượt | FR-CONTEXT-07 | Người dùng không biết vì sao context bị cắt |
 | `MentionPopover` | `@` → chọn tab | FR-CONTEXT-03 | Điểm parity so với Chrome Gemini |
 | `SkillMenu` | `/` → chọn skill | FR-SKILL-01 | Điểm parity so với Chrome Gemini |
 | `AttachmentTray` | Ảnh chờ gửi | FR-VISION-01 | |
@@ -217,6 +218,9 @@ Nguồn sự thật: `design/tokens.json` → generate ra `design/tokens.css` (C
 | **Quota đầy** | Badge cảnh báo + link quản lý quota | FR-PROVIDER-06 |
 | **Offline (không mạng)** | Badge trạng thái + gợi ý dùng Ollama local | FR-PROVIDER-07 |
 | **Đang chờ xác nhận** (M4) | Workflow dừng ở bước, hiện diff + Phê duyệt/Từ chối | FR-WORKFLOW-07 |
+| **Context không đọc được** (PDF scan / `file://`) | Chip context báo lỗi rõ + hướng dẫn "hãy upload ảnh"; **không** block chat | FR-CONTEXT-05 |
+| **Transcript không có** (YouTube không caption / geo-block) | Chip context báo "không lấy được transcript" + gợi ý dùng mô tả video; **không** block chat | FR-CONTEXT-06 |
+| **Context vượt ngân sách** | Badge "đã dùng X/Y token" + liên kết xem phần bị cắt bớt | FR-CONTEXT-07 |
 
 ---
 
@@ -241,7 +245,9 @@ Nguồn sự thật: `design/tokens.json` → generate ra `design/tokens.css` (C
 
 | Nhóm component | Requirements phục vụ | Ảnh hưởng eval |
 |---|---|---|
-| `ContextChips`, `MentionPopover` | FR-CONTEXT-03/08/09 | R7 privacy transparency |
+| `ContextChips`, `MentionPopover` | FR-CONTEXT-02/03/08/09 | R7 privacy transparency |
+| `ContextBudget` | FR-CONTEXT-07 | Minh bạch context · hỗ trợ rubric R4 |
+| `ContextChips` (trạng thái lỗi PDF/YouTube) | FR-CONTEXT-05/06 | Đối chiếu A20 / B10 |
 | `CitationChip`, `CitationPopover` | FR-CONTEXT-10 | `citation_precision`, rubric R5 |
 | `CodeBlock`, `MarkdownTable` | FR-CHAT-03/04 | Rubric R6 (UX) |
 | `ToolCallBlock` | FR-TOOLS-02/06 | `tool_success_rate` |
@@ -250,6 +256,8 @@ Nguồn sự thật: `design/tokens.json` → generate ra `design/tokens.css` (C
 | `Composer` | FR-CHAT-12/13 | Rubric R4 (instruction following) |
 | `ErrorMessage` | FR-CHAT-14 | Độ ổn định, khó đo |
 | `ThemeSettings` | FR-SETTINGS-01/02 | WCAG |
+| `Onboarding` | FR-UX-02 | Parity 3 bước lần đầu |
+| `AttachmentTray`, `AttachmentChip` | FR-VISION-01 | Đối chiếu B17 (Gemini upload ảnh) |
 | `UsageBadge`, `ProviderBadge` | FR-PROVIDER-05/09 | Bảng 3 "năng lực hệ thống" |
 
 ---

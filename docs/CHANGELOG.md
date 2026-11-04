@@ -9,6 +9,36 @@
 ## [Unreleased]
 
 ### Added
+- **Docs — Audit traceability FR ↔ Task (2026-11-04)** — rà soát toàn bộ `docs/` đối chiếu `REQUIREMENTS.md` với `IMPLEMENTATION_PLAN.md`; phát hiện **31 FR + 27 NFR (58 yêu cầu)** chưa được map tới task nào trong cột FR của plan, cộng 2 nhãn FR sai. Đã bổ sung task + bảng traceability đầy đủ.
+  - **`docs/REQUIREMENTS.md` §11.1** — bảng **FR ↔ Task** đầy đủ cho toàn bộ **83 FR + 29 NFR** (112 yêu cầu), chia theo nhóm (FR-CHAT / FR-CONTEXT / FR-VISION / FR-TOOLS / FR-SKILL / FR-PROVIDER / FR-WORKFLOW / FR-SETTINGS / FR-UX / NFR-PERF / NFR-SEC / NFR-REL / NFR-A11Y / NFR-MAINT), kèm cột Priority và Milestone.
+  - **`docs/IMPLEMENTATION_PLAN.md` §3.2** — bảng rút gọn FR → Task theo nhóm (để audit nhanh khi sửa plan) + ghi nhận kết quả audit.
+  - **Task card mới trong M1** (M1: 20 → 25 task):
+    - `T-M1-21` — Trích xuất PDF (text-based) (FR-CONTEXT-05)
+    - `T-M1-22` — Transcript YouTube (FR-CONTEXT-06)
+    - `T-M1-23` — Ngân sách context & cắt bớt thông minh (FR-CONTEXT-07)
+    - `T-M1-24` — Upload ảnh (paste / drag-drop / file picker) (FR-VISION-01)
+    - `T-M1-25` — Onboarding lần đầu 3 bước (FR-UX-02)
+  - **Task card mới trong M2** (M2: 18 → 22 task): `T-M2-19` chính sách context theo domain + lịch sử duyệt opt-in + mode "chỉ dùng trang" (FR-CONTEXT-08/09/11, FR-SETTINGS-04, NFR-SEC-02/06) · `T-M2-20` web search tool (FR-TOOLS-03) · `T-M2-21` skill library built-in + skill gắn điều kiện (FR-SKILL-04/06) · `T-M2-22` vision mở rộng (FR-VISION-02/03/04/05).
+  - **Task card mới trong M3** (M3: 9 → 11 task): `T-M3-10` backup DB tự động (`pg_dump` cron) (NFR-REL-05) · `T-M3-11` bộ ADR (NFR-MAINT-05).
+  - **`docs/SYSTEM_DESIGN.md` §7.3.1** — thiết kế nhánh trích xuất PDF & YouTube: content script không đủ (PDF viewer là plugin native, transcript nằm ở `captionTracks`) → cả 2 nhánh fetch ở BFF rồi chuẩn hoá về cùng shape `context.text`; kèm quy tắc bảo mật (chống SSRF: chặn mạng nội bộ, giới hạn kích thước, timeout) và nguyên tắc "lỗi trích xuất không được làm hỏng chat". Thêm 2 endpoint đích `POST /api/extract/pdf` · `POST /api/extract/youtube` vào §4.1.
+
+### Changed
+- **`docs/REQUIREMENTS.md` §4.2** — `FR-CONTEXT-05` (PDF) và `FR-CONTEXT-06` (transcript YouTube) **nâng từ Should → Must**. Lý do: Edge Copilot (A20) và Chrome Gemini (B10) đều có ở mức Must để đạt parity; đây là 2 dòng "Must" mới trong gate M1. Bổ sung AC chi tiết cho cả 2 (PDF scan → báo "không đọc được, hãy upload ảnh"; PDF nội bộ/`file://` → báo rõ; YouTube không có caption / geo-block / consent → báo rõ).
+- **`docs/REQUIREMENTS.md` §6.3** — dòng ràng buộc "Content script không chạy trên PDF viewer" được sửa thành cách xử lý thật (BFF fetch bytes + parse server-side) thay vì "mở PDF bằng viewer ngoài".
+- **`docs/IMPLEMENTATION_PLAN.md`** — sửa nhãn FR sai: `T-M1-04` (`FR-CONTEXT-02/09` → `FR-CONTEXT-02`; `FR-CONTEXT-09` thực chất là lịch sử duyệt web, thuộc `T-M2-19`) · `T-M1-06` (`FR-CONTEXT-01/05` → `FR-CONTEXT-01/02/03/07`; nhãn cũ nhầm sang PDF). Bổ sung FR/NFR vào các task card cũ: `T-M0-02` (+NFR-SEC-08) · `T-M0-06` (+NFR-SEC-05) · `T-M0-07` (+NFR-MAINT-03) · `T-M0-11` (+NFR-PERF-06) · `T-M0-12` (+NFR-SEC-03) · `T-M1-01` (+NFR-PERF-04) · `T-M1-07` (+NFR-SEC-04, NFR-PERF-02) · `T-M1-09` (+FR-CHAT-08/11) · `T-M1-10` (+FR-CHAT-07/12, FR-UX-05) · `T-M1-12` (+FR-SETTINGS-03/04/05/07, NFR-SEC-07) · `T-M1-14` (+FR-CONTEXT-12, NFR-REL-01) · `T-M1-15/16` (+NFR-SEC-01) · `T-M1-19` (+FR-UX-08, NFR-REL-02/04) · `T-M1-20` (+FR-UX-07/09/10, NFR-PERF-03, NFR-A11Y-01..05) · `T-M1-03/18` (bỏ nhầm FR-UX-02) · `T-M2-01` (+FR-PROVIDER-07) · `T-M2-04/07` (+NFR-MAINT-03) · `T-M2-13` (+NFR-MAINT-02) · `T-M3-02` (+NFR-PERF-05) · `T-M3-03` (+NFR-MAINT-02) · `T-M3-04` (+FR-UX-10, NFR-PERF-02) · `T-M3-09` (+NFR-PERF-06) · `T-M4-02..08` (bổ sung FR-WORKFLOW-06/08/09/10/11/12/13). §8 timeline thêm tuần W5.5 · §10 thứ tự cắt thêm 4 mục + đánh dấu T-M1-21/22/23/24/25 là **không được cắt**.
+- **`docs/COMPARISON_MATRIX.md`** — `A20` (Edge: tóm tắt video/PDF) và `B10` (Gemini: tóm tắt video YouTube) đổi ưu tiên `S` → `M`; §D thêm hàng "Context PDF / video (transcript)"; §E checklist parity thêm 4 dòng (PDF, YouTube, ngân sách context, upload ảnh).
+- **`docs/SYSTEM_DESIGN.md`** — §3 cây thư mục bổ sung `lib/contextBudget.ts` + `routes/extract.ts` + `lib/{pdfExtractor,youtubeExtractor}.ts`; §8 thêm 2 dòng ngân sách trích xuất PDF/YouTube; §9 thêm 2 rủi ro (SSRF qua fetch URL, YouTube không có caption).
+- **`docs/DESIGN_SYSTEM_BRIEF.md`** — thêm component `ContextBudget` (§3.4) + sửa nhãn `ContextChips` (`FR-CONTEXT-09` → `FR-CONTEXT-02`); §4 thêm 3 state mới: "Context không đọc được" (PDF scan / `file://`), "Transcript không có" (YouTube), "Context vượt ngân sách"; §6 bổ sung mapping `Onboarding` (FR-UX-02) + `AttachmentTray`/`AttachmentChip` (FR-VISION-01).
+- **`docs/EVAL_PLAN.md`** — thêm 2 nhóm task `doc_extract` (PDF, 2 task) + `video_transcript` (YouTube, 2 task) → dataset 44 → 48 task; §12 checklist thêm dòng kiểm tra 2 nhóm này.
+- **`docs/README.md`** — cập nhật số FR/NFR (82/30) + số task (82) + phiên bản docs v1.1 + trạng thái milestone (M0 ✅ xong, M1 1/25 task).
+- **`AGENTS.md`** — cập nhật §6: M1 còn 1/25 task (thay vì 1/20).
+- **`docs/HANDOFF.md`** — ghi nhận quyết định nâng PDF/YouTube lên Must + kết quả audit.
+
+### Fixed
+- **Nhãn FR sai trong `IMPLEMENTATION_PLAN.md`** — `T-M1-04` ghi `FR-CONTEXT-09` (lịch sử duyệt web, thực chất không liên quan toggle context) và `T-M1-06` ghi `FR-CONTEXT-05` (PDF, thực chất là truyền context sang BFF). Đã sửa cả hai.
+- **`docs/REQUIREMENTS.md` §11** — thiếu bảng FR → Task khiến không kiểm chứng được FR nào đã được implement. Đã bổ sung §11.1.
+
+### Added
 - **T-M1-01** — Content script extractor "Readability-lite" + mang nội dung trang vào context gửi BFF (FR-CONTEXT-01).
   - `apps/extension/src/content/extractor.ts` — thuật toán rút gọn Readability: clone `Document` (không mutate DOM thật) → xoá `script/style/nav/footer/aside/form/…` + phần tử có `class`/`id` khớp pattern âm → chấm điểm các node `article, main, [role="main"], section, div` (điểm theo độ dài text của block con, trừ khi link density > 0.5, cộng/trừ theo `class`/`id`, bonus cho thẻ semantic) → chọn node điểm cao nhất → fallback `body` → ghép text chuẩn hoá whitespace. Trả `{ title, byline, url, text, excerpt, strategy, wordCount }` với `strategy ∈ article | main | body | empty`.
   - `apps/extension/src/content/contentScript.ts` — expose `window.__sidekickExtractContent()` + listener `chrome.runtime.onMessage` action `sidekick:extract-content` (tái dùng cho T-M1-02).

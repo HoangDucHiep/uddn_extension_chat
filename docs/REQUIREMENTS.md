@@ -1,4 +1,4 @@
-# Requirements Specification — AI Chat Sidebar Browser Extension
+﻿# Requirements Specification — AI Chat Sidebar Browser Extension
 
 **Project code name:** Sidekick AI
 **Document version:** v1.0
@@ -214,8 +214,8 @@ Quy ước ưu tiên: **M** = Must (bắt buộc cho M1) · **S** = Should (bắ
 | FR-CONTEXT-02 | Bật/tắt context trang bằng 1 toggle, có trạng thái nhìn thấy rõ | M | Chip ở header đổi trạng thái; tắt → không gửi content lên server |
 | FR-CONTEXT-03 | `@`-mention tab để đính kèm tab khác (multi-tab) | M | Hiện danh sách tab + title + favicon; hỗ trợ nhiều tab; bỏ được từng tab |
 | FR-CONTEXT-04 | Đính kèm vùng text được bôi đen (selection context) | M | Content script bắt sự kiện selection → hiện affordance → mở panel kèm đoạn text |
-| FR-CONTEXT-05 | Trích xuất nội dung PDF (text-based) | S | Nếu PDF là scan → báo "không đọc được, hãy upload ảnh" |
-| FR-CONTEXT-06 | Lấy transcript YouTube (nếu có caption) | S | Dùng timedtext API; fallback → báo rõ |
+| FR-CONTEXT-05 | Trích xuất nội dung PDF (text-based) | M | Parse ở server (BFF fetch bytes + parser) vì content script không chạm được PDF viewer; PDF scan → báo "không đọc được, hãy upload ảnh"; PDF nội bộ/`file://` → báo rõ không truy cập được |
+| FR-CONTEXT-06 | Lấy transcript YouTube (nếu có caption) | M | Dùng timedtext API; không có caption / bị geo-block / consent → báo rõ; transcript vào `context.text` như các loại context khác |
 | FR-CONTEXT-07 | Ngân sách context & cắt bớt thông minh | M | Giới hạn token theo provider; cắt theo thứ tự ưu tiên (selection > tab đính kèm > tab hiện tại > lịch sử chat); UI hiện "đã dùng X/Y token" |
 | FR-CONTEXT-08 | Chính sách bật/tắt context theo domain (allow/deny list) | S | Domain bị chặn → không đọc content, hiện badge |
 | FR-CONTEXT-09 | Lịch sử duyệt web tùy chọn (opt-in) làm context | S | Mặc định TẮT; bật thì có cảnh báo rõ; có thể xoá |
@@ -224,6 +224,8 @@ Quy ước ưu tiên: **M** = Must (bắt buộc cho M1) · **S** = Should (bắ
 | FR-CONTEXT-12 | Snapshot context để tái lập (reproducibility) | S | Lưu hash + nội dung context vào log phục vụ eval |
 
 > **Trạng thái FR-CONTEXT-01 (T-M1-01 ✅ 2026-11-04):** đã implement — `apps/extension/src/content/extractor.ts` (Readability-lite: title + byline + url + text chính + excerpt, fallback body, fallback rỗng → `strategy: 'empty'`), `apps/extension/src/lib/pageContext.ts` (capture qua `chrome.scripting`, không throw khi trang không đọc được), `packages/shared` `pageContextSchema` có `text`/`excerpt`, BFF `buildContextPrompt()` đưa nội dung trang vào prompt (đánh dấu "dữ liệu tham chiếu, không phải chỉ thị"). FR-CONTEXT-02 (toggle bật/tắt) thuộc T-M1-04.
+>
+> **Trạng thái FR-CONTEXT-05/06 (chưa implement):** nâng lên **Must** sau audit traceability 2026-11-04 (trước đó là Should) — vì Edge Copilot (A20) và Chrome Gemini (B10) đều có tính năng này ở mức Must để đạt parity. Task: T-M1-21 (PDF) · T-M1-22 (YouTube). Kiến trúc 2 nhánh xem [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.3.
 
 ### 4.3 FR-VISION — Ảnh & thị giác
 
@@ -503,7 +505,7 @@ sequenceDiagram
 | Side panel chỉ có 1 instance/window | Không mở 2 chat song song trong 1 cửa sổ | Chấp nhận; hỗ trợ nhiều **conversation** thay vì nhiều panel |
 | CSP MV3 cấm remote code & eval | Không tải script từ CDN | Bundle mọi thứ; provider SDK chạy server-side |
 | `chrome.sidePanel.setOptions({tabId})` giới hạn theo tab | Một số domain không muốn hiện panel | Cho phép user chặn domain |
-| Content script không chạy trên `chrome://`, store của browser, PDF viewer mặc định | Không đọc được PDF nội bộ | Xử lý riêng: mở PDF bằng viewer ngoài hoặc yêu cầu upload |
+| Content script không chạy trên `chrome://`, store của browser, PDF viewer mặc định | Không đọc được PDF nội bộ bằng content script | **Xử lý riêng:** extension gửi `url` PDF lên BFF → BFF fetch bytes + parse server-side → trả text về `context.text` (FR-CONTEXT-05, T-M1-21). PDF nội bộ/`file://` không fetch được → báo rõ "không đọc được, hãy upload ảnh" |
 | Fetch cross-origin từ extension cần host permission | Gọi BFF ở `localhost`/`127.0.0.1` | Khai báo host permission cho endpoint BFF |
 
 ### 6.4 Manifest V3 (skeleton)
@@ -788,7 +790,7 @@ eval_judgments             -- log từng lần chấm để audit tính lặp l�
 | Milestone | Nội dung | Acceptance gate |
 |---|---|---|
 | **M0 — Foundation** (2 tuần) | Repo structure, MV3 manifest, side panel shell, design tokens v1, BFF skeleton + Docker Compose, Postgres schema, provider adapter Gemini, streaming chat cơ bản, **K1 team key qua `.env`** | Chat 1-1 với Gemini hoạt động end-to-end qua Docker; `docker compose up` thành công từ máy sạch |
-| **M1 — Parity** (3 tuần) | Đọc nội dung trang, multi-tab `@`, selection context, citations, markdown + code block, lịch sử nhiều conversation, settings, theme, i18n VI/EN, logging đầy đủ, **K3 direct mode fallback** | Đạt ≥ 90% các dòng "Must" trong COMPARISON_MATRIX; context extraction hoạt động trên ≥ 8/10 trang thật; log đủ để chạy eval |
+| **M1 — Parity** (3 tuần) | Đọc nội dung trang (HTML **+ PDF + transcript YouTube**), multi-tab `@`, selection context, citations, markdown + code block, lịch sử nhiều conversation, settings, theme, i18n VI/EN, logging đầy đủ, **K3 direct mode fallback** | Đạt ≥ 90% các dòng "Must" trong COMPARISON_MATRIX; context extraction hoạt động trên ≥ 8/10 trang thật (HTML) + PDF text-based + video YouTube có caption; log đủ để chạy eval |
 | **M2 — Advanced & Eval** (3 tuần) | **K2 BYOK qua BFF** (mã hoá), Skills (`/`), multi-provider + model picker + fallback, tool registry + MCP, RAG lịch sử, token/cost UI, agentic action (nếu kịp), **eval harness + dataset + judge**, EVAL_REPORT | Bộ eval ≥ 40 task × 3 hệ thống; judge chấm xong; báo cáo eval có bảng + phân tích + radar chart; kết luận rõ điểm mạnh/yếu |
 | **M3 — Polish** (1 tuần) | Design system hoàn thiện, animation, empty/loading/error states, accessibility audit, tài liệu, demo video, slide trình bày | Lighthouse a11y ≥ 95; không còn lỗi console; README + slide sẵn sàng |
 | **M4 — Workflow & Automation** (tùy chọn, 2 tuần) | Scheduler ở BFF (cron/interval), workflow CRUD + template mẫu, lịch sử run, import/export, notification. **Approval gate và event trigger đẩy sang M5 (nếu còn thời gian)** | ≥ 3 workflow mẫu chạy thật; 1 workflow theo lịch tự động fire đúng giờ (demo được) |
@@ -860,3 +862,172 @@ Chỉ bắt đầu M4 khi **đồng thời** thỏa:
 | Design System | `DESIGN_SYSTEM_BRIEF.md` §2 (tokens), §3 (components), §5 (a11y) → FR-UX-06, FR-SETTINGS-01/02, NFR-A11Y-01/02 |
 | System Design | `SYSTEM_DESIGN.md` §4 (API + SSE), §5 (data model), §6 (bảo mật) → FR-PROVIDER-*, FR-TOOLS-*, NFR-REL-* |
 | Implementation Plan | `IMPLEMENTATION_PLAN.md` → mapping task-level ↔ FR, gate từng milestone |
+
+### 11.1 FR ↔ Task traceability
+
+> **Nguồn chân lý:** bảng này là bản đồ FR → task. Task chi tiết (output files, AC, estimate) nằm ở [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) §3–§6.
+> **Quy ước:** `T-…` = task code · `✅` = đã xong · `⏭ M5` = deferred (ngoài scope M0–M4, xem §9.4) · NFR là yêu cầu xuyên suốt nên có thể nằm ở nhiều task.
+
+> **Audit 2026-11-04:** trước đó còn **31 FR + 27 NFR (58 yêu cầu)** chưa được map tới task nào trong cột FR của plan — đặc biệt `FR-CONTEXT-06` (YouTube), `FR-CONTEXT-07` (ngân sách context), `FR-VISION-01` (upload ảnh), `FR-UX-02` (onboarding), `FR-CHAT-07/08/11/12` (Stop / xoá / pin / keyboard). Ngoài ra `FR-CONTEXT-05` (PDF) chỉ xuất hiện ở T-M1-06 nhưng **nhãn sai** (task đó là "truyền context sang BFF"). Đã bổ sung task card cho tất cả — xem [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) §3.2.
+
+#### FR-CHAT — Lõi trò chuyện
+
+| FR | Priority | Task | Milestone |
+|---|---|---|---|
+| FR-CHAT-01 | M | T-M0-10 ✅ · T-M0-13 ✅ | M0 |
+| FR-CHAT-02 | M | T-M1-07 | M1 |
+| FR-CHAT-03 | M | T-M1-07 | M1 |
+| FR-CHAT-04 | S | T-M1-07 | M1 |
+| FR-CHAT-05 | M | T-M1-10 | M1 |
+| FR-CHAT-06 | M | T-M1-10 | M1 |
+| FR-CHAT-07 | M | T-M1-10 | M1 |
+| FR-CHAT-08 | M | T-M1-09 | M1 |
+| FR-CHAT-09 | M | T-M1-09 | M1 |
+| FR-CHAT-10 | S | T-M1-13 | M1 |
+| FR-CHAT-11 | C | T-M1-09 | M1 |
+| FR-CHAT-12 | M | T-M1-10 | M1 |
+| FR-CHAT-13 | S | T-M1-10 | M1 |
+| FR-CHAT-14 | M | T-M1-19 | M1 |
+
+#### FR-CONTEXT — Ngữ cảnh trang & tab
+
+| FR | Priority | Task | Milestone |
+|---|---|---|---|
+| FR-CONTEXT-01 | M | T-M1-01 ✅ · T-M1-06 | M1 |
+| FR-CONTEXT-02 | M | T-M1-04 · T-M1-06 | M1 |
+| FR-CONTEXT-03 | M | T-M1-05 · T-M1-06 | M1 |
+| FR-CONTEXT-04 | M | T-M1-02 | M1 |
+| FR-CONTEXT-05 | M | **T-M1-21** | M1 |
+| FR-CONTEXT-06 | M | **T-M1-22** | M1 |
+| FR-CONTEXT-07 | M | T-M1-06 · **T-M1-23** | M1 |
+| FR-CONTEXT-08 | S | **T-M2-19** | M2 |
+| FR-CONTEXT-09 | S | **T-M2-19** | M2 |
+| FR-CONTEXT-10 | M | T-M1-08 | M1 |
+| FR-CONTEXT-11 | S | **T-M2-19** | M2 |
+| FR-CONTEXT-12 | S | T-M1-14 | M1 |
+
+#### FR-VISION — Ảnh & thị giác
+
+| FR | Priority | Task | Milestone |
+|---|---|---|---|
+| FR-VISION-01 | M | **T-M1-24** | M1 |
+| FR-VISION-02 | S | **T-M2-22** | M2 |
+| FR-VISION-03 | C | **T-M2-22** | M2 |
+| FR-VISION-04 | C | **T-M2-22** | M2 |
+| FR-VISION-05 | C | **T-M2-22** | M2 |
+
+#### FR-TOOLS — Tools & MCP
+
+| FR | Priority | Task | Milestone |
+|---|---|---|---|
+| FR-TOOLS-01 | M | T-M2-07 · T-M2-08 | M2 |
+| FR-TOOLS-02 | M | T-M2-07 · T-M2-09 | M2 |
+| FR-TOOLS-03 | S | **T-M2-20** | M2 |
+| FR-TOOLS-04 | C | T-M2-18 | M2 |
+| FR-TOOLS-05 | S | T-M2-10 · T-M2-11 | M2 |
+| FR-TOOLS-06 | M | T-M2-09 | M2 |
+
+#### FR-SKILL — Skills / Prompt library
+
+| FR | Priority | Task | Milestone |
+|---|---|---|---|
+| FR-SKILL-01 | M | T-M2-04 | M2 |
+| FR-SKILL-02 | M | T-M2-04 | M2 |
+| FR-SKILL-03 | M | T-M2-04 | M2 |
+| FR-SKILL-04 | S | **T-M2-21** | M2 |
+| FR-SKILL-05 | S | T-M2-05 | M2 |
+| FR-SKILL-06 | C | **T-M2-21** | M2 |
+| FR-SKILL-07 | S | T-M2-06 | M2 |
+
+#### FR-PROVIDER — Provider & model
+
+| FR | Priority | Task | Milestone |
+|---|---|---|---|
+| FR-PROVIDER-01 | M | T-M0-07 ✅ · T-M0-08 ✅ · T-M2-01 | M0→M2 |
+| FR-PROVIDER-02 | M | T-M1-16 | M1 |
+| FR-PROVIDER-03 | M | T-M0-08 ✅ · T-M2-01 · T-M2-02 | M0→M2 |
+| FR-PROVIDER-04 | S | T-M2-02 | M2 |
+| FR-PROVIDER-05 | S | T-M2-03 | M2 |
+| FR-PROVIDER-06 | C | T-M2-03 | M2 |
+| FR-PROVIDER-07 | S | T-M2-01 | M2 |
+| FR-PROVIDER-08 | S | T-M1-15 | M1 |
+| FR-PROVIDER-09 | S | T-M1-15 | M1 |
+
+#### FR-WORKFLOW — Workflow & Automation
+
+| FR | Priority | Task | Milestone |
+|---|---|---|---|
+| FR-WORKFLOW-01 | S | T-M4-02 | M4 |
+| FR-WORKFLOW-02 | S | T-M4-02 | M4 |
+| FR-WORKFLOW-03 | S | T-M4-01 | M4 |
+| FR-WORKFLOW-04 | C | ⏭ M5 — deferred (event trigger, rủi ro MV3 `tabs.onUpdated`) | M5 |
+| FR-WORKFLOW-05 | S | T-M4-03 | M4 |
+| FR-WORKFLOW-06 | C | T-M4-03 | M4 |
+| FR-WORKFLOW-07 | C | T-M4-07 | M4 |
+| FR-WORKFLOW-08 | S | T-M4-02 | M4 |
+| FR-WORKFLOW-09 | S | T-M4-04 | M4 |
+| FR-WORKFLOW-10 | S | T-M4-05 | M4 |
+| FR-WORKFLOW-11 | C | T-M4-06 | M4 |
+| FR-WORKFLOW-12 | M | T-M4-08 | M4 |
+| FR-WORKFLOW-13 | S | T-M4-08 | M4 |
+
+#### FR-SETTINGS — Cấu hình
+
+| FR | Priority | Task | Milestone |
+|---|---|---|---|
+| FR-SETTINGS-01 | M | T-M0-14 ✅ · T-M1-12 | M0→M1 |
+| FR-SETTINGS-02 | M | T-M1-12 | M1 |
+| FR-SETTINGS-03 | M | T-M1-12 | M1 |
+| FR-SETTINGS-04 | M | T-M1-12 · **T-M2-19** | M1→M2 |
+| FR-SETTINGS-05 | S | T-M1-12 | M1 |
+| FR-SETTINGS-06 | M | T-M0-14 ✅ · T-M1-12 · T-M1-17 | M0→M1 |
+| FR-SETTINGS-07 | C | T-M1-12 | M1 |
+
+#### FR-UX — Trải nghiệm người dùng
+
+| FR | Priority | Task | Milestone |
+|---|---|---|---|
+| FR-UX-01 | M | T-M1-03 · T-M1-18 | M1 |
+| FR-UX-02 | M | **T-M1-25** | M1 |
+| FR-UX-03 | M | T-M1-11 · T-M1-19 | M1 |
+| FR-UX-04 | M | T-M1-11 · T-M1-19 | M1 |
+| FR-UX-05 | M | T-M1-10 | M1 |
+| FR-UX-06 | M | T-M1-12 · T-M1-20 | M1 |
+| FR-UX-07 | M | T-M1-20 | M1 |
+| FR-UX-08 | M | T-M1-19 | M1 |
+| FR-UX-09 | M | T-M1-20 | M1 |
+| FR-UX-10 | M | T-M1-20 · T-M3-04 | M1→M3 |
+
+#### NFR — Hiệu năng, an toàn, độ tin cậy, a11y, bảo trì
+
+| NFR | Task | Milestone |
+|---|---|---|
+| NFR-PERF-01 (TTFT) | T-M1-14 · T-M2-13 | M1→M2 |
+| NFR-PERF-02 (≥30 fps) | T-M1-07 · T-M3-04 | M1→M3 |
+| NFR-PERF-03 (cold start ≤1.2s) | T-M1-20 | M1 |
+| NFR-PERF-04 (extract ≤800ms) | T-M1-01 ✅ | M1 |
+| NFR-PERF-05 (memory) | T-M3-02 | M3 |
+| NFR-PERF-06 (bundle ≤3MB) | T-M0-11 ✅ · T-M3-09 | M0→M3 |
+| NFR-SEC-01 (key at-rest) | T-M0-09 ✅ · T-M1-15 · T-M1-16 | M0→M1 |
+| NFR-SEC-02 (không gửi khi context off) | T-M1-04 · **T-M2-19** | M1→M2 |
+| NFR-SEC-03 (không eval/remote code) | T-M0-12 ✅ | M0 |
+| NFR-SEC-04 (sanitize markdown) | T-M1-07 | M1 |
+| NFR-SEC-05 (origin allowlist) | T-M0-06 ✅ | M0 |
+| NFR-SEC-06 (domain nhạy cảm opt-in) | **T-M2-19** | M2 |
+| NFR-SEC-07 (xoá toàn bộ dữ liệu) | T-M1-12 | M1 |
+| NFR-SEC-08 (npm audit) | T-M0-02 ✅ | M0 |
+| NFR-REL-01 (không mất tin nhắn) | T-M1-10 · T-M1-14 | M1 |
+| NFR-REL-02 (retry 1 lần) | T-M1-19 | M1 |
+| NFR-REL-03 (BFF down → direct) | T-M1-15 | M1 |
+| NFR-REL-04 (trạng thái kết nối) | T-M1-19 | M1 |
+| NFR-REL-05 (backup DB) | **T-M3-10** | M3 |
+| NFR-A11Y-01 (WCAG 2.2 AA) | T-M1-20 · T-M3-03 | M1→M3 |
+| NFR-A11Y-02 (độ tương phản) | T-M1-20 · T-M3-03 | M1→M3 |
+| NFR-A11Y-03 (aria-label / aria-live) | T-M1-20 · T-M3-03 | M1→M3 |
+| NFR-A11Y-04 (bàn phím + focus) | T-M1-20 · T-M3-03 | M1→M3 |
+| NFR-A11Y-05 (screen reader streaming) | T-M1-20 | M1 |
+| NFR-MAINT-01 (strict TS + CI) | T-M0-02 ✅ | M0 |
+| NFR-MAINT-02 (coverage ≥70%) | T-M2-13 · T-M3-03 | M2→M3 |
+| NFR-MAINT-03 (interface registry) | T-M0-07 ✅ · T-M2-04 · T-M2-07 | M0→M2 |
+| NFR-MAINT-04 (logging có cấu trúc) | T-M0-10 ✅ · T-M1-14 · T-M2-12..17 · T-M4-09 | M0→M4 |
+| NFR-MAINT-05 (ADR) | **T-M3-11** | M3 |
