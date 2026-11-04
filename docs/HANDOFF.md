@@ -24,7 +24,7 @@
 | Hạng mục | Trạng thái |
 |---|---|
 | Docs | ✅ Đầy đủ 9 file (`docs/`) + `AGENTS.md` ở root |
-| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 xong** — 4 workspace, 229 unit test + 9 E2E |
+| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 xong** — 4 workspace, 235 unit test + 9 E2E |
 | Git | ✅ Đã init (`main`) · tag `v0.1` đánh dấu M0 |
 | Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **5/25 task**) |
 | Task tiếp theo | **T-M1-05** — `@` multi-tab (nguồn item tier `attachment`) → T-M1-02 (selection, tier cao nhất) → T-M1-24 (upload file) |
@@ -32,6 +32,26 @@
 ### Đang làm dở
 
 _(Không có — T-M1-23 đã commit, task kế tiếp T-M1-05)_
+
+### Việc đã xong gần nhất (Audit chất lượng test + sửa hạ tầng test)
+
+- **Vấn đề phát hiện:** test của `apps/extension` + `apps/server` resolve `@sidekick/shared` qua `package.json` `exports` → **`packages/shared/dist/`** (bản build). Hệ quả: (1) sửa `packages/shared/src` mà quên `pnpm build` → test **chạy code cũ và vẫn xanh**; (2) `packages/shared/dist` bị `.gitignore` → fresh clone `pnpm test` **fail** (`Cannot find module "@sidekick/shared"`); (3) repo chưa có CI.
+  - Bằng chứng: inject `throw` vào `packages/shared/src/contextBudget.ts` → test extension **vẫn PASS 16/16**.
+- **Đã sửa:** alias `@sidekick/shared` → `packages/shared/src` trong `vitest.config.ts` của extension · server · eval (+ subpath `@sidekick/shared/constants`) · `pre` hooks ở root (`pretest` · `pretest:coverage` · `pretest:e2e` · `pretypecheck` · `prebuild` · `predev`) build shared trước · `dev:shared` (`tsc --watch`) chạy song song trong `pnpm dev` · guard test `sharedAlias.test.ts` ở extension + server.
+  - Bằng chứng: sau khi có alias, inject `throw` cùng trên → test **FAIL** đúng chỗ (`packages/shared/src/contextBudget.ts:26`); xoá `dist` → `pnpm test` / `pnpm typecheck` / `pnpm build` / `pnpm dev` đều tự build và chạy được.
+- **Audit mutation testing (~78 mutation):** phần lớn mutation trên logic cốt lõi đều bị test bắt → **không có bằng chứng test bị "tình cho đúng"**. Tìm được **8 blind spot thật** (3 test extractor đi nhánh khác tên · thiếu fixture biên · chỉ assert độ dài chứ không assert phần giữ lại · chưa test validate `role` · **chưa có test nào cho `lib/storage.ts`** · `chatService.ts` coverage 25% · provider thật chưa test) → ghi ở `SYSTEM_DESIGN.md` §7.2.2.
+- **Số test:** 229 → **235** (+6 guard). Chi tiết: `SYSTEM_DESIGN.md` §7.1.1 + §7.2.1 + §7.2.2.
+- **Bonus:** sửa 3 lỗi lint tồn đọng (`ChatRequest` unused trong `useChat.ts` · `import()` type annotation trong `e2e/context.spec.ts`).
+
+### Quyết định kỹ thuật mới (audit test)
+
+| Quyết định | Lý do |
+|---|---|
+| Alias `@sidekick/shared` → `packages/shared/src` trong **vitest** config (không phải vite build config) | Test phải chạy trên source hiện tại. `vite build` + `tsx` vẫn dùng `dist` — đúng cho production |
+| Subpath `@sidekick/shared/constants` khai báo **trước** alias chung | Nếu không, alias chung sẽ che mất subpath → resolve fail |
+| `pre` hooks build shared thay vì alias cho `tsc`/`vite build` | `tsc --noEmit` và `vite build` cần `dist/*.d.ts` để resolve type — alias Vite không áp dụng cho `tsc` |
+| `dev:shared` (`tsc --watch`) thêm vào `pnpm dev` | Sửa `packages/shared/src` được hot-reload, không phải build lại thủ công |
+| Guard test `sharedAlias.test.ts` | Chặn ai đó xoá nhầm alias → quay lại trạng thái "test xanh nhưng code sai" |
 
 ### Việc đã xong gần nhất (T-M1-23 — Ngân sách context & mô hình "đính kèm chủ động")
 

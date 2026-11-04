@@ -58,9 +58,10 @@ pnpm install                 # cài deps (root)
 docker compose up -d         # Postgres 16 + pgvector
 pnpm db:migrate              # chạy migration Drizzle
 
-pnpm dev                     # extension + server song song
+pnpm dev                     # shared (watch) + extension + server song song
 pnpm dev:ext                 # chỉ extension (vite HMR)
 pnpm dev:server              # chỉ BFF (tsx watch)
+pnpm dev:shared              # chỉ packages/shared (tsc --watch)
 
 pnpm build                   # build tất cả
 pnpm typecheck               # tsc --noEmit
@@ -71,6 +72,8 @@ pnpm eval:run                # chạy eval harness
 ```
 
 > `pnpm` chưa có? → `corepack enable` (Windows: `corepack enable pnpm`). Fallback: dùng `npm` — cấu trúc thư mục không đổi.
+
+> **Lưu ý `packages/shared`:** lệnh `pnpm test` / `typecheck` / `build` / `dev` đều tự build `packages/shared` trước (qua `pre` hook) → **fresh clone chạy được ngay**, không cần `pnpm build` thủ công. Test của extension/server resolve `@sidekick/shared` từ **source** (`packages/shared/src`) chứ không phải `dist` → sửa shared là test thấy ngay. Chi tiết: [`SYSTEM_DESIGN.md`](docs/SYSTEM_DESIGN.md) §7.1.1.
 
 ---
 
@@ -99,7 +102,7 @@ pnpm eval:run                # chạy eval harness
 | Milestone | Trạng thái | Ghi chú |
 |---|---|---|
 | **M0 — Foundation** | ✅ Hoàn thành | 15/15 task · 91 unit test + 2 E2E · tag `v0.1` |
-| **M1 — Parity** | 🚧 Đang làm | 5/25 task (T-M1-01, T-M1-04 ✅ hấp thụ, T-M1-21, T-M1-22, T-M1-23 ✅) · 229 unit test + 9 E2E |
+| **M1 — Parity** | 🚧 Đang làm | 5/25 task (T-M1-01, T-M1-04 ✅ hấp thụ, T-M1-21, T-M1-22, T-M1-23 ✅) · 235 unit test + 9 E2E |
 | **M2 — Advanced & Eval** | ⬜ Chưa bắt đầu | `EVAL_REPORT.md` là deliverable bắt buộc |
 | **M3 — Polish & Deliverable** | ⬜ Chưa bắt đầu | |
 | **M4 — Workflow** | ⬜ Tuỳ chọn | Chỉ sau M3 + đã có eval report |

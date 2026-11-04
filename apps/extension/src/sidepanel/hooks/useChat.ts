@@ -3,7 +3,6 @@ import {
   applyContextBudget,
   CONTEXT_WINDOWS,
   type ChatEvent,
-  type ChatRequest,
   type ContextBundle,
   type ProviderId,
 } from '@sidekick/shared'

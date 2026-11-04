@@ -159,10 +159,11 @@ flowchart TB
 > │  ├─ lib/{apiClient,sseClient,pageContext,contextAttach,storage,utils}.ts
 > │  └─ types/globals.d.ts
 > ├─ e2e/{fixtures.ts,sidepanel.spec.ts,extractor.spec.ts,extract.spec.ts,context.spec.ts}
-> ├─ tests/{apiClient,chatStore,sseClient,useChat,extractor,pageContext,contextAttach}.test.ts
+> ├─ tests/{apiClient,chatStore,sseClient,useChat,extractor,pageContext,contextAttach,sharedAlias}.test.ts
 > ├─ vite.config.ts                  # side panel + service worker (ESM)
 > ├─ vite.content.config.ts          # content script (IIFE, 1 file — §7.4)
-> ├─ vitest.config.ts · playwright.config.ts
+> ├─ vitest.config.ts                # alias @sidekick/shared → packages/shared/src (§7.1.1)
+> ├─ playwright.config.ts
 > ```
 > `packages/shared/src/` hiện có: `constants.ts` · `contextBudget.ts` · `errors.ts` · `events.ts` · `pageKind.ts` · `schemas/{chat,extract,provider}.ts` · `types/entities.ts`.
 > `apps/server/src/` hiện có: `routes/{health,chat,extract}.ts` · `services/chatService.ts` · `providers/*` · `middleware/*` · `config/env.ts` · `db/*` · `lib/{crypto,safeFetch,pdfExtractor,youtubeExtractor}.ts`.
@@ -591,6 +592,34 @@ BFF chỉ nhận request từ extension. Kiểm tra header `Origin` / `X-Sidekic
 
 Một `MockProvider` implement cùng interface `ProviderAdapter`, trả stream token giả với delay → dùng cho unit/integration/E2E **không cần network, không cần key**. Bắt buộc để CI chạy được và để demo offline.
 
+### 7.1.1 Nguyên tắc: test phải chạy trên SOURCE, không phải bản build
+
+> Bắt buộc — nếu vi phạm, test có thể **xanh trong khi code sai**.
+
+`packages/shared` là package dùng chung cho extension · server · eval. Theo mặc định, Node/Vite resolve `@sidekick/shared` qua `package.json` `exports` → **`packages/shared/dist/`** (bản build `tsc`).
+
+Hệ quả nếu để nguyên:
+
+| Vấn đề | Mô tả |
+|---|---|
+| **Test chạy code cũ** | Sửa `packages/shared/src/**` mà quên `pnpm build` → test extension/server vẫn xanh dù source đã hỏng → *"test pass nhưng code sai"* |
+| **Fresh clone fail** | `packages/shared/dist` bị `.gitignore` → `pnpm install && pnpm test` **fail** với `Cannot find module "@sidekick/shared"` |
+| **CI rò rỉ** | `pnpm test` ở root không build shared trước → trạng thái phụ thuộc thứ tự chạy trước đó |
+
+**Giải pháp (đã implement):**
+
+1. **Alias trong vitest config** — `apps/extension/vitest.config.ts`, `apps/server/vitest.config.ts`, `apps/eval/vitest.config.ts` trỏ `@sidekick/shared` → `packages/shared/src/index.ts` (và subpath `@sidekick/shared/constants` → `packages/shared/src/constants.ts`).
+   - Subpath phải khai báo **trước** alias chung, nếu không sẽ bị che.
+   - Kết quả: test luôn chạy trên source hiện tại, **không cần build**.
+2. **`pre` hooks ở root** (`package.json`) — `pretest` · `pretest:coverage` · `pretest:e2e` · `pretypecheck` · `prebuild` · `predev` đều build `packages/shared` trước, vì `tsc --noEmit` và `vite build` vẫn cần `dist/*.d.ts` để resolve type.
+3. **`dev:shared`** — `tsc -p tsconfig.build.json --watch` chạy song song với `dev:ext` + `dev:server` (thêm vào `pnpm dev`) → sửa `packages/shared/src` được hot-reload.
+
+**Guard chống regression:** `apps/extension/tests/sharedAlias.test.ts` + `apps/server/tests/sharedAlias.test.ts` assert alias tồn tại, trỏ đúng `packages/shared/src`, và `@sidekick/shared` resolve về **cùng instance module** với import source trực tiếp (nếu alias bị xoá → 2 instance khác nhau → test fail).
+
+> **Bằng chứng:** trước khi có alias, inject `throw` vào `packages/shared/src/contextBudget.ts` → test extension **vẫn PASS 16/16** (chạy `dist`). Sau khi có alias → test **FAIL** đúng chỗ, báo `packages/shared/src/contextBudget.ts:26`.
+
+> **Lưu ý:** alias chỉ áp dụng cho **test**. `vite build` (đóng gói extension) và `tsx` (chạy server) vẫn resolve qua `dist` — đó là hành vi đúng, vì production cần JS đã compile.
+
 ### 7.2 Trạng thái test M0 (2026-11-04)
 
 | Tầng | Trạng thái | Vị trí |
@@ -604,6 +633,47 @@ Một `MockProvider` implement cùng interface `ProviderAdapter`, trả stream t
 > **T-M1-01 bổ sung:** `apps/extension/tests/extractor.test.ts` (8 fixture HTML) · `apps/extension/tests/pageContext.test.ts` (5) · `apps/extension/tests/useChat.test.ts` (+3 test context) · `packages/shared/tests/chatSchema.test.ts` (7) · `apps/server/tests/contextPrompt.test.ts` (6) · `apps/extension/e2e/extractor.spec.ts` (1 kịch bản thật).
 
 Các kịch bản E2E còn lại (offline, BFF down, stop, edit-resend, context toggle) thuộc M1.
+
+### 7.2.1 Trạng thái test hiện tại (2026-11-04)
+
+| Tầng | Số test | Vị trí |
+|---|---|---|
+| Unit | **235** — shared 59 · server 99 · extension 77 | `packages/shared/tests/` · `apps/server/tests/` · `apps/extension/tests/` |
+| E2E | **9** | `apps/extension/e2e/` |
+
+### 7.2.2 Audit chất lượng test bằng mutation testing (2026-11-04)
+
+> Đã thực hiện 1 vòng mutation audit thủ công (scratch script, không commit) để kiểm tra test có thực sự bắt lỗi hay không.
+
+**Phương pháp:** backup source → áp 1 mutation (đổi logic) → chạy test → nếu test **vẫn PASS** thì mutation sống sót → khôi phục source.
+
+**Kết quả:** ~78 mutation trên logic cốt lõi → phần lớn bị bắt (đảo thứ tự tier, bỏ `trimHistory`, bỏ `applyContextBudget`, xoá `attachedItems` khi reset, bo filter `role=system`, bỏ guard `empty prompt`, bỏ `AbortError` handling…). **Không có bằng chứng test bị "tình cho đúng".**
+
+**Blind spot đã phát hiện (chưa fix — backlog M1):**
+
+| # | Vị trí | Vấn đề |
+|---|---|---|
+| 1 | `apps/extension/tests/extractor.test.ts` | Test *"fallback ve body"* thực tế đi qua nhánh `strategyOf(div)`, **không** phải nhánh fallback `doc.body` → mutation tắt fallback vẫn pass |
+| 2 | `apps/extension/tests/extractor.test.ts` | Test *"bo qua block nam trong block da lay"* dùng `<div><p>` — `div` không thuộc `BLOCK_SELECTOR` nên **không** kích hoạt nhánh dedup `if (nested) continue` |
+| 3 | `apps/extension/tests/extractor.test.ts` | Test *"bo qua sidebar"* — sidebar bị loại vì chọn node `article`, **không** phải vì `NEGATIVE_PATTERN` → tắt pattern vẫn pass |
+| 4 | `apps/extension/tests/extractor.test.ts` | Thiếu fixture biên: chỉ `<title>` (không `og:title`) · chỉ `<h1>` · trang link-density cao · `textContent` vs `innerText` (jsdom không mô phỏng layout) |
+| 5 | `packages/shared/tests/contextBudget.test.ts` | Chỉ assert **độ dài** sau khi cắt, không assert **phần nào được giữ lại** → cắt đầu vs cắt cuối không phân biệt được (cắt cuối giữ phần đầu bài — quan trọng nhất) |
+| 6 | `packages/shared/tests/chatSchema.test.ts` | Không test `role` sai (`z.enum` → `z.string()` vẫn pass) · không test `id` rỗng · không test vượt `MAX_HISTORY_MESSAGES` |
+| 7 | `apps/extension/tests/` | **Không có test file cho `lib/storage.ts`** → persist toggle context qua `chrome.storage.local` chưa được kiểm chứng |
+| 8 | `apps/server/tests/` | `chatService.ts` coverage **25%** · provider thật (`gemini.ts` 7%, `openaiCompatible.ts` 6.6%) chưa từng được test — E2E chỉ dùng `MockProvider` |
+
+**Mức độ thực tế của từng tầng:**
+
+| Tầng | Mức độ thực tế |
+|---|---|
+| Unit `packages/shared` | ✅ Thật — logic thuần, không mock |
+| Unit `apps/server` | ⚠️ Logic thật, nhưng provider adapter & `chatService` còn thiếu test |
+| Unit `apps/extension` | ⚠️ jsdom + mock `chrome.*` — logic store/hook thật, không có Chrome thật |
+| E2E `extractor.spec.ts` | ✅ Thật — content script trong isolated world Chrome thật, `chrome.scripting.executeScript` thật |
+| E2E `sidepanel.spec.ts` | ✅ Thật — extension load unpacked + BFF thật + SSE streaming thật (provider = `mock`) |
+| E2E `context.spec.ts` · `extract.spec.ts` | ⚠️ Chrome thật nhưng BFF **bị stub** bằng `page.route` → chỉ kiểm phía client |
+
+**Kết luận & hệ quả:** test **không bị thiên lệch có chủ ý**, nhưng có **blind spot thật** — chủ yếu do fixture quá lý tưởng và assertion chỉ kiểm độ dài chứ không kiểm nội dung. Ưu tiên sửa: #7 (persist toggle — ảnh hưởng UX thật) → #5 (cắt đầu/cắt cuối) → #6 (validate `role` — ảnh hưởng bảo mật biên API) → #1–#3 (tính đúng của extractor).
 
 ### 7.3 Trích xuất nội dung trang (T-M1-01)
 

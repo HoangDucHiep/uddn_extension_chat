@@ -1,4 +1,4 @@
-import { expect } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 import { test } from './fixtures.js'
 
 /**
@@ -36,7 +36,7 @@ const SSE_BODY = [
 /**
  * Giu lai request body gui len BFF de assert.
  */
-async function stubChat(panel: import('@playwright/test').Page): Promise<CapturedChatRequest[]> {
+async function stubChat(panel: Page): Promise<CapturedChatRequest[]> {
   const captured: CapturedChatRequest[] = []
 
   await panel.route('**/api/chat', async (route) => {
@@ -59,7 +59,7 @@ async function stubChat(panel: import('@playwright/test').Page): Promise<Capture
  * Mock `chrome.tabs` + `chrome.scripting` trong panel de "trang dang xem"
  * la mot trang HTML co noi dung.
  */
-async function mockHtmlTab(panel: import('@playwright/test').Page): Promise<void> {
+async function mockHtmlTab(panel: Page): Promise<void> {
   await panel.addInitScript(() => {
     const tab = {
       id: 777,

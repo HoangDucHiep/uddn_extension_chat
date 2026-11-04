@@ -177,6 +177,26 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 >
 > **Còn lại:** `@` multi-tab (T-M1-05) → selection (T-M1-02) → upload file (T-M1-24) — 3 nguồn này đều là `ContextItem` mới, chỉ cần tạo item với `tier` đúng; `applyContextBudget()` đã xử lý sẵn.
 
+### 3.1d Kết quả audit chất lượng test + sửa hạ tầng test (2026-11-04)
+
+> **Động lực:** user yêu cầu rà soát xem test có thực tế / có bị thiên lệch không. Đã thực hiện **mutation audit** (scratch script, không commit) + probe trực tiếp fixture.
+
+| Hạng mục | Kết quả |
+|---|---|
+| Mutation audit (~78 mutation trên logic cốt lõi) | ✅ Phần lớn bị test bắt → **không có bằng chứng test bị "tình cho đúng"** |
+| Blind spot tìm được | ⚠️ **8** (3 test extractor đi nhánh khác tên · thiếu fixture biên · chỉ assert độ dài chứ không assert phần giữ lại · chưa test validate `role` · **chưa có test nào cho `lib/storage.ts`** · `chatService.ts` coverage 25% · provider thật chưa test) — chi tiết [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.2.2 |
+| **Lỗi hạ tầng nghiêm trọng** | 🔴 Test extension/server resolve `@sidekick/shared` từ **`dist` (bản build)** → sửa `packages/shared/src` mà quên build là test **vẫn xanh** (chứng minh: inject `throw` → test vẫn PASS 16/16) |
+| Đã sửa | ✅ Alias vitest → `packages/shared/src` (extension · server · eval) · `pre` hooks build shared (root) · `dev:shared` watch trong `pnpm dev` · guard test `sharedAlias.test.ts` |
+| Fresh clone (`dist` bị `.gitignore`) | ✅ `pnpm test` · `pnpm typecheck` · `pnpm build` · `pnpm dev` đều chạy được (trước đây fail `Cannot find module "@sidekick/shared"`) |
+| `pnpm typecheck` | ✅ pass (shared · server · extension · eval) |
+| `pnpm lint` | ✅ pass (0 error) — đã sửa 3 lỗi ESLint tồn đọng |
+| `pnpm test` | ✅ pass — shared 59 · server 99 · extension 77 (tổng **235**) |
+| `pnpm test:e2e` | ✅ pass — **9/9** |
+
+> **Backlog M1 (thứ tự ưu tiên):** (1) test `lib/storage.ts` — persist toggle context chưa được kiểm chứng, ảnh hưởng UX thật · (2) assert **phần giữ lại** sau khi cắt context (đầu vs cuối) · (3) test validate `role` ở biên API · (4) sửa 3 fixture extractor đi sai nhánh + thêm fixture biên (chỉ `<title>` · chỉ `<h1>` · link-density cao) · (5) test `chatService.ts` + provider adapter thật (mock `fetch` SSE).
+>
+> **Ghi chú:** chưa có CI trong repo → xem `SYSTEM_DESIGN.md` §7.2.2. Đề xuất thêm GitHub Actions (typecheck + lint + test + build + e2e) ở milestone M3.
+
 ### 3.2 Traceability FR → Task
 
 > Bảng đầy đủ FR → Task (kèm milestone) nằm ở [`REQUIREMENTS.md`](REQUIREMENTS.md) §11.1 — nơi duy nhất cần cập nhật khi thêm/bớt task.

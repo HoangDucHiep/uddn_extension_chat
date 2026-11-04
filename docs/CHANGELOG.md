@@ -8,6 +8,11 @@
 
 ## [Unreleased]
 ### Added
+- **Audit chất lượng test + sửa hạ tầng test (`@sidekick/shared` resolve từ source)**
+  - `apps/extension/vitest.config.ts` · `apps/server/vitest.config.ts` · `apps/eval/vitest.config.ts` (mới) — alias `@sidekick/shared` → `packages/shared/src/index.ts` + subpath `@sidekick/shared/constants` → `packages/shared/src/constants.ts`. Subpath khai báo **trước** alias chung để không bị che.
+  - `apps/extension/tests/sharedAlias.test.ts` · `apps/server/tests/sharedAlias.test.ts` (mới, 3 test mỗi file) — guard chống regression: alias tồn tại · trỏ đúng `packages/shared/src` · `@sidekick/shared` resolve về **cùng instance module** với import source trực tiếp (alias bị xoá → 2 instance khác nhau → test fail).
+  - `package.json` (root) — `pretest` · `pretest:coverage` · `pretest:e2e` · `pretypecheck` · `prebuild` · `predev` build `packages/shared` trước; `dev:shared` (`tsc -p tsconfig.build.json --watch`) chạy song song với `dev:ext` + `dev:server` trong `pnpm dev`.
+  - **Số test toàn repo:** 229 → **235 unit** (shared 59 · server 99 · extension 77) + **9 E2E**.
 - **T-M1-23 — Ngân sách context & cắt bớt thông minh (FR-CONTEXT-07) + mô hình "đính kèm chủ động" (FR-CONTEXT-13)**
   - `packages/shared/src/contextBudget.ts` (mới) — `estimateTokens()` (`ceil(chars/4)` — heuristic, ghi rõ là xấp xỉ) · `applyContextBudget()` (cấp phát theo tier `selection` → `attachment` → `currentTab`, item vượt chỗ bị **cắt đầu** + `truncated` + `droppedChars`, trả `{ items, usedTokens, maxTokens, historyBudget, droppedItems }`) · `trimHistory()` (giữ lượt mới nhất trước, **luôn giữ** lượt user cuối cùng).
   - `packages/shared/src/schemas/chat.ts` — `contextItemSchema` (`id`/`kind`/`tier`/`url?`/`title`/`text?`/`excerpt?`/`sourceKind?`/`tabId?`) · `contextBundleSchema` (`{ items }`, max 20) · `normalizeContext()` — `chatRequestSchema.context` dùng `z.preprocess(normalizeContext, …)` nên **nhận cả** shape mới `{ items }` lẫn shape cũ phẳng `{ url, title, text }` (→ bọc thành `items[0]` tier `currentTab`) → backward compatible cho eval harness / client cũ.
@@ -34,10 +39,22 @@
   - `docs/DESIGN_SYSTEM_BRIEF.md` §3.4 — spec chi tiết `ContextChips` + `ContextBudget` (vị trí · token · a11y) · §4 thêm trạng thái "không đính kèm gì".
   - `AGENTS.md` §6 + `docs/README.md` — số task M1 (3/25 → **5/25**) · số unit test (187 → **229**) · task kế tiếp.
 
+### Changed
+- **Test của extension/server/eval giờ chạy trên SOURCE của `packages/shared`, không phải bản build trong `dist/`.**
+  - Trước: `@sidekick/shared` resolve qua `package.json` `exports` → `packages/shared/dist/`. Sửa `packages/shared/src` mà quên `pnpm build` → test **chạy code cũ và vẫn xanh** (chứng minh: inject `throw` vào `packages/shared/src/contextBudget.ts` → test extension vẫn PASS 16/16).
+  - Sau: inject cùng trên → test **FAIL** đúng chỗ (`packages/shared/src/contextBudget.ts:26`).
+- **Fresh clone (`packages/shared/dist` bị `.gitignore`) giờ chạy được** `pnpm test` · `pnpm typecheck` · `pnpm build` · `pnpm dev` — tự build shared trước (trước đây fail với `Cannot find module "@sidekick/shared"`).
+- `apps/extension/src/sidepanel/hooks/useChat.ts` — bỏ import `ChatRequest` không dùng (lint error tồn đọng).
+- `apps/extension/e2e/context.spec.ts` — thay `import('@playwright/test').Page` bằng type-only import `import { type Page }` (lint error tồn đọng).
+
 ### Fixed
+- **Rủi ro "test xanh nhưng code sai"** — test extension/server trước đây resolve `@sidekick/shared` từ `dist` (bản build cũ) → sửa source mà quên build là test vẫn xanh. Đã sửa bằng alias + guard test.
+- **Fresh clone không chạy được test** — `packages/shared/dist` không có sẵn → `pnpm test` fail. Đã sửa bằng `pre` hooks.
+- 3 lỗi ESLint tồn đọng (`no-unused-vars` cho `ChatRequest` · 2 lỗi `consistent-type-imports` trong `e2e/context.spec.ts`) → `pnpm lint` giờ sạch.
 - Số liệu meter "đã dùng X/Y token" không lệch với cái thực sự gửi đi: extension và server dùng **cùng** hàm `applyContextBudget()` từ `@sidekick/shared`.
 
 ### Docs
+- `docs/SYSTEM_DESIGN.md` §7.1.1 (mới — nguyên tắc "test phải chạy trên source" + 3 hệ quả + cách sửa + guard) · §7.2.1 (mới — số test hiện tại) · §7.2.2 (mới — kết quả mutation audit + 8 blind spot + mức độ thực tế từng tầng test) · §3 (cây thư mục) · `docs/HANDOFF.md` (trạng thái + quyết định kỹ thuật) · `docs/CHANGELOG.md`.
 - `docs/REQUIREMENTS.md` · `docs/SYSTEM_DESIGN.md` · `docs/IMPLEMENTATION_PLAN.md` · `docs/COMPARISON_MATRIX.md` · `docs/EVAL_PLAN.md` · `docs/DESIGN_SYSTEM_BRIEF.md` · `docs/CHANGELOG.md` · `docs/HANDOFF.md` · `AGENTS.md` · `docs/README.md` — đồng bộ theo T-M1-23.
 
 - **T-M1-21 / T-M1-22 — Hoàn thiện theo plan: chặn hostname nội bộ + fallback `ytInitialPlayerResponse` + `pageKindSchema`**

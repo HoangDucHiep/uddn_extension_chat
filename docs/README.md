@@ -103,10 +103,10 @@ Chi tiết lý do & hệ quả: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §2 (12 A
 | COMPARISON_MATRIX.md | v1.2 | 2026-11-04 | ✅ Đã cập nhật — PDF/YouTube đạt parity (§D, §E tick ✅) |
 | EVAL_PLAN.md | v1.1 | 2026-11-04 | ✅ Đã cập nhật — thêm nhóm `doc_extract` + `video_transcript` (dataset 48 task) |
 | DESIGN_SYSTEM_BRIEF.md | v1.1 | 2026-11-04 | ✅ Đã cập nhật — component `ContextNotice` (§3.4) |
-| SYSTEM_DESIGN.md | v1.2 | 2026-11-04 | ✅ Đã cập nhật — §7.3.1 nhánh PDF/YouTube đã implement + 2 endpoint |
+| SYSTEM_DESIGN.md | v1.3 | 2026-11-04 | ✅ Đã cập nhật — §7.1.1 (test resolve shared từ source) · §7.2.2 (kết quả mutation audit) |
 | IMPLEMENTATION_PLAN.md | v1.2 | 2026-11-04 | ✅ Đã cập nhật — T-M1-21/22 ✅ + §3.1b bảng verify |
-| HANDOFF.md | v1.2 | 2026-11-04 | ✅ Đã cập nhật — kết quả T-M1-21/22 + quyết định kỹ thuật |
-| CHANGELOG.md | v1.2 | 2026-11-04 | ✅ Đang theo dõi |
+| HANDOFF.md | v1.3 | 2026-11-04 | ✅ Đã cập nhật — kết quả audit test + sửa hạ tầng `@sidekick/shared` |
+| CHANGELOG.md | v1.3 | 2026-11-04 | ✅ Đang theo dõi |
 
 ## Trạng thái milestone
 
