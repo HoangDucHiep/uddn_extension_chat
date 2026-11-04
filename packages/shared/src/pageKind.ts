@@ -29,8 +29,9 @@ const YOUTUBE_HOSTS = new Set([
 /**
  * Kiem tra URL co tro toi file PDF hay khong.
  *
- * Chi dua tren duoi file — server con kiem tra lai bang `Content-Type` thuc te
- * (nhieu trang tra PDF qua duong dan khong co `.pdf`, vd `/download?id=123`).
+ * Chi dua tren duoi file. Server khong kiem tra `Content-Type` ma xac thuc
+ * bang cach parse thu (nhieu host tra PDF qua duong dan khong co `.pdf`, hoac
+ * tra `application/octet-stream` → check header se tao false negative).
  */
 export function isPdfUrl(url: string): boolean {
   try {
