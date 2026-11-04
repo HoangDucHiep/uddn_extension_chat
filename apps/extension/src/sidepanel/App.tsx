@@ -8,6 +8,7 @@ import { ContextBudget } from './components/context/ContextBudget'
 import { MentionPopover } from './components/context/MentionPopover'
 import { useChat } from './hooks/useChat'
 import { useMention } from './hooks/useMention'
+import { useSelection } from './hooks/useSelection'
 import { useTabs } from './hooks/useTabs'
 import type { OpenTab } from '@/lib/tabList'
 
@@ -29,6 +30,8 @@ export function App() {
     budget,
     attachCurrentTab,
     attachTab,
+    attachSelection,
+    attachActiveSelection,
     removeItem,
     setContextEnabled,
     send,
@@ -42,6 +45,13 @@ export function App() {
 
   const mention = useMention()
   const { tabs, isLoading: isLoadingTabs } = useTabs(mention.state.open)
+
+  // Doan text user boi den tren trang → tu dinh kem (duong A — T-M1-02).
+  useSelection({
+    onAttach: (selection) => {
+      void attachSelection(selection)
+    },
+  })
 
   // Tu cuon xuong khi co tin nhan moi.
   useEffect(() => {
@@ -60,6 +70,14 @@ export function App() {
   const handleAddCurrentTab = (): void => {
     setIsAttaching(true)
     void attachCurrentTab().finally(() => {
+      setIsAttaching(false)
+    })
+  }
+
+  // Duong B — dinh doan text user dang boi tren tab active.
+  const handleAttachSelection = (): void => {
+    setIsAttaching(true)
+    void attachActiveSelection().finally(() => {
       setIsAttaching(false)
     })
   }
@@ -158,6 +176,7 @@ export function App() {
         enabled={contextEnabled}
         onToggle={setContextEnabled}
         onAddCurrentTab={handleAddCurrentTab}
+        onAttachSelection={handleAttachSelection}
         onRemove={removeItem}
         isAttaching={isAttaching}
       />

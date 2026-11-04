@@ -4,10 +4,18 @@
  * KHONG giu state lon o day. Panel goi `chrome.scripting.executeScript` de
  * trich xuat noi dung theo yeu cau (M0: chi doc metadata trang;
  * M1: trich noi dung chinh bang Readability-lite — `extractor.ts`).
- * Docs: docs/SYSTEM_DESIGN.md §8 (Content extraction)
+ *
+ * T-M1-02 bo sung: theo doi vung text user boi den → hien nut nobi
+ * "Hoi Sidekick" → click gui doan text len service worker.
+ *
+ * Docs: docs/SYSTEM_DESIGN.md §8 (Content extraction), §7.3.4
  */
 
 import { extractPageContent, type ExtractedPage } from './extractor.js'
+import { createSelectionButton } from './selectionButton.js'
+import { createSelectionWatcher } from './selectionWatcher.js'
+import { normalizeSelectionText } from './selection.js'
+import { SELECTION_ACTION, selectionItemId, type PendingSelection } from '../lib/selectionProtocol.js'
 
 /** Metadata trang, gui ve panel khi duoc hoi. */
 export interface PageMetadata {
@@ -41,13 +49,31 @@ export function extractContent(): ExtractedPage {
   return extractPageContent(document)
 }
 
+/**
+ * Doc vung text user dang boi tren trang (duong B — nut trong panel).
+ *
+ * Panel goi qua `chrome.scripting.executeScript` → ham nay phai tu chua,
+ * khong duoc tham chieu bien module-scope.
+ */
+export function getSelectionSnapshot(): { text: string; title: string; url: string } | null {
+  const selection = window.getSelection()
+  if (selection === null) return null
+  if (selection.rangeCount === 0) return null
+
+  const text = normalizeSelectionText(selection.toString())
+  if (text.length === 0) return null
+
+  return { text, title: document.title, url: window.location.href }
+}
+
 // Expose ham trich xuat de service worker goi qua chrome.scripting.
 Object.assign(window, {
   __sidekickExtractMetadata: extractPageMetadata,
   __sidekickExtractContent: extractContent,
+  __sidekickGetSelection: getSelectionSnapshot,
 })
 
-// Cho phep panel goi yêu cau trich noi dung qua runtime message
+// Cho phep panel goi yêu cau trich xuat qua runtime message
 // (dung chung voi selection context ở T-M1-02).
 chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) => {
   if (
@@ -67,5 +93,48 @@ chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) =
   }
   return false
 })
+
+/**
+ * Khoi dong theo doi selection + nut nobi (T-M1-02).
+ *
+ * Khong chay tren trang cua chinh extension (sidepanel/options) de tranh
+ * nut nobi lo trong UI cua Sidekick.
+ */
+function startSelectionWatcher(): void {
+  const isExtensionPage = window.location.protocol === 'chrome-extension:'
+  if (isExtensionPage) return
+
+  const button = createSelectionButton({
+    onSelect: () => {
+      const snapshot = getSelectionSnapshot()
+      if (snapshot === null) return
+
+      const payload: PendingSelection = {
+        id: selectionItemId(snapshot.text),
+        text: snapshot.text,
+        url: snapshot.url,
+        title: snapshot.title,
+        tabId: undefined,
+        createdAt: Date.now(),
+      }
+
+      // Service worker se luu vao storage + thu mo panel.
+      // Khong await: click handler phai phan hoi ngay.
+      try {
+        void chrome.runtime.sendMessage({ action: SELECTION_ACTION, payload })
+      } catch {
+        // Extension dang bi reload → bo qua.
+      }
+    },
+  })
+
+  const watcher = createSelectionWatcher({
+    button,
+  })
+
+  watcher.start()
+}
+
+startSelectionWatcher()
 
 console.warn('[sidekick] content script da san sang')

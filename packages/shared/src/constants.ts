@@ -26,6 +26,10 @@ export const LIMITS = {
   MAX_PAGE_TEXT_CHARS: 40_000,
   /** Do dai toi da cua excerpt/selection context. */
   MAX_EXCERPT_CHARS: 500,
+  /** Do dai toi da cua doan text user boi den (ky tu) — T-M1-02. */
+  MAX_SELECTION_CHARS: 10_000,
+  /** Do dai nho nhat de doan boi den duoc xem la co y nghia — T-M1-02. */
+  MIN_SELECTION_CHARS: 10,
   /** Kich thuoc toi da cua file PDF duoc fetch ve (byte) — T-M1-21. */
   MAX_PDF_BYTES: 20_000_000,
   /** Do dai toi da cua transcript / text da trich (ky tu) — T-M1-21/22. */
@@ -59,6 +63,14 @@ export const CONTEXT_SAFETY_MARGIN_TOKENS = 2_000
 
 /** So context item toi da trong 1 request. */
 export const MAX_CONTEXT_ITEMS = 20
+
+/**
+ * Thoi gian cho mot doan boi den cho chờ (ms) — T-M1-02.
+ *
+ * Doan chon nam trong `chrome.storage.local` cho panel mo sau. Qua thoi gian
+ * nay doan bi bo (user dang chuyen sang task khac) → tranh dinh kem nham.
+ */
+export const SELECTION_PENDING_TTL_MS = 300_000
 
 /** Endpoint cua BFF. */
 export const API_BASE_PATH = '/api'

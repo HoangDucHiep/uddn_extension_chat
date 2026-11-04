@@ -19,6 +19,17 @@ declare global {
     }
     /** Trich noi dung chinh cua trang (M1 — Readability-lite). */
     __sidekickExtractContent?: () => ExtractedPage
+    /**
+     * Do vung text user dang boi tren trang (T-M1-02).
+     *
+     * Panel goi qua `chrome.scripting.executeScript` → ham nay phai tu chua,
+     * khong duoc tham chieu bien module-scope.
+     */
+    __sidekickGetSelection?: () => {
+      text: string
+      title: string
+      url: string
+    } | null
   }
 }
 

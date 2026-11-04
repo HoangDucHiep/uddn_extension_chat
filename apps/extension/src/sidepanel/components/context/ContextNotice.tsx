@@ -39,6 +39,11 @@ function describeError(errorCode: string): { message: string; icon: 'pdf' | 'war
         message: 'Video nay khong co phu de (caption) — Sidekick AI chua co transcript.',
         icon: 'warning',
       }
+    case 'CONTEXT_SELECTION_EMPTY':
+      return {
+        message: 'Chua co doan van ban nao duoc boi den — hay boi den mot doan tren trang truoc.',
+        icon: 'warning',
+      }
     default:
       return {
         message: 'Khong trich duoc noi dung trang nay — ban van chat binh thuong.',

@@ -6,6 +6,8 @@
  * Docs: docs/SYSTEM_DESIGN.md ADR-2, rule mv3-chrome.mdc §2
  */
 
+import { handleRuntimeMessage } from '@/lib/selectionBridge'
+
 /**
  * Mo side panel — chi chay duoc trong user gesture.
  * `chrome.sidePanel.open()` can chi mo panel o cua so trinh duyet hien tai.
@@ -54,4 +56,10 @@ chrome.contextMenus.onClicked.addListener((info: chrome.contextMenus.OnClickData
   if (info.menuItemId === 'sidekick-open') {
     void openSidePanel()
   }
+})
+
+// Content script gui doan text user boi den (T-M1-02) → luu vao storage
+// + thu mo panel. Panel dang dong van nhan duoc doan chon (storage).
+chrome.runtime.onMessage.addListener((message: unknown, sender) => {
+  void handleRuntimeMessage(message, sender)
 })

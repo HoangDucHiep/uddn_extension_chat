@@ -1,4 +1,4 @@
-import { FileText, Globe, MousePointer, Plus, X } from 'lucide-react'
+import { FileText, Globe, MousePointer, MousePointer2, Plus, X } from 'lucide-react'
 import type { ContextItem } from '@sidekick/shared'
 
 /**
@@ -20,6 +20,12 @@ export interface ContextChipsProps {
   onToggle: (enabled: boolean) => void
   /** Dinh kem tab dang active (noi dung "Them trang nay"). */
   onAddCurrentTab: () => void
+  /**
+   * Dinh kem doan text user dang boi tren trang (T-M1-02).
+   *
+   * Duong B — dung khi user boi den tren trang roi bam nut nay trong panel.
+   */
+  onAttachSelection?: () => void
   /** Xoa mot item theo id. */
   onRemove: (id: string) => void
   /** Dang trich xuat → vo hieu hoa nut them. */
@@ -48,6 +54,7 @@ export function ContextChips({
   enabled,
   onToggle,
   onAddCurrentTab,
+  onAttachSelection,
   onRemove,
   isAttaching = false,
 }: ContextChipsProps) {
@@ -114,6 +121,20 @@ export function ContextChips({
         <Plus className="h-3 w-3" aria-hidden="true" />
         Thêm trang này
       </button>
+
+      {onAttachSelection !== undefined && (
+        <button
+          type="button"
+          onClick={onAttachSelection}
+          disabled={isAttaching}
+          aria-label="Dinh doan van ban dang boi den vao context"
+          data-testid="context-add-selection"
+          className="inline-flex items-center gap-1 rounded-[var(--radius-full)] border border-dashed border-[var(--border-strong)] px-2 py-[2px] text-[length:var(--font-size-xs)] text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-sunken)] focus-visible:outline-none focus-visible:ring-[var(--focus-ring)] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <MousePointer2 className="h-3 w-3" aria-hidden="true" />
+          Dính đoạn đã chọn
+        </button>
+      )}
     </div>
   )
 }

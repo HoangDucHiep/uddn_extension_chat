@@ -9,9 +9,12 @@ import {
 import { streamChat } from '@/lib/sseClient'
 import {
   attachCurrentTab as attachCurrentTabFromLib,
+  attachSelection as attachSelectionFromLib,
   attachTab as attachTabFromLib,
+  captureActiveSelection as captureActiveSelectionFromLib,
 } from '@/lib/contextAttach'
 import { readContextEnabled } from '@/lib/storage'
+import { SELECTION_EMPTY_ERROR_CODE, type PendingSelection } from '@/lib/selectionProtocol'
 import { useChatStore, type ChatMessage } from '../store/chatStore'
 
 /**
@@ -107,9 +110,55 @@ export function useChat() {
     [attachItem, setContextError],
   )
 
+  /**
+   * Dinh kem doan text user boi den (duong A — nut nobi tren trang).
+   *
+   * Doan chon co `tier: 'selection'` → tier cao nhat khi cat bot.
+   *
+   * @param selection - Doan chon do content script gui len.
+   */
+  const attachSelection = useCallback(
+    async (selection: PendingSelection) => {
+      const result = attachSelectionFromLib(selection)
+      setContextError({
+        error: result.error,
+        message: result.errorMessage,
+      })
+      if (result.item !== undefined) {
+        attachItem(result.item)
+      }
+      return result.item
+    },
+    [attachItem, setContextError],
+  )
+
+  /**
+   * Dinh kem doan text user **dang boi** tren tab active (duong B — nut
+   * "Dinh doan da chon" trong panel).
+   */
+  const attachActiveSelection = useCallback(async () => {
+    const selection = await captureActiveSelectionFromLib()
+    if (selection === undefined) {
+      setContextError({
+        error: SELECTION_EMPTY_ERROR_CODE,
+        message: 'Hãy bôi đen một đoạn văn bản trên trang trước khi dính.',
+      })
+      return undefined
+    }
+
+    const result = attachSelectionFromLib(selection)
+    setContextError({
+      error: result.error,
+      message: result.errorMessage,
+    })
+    if (result.item !== undefined) {
+      attachItem(result.item)
+    }
+    return result.item
+  }, [attachItem, setContextError])
+
   // Giu AbortController de "Dung" huy stream.
   const abortRef = useRef<AbortController | undefined>(undefined)
-
   const send = useCallback(
     async (content: string) => {
       const trimmed = content.trim()
@@ -250,6 +299,8 @@ export function useChat() {
     budget,
     attachCurrentTab,
     attachTab,
+    attachSelection,
+    attachActiveSelection,
     removeItem,
     clearAttachedItems,
     setContextEnabled,
