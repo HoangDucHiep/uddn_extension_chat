@@ -12,6 +12,7 @@ import { errorHandler, notFoundHandler } from './middleware/error.js'
 import { createRequestLogger, type LogLevel } from './middleware/requestLogger.js'
 import { createHealthRouter } from './routes/health.js'
 import { createChatRouter } from './routes/chat.js'
+import { createExtractRouter } from './routes/extract.js'
 import type { ChatServiceDeps } from './services/chatService.js'
 
 export interface AppDeps extends ChatServiceDeps {
@@ -34,11 +35,13 @@ export function createApp(deps: AppDeps): Express {
 
   const healthRouter = createHealthRouter(deps)
   const chatRouter = createChatRouter(deps)
+  const extractRouter = createExtractRouter()
 
   // `/api/health` la endpoint chinh; `/health` la alias de smoke test nhanh.
   app.use(API_BASE_PATH, healthRouter)
   app.use('/', healthRouter)
   app.use(API_BASE_PATH, chatRouter)
+  app.use(API_BASE_PATH, extractRouter)
 
   app.use(notFoundHandler)
   app.use(errorHandler)

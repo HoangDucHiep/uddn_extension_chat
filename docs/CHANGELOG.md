@@ -8,6 +8,18 @@
 
 ## [Unreleased]
 ### Added
+- **T-M1-21 — Trích xuất PDF server-side (FR-CONTEXT-05)** — Chrome render PDF bằng PDF viewer built-in (plugin native `chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/`) → content script không inject được → phải parse ở BFF.
+  - `apps/server/src/lib/safeFetch.ts` — lớp chống SSRF cho mọi URL do client gửi lên: chỉ cho `http:`/`https:` · resolve DNS (`node:dns/promises`) rồi chặn loopback `127/8` · private `10/8`, `172.16/12`, `192.168/16` · link-local `169.254/16` (cloud metadata) · CGNAT `100.64/10` · `0.0.0.0/8` · IPv6 `::1`, `fc00::/7`, `fe80::/10` · IPv4-mapped `::ffff:x.x.x.x` · tự đi theo redirect (tối đa 3 hop, kiểm tra lại từng hop; 301/302/303 → đổi sang `GET`) · timeout 15s (AbortController) · giới hạn size khi đọc **stream** (không chỉ dựa `content-length`).
+  - `apps/server/src/lib/pdfExtractor.ts` — parse bằng `pdfjs-dist@^4.10.38` (bản `legacy/build/pdf.mjs`, Node ≥ 20 khớp `.nvmrc` 22): gom text item theo tọa độ Y (`transform[5]`) để giữ newline · truyền `standardFontDataUrl` cho PDF dùng font chuẩn non-embedded · PDF không có text layer (bản scan) → `CONTEXT_PDF_NOT_READABLE`.
+  - `apps/server/src/routes/extract.ts` — `POST /api/extract/pdf` (validate `extractRequestSchema`) · **luôn trả HTTP 200** cho lỗi nghiệp vụ kèm `{ error, errorMessage }` trong body → client không phân biệt theo status → chat không bao giờ hỏng vì lỗi trích xuất.
+  - `apps/server/src/app.ts` — mount `createExtractRouter()` vào `API_BASE_PATH`.
+  - `apps/server/package.json` — thêm `pdfjs-dist@^4.10.38` (bản cuối hỗ trợ Node ≥ 20; `v5` yêu cầu Node ≥ 22.3).
+  - **Test** — `apps/server/tests/safeFetch.test.ts` (+9) · `apps/server/tests/pdfExtractor.test.ts` (+5, dựng PDF mini có xref chuẩn để test offline) · `apps/server/tests/extractRoute.test.ts` (+5, HTTP thật qua Express).
+- **T-M1-22 — Transcript YouTube server-side (FR-CONTEXT-06)** — transcript nằm ở `captionTracks` trong player response, không phải DOM text.
+  - `apps/server/src/lib/youtubeExtractor.ts` — `GET` watch page (lấy `INNERTUBE_API_KEY` + `VISITOR_DATA` bằng regex) → `POST youtubei/v1/player` với client `ANDROID` (`clientVersion 20.10.38`, `androidSdkVersion 34`, header `X-Youtube-Client-Name: 3`) → đọc `captions.playerCaptionsTracklistRenderer.captionTracks[]` → `fetch` `captionTracks[].baseUrl` với `User-Agent` Android → parse XML timedtext (`<p t d>` hoặc `<text start dur>`) → transcript `[mm:ss] text`.
+  - Chọn track: ưu tiên ngôn ngữ `vi` → `en` → ngôn ngữ còn lại; trong cùng ngôn ngữ ưu tiên track thủ công (`kind !== 'asr'`).
+  - Fallback rõ ràng → `CONTEXT_TRANSCRIPT_UNAVAILABLE` (không caption / geo-block / live stream / player response không hợp lệ).
+  - **Test** — `apps/server/tests/youtubeExtractor.test.ts` (+11, mock `global.fetch` → watch page → InnerTube → timedtext XML).
 - **T-M1-21 / T-M1-22 — Trích xuất PDF & transcript YouTube (contract `packages/shared`)** — chuẩn hoá 2 nhánh trích xuất context mới về cùng shape `context.text` với nhánh HTML.
   - `packages/shared/src/pageKind.ts` — `detectPageKind(url)` → `'html' | 'pdf' | 'youtube' | 'unknown'` · `extractYouTubeVideoId(url)` (hỗ trợ `/watch?v=`, `/shorts/`, `/live/`, `/embed/`, `youtu.be/`) · `isPdfUrl(url)`.
   - `packages/shared/src/schemas/extract.ts` — `extractRequestSchema` (`{ kind: 'pdf' | 'youtube', url }`) · `extractResponseSchema` (`{ kind, text, title?, excerpt?, truncated, error?, errorMessage? }`) · `EXTRACT_ERROR_CODES`.
