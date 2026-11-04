@@ -71,6 +71,14 @@ describe('safeFetch', () => {
       safeFetch('http://this-host-does-not-exist-sidekick-test.invalid/a'),
     ).rejects.toBeInstanceOf(SafeFetchError)
   })
+
+  it('chan hostname noi bo (localhost / .local / .internal)', async () => {
+    await expect(safeFetch('http://localhost:8787/api/health')).rejects.toThrow(
+      /host noi bo bi chan/i,
+    )
+    await expect(safeFetch('http://service.internal/data')).rejects.toThrow(/host noi bo bi chan/i)
+    await expect(safeFetch('http://printer.local/status')).rejects.toThrow(/host noi bo bi chan/i)
+  })
 })
 
 describe('readText / readBuffer', () => {

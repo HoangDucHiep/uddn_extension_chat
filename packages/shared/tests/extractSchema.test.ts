@@ -6,7 +6,11 @@
 
 import { describe, expect, it } from 'vitest'
 import { detectPageKind, extractYouTubeVideoId, isPdfUrl } from '../src/pageKind.js'
-import { extractRequestSchema, extractResponseSchema } from '../src/schemas/extract.js'
+import {
+  extractRequestSchema,
+  extractResponseSchema,
+  pageKindSchema,
+} from '../src/schemas/extract.js'
 import { ERROR_CODES } from '../src/errors.js'
 
 describe('detectPageKind', () => {
@@ -60,6 +64,18 @@ describe('isPdfUrl', () => {
     expect(isPdfUrl('https://example.com/a.html')).toBe(false)
     expect(isPdfUrl('file:///C:/a.pdf')).toBe(false)
     expect(isPdfUrl('nonsense')).toBe(false)
+  })
+})
+
+describe('pageKindSchema', () => {
+  it('accept 4 loai page kind', () => {
+    for (const kind of ['html', 'pdf', 'youtube', 'unknown']) {
+      expect(pageKindSchema.safeParse(kind).success).toBe(true)
+    }
+  })
+
+  it('reject loai khong dung', () => {
+    expect(pageKindSchema.safeParse('docx').success).toBe(false)
   })
 })
 

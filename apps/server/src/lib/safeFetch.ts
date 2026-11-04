@@ -73,6 +73,13 @@ const BLOCKED_IPV4_RANGES: ReadonlyArray<{ cidr: string; prefix: number }> = [
 const BLOCKED_IPV6_PREFIXES = ['::1', 'fc', 'fd', 'fe80', '::ffff:127.']
 
 /**
+ * Hostname cam dung — chong SSRF khi DNS resolve ra IP cong khai
+ * (vd `localtest.me`) hoac host noi bo khong phai IP literal.
+ */
+const BLOCKED_HOSTNAMES = ['localhost', 'localhost.localdomain']
+const BLOCKED_HOST_SUFFIXES = ['.local', '.internal', '.localdomain']
+
+/**
  * Kiem tra mot dia chi IP co bi chan hay khong.
  *
  * @param address - Dia chi IP dang chuoi.
@@ -127,6 +134,21 @@ function toInt32(address: string): number | null {
  */
 export async function assertPublicHost(hostname: string): Promise<void> {
   const literal = hostname.replace(/^\[|\]$/g, '')
+
+  // Chan hostname noi bo truoc khi DNS resolve — mot so host khong resolve
+  // duoc (`.internal`) va mot so host resolve ra IP cong khai nhung van chi
+  // toi dich vu noi bo trong Docker network.
+  const lower = literal.toLowerCase()
+  if (
+    BLOCKED_HOSTNAMES.includes(lower) ||
+    BLOCKED_HOST_SUFFIXES.some((suffix) => lower.endsWith(suffix))
+  ) {
+    throw new SafeFetchError(
+      ERROR_CODES.CONTEXT_EXTRACT_FAILED,
+      `Host noi bo bi chan: ${hostname}`,
+      400,
+    )
+  }
 
   if (isIP(literal) !== 0) {
     if (isBlockedAddress(literal)) {

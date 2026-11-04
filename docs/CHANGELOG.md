@@ -8,6 +8,13 @@
 
 ## [Unreleased]
 ### Added
+- **T-M1-21 / T-M1-22 — Hoàn thiện theo plan: chặn hostname nội bộ + fallback `ytInitialPlayerResponse` + `pageKindSchema`**
+  - `apps/server/src/lib/safeFetch.ts` — chặn thêm hostname nội bộ trước khi DNS resolve: `localhost` · `localhost.localdomain` · `*.local` · `*.internal` · `*.localdomain` (một số host nội bộ không resolve được hoặc resolve ra IP công cộng nhưng vẫn chỉ tới dịch vụ trong Docker network).
+  - `apps/server/src/lib/youtubeExtractor.ts` — **2 tầng dự phòng** thay vì 1 tầng: tầng 1 InnerTube (`youtubei/v1/player`, client `ANDROID`) → tầng 2 parse `ytInitialPlayerResponse` nhúng trong HTML watch page (dùng bộ đếm ngoặc có nhận biết chuỗi/escape, không dùng regex) → hết cả 2 → `CONTEXT_TRANSCRIPT_UNAVAILABLE`. Hàm `resolvePlayerResponse()` chỉ nhảy sang tầng 2 khi lỗi là lỗi mạng/parse (`CONTEXT_EXTRACT_FAILED`), lỗi nghiệp vụ vẫn trả thẳng.
+  - `packages/shared/src/schemas/extract.ts` — thêm `pageKindSchema` (`z.enum(PAGE_KINDS)`) để validate `sourceKind` từ client.
+  - **Test** — `apps/server/tests/safeFetch.test.ts` (+3: chặn `localhost` / `*.internal` / `*.local`) · `apps/server/tests/youtubeExtractor.test.ts` (+3: fallback khi InnerTube 502 · fallback khi watch page không có API key · cả 2 tầng hỏng → `CONTEXT_TRANSCRIPT_UNAVAILABLE`) · `packages/shared/tests/extractSchema.test.ts` (+2) · `apps/extension/tests/pageKind.test.ts` (file mới, 4 test: quyết định phía client cho 4 loại URL).
+  - **Số test toàn repo:** **187 unit** (shared 38 · server 91 · extension 58) + **5 E2E**.
+  - **Docs** — `SYSTEM_DESIGN.md` §7.3.1 (chặn hostname nội bộ + 2 tầng dự phòng + `pageKindSchema`) · `IMPLEMENTATION_PLAN.md` §3.1b (bảng verify + số liệu test) · `AGENTS.md` §6 + `docs/README.md` + `docs/HANDOFF.md` (số liệu test).
 - **T-M1-21 / T-M1-22 — Nối context PDF & transcript YouTube vào side panel** — 2 nhánh trích xuất mới được dùng trong panel, chuẩn hoá về cùng shape `context.text` với nhánh HTML.
   - `apps/extension/src/lib/extractClient.ts` — `requestExtract(kind, url)` gọi `POST /api/extract/pdf` hoặc `POST /api/extract/youtube` qua `fetchJson` sẵn có; **không bao giờ throw** → lỗi thành `{ error, errorMessage }`.
   - `apps/extension/src/lib/pageContext.ts` — `captureTabContext()` phân nhánh theo `detectPageKind(url)`: `html` → content script (giữ nguyên hành vi T-M1-01) · `pdf`/`youtube` → BFF (merge `text`/`excerpt`/`title`) · `unknown` (`chrome://`, `file://`) → context tối thiểu, không gọi mạng. Lỗi → set `sourceKind` + `contextError` + `contextErrorMessage`.

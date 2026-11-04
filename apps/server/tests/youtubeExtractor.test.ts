@@ -163,6 +163,52 @@ describe('extractYoutubeTranscript', () => {
       extractYoutubeTranscript('https://www.youtube.com/watch?v=abc'),
     ).rejects.toBeInstanceOf(SafeFetchError)
   })
+
+  it('du phong sang ytInitialPlayerResponse khi InnerTube that bai', async () => {
+    const html = `
+      <html><head>
+        <script>var ytInitialData = {"INNERTUBE_API_KEY":"AIzaSyTESTKEY"};</script>
+        <script>var ytInitialPlayerResponse = ${JSON.stringify(PLAYER_RESPONSE)};</script>
+      </head><body></body></html>
+    `
+    mockFetch([
+      () => new Response(html, { status: 200 }),
+      // InnerTube tra HTTP 502 → tang du phong duoc dung.
+      () => new Response('loi server', { status: 502 }),
+      () => new Response(TIMEDTEXT_XML, { status: 200 }),
+    ])
+
+    const result = await extractYoutubeTranscript('https://www.youtube.com/watch?v=abc')
+
+    expect(result.text).toContain('[00:00] Xin chao cac ban')
+    expect(result.language).toBe('vi')
+  })
+
+  it('du phong dung khi watch page khong co API key', async () => {
+    const html = `
+      <html><head>
+        <script>var ytInitialPlayerResponse = ${JSON.stringify(PLAYER_RESPONSE)};</script>
+      </head><body></body></html>
+    `
+    mockFetch([
+      () => new Response(html, { status: 200 }),
+      () => new Response(TIMEDTEXT_XML, { status: 200 }),
+    ])
+
+    const result = await extractYoutubeTranscript('https://www.youtube.com/watch?v=abc')
+    expect(result.text).toContain('[00:00] Xin chao cac ban')
+  })
+
+  it('nem CONTEXT_TRANSCRIPT_UNAVAILABLE khi ca 2 tang deu that bai', async () => {
+    mockFetch([
+      () => new Response(WATCH_HTML, { status: 200 }),
+      () => new Response('loi server', { status: 502 }),
+    ])
+
+    await expect(
+      extractYoutubeTranscript('https://www.youtube.com/watch?v=abc'),
+    ).rejects.toMatchObject({ code: ERROR_CODES.CONTEXT_TRANSCRIPT_UNAVAILABLE })
+  })
 })
 
 describe('fetchTimedText', () => {

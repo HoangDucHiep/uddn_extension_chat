@@ -99,7 +99,7 @@ pnpm eval:run                # chạy eval harness
 | Milestone | Trạng thái | Ghi chú |
 |---|---|---|
 | **M0 — Foundation** | ✅ Hoàn thành | 15/15 task · 91 unit test + 2 E2E · tag `v0.1` |
-| **M1 — Parity** | 🚧 Đang làm | 3/25 task (T-M1-01, T-M1-21, T-M1-22 ✅) · 177 unit test + 5 E2E |
+| **M1 — Parity** | 🚧 Đang làm | 3/25 task (T-M1-01, T-M1-21, T-M1-22 ✅) · 187 unit test + 5 E2E |
 | **M2 — Advanced & Eval** | ⬜ Chưa bắt đầu | `EVAL_REPORT.md` là deliverable bắt buộc |
 | **M3 — Polish & Deliverable** | ⬜ Chưa bắt đầu | |
 | **M4 — Workflow** | ⬜ Tuỳ chọn | Chỉ sau M3 + đã có eval report |

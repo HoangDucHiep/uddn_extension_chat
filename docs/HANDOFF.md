@@ -24,7 +24,7 @@
 | Hạng mục | Trạng thái |
 |---|---|
 | Docs | ✅ Đầy đủ 9 file (`docs/`) + `AGENTS.md` ở root |
-| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 xong** — 4 workspace, 177 unit test + 5 E2E |
+| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 xong** — 4 workspace, 187 unit test + 5 E2E |
 | Git | ✅ Đã init (`main`) · tag `v0.1` đánh dấu M0 |
 | Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: 3/25 task) |
 | Task tiếp theo | **T-M1-23** — ngân sách context & cắt bớt thông minh (FR-CONTEXT-07) |

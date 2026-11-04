@@ -88,18 +88,10 @@ export async function extractYoutubeTranscript(
 
   const pageHtml = await fetchWatchPage(watchUrl, options)
 
-  const apiKey = extractPattern(pageHtml, /"INNERTUBE_API_KEY":"([^"]+)"/)
-  const visitorData = extractPattern(pageHtml, /"VISITOR_DATA":"([^"]+)"/)
+  // InnerTube la API khong chinh thuc → co the doi. Tang 1: InnerTube (chinh).
+  // Neu that bai → tang 2: `ytInitialPlayerResponse` co san trong HTML watch page.
+  const player = await resolvePlayerResponse(pageHtml, videoId, options)
 
-  if (apiKey === undefined) {
-    throw new SafeFetchError(
-      ERROR_CODES.CONTEXT_TRANSCRIPT_UNAVAILABLE,
-      'Khong lay duoc INNERTUBE_API_KEY tu trang watch',
-      422,
-    )
-  }
-
-  const player = await fetchPlayerResponse(apiKey, visitorData, videoId, options)
   const track = selectCaptionTrack(player)
 
   if (track === undefined) {
@@ -220,6 +212,109 @@ async function fetchPlayerResponse(
       422,
     )
   }
+}
+
+/**
+ * Lay player response theo 2 tang.
+ *
+ *  1. **InnerTube** (`youtubei/v1/player`, client `ANDROID`) — hang chinh.
+ *  2. **`ytInitialPlayerResponse`** trong HTML watch page — du phong khi InnerTube
+ *     doi API hoac tra loi sai.
+ *
+ * Neu ca 2 tang deu that bai → nem loi `CONTEXT_TRANSCRIPT_UNAVAILABLE`
+ * (chat van chay binh thuong, chi khong co context).
+ *
+ * @param pageHtml - HTML cua watch page.
+ * @param videoId - Id video.
+ * @param options - Tuy chon fetch.
+ */
+async function resolvePlayerResponse(
+  pageHtml: string,
+  videoId: string,
+  options: YoutubeFetchOptions,
+): Promise<PlayerResponse> {
+  const apiKey = extractPattern(pageHtml, /"INNERTUBE_API_KEY":"([^"]+)"/)
+  const visitorData = extractPattern(pageHtml, /"VISITOR_DATA":"([^"]+)"/)
+
+  if (apiKey !== undefined) {
+    try {
+      return await fetchPlayerResponse(apiKey, visitorData, videoId, options)
+    } catch (error) {
+      if (error instanceof SafeFetchError && error.code === ERROR_CODES.CONTEXT_EXTRACT_FAILED) {
+        // Mang/parse loi → thu tang du phong.
+      } else {
+        throw error
+      }
+    }
+  }
+
+  const embedded = extractInitialPlayerResponse(pageHtml)
+  if (embedded !== undefined) {
+    return embedded
+  }
+
+  throw new SafeFetchError(
+    ERROR_CODES.CONTEXT_TRANSCRIPT_UNAVAILABLE,
+    'Khong lay duoc player response (InnerTube va HTML deu that bai)',
+    422,
+  )
+}
+
+/**
+ * Parse `ytInitialPlayerResponse` chen trong HTML watch page.
+ *
+ * Noi dung la mot JSON object lon → dung thuoc tim vi tri `}` ket thuc bang
+ * dem cap nhay (khong dung regex vi noi dung chua dau nhay trong chuoi).
+ *
+ * @param html - HTML watch page.
+ */
+function extractInitialPlayerResponse(html: string): PlayerResponse | undefined {
+  const marker = 'ytInitialPlayerResponse'
+  const markerIndex = html.indexOf(marker)
+  if (markerIndex === -1) return undefined
+
+  const start = html.indexOf('{', markerIndex)
+  if (start === -1) return undefined
+
+  let depth = 0
+  let inString = false
+  let escaped = false
+
+  for (let index = start; index < html.length; index += 1) {
+    const char = html[index]
+
+    if (inString) {
+      if (escaped) {
+        escaped = false
+      } else if (char === '\\') {
+        escaped = true
+      } else if (char === '"') {
+        inString = false
+      }
+      continue
+    }
+
+    if (char === '"') {
+      inString = true
+      continue
+    }
+    if (char === '{') {
+      depth += 1
+      continue
+    }
+    if (char === '}') {
+      depth -= 1
+      if (depth === 0) {
+        try {
+          return JSON.parse(html.slice(start, index + 1)) as PlayerResponse
+        } catch {
+          return undefined
+        }
+      }
+    }
+  }
+
+  return undefined
 }
 
 /**

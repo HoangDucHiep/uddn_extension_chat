@@ -129,21 +129,22 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | Hạng mục | Kết quả |
 |---|---|
 | `packages/shared/src/pageKind.ts` | ✅ `detectPageKind()` → `html`/`pdf`/`youtube`/`unknown` · `extractYouTubeVideoId()` (`/watch?v=`, `/shorts/`, `/live/`, `/embed/`, `youtu.be/`) · `isPdfUrl()` |
-| `packages/shared/src/schemas/extract.ts` | ✅ `extractRequestSchema` · `extractResponseSchema` · `EXTRACT_ERROR_CODES` (dùng chung `ERROR_CODES`) |
+| `packages/shared/src/schemas/extract.ts` | ✅ `extractRequestSchema` · `extractResponseSchema` · `pageKindSchema` · `EXTRACT_ERROR_CODES` (dùng chung `ERROR_CODES`) |
 | `packages/shared/src/errors.ts` | ✅ 4 error code mới: `CONTEXT_PDF_NOT_READABLE` (422) · `CONTEXT_PDF_UNREACHABLE` (502) · `CONTEXT_TRANSCRIPT_UNAVAILABLE` (422) · `CONTEXT_EXTRACT_FAILED` (500) |
-| `apps/server/src/lib/safeFetch.ts` | ✅ Chống SSRF: chỉ `http(s)` · chặn loopback/private/link-local/CGNAT/IPv6 nội bộ/IPv4-mapped · redirect ≤ 3 hop (kiểm tra lại từng hop) · timeout 15s · size cap khi đọc stream |
+| `apps/server/src/lib/safeFetch.ts` | ✅ Chống SSRF: chỉ `http(s)` · chặn hostname nội bộ (`localhost`/`*.local`/`*.internal`) · chặn loopback/private/link-local/CGNAT/IPv6 nội bộ/IPv4-mapped · redirect ≤ 3 hop (kiểm tra lại từng hop) · timeout 15s · size cap khi đọc stream |
 | `apps/server/src/lib/pdfExtractor.ts` | ✅ `pdfjs-dist@^4.10.38` (legacy build) · gom text item theo toa độ Y giữ newline · `standardFontDataUrl` cho font chuẩn non-embedded · PDF scan → `CONTEXT_PDF_NOT_READABLE` |
-| `apps/server/src/lib/youtubeExtractor.ts` | ✅ watch page → InnerTube client `ANDROID` → `captionTracks` → `timedtext` XML → `[mm:ss] text`; ưu tiên `vi` → `en`; track thủ công trước `asr` |
+| `apps/server/src/lib/youtubeExtractor.ts` | ✅ watch page → InnerTube client `ANDROID` → `captionTracks` → `timedtext` XML → `[mm:ss] text`; ưu tiên `vi` → `en`; track thủ công trước `asr`; **2 tầng**: InnerTube → dự phòng `ytInitialPlayerResponse` trong HTML |
 | `apps/server/src/routes/extract.ts` | ✅ `POST /api/extract/pdf` · `POST /api/extract/youtube`; **lỗi nghiệp vụ trả HTTP 200** kèm `error` trong body (chỉ 400 khi body sai schema) |
 | `apps/extension/src/lib/extractClient.ts` | ✅ Gọi 2 endpoint qua `fetchJson`; **không bao giờ throw** — lỗi thành `{ error, errorMessage }` |
 | `apps/extension/src/lib/pageContext.ts` | ✅ Phân nhánh theo `detectPageKind(url)`: `html` → content script (giữ nguyên T-M1-01) · `pdf`/`youtube` → BFF · `unknown` → context tối thiểu; `sourceKind` + `contextError` |
 | `apps/extension/src/sidepanel/components/context/ContextNotice.tsx` | ✅ Banner lỗi trích xuất trên Composer; token `--warning-subtle`/`--warning`/`--text-secondary`; `role="status"` + `aria-live="polite"`; nút đóng có `aria-label` |
-| Unit test | ✅ +44 test — shared 15 (`extractSchema.test.ts`) · server 30 (`safeFetch` 9 · `pdfExtractor` 5 · `youtubeExtractor` 11 · `extractRoute` 5) · extension 12 (`extractClient` 4 · `extractContext` 7 · `pageContext` +1) |
+| Unit test | ✅ +67 test — shared 16 (`extractSchema.test.ts`) · server 36 (`safeFetch` 12 · `pdfExtractor` 5 · `youtubeExtractor` 14 · `extractRoute` 5) · extension 15 (`extractClient` 4 · `extractContext` 6 · `pageKind` 4 · `pageContext` +1) |
 | E2E | ✅ +2 kịch bản — `e2e/extract.spec.ts`: stub BFF → panel hiện `ContextNotice` đúng `data-error-code` cho PDF scan & video không caption |
 | `pnpm typecheck` | ✅ pass (shared · server · extension) |
 | `pnpm lint` | ✅ pass (0 error, 0 warning) |
-| `pnpm test` | ✅ pass — shared 36 · server 87 · extension 54 |
+| `pnpm test` | ✅ pass — shared 38 · server 91 · extension 58 (tổng **187**) |
 | `pnpm build` | ✅ pass — `dist/content.js` vẫn là **IIFE 1 file, không `import`** (4.81 kB) · `pdfjs-dist` chỉ nằm ở `apps/server` |
+| `pnpm test:e2e` | ✅ pass — 5/5 (2 kịch bản `extract.spec.ts` + 3 kịch bản cũ) |
 
 > **Rủi ro còn lại:** InnerTube là API không chính thức của YouTube → có thể đổi. Khi hỏng → `CONTEXT_TRANSCRIPT_UNAVAILABLE` → UI báo rõ, chat vẫn chạy. Xem rủi ro đầy đủ ở [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.3.1.
 

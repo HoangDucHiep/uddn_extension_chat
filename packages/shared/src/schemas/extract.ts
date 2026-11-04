@@ -10,7 +10,11 @@
 
 import { z } from 'zod'
 import { ERROR_CODES } from '../errors.js'
-import { EXTRACTABLE_KINDS } from '../pageKind.js'
+import { EXTRACTABLE_KINDS, PAGE_KINDS } from '../pageKind.js'
+
+/** Schema cua `PageKind` — dung de validate `sourceKind` tu client. */
+export const pageKindSchema = z.enum(PAGE_KINDS)
+export type PageKindValue = z.infer<typeof pageKindSchema>
 
 /**
  * Error code rieng cho nhanh trich xuat PDF / YouTube.
