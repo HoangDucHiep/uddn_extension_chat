@@ -24,14 +24,35 @@
 | Hạng mục | Trạng thái |
 |---|---|
 | Docs | ✅ Đầy đủ 9 file (`docs/`) + `AGENTS.md` ở root |
-| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 xong** — 4 workspace, 120 unit test + 3 E2E |
+| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 xong** — 4 workspace, 177 unit test + 5 E2E |
 | Git | ✅ Đã init (`main`) · tag `v0.1` đánh dấu M0 |
-| Milestone hiện tại | **M1 — Parity** (M0 đã đóng, T-M1-01 xong) |
-| Task tiếp theo | **T-M1-02** — content script selection context (FR-CONTEXT-04) |
+| Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: 3/25 task) |
+| Task tiếp theo | **T-M1-23** — ngân sách context & cắt bớt thông minh (FR-CONTEXT-07) |
 
 ### Đang làm dở
 
-_(Không có — T-M1-01 đã commit, task kế tiếp T-M1-02)_
+_(Không có — T-M1-21 + T-M1-22 đã commit, task kế tiếp T-M1-23)_
+
+### Việc đã xong gần nhất (T-M1-21 + T-M1-22 — Trích xuất PDF & transcript YouTube)
+
+- **T-M1-21 (PDF)** — `apps/server/src/lib/pdfExtractor.ts` parse bằng `pdfjs-dist@^4.10.38` (build `legacy`) · `apps/server/src/lib/safeFetch.ts` chặn SSRF (loopback/private/link-local/CGNAT/IPv6 nội bộ/IPv4-mapped, redirect ≤ 3 hop, timeout 15s, size cap 20 MB) · `POST /api/extract/pdf`.
+- **T-M1-22 (YouTube)** — `apps/server/src/lib/youtubeExtractor.ts`: watch page → `POST youtubei/v1/player` client `ANDROID` (`clientVersion 20.10.38`, `androidSdkVersion 34`, header `X-Youtube-Client-Name: 3`) → `captionTracks` → `timedtext` XML → `[mm:ss] text`. Ưu tiên `vi` → `en`; track thủ công trước `asr`.
+- **Contract** — `packages/shared/src/pageKind.ts` (`detectPageKind` / `extractYouTubeVideoId` / `isPdfUrl`) + `schemas/extract.ts` + 4 error code `CONTEXT_*` + `pageContextSchema` có `sourceKind`/`contextError`.
+- **Extension** — `captureTabContext()` phân nhánh theo loại trang; `ContextNotice.tsx` hiển thị lỗi trích xuất trên Composer (PDF scan / không có caption).
+- **Nguyên tắc bất di bất dịch:** lỗi trích xuất **luôn trả HTTP 200** kèm `error` trong body → panel chỉ hiện thông báo, chat không bao giờ hỏng.
+- +44 unit test + 2 E2E. Bằng chứng: `docs/IMPLEMENTATION_PLAN.md` §3.1b.
+
+### Quyết định kỹ thuật mới (T-M1-21/22)
+
+| Quyết định | Lý do |
+|---|---|
+| `pdfjs-dist@^4.10.38` (bản cuối Node ≥ 20) thay vì `unpdf` | `unpdf` yêu cầu Node ≥ 24, repo dùng Node 22 (`.nvmrc`) |
+| `pdfjs-dist` chỉ nằm ở `apps/server` | Không kéo ~10 MB vào bundle extension → `dist/content.js` giữ nguyên ~4.8 kB |
+| Client InnerTube `ANDROID` (không phải `WEB`) | Client `WEB` yêu cầu `signatureCipher`/`poToken` → `timedtext` trả về rỗng; client `ANDROID` trả `baseUrl` có `signature` hợp lệ |
+| BFF tự theo redirect (tối đa 3 hop) thay vì `redirect: 'follow'` | Không kiểm soát được host của hop tiếp theo → mất lớp chống SSRF |
+| Lỗi nghiệp vụ trả HTTP 200 + `error` trong body | Client (side panel) chỉ cần đọc body; tránh phân biệt status → đơn giản hoá UI, không làm hỏng chat |
+| `detectPageKind()` đặt ở `packages/shared` (không trong extension) | Cả extension lẫn server đều cần → 1 nguồn sự thật; nhưng **không** export qua subpath `./constants` để content script không kéo theo `zod` |
+| `pageContextSchema` mở rộng `sourceKind` + `contextError` ngay | Tránh sửa contract lần 2 ở T-M1-23 (ngân sách context) |
 
 ### Audit docs FR ↔ Task (2026-11-04)
 
@@ -41,6 +62,8 @@ Rà soát toàn bộ `docs/` đối chiếu `REQUIREMENTS.md` ↔ `IMPLEMENTATIO
 - **Đã sửa:** thêm 11 task card mới (T-M1-21..25, T-M2-19..22, T-M3-10..11) · sửa 2 nhãn FR sai · bổ sung FR/NFR vào 12 task card cũ · thêm bảng traceability đầy đủ (83 FR + 29 NFR) ở `REQUIREMENTS.md` §11.1 và bản rút gọn ở `IMPLEMENTATION_PLAN.md` §3.2.
 - **Quyết định:** nâng `FR-CONTEXT-05` / `FR-CONTEXT-06` từ **Should → Must** (Edge A20 + Gemini B10 đều ở mức Must) → M1 tăng 20 → 25 task.
 - **Trạng thái:** chỉ sửa **docs**, chưa viết code. Task implement lần lượt: T-M1-21 → T-M1-22 → T-M1-23 → T-M1-24 → T-M1-25.
+
+> **Cập nhật 2026-11-04 (sau khi implement):** T-M1-21 + T-M1-22 **đã xong**. M1 hiện **3/25 task**. Task kế tiếp: T-M1-23 (ngân sách context) → T-M1-24 (upload ảnh) → T-M1-25 (onboarding) → rồi quay lại T-M1-02 (selection context) → T-M1-06 (truyền context) — vì T-M1-06 cần `contextBudget` từ T-M1-23 nên làm sau.
 
 ### Việc đã xong gần nhất (T-M1-01 — Content script extractor)
 
