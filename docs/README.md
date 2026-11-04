@@ -1,7 +1,7 @@
 # Documentation Index — Sidekick AI (Chrome Extension Chat Sidebar)
 
 **Dự án:** Extension chat-bot sidebar cho trình duyệt, cạnh tranh với Edge Copilot Sidebar và Chrome Gemini Sidebar.
-**Giai đoạn hiện tại:** Tài liệu hoàn tất → **sẵn sàng implement M0 (Foundation)**.
+**Giai đoạn hiện tại:** Tài liệu hoàn tất → **M0 (Foundation) đã implement xong** (tag `v0.1`) · đang chuẩn bị M1 (Parity).
 **Entry point cho agent:** [`../AGENTS.md`](../AGENTS.md) · [`HANDOFF.md`](HANDOFF.md)
 
 ---

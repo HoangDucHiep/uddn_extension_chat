@@ -24,20 +24,27 @@
 | Hạng mục | Trạng thái |
 |---|---|
 | Docs | ✅ Đầy đủ 9 file (`docs/`) + `AGENTS.md` ở root |
-| Code | ❌ Chưa bắt đầu |
-| Git | ✅ Đã init (`main`), 2 commit — `db03b26` (khởi tạo) · `b21debc` (sửa tham chiếu §) |
-| Milestone hiện tại | **M0 — Foundation** |
-| Task tiếp theo | **T-M0-01** (init monorepo pnpm workspace) |
+| Code | ✅ M0 (Foundation) hoàn tất — 4 workspace, 91 unit test + 2 E2E |
+| Git | ✅ Đã init (`main`) · tag `v0.1` đánh dấu M0 |
+| Milestone hiện tại | **M1 — Parity** (M0 đã đóng) |
+| Task tiếp theo | **T-M1-01** — content script extractor (Readability-lite) |
 
 ### Đang làm dở
 
-_(Chưa có — cập nhật ở đây khi task dang dở)_
+_(Không có — M0 đã đóng, tag `v0.1`)_
 
-### Việc đã xong trong phiên gần nhất
+### Việc đã xong trong phiên gần nhất (M0 — Foundation)
 
-- Hoàn thiện bộ 9 tài liệu: `DESIGN_SYSTEM_BRIEF` (viết lại), `SYSTEM_DESIGN` (mới), `IMPLEMENTATION_PLAN` (mới), `HANDOFF` (mới), `CHANGELOG` (mới); đồng bộ `REQUIREMENTS`, `COMPARISON_MATRIX`, `EVAL_PLAN`, `README`.
-- Tạo setup files: `AGENTS.md` (118 dòng), `.cursor/rules/*.mdc` (5 file), `.cursorrules`, `.gitignore`, `.editorconfig`, `.npmrc`, `.nvmrc`.
-- Kiểm tra toàn repo: **0 link chết**, **0 tham chiếu `§X.Y` không resolve**.
+- **T-M0-01/02** — Monorepo pnpm workspace + ESLint/Prettier/TS strict. `pnpm install`, `pnpm typecheck`, `pnpm lint` đều pass.
+- **T-M0-03** — `packages/shared`: Zod schema, union 8 SSE event, error codes.
+- **T-M0-04/05** — Postgres 16 + pgvector 0.8.7 trong Docker (`sidekick-db`, healthy), Drizzle 6 bảng, migration `0000_adorable_sister_grimm.sql`.
+- **T-M0-06** — BFF Express 5 (`/api/health`, error middleware, origin guard, request logger).
+- **T-M0-07/08/09** — Provider layer: Mock + Groq + OpenRouter + Gemini Direct; keyResolver K1/K2/K3; AES-256-GCM.
+- **T-M0-10** — `POST /api/chat` SSE 8 event + `request_logs` + abort.
+- **T-M0-11/12/13/14** — Extension MV3: side panel React + Tailwind v4 + shadcn, manifest + 4 icon, `sseClient` đọc stream trực tiếp, `useChat` + Zustand, design tokens.
+- **T-M0-15** — `apps/eval` scaffold (dataset loader + CLI).
+- **Verify M0**: 3/3 provider stream thật · E2E side panel 2/2 pass · tag `v0.1`.
+- Chi tiết bằng chứng: `docs/IMPLEMENTATION_PLAN.md` §2.1.
 
 ### Quyết định đã chốt trong các phiên trước
 
@@ -51,6 +58,11 @@ _(Chưa có — cập nhật ở đây khi task dang dở)_
 | Streaming không qua service worker | MV3 SW bị kill ~30s |
 | Workflow (M4) implement cuối cùng | Không nằm trong yêu cầu bắt buộc của thầy |
 | Git local, chưa push | Theo quyết định ban đầu |
+| Provider chain `groq → openrouter → gemini` | Groq nhanh + rẻ nhất; OpenRouter/Gemini làm fallback |
+| `maxOutputTokens` mặc định 2048 | OpenRouter trả HTTP 402 nếu max token quá lớn |
+| Gemini `thinkingConfig.thinkingBudget = 0` | Model Gemini 3.x dùng hết budget cho "thought", không trả text |
+| Origin allowlist hỗ trợ `chrome-extension://*` | Id extension load unpacked đổi theo máy, không thể hardcode |
+| Typography đặt trên `#root` (không phải `body`) | Chrome inject rule `font` cho `body` ở trang extension, đè lên design token |
 
 ---
 
@@ -61,6 +73,7 @@ _(Ghi lại các câu hỏi chưa có câu trả lời, hoặc điều kiện đ
 - Hạn chót nộp bài cụ thể là ngày nào? (ảnh hưởng kịch bản cắt M4)
 - Có nên push lên remote (GitHub) để backup không? (hiện tại chỉ git local)
 - Ngôn ngữ chính của UI: tiếng Việt hay song ngữ ưu tiên?
+- Có cần giữ `MockProvider` trong production build không, hay chỉ dùng cho test?
 
 ---
 
@@ -94,9 +107,9 @@ Trước khi ngừng, **bắt buộc**:
 
 ```markdown
 ### Đang làm dở
-- **T-M0-11** — Vite + React scaffold: đã tạo `vite.config.ts`, `tailwind.config.ts`.
-  Còn thiếu: `src/main.tsx`, `src/sidepanel/App.tsx`, và `shadcn` init.
-  Tiếp tục từ: `pnpm --filter @sidekick/extension add shadcn`, rồi tạo App.tsx.
+- **T-M1-01** — content script extractor: đã tạo `src/content/extractor.ts` với heuristic `<article>`.
+  Còn thiếu: fallback cho trang không có `<article>`, và test với fixture HTML.
+  Tiếp tục từ: thêm `tests/extractor.test.ts` với 3 fixture HTML.
 
 ### Quyết định mới trong phiên này
 - Dùng `@tailwindcss/vite` plugin thay vì PostCSS config (nhanh hơn, ít file hơn).

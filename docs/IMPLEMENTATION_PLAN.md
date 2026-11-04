@@ -31,25 +31,41 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 **Mục tiêu:** một extension load được, chat được với 1 provider, streaming hoạt động, DB chạy.
 **Gate:** load unpacked OK · `/health` trả `db: up` · gửi prompt nhận stream token · commit tag `v0.1`.
 
-| ID | Task | FR | Output files | AC | Est |
-|---|---|---|---|---|---|
-| T-M0-01 | Init monorepo pnpm workspace + tooling | — | `pnpm-workspace.yaml`, `package.json` (root), `.npmrc`, `.nvmrc`, `.editorconfig`, `.gitignore` | `pnpm install` chạy ở root, không lỗi | S |
-| T-M0-02 | ESLint + Prettier + TS config dùng chung | NFR-MAINT-* | `tsconfig.base.json`, `.eslintrc.cjs`, `.prettierrc` | `pnpm typecheck` pass trên toàn repo | S |
-| T-M0-03 | `packages/shared`: types + Zod + event union + errors | — | `packages/shared/src/{index.ts,types/,schemas/,events.ts,errors.ts,constants.ts}` | `pnpm build` xong; import được từ app khác | M |
-| T-M0-04 | Docker Compose: Postgres 16 + pgvector | §6 | `docker-compose.yml`, `apps/server/Dockerfile` | `docker compose up -d` → `SELECT extversion FROM pg_extension WHERE extname='vector'` OK | S |
-| T-M0-05 | Drizzle schema + migration đầu | §7.2 | `apps/server/src/db/schema.ts`, `drizzle.config.ts`, `apps/server/drizzle/0000_init.sql` | `pnpm db:migrate` xong không lỗi | M |
-| T-M0-06 | BFF skeleton: express app, `/health`, error middleware, CORS allowlist | NFR-SEC-* | `apps/server/src/{index.ts,app.ts,lib/config.ts,lib/logger.ts,middleware/*}` | `/health` → `{status:'ok',db:'up'}`; request sai origin bị 403 | M |
-| T-M0-07 | Provider adapter interface + registry + MockProvider | FR-PROVIDER-01 | `apps/server/src/providers/{types.ts,registry.ts,mock.ts}` | Unit test: registry trả provider theo id; mock stream trả token | M |
-| T-M0-08 | Gemini provider adapter (chat + streaming) | FR-PROVIDER-01/03 | `apps/server/src/providers/gemini.ts` | Gọi API thật với `TEAM_API_KEY` → nhận text | M |
-| T-M0-09 | Key resolver K1/K2/K3 + crypto AES-256-GCM | FR-PROVIDER-02/08/09, §4.6.1 | `apps/server/src/lib/crypto.ts`, `providers/keyResolver.ts` | Round-trip encrypt/decrypt đúng; sai MASTER_KEY → `PROVIDER_KEY_INVALID` | M |
-| T-M0-10 | `POST /chat` (SSE) + `packages/shared` event union khớp | FR-CHAT-01 | `apps/server/src/routes/chat.ts`, `apps/server/src/lib/sse.ts` | Test đủ 8 event type; format `event:`/`data:` đúng | L |
-| T-M0-11 | Extension scaffold: Vite + React + TS + Tailwind + shadcn | FR-UX-* | `apps/extension/{vite.config.ts,tailwind.config.ts,src/main.tsx,src/sidepanel/App.tsx}` | `pnpm dev:ext` mở panel trống, không lỗi console | M |
-| T-M0-12 | Manifest V3 + icons + load unpacked | FR-UX-01 | `apps/extension/public/manifest.json`, `public/icons/*` | Load unpacked OK; mở/toggle side panel bằng toolbar icon | M |
-| T-M0-13 | `sseClient` phía extension + `useChat` hook tối giản | FR-CHAT-01 | `apps/extension/src/lib/{sseClient.ts,apiClient.ts}`, `hooks/useChat.ts` | Gõ prompt → token hiện dần trong panel | M |
-| T-M0-14 | Design tokens: `tokens.json` → `tokens.css` | FR-UX-06, FR-SETTINGS-01/02 | `design/tokens.json`, `design/tokens.css`, `apps/extension/src/styles/*` | Token có trong `design/tokens.json` được dùng; light+dark theme switch | M |
-| T-M0-15 | `AGENTS.md` + `.cursor/rules` + `docs/HANDOFF.md` | — | `AGENTS.md`, `.cursor/rules/*.mdc`, `docs/HANDOFF.md` | Chat mới đọc `AGENTS.md` là nắm context | S |
+| ID | Task | FR | Output files | AC | Est | Status |
+|---|---|---|---|---|---|---|
+| T-M0-01 | Init monorepo pnpm workspace + tooling | — | `pnpm-workspace.yaml`, `package.json` (root), `.npmrc`, `.nvmrc`, `.editorconfig`, `.gitignore` | `pnpm install` chạy ở root, không lỗi | S | ✅ |
+| T-M0-02 | ESLint + Prettier + TS config dùng chung | NFR-MAINT-* | `tsconfig.base.json`, `eslint.config.js`, `.prettierrc` | `pnpm typecheck` pass trên toàn repo | S | ✅ |
+| T-M0-03 | `packages/shared`: types + Zod + event union + errors | — | `packages/shared/src/{index.ts,types/,schemas/,events.ts,errors.ts,constants.ts}` | `pnpm build` xong; import được từ app khác | M | ✅ |
+| T-M0-04 | Docker Compose: Postgres 16 + pgvector | §6 | `docker-compose.yml`, `apps/server/Dockerfile` | `docker compose up -d` → `SELECT extversion FROM pg_extension WHERE extname='vector'` OK | S | ✅ |
+| T-M0-05 | Drizzle schema + migration đầu | §7.2 | `apps/server/src/db/schema.ts`, `drizzle.config.ts`, `apps/server/drizzle/0000_adorable_sister_grimm.sql` | `pnpm db:migrate` xong không lỗi | M | ✅ |
+| T-M0-06 | BFF skeleton: express app, `/health`, error middleware, CORS allowlist | NFR-SEC-* | `apps/server/src/{index.ts,app.ts,config/env.ts,middleware/*}` | `/health` → `{status:'ok',db:'up'}`; request sai origin bị 403 | M | ✅ |
+| T-M0-07 | Provider adapter interface + registry + MockProvider | FR-PROVIDER-01 | `apps/server/src/providers/{types.ts,registry.ts,mock.ts}` | Unit test: registry trả provider theo id; mock stream trả token | M | ✅ |
+| T-M0-08 | Provider adapter Gemini/Groq/OpenRouter (chat + streaming) | FR-PROVIDER-01/03 | `apps/server/src/providers/{gemini.ts,groq.ts,openrouter.ts}` | Gọi API thật với `TEAM_API_KEY` → nhận text | M | ✅ |
+| T-M0-09 | Key resolver K1/K2/K3 + crypto AES-256-GCM | FR-PROVIDER-02/08/09, §4.6.1 | `apps/server/src/lib/crypto.ts`, `providers/keyResolver.ts` | Round-trip encrypt/decrypt đúng; sai MASTER_KEY → `PROVIDER_KEY_INVALID` | M | ✅ |
+| T-M0-10 | `POST /chat` (SSE) + `packages/shared` event union khớp | FR-CHAT-01 | `apps/server/src/routes/chat.ts`, `src/services/chatService.ts` | Test đủ 8 event type; format `event:`/`data:` đúng | L | ✅ |
+| T-M0-11 | Extension scaffold: Vite + React + TS + Tailwind + shadcn | FR-UX-* | `apps/extension/{vite.config.ts,vitest.config.ts,src/sidepanel/App.tsx,src/components/ui/*}` | `pnpm dev:ext` mở panel trống, không lỗi console | M | ✅ |
+| T-M0-12 | Manifest V3 + icons + load unpacked | FR-UX-01 | `apps/extension/public/manifest.json`, `public/icons/*` | Load unpacked OK; mở/toggle side panel bằng toolbar icon | M | ✅ |
+| T-M0-13 | `sseClient` phía extension + `useChat` hook tối giản | FR-CHAT-01 | `apps/extension/src/lib/{sseClient.ts,apiClient.ts}`, `hooks/useChat.ts` | Gõ prompt → token hiện dần trong panel | M | ✅ |
+| T-M0-14 | Design tokens: `tokens.json` → `tokens.css` | FR-UX-06, FR-SETTINGS-01/02 | `design/tokens.json`, `design/tokens.css`, `apps/extension/src/sidepanel/index.css` | Token có trong `design/tokens.json` được dùng; light+dark theme switch | M | ✅ |
+| T-M0-15 | `AGENTS.md` + `.cursor/rules` + `docs/HANDOFF.md` | — | `AGENTS.md`, `.cursor/rules/*.mdc`, `docs/HANDOFF.md` | Chat mới đọc `AGENTS.md` là nắm context | S | ✅ |
 
 **Định mức M0:** 2 tuần · 15 task · ~18 ngày công (3 người → ~2 tuần)
+
+### 2.1 Kết quả verify M0 (2026-11-04)
+
+| Gate | Kết quả |
+|---|---|
+| `pnpm install` | ✅ pass |
+| `pnpm typecheck` | ✅ pass (4 workspace: shared, server, extension, eval) |
+| `pnpm lint` | ✅ pass (0 error, 0 warning) |
+| `pnpm test` | ✅ pass — shared 15 · server 49 · extension 27 test |
+| `pnpm build` | ✅ pass — `apps/extension/dist/` có `manifest.json` + `sidepanel.html` |
+| `docker compose up -d` | ✅ `sidekick-db` healthy · pgvector 0.8.7 · 6 bảng |
+| `pnpm db:migrate` | ✅ pass |
+| `GET /api/health` | ✅ `{status:'ok', db:'up'}` |
+| Verify 3 provider | ✅ 3/3 stream thật — Groq `openai/gpt-oss-120b` · OpenRouter `google/gemini-2.5-flash` · Gemini `gemini-3.5-flash` |
+| E2E side panel | ✅ 2/2 — load unpacked, render header/composer, gõ prompt nhận token thật + provider chip + design token apply |
+| Git clean + tag | ✅ tag `v0.1` |
 
 ---
 

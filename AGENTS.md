@@ -98,15 +98,15 @@ pnpm eval:run                # chạy eval harness
 
 | Milestone | Trạng thái | Ghi chú |
 |---|---|---|
-| **M0 — Foundation** | 📋 Chưa bắt đầu | Docs đã xong; code chưa có. Bắt đầu từ T-M0-01 |
-| **M1 — Parity** | ⬜ Chưa bắt đầu | |
+| **M0 — Foundation** | ✅ Hoàn thành | 15/15 task · 91 unit test + 2 E2E · tag `v0.1` |
+| **M1 — Parity** | 📋 Sắp bắt đầu | Bắt đầu từ T-M1-01 (content script extractor) |
 | **M2 — Advanced & Eval** | ⬜ Chưa bắt đầu | `EVAL_REPORT.md` là deliverable bắt buộc |
 | **M3 — Polish & Deliverable** | ⬜ Chưa bắt đầu | |
 | **M4 — Workflow** | ⬜ Tuỳ chọn | Chỉ sau M3 + đã có eval report |
 
 **Trạng thái docs:** ✅ Requirements · ✅ Design System Brief · ✅ System Design · ✅ Implementation Plan · ✅ Comparison Matrix · ✅ Eval Plan · ✅ Handoff · ✅ Changelog
 
-**Việc tiếp theo:** bắt đầu **T-M0-01** theo [`IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) §2.
+**Việc tiếp theo:** bắt đầu **T-M1-01** theo [`IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) §3.
 
 ---
 
@@ -128,14 +128,15 @@ pnpm eval:run                # chạy eval harness
 ## 8. Cấu trúc thư mục (rút gọn)
 
 ```text
-apps/extension/    src/{sidepanel,background,content,lib}
-apps/server/       src/{routes,providers,tools,rag,scheduler,db,middleware}
-apps/eval/         dataset/ runners/ judge/ metrics/ results/ reports/
-packages/shared/   types/ schemas/ events.ts errors.ts constants.ts
-design/            tokens.json tokens.css components.md patterns.md
+apps/extension/    src/{sidepanel,background,content,lib,components/ui}
+                   public/{manifest.json,icons/} · e2e/ · tests/
+apps/server/       src/{routes,providers,services,middleware,config,db,lib}
+apps/eval/         src/{cli.ts,dataset.ts,types.ts} · dataset/
+packages/shared/   src/{types,schemas,events.ts,errors.ts,constants.ts}
+design/            tokens.json tokens.css
 docs/              9 file tài liệu (README, REQUIREMENTS, SYSTEM_DESIGN,
-                  IMPLEMENTATION_PLAN, DESIGN_SYSTEM_BRIEF, COMPARISON_MATRIX,
-                  EVAL_PLAN, HANDOFF, CHANGELOG)
+                   IMPLEMENTATION_PLAN, DESIGN_SYSTEM_BRIEF, COMPARISON_MATRIX,
+                   EVAL_PLAN, HANDOFF, CHANGELOG)
 ```
 
 ---

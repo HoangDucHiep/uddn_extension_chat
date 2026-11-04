@@ -26,6 +26,13 @@
 
 Nguồn sự thật: `design/tokens.json` → generate ra `design/tokens.css` (CSS variables). **Không hardcode màu trong component** — luôn dùng `var(--...)` hoặc class Tailwind map tới token.
 
+**Cách nối vào extension (đã implement):**
+
+- `apps/extension/src/sidepanel/index.css` import `design/tokens.css` **sau** `@import 'tailwindcss'` để token ghi đè mặc định của Tailwind (vd `--font-sans`).
+- **KHÔNG** khai báo lại token trong `@theme inline` với `var(--token)` — sẽ tạo vòng lặp tự tham chiếu làm token rỗng.
+- Typography đặt trên **`#root`** (div), không phải `body`: Chrome inject rule `font` cho `body` ở trang extension, đè lên `font-family`/`font-size` của design token.
+- Component dùng class Tailwind arbitrary value: `bg-[var(--surface-panel)]`, `text-[var(--text-primary)]`, `h-[var(--header-height)]`.
+
 ### 2.1 Color
 
 | Nhóm | Token | Ghi chú |
