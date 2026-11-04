@@ -532,6 +532,8 @@ sequenceDiagram
 
 Monorepo **pnpm workspace**. Chi tiết đầy đủ (kèm quy ước đặt tên, dependency graph) nằm ở [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §3.
 
+> **Trạng thái M0 (2026-11-04):** cây dưới là cấu trúc **đích** (M0–M4). M0 đã implement `apps/extension/src/{sidepanel,background,content,lib,components/ui}`, `apps/server/src/{routes,services,providers,middleware,config,db,lib}`, `apps/eval/src/`, `packages/shared/src/`, `design/`. Phần còn lại thuộc M1–M4.
+
 ```text
 uddn_extension_chat/
 ├─ apps/

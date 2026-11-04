@@ -141,6 +141,27 @@ flowchart TB
 
 ## 3. Cấu trúc thư mục chi tiết
 
+> **Trạng thái M0 (2026-11-04):** cây bên dưới là cấu trúc **đích**. M0 đã implement các phần in đậm; các thư mục còn lại (`chat/`, `context/`, `skills/`, `tools/`, `settings/`, `workflow/`, `extractor.ts`, `selection.ts`) sẽ được tạo ở M1–M4.
+>
+> Thực tế M0 đã có:
+> ```text
+> apps/extension/
+> ├─ public/{manifest.json, icons/{16,32,48,128}.png}
+> ├─ sidepanel.html                 # entry HTML (build ra dist/sidepanel.html)
+> ├─ src/
+> │  ├─ sidepanel/{App.tsx, main.tsx, index.css,
+> │  │            components/{PanelHeader,MessageBubble,Composer}.tsx,
+> │  │            hooks/useChat.ts, store/chatStore.ts}
+> │  ├─ components/ui/{button,input,textarea}.tsx   # shadcn/ui
+> │  ├─ background/serviceWorker.ts
+> │  ├─ content/contentScript.ts
+> │  └─ lib/{apiClient,sseClient,utils}.ts
+> ├─ e2e/{fixtures.ts,sidepanel.spec.ts}
+> ├─ tests/{apiClient,chatStore,sseClient,useChat}.test.ts
+> ├─ vite.config.ts · vitest.config.ts · playwright.config.ts
+> ```
+> `apps/server/src/` hiện có: `routes/{health,chat}.ts` · `services/chatService.ts` · `providers/*` · `middleware/*` · `config/env.ts` · `db/*` · `lib/crypto.ts`.
+
 ```text
 uddn_extension_chat/
 ├─ apps/
@@ -498,6 +519,18 @@ BFF chỉ nhận request từ extension. Kiểm tra header `Origin` / `X-Sidekic
 ### 7.1 Mock provider trong test
 
 Một `MockProvider` implement cùng interface `ProviderAdapter`, trả stream token giả với delay → dùng cho unit/integration/E2E **không cần network, không cần key**. Bắt buộc để CI chạy được và để demo offline.
+
+### 7.2 Trạng thái test M0 (2026-11-04)
+
+| Tầng | Trạng thái | Vị trí |
+|---|---|---|
+| Unit | ✅ 91 test — shared 15 · server 49 · extension 27 | `packages/shared/tests/` · `apps/server/tests/` · `apps/extension/tests/` |
+| Integration | ✅ BFF `/api/health` + `POST /api/chat` (SSE format, validation, error mapping) | `apps/server/tests/` |
+| Contract | ✅ Zod schema ở biên route + `isChatEvent` cho SSE client | `packages/shared/src/schemas/` · `apps/extension/src/lib/sseClient.ts` |
+| E2E | ✅ 2 kịch bản — render panel · gõ prompt nhận token thật + provider chip + design token | `apps/extension/e2e/sidepanel.spec.ts` |
+| Verify provider | ✅ script check 3 provider stream thật (Groq / OpenRouter / Gemini Direct) | `scripts/verify-providers.mjs` |
+
+Các kịch bản E2E còn lại (offline, BFF down, stop, edit-resend, context toggle) thuộc M1.
 
 ---
 
