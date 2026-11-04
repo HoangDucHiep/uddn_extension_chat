@@ -102,14 +102,14 @@ pnpm eval:run                # chạy eval harness
 | Milestone | Trạng thái | Ghi chú |
 |---|---|---|
 | **M0 — Foundation** | ✅ Hoàn thành | 15/15 task · 91 unit test + 2 E2E · tag `v0.1` |
-| **M1 — Parity** | 🚧 Đang làm | 5/25 task (T-M1-01, T-M1-04 ✅ hấp thụ, T-M1-21, T-M1-22, T-M1-23 ✅) · 235 unit test + 9 E2E |
+| **M1 — Parity** | 🚧 Đang làm | 6/25 task (T-M1-01, T-M1-04 ✅ hấp thụ, T-M1-05, T-M1-21, T-M1-22, T-M1-23 ✅) · 332 unit test + 13 E2E |
 | **M2 — Advanced & Eval** | ⬜ Chưa bắt đầu | `EVAL_REPORT.md` là deliverable bắt buộc |
 | **M3 — Polish & Deliverable** | ⬜ Chưa bắt đầu | |
 | **M4 — Workflow** | ⬜ Tuỳ chọn | Chỉ sau M3 + đã có eval report |
 
 **Trạng thái docs:** ✅ Requirements · ✅ Design System Brief · ✅ System Design · ✅ Implementation Plan · ✅ Comparison Matrix · ✅ Eval Plan · ✅ Handoff · ✅ Changelog
 
-**Việc tiếp theo:** **T-M1-05** — `@` multi-tab (nguồn context item tier `attachment`) theo [`IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) §3. Sau đó: T-M1-02 (selection) → T-M1-24 (upload file) → T-M1-25 (onboarding).
+**Việc tiếp theo:** **T-M1-02** — selection context (bôi đen → tier `selection`, tier cao nhất) theo [`IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) §3. Sau đó: T-M1-24 (upload file) → T-M1-25 (onboarding).
 
 > **Mô hình context (T-M1-23):** context **chỉ** được gửi khi user **chủ động đính kèm** (nút "Thêm trang này" · `@` · bôi đen · upload file). Không đính kèm gì → chat thuần LLM (FR-CONTEXT-13). Chi tiết: [`SYSTEM_DESIGN.md`](docs/SYSTEM_DESIGN.md) §7.3.2.
 

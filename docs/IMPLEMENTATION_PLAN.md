@@ -80,7 +80,7 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | T-M1-02 | Content script: selection context | FR-CONTEXT-04 | `content/selection.ts` | Bôi đen → panel nhận đúng đoạn text | M | ⬜ |
 | T-M1-03 | Service worker: mở/toggle panel, context menu, shortcut | FR-UX-01 | `apps/extension/src/background/*` | Toolbar click toggle; `Ctrl+Shift+K` mở; context menu "Ask Sidekick" | M | ⬜ |
 | T-M1-04 | Context chips + toggle bật/tắt context trang | FR-CONTEXT-02, NFR-SEC-02 | `sidepanel/components/context/ContextChips.tsx` | Chip hiển thị domain đang share; bỏ chip được; tắt → không gửi content | M | ✅ *(hấp thụ bởi T-M1-23)* |
-| T-M1-05 | `@` mention multi-tab | FR-CONTEXT-03 | `context/MentionPopover.tsx`, `hooks/useTabs.ts` | Gõ `@` → list tab (title+favicon), chọn nhiều được | L | ⬜ |
+| T-M1-05 | `@` mention multi-tab | FR-CONTEXT-03 | `context/MentionPopover.tsx`, `hooks/useTabs.ts`, `hooks/useMention.ts`, `lib/tabList.ts` | Gõ `@` → list tab (title+favicon), chọn nhiều được | L | ✅ |
 | T-M1-06 | Truyền context sang BFF (tab list + content) | FR-CONTEXT-01/02/03, FR-CONTEXT-07 | `apps/server/src/lib/contextBuilder.ts` | Log `request_logs.context_hash` khớp với context đã gửi | M | ⬜ |
 | T-M1-07 | Markdown render + code block + copy + highlight | FR-CHAT-02/03/04, NFR-SEC-04, NFR-PERF-02 | `sidepanel/components/chat/MessageContent.tsx`, `CodeBlock.tsx`, `MarkdownTable.tsx` | Render table/code; copy → "Đã sao chép"; highlight đúng ngôn ngữ; sanitize HTML (chặn XSS) | L | ⬜ |
 | T-M1-08 | Citation chip + popover (đoạn nguồn) | FR-CONTEXT-10 | `context/CitationChip.tsx`, `CitationPopover.tsx` | Click chip → popover hiện đoạn nguồn + mở tab gốc | M | ⬜ |
@@ -197,6 +197,49 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 >
 > **Ghi chú:** chưa có CI trong repo → xem `SYSTEM_DESIGN.md` §7.2.2. Đề xuất thêm GitHub Actions (typecheck + lint + test + build + e2e) ở milestone M3.
 
+### 3.1e Kết quả T-M1-05 (`@` multi-tab) + đóng 8 blind spot test (2026-11-04)
+
+> **Động lực:** 2 task trong 1 phiên — (a) implement FR-CONTEXT-03 (`@` mention multi-tab), (b) đóng **toàn bộ 8 blind spot** test đã ghi ở [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.2.2 (backlog từ 3.1d).
+
+#### Phần A — T-M1-05 `@` multi-tab
+
+| Hạng mục | Kết quả |
+|---|---|
+| `apps/extension/src/lib/tabList.ts` | ✅ `listOpenTabs(limit)` — `chrome.tabs.query({ currentWindow: true })` + lọc `detectPageKind() === 'unknown'` (`chrome://`/`file://`) + `domainOf()` (bỏ `www.`) · **không throw** (lỗi → `[]`) |
+| `apps/extension/src/sidepanel/hooks/useTabs.ts` | ✅ `useTabs(enabled)` — nạp **lazy** (chỉ khi popover mở) + `reload()` |
+| `apps/extension/src/sidepanel/hooks/useMention.ts` | ✅ `findMention()` (thuần) — `@` phải ở đầu/sau khoảng trắng (email `a@b.com` không bật) · `useMention()` — state mở/đóng + `apply()` chèn `@tên tab ` + cơ chế "đóng token" sau `Escape` |
+| `apps/extension/src/sidepanel/components/context/MentionPopover.tsx` | ✅ favicon · title · domain · ✓ (đã đính kèm) · gạch (tab active) · trạng thái loading/rỗng · `role="listbox"` + `role="option"` + `aria-selected` |
+| `apps/extension/src/lib/contextAttach.ts` | ✅ `attachTab(tabId)` — bọc `captureTabContext()` thành `ContextItem { id: 'tab-N', tier: 'attachment' }` · **không** capture lại tab đã đính kèm |
+| `apps/extension/src/sidepanel/hooks/useChat.ts` | ✅ `attachTab(tabId)` — cầu nối store ↔ `contextAttach` |
+| `apps/extension/src/sidepanel/components/Composer.tsx` | ✅ `onCursorChange` + `onEscape` + `inputRef` (cần cho phát hiện token `@` + đưa con trỏ về đúng chỗ) |
+| `apps/extension/src/sidepanel/App.tsx` | ✅ Lọc tab theo query · chèn `@tên tab` vào textarea · đính kèm tab đã chọn · highlight tab active |
+
+#### Phần B — Đóng 8 blind spot test
+
+| Blind spot | Fix | File test |
+|---|---|---|
+| #1 fallback extractor đi nhánh khác | Fixture mọi block < `MIN_BLOCK_LENGTH` → mọi node điểm 0 | `apps/extension/tests/extractor.test.ts` |
+| #2 dedup lồng nhau không kích hoạt | Fixture `<blockquote><p>` (`blockquote` ∈ `BLOCK_SELECTOR`) | cùng file |
+| #3 `NEGATIVE_PATTERN` trong candidate | Fixture `.ad-banner` / `.comment` lồng trong `<article>` | cùng file |
+| #4 thiếu fixture biên | 3 test: chỉ `<title>` · chỉ `<h1>` · link-density cao | cùng file |
+| #5 chỉ assert độ dài | Assert **phần đầu được giữ** + đúng số ký tự | `packages/shared/tests/contextBudget.test.ts` |
+| #6 chưa validate `role`/`id`/history | 4 test role/history + `describe('contextItemSchema')` | `packages/shared/tests/chatSchema.test.ts` |
+| #7 chưa test `lib/storage.ts` | 10 test (đọc/ghi, giá trị không phải boolean, storage lỗi → không throw) | `apps/extension/tests/storage.test.ts` **(mới)** |
+| #8 `chatService` + provider chưa test | 14 test `chatService` + 13 test `openaiCompatible` (mock `fetch` SSE) | `apps/server/tests/chatService.test.ts` **(mới)** · `apps/server/tests/openaiCompatible.test.ts` **(mới)** |
+
+#### Verify
+
+| Hạng mục | Kết quả |
+|---|---|
+| `pnpm typecheck` | ✅ pass (shared · server · extension · eval) |
+| `pnpm lint` | ✅ pass (0 error) |
+| `pnpm test` | ✅ pass — shared **75** · server **126** · extension **131** (tổng **332**, trước 235 → **+97**) |
+| `pnpm build` | ✅ pass — `dist/content.js` vẫn là **IIFE 1 file, không `import`** (4.81 kB) |
+| `pnpm test:e2e` | ✅ pass — **13/13** (+4 kịch bản `mention.spec.ts`) |
+| Mutation re-check | ✅ **5/5 mutation bị bắt** (cắt cuối thay cắt đầu · bỏ guard `@` trong email · bỏ filter `chrome://` · bỏ `404` khỏi retryable · bỏ context khỏi prompt) — chi tiết [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.2.2 |
+
+> **Đã sửa thêm:** `apps/server/vitest.config.ts` thêm `testTimeout: 30_000` — `pdfExtractor.test.ts` timeout giả khi 12 worker chạy song song (không phải lỗi logic).
+
 ### 3.2 Traceability FR → Task
 
 > Bảng đầy đủ FR → Task (kèm milestone) nằm ở [`REQUIREMENTS.md`](REQUIREMENTS.md) §11.1 — nơi duy nhất cần cập nhật khi thêm/bớt task.
@@ -205,7 +248,7 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | Nhóm | FR trong nhóm | Task phụ trách | Ghi chú |
 |---|---|---|---|
 | FR-CHAT-01..14 | 14 FR | T-M0-10 · T-M0-13 · T-M1-07/09/10/11/13/19 | FR-CHAT-04 (bảng Markdown) đã nằm trong T-M1-07 |
-| FR-CONTEXT-01..13 | 13 FR | T-M1-01/02/04/05/06/08/14 · **T-M1-21/22/23** · **T-M2-19** | FR-CONTEXT-05/06 nâng lên Must (2026-11-04) · FR-CONTEXT-13 (chat không cần context) do T-M1-23 |
+| FR-CONTEXT-01..13 | 13 FR | T-M1-01/02/04/05/06/08/14 · **T-M1-21/22/23** · **T-M2-19** | FR-CONTEXT-05/06 nâng lên Must (2026-11-04) · FR-CONTEXT-13 (chat không cần context) do T-M1-23 · **FR-CONTEXT-03 (`@` multi-tab) do T-M1-05 ✅** |
 | FR-VISION-01..05 | 5 FR | **T-M1-24** (upload) · **T-M2-22** (mở rộng) | FR-VISION-01 nâng lên M |
 | FR-TOOLS-01..06 | 6 FR | T-M2-07/08/09/10/11/18 · **T-M2-20** | FR-TOOLS-03 (web search) tách riêng khỏi tool registry |
 | FR-SKILL-01..07 | 7 FR | T-M2-04/05/06 · **T-M2-21** | FR-SKILL-04 (skill mẫu) + FR-SKILL-06 (điều kiện) tách task |

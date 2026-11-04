@@ -638,18 +638,18 @@ Các kịch bản E2E còn lại (offline, BFF down, stop, edit-resend, context 
 
 | Tầng | Số test | Vị trí |
 |---|---|---|
-| Unit | **235** — shared 59 · server 99 · extension 77 | `packages/shared/tests/` · `apps/server/tests/` · `apps/extension/tests/` |
-| E2E | **9** | `apps/extension/e2e/` |
+| Unit | **332** — shared 75 · server 126 · extension 131 | `packages/shared/tests/` · `apps/server/tests/` · `apps/extension/tests/` |
+| E2E | **13** | `apps/extension/e2e/` |
 
 ### 7.2.2 Audit chất lượng test bằng mutation testing (2026-11-04)
 
-> Đã thực hiện 1 vòng mutation audit thủ công (scratch script, không commit) để kiểm tra test có thực sự bắt lỗi hay không.
+> Đã thực hiện 2 vòng mutation audit thủ công (scratch script, không commit) để kiểm tra test có thực sự bắt lỗi hay không.
 
 **Phương pháp:** backup source → áp 1 mutation (đổi logic) → chạy test → nếu test **vẫn PASS** thì mutation sống sót → khôi phục source.
 
-**Kết quả:** ~78 mutation trên logic cốt lõi → phần lớn bị bắt (đảo thứ tự tier, bỏ `trimHistory`, bỏ `applyContextBudget`, xoá `attachedItems` khi reset, bo filter `role=system`, bỏ guard `empty prompt`, bỏ `AbortError` handling…). **Không có bằng chứng test bị "tình cho đúng".**
+**Kết quả vòng 1:** ~78 mutation trên logic cốt lõi → phần lớn bị bắt (đảo thứ tự tier, bỏ `trimHistory`, bỏ `applyContextBudget`, xoá `attachedItems` khi reset, bo filter `role=system`, bỏ guard `empty prompt`, bỏ `AbortError` handling…). **Không có bằng chứng test bị "tình cho đúng".**
 
-**Blind spot đã phát hiện (chưa fix — backlog M1):**
+**Blind spot đã phát hiện (đã fix — xem bảng bên dưới):**
 
 | # | Vị trí | Vấn đề |
 |---|---|---|
@@ -662,18 +662,41 @@ Các kịch bản E2E còn lại (offline, BFF down, stop, edit-resend, context 
 | 7 | `apps/extension/tests/` | **Không có test file cho `lib/storage.ts`** → persist toggle context qua `chrome.storage.local` chưa được kiểm chứng |
 | 8 | `apps/server/tests/` | `chatService.ts` coverage **25%** · provider thật (`gemini.ts` 7%, `openaiCompatible.ts` 6.6%) chưa từng được test — E2E chỉ dùng `MockProvider` |
 
+**Vòng 2 — đã fix toàn bộ 8 blind spot (2026-11-04, T-M1-05 + remediation):**
+
+| # | Fix | Test mới |
+|---|---|---|
+| 1 | Fixture fallback **thật** (mọi block < `MIN_BLOCK_LENGTH` → mọi node điểm 0 → rơi vào nhánh `doc.body`) | `extractor.test.ts` — *"FALLBACK THAT: khi moi node diem < 20 → dung body"* |
+| 2 | Dedup lồng nhau dùng `<blockquote><p>` (`blockquote` **có** trong `BLOCK_SELECTOR` → kích hoạt `if (nested) continue`) | `extractor.test.ts` — *"dedup block long: blockquote chua <p> khong bi lap noi dung"* |
+| 3 | `NEGATIVE_PATTERN` **bên trong** node được chọn (`.ad-banner` / `.comment` lồng trong `<article>`) | `extractor.test.ts` — *"loai bo vung nhieu (class/id am) NGUOI TRONG candidate node"* |
+| 4 | Fixture biên: chỉ `<title>` · chỉ `<h1>` · link-density cao | `extractor.test.ts` — 3 test `bien: ...` |
+| 5 | Assert **phần đầu được giữ** (không chỉ độ dài) | `contextBudget.test.ts` — *"cat GIU phan dau (head slice)"*, *"cat dung so ky tu = token con lai * CHARS_PER_TOKEN"* |
+| 6 | Validate `role` sai · `id` rỗng · vượt `MAX_HISTORY_MESSAGES` · `kind`/`tier` sai | `chatSchema.test.ts` — `describe('contextItemSchema')` + 4 test role/history |
+| 7 | Test file cho `lib/storage.ts` | `apps/extension/tests/storage.test.ts` (10 test) — đọc/ghi, giá trị không phải boolean, storage lỗi → không throw |
+| 8 | Test `chatService` (SSE event + fallback chain + context prompt) & `openaiCompatible` (parse SSE + retry/fallback model) | `apps/server/tests/chatService.test.ts` (14 test) · `apps/server/tests/openaiCompatible.test.ts` (13 test) |
+
+**Mutation re-check vòng 2 (5 mutation, đều bị bắt):**
+
+| Mutation | Kết quả |
+|---|---|
+| `contextBudget.ts`: `text.slice(0, n)` → `text.slice(len - n)` (cắt cuối) | ✅ Bị bắt — *"cat GIU phan dau"* fail |
+| `useMention.ts`: bỏ guard "trước `@` phải là khoảng trắng" | ✅ Bị bắt — *"KHONG bat @ nam giua email"* fail |
+| `tabList.ts`: bỏ filter `detectPageKind() === 'unknown'` | ✅ Bị bắt — *"loai bo trang dac biet"* fail |
+| `openaiCompatible.ts`: bỏ `404` khỏi `retryable` | ✅ Bị bắt — 2 test fallback 404 fail |
+| `chatService.ts`: bỏ nhánh thêm context vào prompt | ✅ Bị bắt — *"them context vao cuoi"* fail |
+
 **Mức độ thực tế của từng tầng:**
 
 | Tầng | Mức độ thực tế |
 |---|---|
 | Unit `packages/shared` | ✅ Thật — logic thuần, không mock |
-| Unit `apps/server` | ⚠️ Logic thật, nhưng provider adapter & `chatService` còn thiếu test |
+| Unit `apps/server` | ✅ Đã test provider adapter (SSE parse + fallback) + `chatService` (orchestration + context prompt) — DB vẫn mock |
 | Unit `apps/extension` | ⚠️ jsdom + mock `chrome.*` — logic store/hook thật, không có Chrome thật |
 | E2E `extractor.spec.ts` | ✅ Thật — content script trong isolated world Chrome thật, `chrome.scripting.executeScript` thật |
 | E2E `sidepanel.spec.ts` | ✅ Thật — extension load unpacked + BFF thật + SSE streaming thật (provider = `mock`) |
-| E2E `context.spec.ts` · `extract.spec.ts` | ⚠️ Chrome thật nhưng BFF **bị stub** bằng `page.route` → chỉ kiểm phía client |
+| E2E `context.spec.ts` · `extract.spec.ts` · `mention.spec.ts` | ⚠️ Chrome thật nhưng BFF **bị stub** bằng `page.route` → chỉ kiểm phía client |
 
-**Kết luận & hệ quả:** test **không bị thiên lệch có chủ ý**, nhưng có **blind spot thật** — chủ yếu do fixture quá lý tưởng và assertion chỉ kiểm độ dài chứ không kiểm nội dung. Ưu tiên sửa: #7 (persist toggle — ảnh hưởng UX thật) → #5 (cắt đầu/cắt cuối) → #6 (validate `role` — ảnh hưởng bảo mật biên API) → #1–#3 (tính đúng của extractor).
+**Kết luận & hệ quả:** sau vòng 2, **cả 8 blind spot đã được đóng** bằng test cụ thể, và 5 mutation re-check đều bị bắt → không có bằng chứng test bị "tình cho đúng".
 
 ### 7.3 Trích xuất nội dung trang (T-M1-01)
 
@@ -808,6 +831,51 @@ flowchart LR
 5. `estimateTokens()` là **heuristic** (`ceil(chars / 4)`) → xấp xỉ, ghi rõ trong docs. Số token thật hiển thị từ `usage` event của provider (T-M2-03).
 
 **Hai tầng, một hàm:** extension dùng `applyContextBudget()` để hiển thị meter + dựng payload; server gọi **cùng hàm** để cắt lại trước khi gọi provider (nguồn chân lý — client có thể gửi bản siêu lớn).
+
+### 7.3.3 `@`-mention multi-tab (T-M1-05)
+
+> **FR-CONTEXT-03.** Gõ `@` trong composer → popover liệt kê các tab đang mở → chọn 1 tab → tab đó được đính kèm vào context (`tier: attachment`) và tên tab được chèn vào ô nhập.
+
+```mermaid
+flowchart LR
+  ta["User gõ '@'"] --> sync["useMention.sync(text, cursor)"]
+  sync --> token["findMention() — token '@' dang ghep"]
+  token --> open["state.open = true"]
+  open --> tabs["useTabs(true) → listOpenTabs()"]
+  tabs --> filter["detectPageKind() !== 'unknown'<br/>lọc trang nội bộ"]
+  filter --> pop["MentionPopover.tsx<br/>favicon + title + domain"]
+  pop --> pick["User chon tab"]
+  pick --> attach["attachTab(tabId) → captureTabContext()"]
+  attach --> item["ContextItem { id: 'tab-N', tier: 'attachment' }"]
+  pick --> ins["apply() → chen '@ten tab ' vao textarea"]
+```
+
+**Quy tắc phát hiện token `@`:**
+
+| Quy tắc | Lý do |
+|---|---|
+| `@` phải ở đầu chuỗi hoặc sau khoảng trắng | `@` trong email (`a@b.com`) **không** bật popover |
+| Token không chứa khoảng trắng | Chỉ lọc theo 1 từ khóa |
+| Con trỏ phải nằm **sau** token | Token `@` đã gõ xong phía trước con trỏ |
+| Sau `Escape` → token đó bị "đóng" | Trình duyệt bắn `select` event sau khi thoát ô nhập → nếu không có cơ chế này popover mở lại ngay |
+
+**Các file liên quan:**
+
+| File | Vai trò |
+|---|---|
+| `apps/extension/src/lib/tabList.ts` | `listOpenTabs()` — `chrome.tabs.query({ currentWindow: true })` + lọc trang nội bộ + `domainOf()` |
+| `apps/extension/src/sidepanel/hooks/useTabs.ts` | `useTabs(enabled)` — nạp danh sách tab **lazy** (chỉ khi popover mở) |
+| `apps/extension/src/sidepanel/hooks/useMention.ts` | `findMention()` (thuần, test được) + `useMention()` (state mở/đóng, `apply()` thay token) |
+| `apps/extension/src/sidepanel/components/context/MentionPopover.tsx` | Popover danh sách tab: favicon · title · domain · dấu ✓ (đã đính kèm) · gạch (tab active) |
+| `apps/extension/src/lib/contextAttach.ts` | `attachTab(tabId)` — bọc `captureTabContext()` thành `ContextItem`; **không** capture lại tab đã đính kèm |
+| `apps/extension/src/sidepanel/hooks/useChat.ts` | `attachTab(tabId)` — cầu nối store ↔ `contextAttach` |
+| `apps/extension/src/sidepanel/components/Composer.tsx` | `onCursorChange` + `onEscape` + `inputRef` — cần thiết để phát hiện token `@` |
+
+**Ràng buộc MV3 liên quan:**
+
+- Chỉ query tab của **cửa sổ hiện tại** (`currentWindow: true`) → không lộ tab của cửa sổ khác.
+- `listOpenTabs()` **không bao giờ throw** → lỗi trả `[]` (popover rỗng, panel vẫn chat được).
+- Không gọi `chrome.sidePanel.open()` ở đây — popover nằm trong panel đang mở.
 
 ### 7.4 Build: content script phải là classic script
 

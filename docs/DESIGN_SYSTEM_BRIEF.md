@@ -196,6 +196,16 @@ Nguồn sự thật: `design/tokens.json` → generate ra `design/tokens.css` (C
 
 **`ContextNotice` (đã implement T-M1-21/T-M1-22)** — vị trí: giữa thread và Composer. Token dùng: `--warning-subtle` (nền) · `--warning` (icon) · `--text-secondary` (nội dung) · `--border-default` (đường kẻ) · `--font-size-sm`. Icon `lucide-react`: `FileWarning` (lỗi PDF) · `AlertTriangle` (lỗi chung) · `X` (đóng). A11y: `role="status"` + `aria-live="polite"` · nút đóng có `aria-label` (tiếng Việt) · focus ring theo `--focus-ring`. Không tự động ẩn (người dùng tự đóng).
 
+#### `MentionPopover` (đã implement T-M1-05)
+
+- **Vị trí:** **overlay nổi** (`absolute bottom-full`) bám lên trên ô nhập trong `Composer` — không chiếm layout, không đẩy thread.
+- **Kích hoạt:** gõ `@` trong `Composer` → `useMention.sync()` phát hiện token `@` → popover mở. `Escape` → đóng.
+- **Nội dung mỗi dòng:** favicon (hoặc icon `Globe` khi trang không có favicon) · **title** · **domain** (dòng phụ) · dấu `Check` khi tab đã đính kèm · gạch dọc `--color-accent` khi tab đang active.
+- **Trạng thái:** đang tải → icon `Loader2` + chữ "Đang tải danh sách tab..." · danh sách rỗng → chữ "Không có tab nào để đính kèm."
+- **Token:** `--surface-overlay` (nền) · `--border-default` (viền) · `--shadow-2` (đổ bóng) · `--text-primary` (title) · `--text-tertiary` (domain) · `--color-accent` (dấu ✓ / gạch active) · `--surface-sunken` (hover) · `--font-size-sm` · `--font-size-xs` · `--radius-md` · `--radius-sm`.
+- **A11y:** `role="listbox"` + `aria-label="Chọn tab để đính kèm"` · mỗi dòng `role="option"` + `aria-selected` (true khi đã đính kèm) · icon trạng thái có `aria-label` tiếng Việt · focus ring `--focus-ring`.
+- **Không hardcode màu** — toàn bộ dùng design token như các chip khác.
+
 ### 3.5 Overlays & feedback
 
 | Component | Mô tả |

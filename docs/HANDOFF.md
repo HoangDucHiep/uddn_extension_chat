@@ -24,14 +24,35 @@
 | Hạng mục | Trạng thái |
 |---|---|
 | Docs | ✅ Đầy đủ 9 file (`docs/`) + `AGENTS.md` ở root |
-| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 xong** — 4 workspace, 235 unit test + 9 E2E |
+| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 + T-M1-05 xong** — 4 workspace, 332 unit test + 13 E2E |
 | Git | ✅ Đã init (`main`) · tag `v0.1` đánh dấu M0 |
-| Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **5/25 task**) |
-| Task tiếp theo | **T-M1-05** — `@` multi-tab (nguồn item tier `attachment`) → T-M1-02 (selection, tier cao nhất) → T-M1-24 (upload file) |
+| Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **6/25 task**) |
+| Task tiếp theo | **T-M1-02** — selection (bôi đen, tier cao nhất) → T-M1-24 (upload file) → T-M1-25 (onboarding) |
 
 ### Đang làm dở
 
-_(Không có — T-M1-23 đã commit, task kế tiếp T-M1-05)_
+_(Không có — T-M1-05 + remediation 8 blind spot đã commit, task kế tiếp T-M1-02)_
+
+### Việc đã xong gần nhất (T-M1-05 `@` multi-tab + đóng 8 blind spot test)
+
+- **T-M1-05 (FR-CONTEXT-03)** — `lib/tabList.ts` (`listOpenTabs()` — `chrome.tabs.query({ currentWindow: true })` + lọc `chrome://`/`file://` + `domainOf()`, **không throw**) · `hooks/useTabs.ts` (nạp lazy) · `hooks/useMention.ts` (`findMention()` thuần — `@` phải ở đầu/sau khoảng trắng nên email `a@b.com` không bật popover; `useMention()` quản lý state + `apply()` chèn `@tên tab `) · `components/context/MentionPopover.tsx` (favicon · title · domain · ✓ tab đã đính kèm · gạch tab active · `role="listbox"`/`role="option"`/`aria-selected`) · `lib/contextAttach.ts` thêm `attachTab(tabId)` (`ContextItem { id: 'tab-N', tier: 'attachment' }`, tab đã đính kèm → không capture lại) · `hooks/useChat.ts` thêm `attachTab()` · `Composer.tsx` thêm `onCursorChange`/`onEscape`/`inputRef` · `App.tsx` lọc query + chèn text + đính kèm.
+- **Đóng 8 blind spot test** (chi tiết `docs/SYSTEM_DESIGN.md` §7.2.2) — `apps/extension/tests/storage.test.ts` (mới, 10 test) · `extractor.test.ts` (+6 fixture thật + biên) · `packages/shared/tests/contextBudget.test.ts` (+4 assert phần đầu được giữ) · `chatSchema.test.ts` (+11 validate `role`/`id`/history) · `apps/server/tests/chatService.test.ts` (mới, 14 test) · `openaiCompatible.test.ts` (mới, 13 test — mock `fetch` SSE).
+- **Verify** — typecheck ✅ · lint ✅ · test ✅ (**332 unit** = shared 75 · server 126 · extension 131) · build ✅ · **E2E 13/13** ✅ (+4 kịch bản `e2e/mention.spec.ts`) · **mutation re-check 5/5 bị bắt**.
+- **Sửa thêm** — `apps/server/vitest.config.ts` thêm `testTimeout: 30_000` (pdfExtractor timeout giả khi 12 worker chạy song song).
+- Bằng chứng đầy đủ: `docs/IMPLEMENTATION_PLAN.md` §3.1e.
+
+### Quyết định kỹ thuật mới (T-M1-05)
+
+| Quyết định | Lý do |
+|---|---|
+| `findMention()` tách ra hàm **thuần** (không phải logic trong component) | Test được 100% không cần DOM; mutation check chứng minh bắt lỗi thật |
+| Token `@` chỉ hợp lệ ở đầu chuỗi hoặc sau khoảng trắng | `@` trong email (`a@b.com`) **không** được mở popover — nếu không, mọi email trong prompt đều bật popover |
+| Cơ chế "đóng token" sau `Escape` (snapshot token hiện tại) | Trình duyệt bắn `select` event sau khi thoát ô nhập → nếu không có cơ chế này popover **mở lại ngay** (đã gặp thật trong E2E) |
+| `listOpenTabs()` **không bao giờ throw** | Lỗi `chrome.tabs` → trả `[]` → popover rỗng, panel vẫn chat được |
+| Chỉ query `currentWindow: true` | Không lộ tab của cửa sổ khác — side panel thuộc cửa sổ hiện tại |
+| Nạp danh sách tab **lazy** (chỉ khi popover mở) | Không query tabs liên tục → không tốn CPU khi user đang chat |
+| Chèn `@tên tab ` vào textarea khi chọn | User **nhìn thấy** nguồn mình đính kèm → minh bạch (không giấu context) |
+| Dùng lại `captureTabContext()` cho tab được chọn | Không nhân bảc 3 nhánh html/pdf/youtube của T-M1-01/21/22 → không regression |
 
 ### Việc đã xong gần nhất (Audit chất lượng test + sửa hạ tầng test)
 
@@ -104,9 +125,9 @@ Rà soát toàn bộ `docs/` đối chiếu `REQUIREMENTS.md` ↔ `IMPLEMENTATIO
 - **Quyết định:** nâng `FR-CONTEXT-05` / `FR-CONTEXT-06` từ **Should → Must** (Edge A20 + Gemini B10 đều ở mức Must) → M1 tăng 20 → 25 task.
 - **Trạng thái:** chỉ sửa **docs**, chưa viết code. Task implement lần lượt: T-M1-21 → T-M1-22 → T-M1-23 → T-M1-24 → T-M1-25.
 
-> **Cập nhật 2026-11-04 (sau khi implement):** T-M1-21 + T-M1-22 + **T-M1-23** **đã xong**. M1 hiện **5/25 task** (T-M1-01 · T-M1-21 · T-M1-22 · T-M1-23 + T-M1-04 hấp thụ). Thứ tự tiếp theo: **T-M1-05** (`@` multi-tab — nguồn item tier `attachment`) → **T-M1-02** (selection — tier cao nhất) → **T-M1-24** (upload file — tier `attachment`) → **T-M1-25** (onboarding) → rồi quay lại **T-M1-06** (truyền context — contract `context.items[]` đã sẵn sàng) → T-M1-07 (markdown/code).
+> **Cập nhật 2026-11-04 (sau khi implement):** T-M1-21 + T-M1-22 + **T-M1-23** + **T-M1-05** **đã xong**. M1 hiện **6/25 task** (T-M1-01 · T-M1-21 · T-M1-22 · T-M1-23 · T-M1-05 + T-M1-04 hấp thụ). Thứ tự tiếp theo: **T-M1-02** (selection — tier cao nhất) → **T-M1-24** (upload file — tier `attachment`) → **T-M1-25** (onboarding) → rồi quay lại **T-M1-06** (truyền context — contract `context.items[]` đã sẵn sàng) → T-M1-07 (markdown/code).
 >
-> **Cảnh báo khi làm T-M1-05 / T-M1-02 / T-M1-24:** các task này giờ chỉ cần **tạo ra `ContextItem`** (đúng `kind` + `tier`) rồi gọi `attachItem()` — logic cắt bớt, meter, toggle, prompt rendering đã xong ở T-M1-23. Không cần sửa lại logic budget.
+> **Cảnh báo khi làm T-M1-02 / T-M1-24:** các task này giờ chỉ cần **tạo ra `ContextItem`** (đúng `kind` + `tier`) rồi gọi `attachItem()` — logic cắt bớt, meter, toggle, prompt rendering đã xong ở T-M1-23. Không cần sửa lại logic budget. Xem thêm `lib/contextAttach.ts` (`attachTab()` làm mẫu) — `useMention`/`MentionPopover` là mẫu cho UI pattern "overlay nổi trong Composer".
 >
 > **Lưu ý khi sửa E2E cũ:** context không còn tự capture mỗi lượt → test nào dựa vào việc gửi prompt là thấy `ContextNotice` đều phải bấm "Thêm trang này" trước (xem `e2e/extract.spec.ts` đã cập nhật).
 

@@ -8,6 +8,37 @@
 
 ## [Unreleased]
 ### Added
+- **T-M1-05 — `@`-mention multi-tab (FR-CONTEXT-03)**
+  - `apps/extension/src/lib/tabList.ts` (mới) — `listOpenTabs(limit = 20)` liệt kê tab đang mở qua `chrome.tabs.query({ currentWindow: true })` (chỉ cửa sổ hiện tại → không lộ tab cửa sổ khác), lọc trang nội bộ (`detectPageKind() === 'unknown'` → `chrome://` / `file://` / Web Store), `domainOf()` bỏ `www.`; **không bao giờ throw** (lỗi → `[]`).
+  - `apps/extension/src/sidepanel/hooks/useTabs.ts` (mới) — `useTabs(enabled)` nạp danh sách tab **lazy** (chỉ khi popover mở) + `reload()`.
+  - `apps/extension/src/sidepanel/hooks/useMention.ts` (mới) — `findMention()` (thuần, dễ test): token `@` chỉ hợp lệ khi ở đầu chuỗi hoặc sau khoảng trắng → `@` trong email (`a@b.com`) **không** bật popover; `useMention()` quản lý state mở/đóng + `apply()` chèn `@tên tab ` + cơ chế "đóng token" sau `Escape` (trình duyệt bắn `select` event sau khi thoát ô nhập → popover không mở lại).
+  - `apps/extension/src/sidepanel/components/context/MentionPopover.tsx` (mới) — overlay nổi `absolute bottom-full` bám trên `Composer`: favicon (fallback `Globe`) · title · domain · dấu `Check` (tab đã đính kèm) · gạch `--color-accent` (tab đang active) · trạng thái loading / rỗng · `role="listbox"` + `role="option"` + `aria-selected` + `aria-label` tiếng Việt.
+  - `apps/extension/src/lib/contextAttach.ts` — thêm `attachTab(tabId, existingItems)` (bọc `captureTabContext()` thành `ContextItem { id: 'tab-N', kind: 'tab', tier: 'attachment' }`) + `tabItemId()`; tab đã đính kèm → **không capture lại**; không throw.
+  - `apps/extension/src/sidepanel/hooks/useChat.ts` — thêm `attachTab(tabId)` (cầu nối store ↔ `contextAttach`).
+  - `apps/extension/src/sidepanel/components/Composer.tsx` — thêm `onCursorChange` · `onEscape` · `inputRef` (cần cho phát hiện token `@` + đưa con trỏ về đúng chỗ sau khi chèn).
+  - `apps/extension/src/sidepanel/App.tsx` — lọc tab theo query (title/domain/URL) · chèn `@tên tab` vào textarea · đính kèm tab đã chọn · highlight tab active.
+  - **Test** — `apps/extension/tests/tabList.test.ts` (mới, 11 test) · `apps/extension/tests/useMention.test.ts` (mới, 11 test) · `apps/extension/tests/useTabs.test.ts` (mới, 5 test) · `apps/extension/tests/MentionPopover.test.tsx` (mới, 7 test) · `apps/extension/tests/contextAttach.test.ts` (mới, 8 test) · `apps/extension/tests/useChat.test.ts` (+3 test `attachTab`).
+  - **E2E** — `apps/extension/e2e/mention.spec.ts` (mới, 4 kịch bản): (1) gõ `@` → popover hiện danh sách tab; (2) chọn tab → chip context hiện + `@tên tab` trong textarea + `context.items[0].tier === 'attachment'`; (3) lọc tab theo chuỗi đã gõ; (4) `Escape` → đóng popover.
+- **Đóng 8 blind spot test (mutation audit vòng 2 — chi tiết `docs/SYSTEM_DESIGN.md` §7.2.2)**
+  - `apps/extension/tests/storage.test.ts` (mới, 10 test) — `readContextEnabled()` / `writeContextEnabled()`: mặc định `false` · đọc/ghi đúng key `sidekick.contextEnabled` · giá trị không phải `true` → `false` · storage lỗi → **không throw**.
+  - `apps/extension/tests/extractor.test.ts` (+6 test) — fixture fallback **thật** (mọi block < `MIN_BLOCK_LENGTH` → rơi vào nhánh `doc.body`) · dedup `<blockquote><p>` (kích hoạt `if (nested) continue`) · `NEGATIVE_PATTERN` **bên trong** node được chọn (`.ad-banner` / `.comment`) · 3 fixture biên (chỉ `<title>` · chỉ `<h1>` · link-density cao).
+  - `packages/shared/tests/contextBudget.test.ts` (+4 test) — assert **phần đầu được giữ lại** sau khi cắt (head slice) — phân biệt được cắt đầu vs cắt cuối · đúng số ký tự = token còn lại × `CHARS_PER_TOKEN` · item không bị cắt → `truncated: false`.
+  - `packages/shared/tests/chatSchema.test.ts` (+11 test) — `role` sai / thiếu · messages rỗng · vượt & bằng đúng `MAX_HISTORY_MESSAGES` · `describe('contextItemSchema')`: `id` rỗng / thiếu · `kind` sai · `tier` sai · `title` quá dài · `tabId` không phải số nguyên.
+  - `apps/server/tests/chatService.test.ts` (mới, 14 test) — thứ tự event `meta → token → done` · `usage` event · provider lỗi → `error` event + `finishReason: 'error'` · thiếu key → `MISSING_API_KEY` · fallback chain sang provider kế tiếp · `abort` → `finishReason: 'aborted'` · `buildProviderMessages()` (system prompt · context gắn cuối · không context → không thêm) · `buildContextPrompt()` (sort theo tier · nhãn nguồn) · `hashText()`.
+  - `apps/server/tests/openaiCompatible.test.ts` (mới, 13 test) — parse SSE thành token chunk · đọc `usage` · `401` → **không** fallback · `404` / `429` / `500` → fallback model kế tiếp · hết model → error cuối · model trong body request khi fallback · `Authorization` header · `error` trong SSE payload · JSON hỏng bị bỏ qua · `resolveModel()` · `listModels()` fallback.
+  - **Số test toàn repo:** 235 → **332 unit** (shared 75 · server 126 · extension 131) + 9 → **13 E2E**.
+
+### Fixed
+- `apps/server/vitest.config.ts` — thêm `testTimeout: 30_000`: `pdfExtractor.test.ts` timeout giả khi 12 worker Vitest chạy song song (đây là tải máy, không phải lỗi logic — test pass khi chạy riêng).
+
+### Docs
+- `docs/REQUIREMENTS.md` §4.2 — FR-CONTEXT-03 ghi rõ hành vi đã implement · §11.1 — T-M1-05 ✅.
+- `docs/SYSTEM_DESIGN.md` §7.3.3 (mới) — thiết kế `@` multi-tab (mermaid + quy tắc phát hiện token + bảng file liên quan + ràng buộc MV3) · §7.2.1 — số test 235 → 332 / 9 → 13 · §7.2.2 — vòng 2 mutation audit + bảng 8 blind spot đã fix + bảng 5 mutation re-check.
+- `docs/DESIGN_SYSTEM_BRIEF.md` §3.4 — spec `MentionPopover` (vị trí · kích hoạt · nội dung · token · a11y).
+- `docs/IMPLEMENTATION_PLAN.md` §3 — T-M1-05 ✅ · §3.1e (mới) — bảng verify Phần A + Phần B · §3.2 traceability FR-CONTEXT-03.
+- `docs/COMPARISON_MATRIX.md` §E — tick dòng "`@` đính kèm tab (nhiều tab)" (T-M1-05).
+
+### Added
 - **Audit chất lượng test + sửa hạ tầng test (`@sidekick/shared` resolve từ source)**
   - `apps/extension/vitest.config.ts` · `apps/server/vitest.config.ts` · `apps/eval/vitest.config.ts` (mới) — alias `@sidekick/shared` → `packages/shared/src/index.ts` + subpath `@sidekick/shared/constants` → `packages/shared/src/constants.ts`. Subpath khai báo **trước** alias chung để không bị che.
   - `apps/extension/tests/sharedAlias.test.ts` · `apps/server/tests/sharedAlias.test.ts` (mới, 3 test mỗi file) — guard chống regression: alias tồn tại · trỏ đúng `packages/shared/src` · `@sidekick/shared` resolve về **cùng instance module** với import source trực tiếp (alias bị xoá → 2 instance khác nhau → test fail).

@@ -215,7 +215,7 @@ Quy ước ưu tiên: **M** = Must (bắt buộc cho M1) · **S** = Should (bắ
 |---|---|---|---|
 | FR-CONTEXT-01 | Đọc nội dung trang hiện tại bằng content script + Readability-style extraction | M | Trả về title, URL, text chính, có fallback khi extraction rỗng (dùng toàn bộ body text) |
 | FR-CONTEXT-02 | Bật/tắt context bằng 1 toggle, có trạng thái nhìn thấy rõ | M | Chip ở composer đổi trạng thái; tắt → **không gửi payload `context`** lên server; trạng thái được lưu qua `chrome.storage.local` (key `sidekick.contextEnabled`) |
-| FR-CONTEXT-03 | `@`-mention tab để đính kèm tab khác (multi-tab) | M | Hiện danh sách tab + title + favicon; hỗ trợ nhiều tab; bỏ được từng tab |
+| FR-CONTEXT-03 | `@`-mention tab để đính kèm tab khác (multi-tab) | M | Hiện danh sách tab + title + favicon; hỗ trợ nhiều tab; bỏ được từng tab. **Đã implement (T-M1-05):** gõ `@` trong composer → popover liệt kê tab đang mở trong cửa sổ hiện tại (lọc trang nội bộ `chrome://`/`file://`), lọc theo title/domain/URL, chọn tab → tự đính kèm vào context (`tier: attachment`) + chèn `@tên tab` vào ô nhập; `Escape` đóng popover |
 | FR-CONTEXT-04 | Đính kèm vùng text được bôi đen (selection context) | M | Content script bắt sự kiện selection → hiện affordance → mở panel kèm đoạn text |
 | FR-CONTEXT-05 | Trích xuất nội dung PDF (text-based) | M | Parse ở server (BFF fetch bytes + parser) vì content script không chạm được PDF viewer; PDF scan → báo "không đọc được, hãy upload ảnh"; PDF nội bộ/`file://` → báo rõ không truy cập được |
 | FR-CONTEXT-06 | Lấy transcript YouTube (nếu có caption) | M | Dùng timedtext API; không có caption / bị geo-block / consent → báo rõ; transcript vào `context.text` giống các loại context khác |
@@ -914,7 +914,7 @@ Chỉ bắt đầu M4 khi **đồng thời** thỏa:
 |---|---|---|---|
 | FR-CONTEXT-01 | M | T-M1-01 ✅ · T-M1-06 | M1 |
 | FR-CONTEXT-02 | M | **T-M1-04 ✅ (hấp thụ bởi T-M1-23)** · T-M1-06 | M1 |
-| FR-CONTEXT-03 | M | T-M1-05 · T-M1-06 | M1 |
+| FR-CONTEXT-03 | M | **T-M1-05 ✅** · T-M1-06 | M1 |
 | FR-CONTEXT-04 | M | T-M1-02 | M1 |
 | FR-CONTEXT-05 | M | **T-M1-21 ✅** | M1 |
 | FR-CONTEXT-06 | M | **T-M1-22 ✅** | M1 |

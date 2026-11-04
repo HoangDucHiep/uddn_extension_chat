@@ -165,7 +165,7 @@ Dùng làm acceptance checklist cho M1.
 - [ ] Ngân sách context + cắt bớt thông minh ("đã dùng X/Y token") — ✅ T-M1-23
 - [ ] Chat được mà không cần đính kèm trang/tài liệu nào (chat thuần LLM) — ✅ T-M1-23 (FR-CONTEXT-13) · *giới hạn: web search bật ở M2 — FR-TOOLS-03*
 - [ ] Upload ảnh kèm câu hỏi — ⬜ T-M1-24
-- [ ] `@` đính kèm tab (nhiều tab), hiện chip trạng thái — ⬜ T-M1-05
+- [ ] `@` đính kèm tab (nhiều tab), hiện chip trạng thái — ✅ T-M1-05 (popover favicon + title + domain · dấu ✓ tab đã đính kèm · gạch tab đang active · lọc theo query)
 - [ ] Bôi đen → hỏi (selection context) — ⬜ T-M1-02
 - [ ] Nút tóm tắt 1-click — ⬜ T-M1-11
 - [ ] Prompt gợi ý theo loại trang — ⬜ T-M1-11
