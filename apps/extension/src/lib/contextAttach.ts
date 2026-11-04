@@ -1,10 +1,10 @@
 /**
  * Dinh kem context item — chi khi user CHU DONG yeu cau.
  *
- * Mô hình moi (FR-CONTEXT-07): tab hien tai **khong** tu dong vao context.
- * User bam "Thêm trang này" (hoac `@` — T-M1-05) moi tao ra item.
+ * Mo hinh moi (FR-CONTEXT-07): tab hien tai **khong** tu dong vao context.
+ * User bam "Them trang nay" (hoac `@` — T-M1-05) moi tao ra item.
  *
- * Giữ nguyên 3 nhanh trich xuat cua T-M1-01/21/22 (html / pdf / youtube) →
+ * Giu nguyen 3 nhanh trich xuat cua T-M1-01/21/22 (html / pdf / youtube) →
  * khong regression.
  *
  * Docs: docs/SYSTEM_DESIGN.md §7.3.1
@@ -36,21 +36,40 @@ export interface AttachTabResult {
 export async function attachCurrentTab(
   existingItems: readonly ContextItem[] = [],
 ): Promise<AttachTabResult> {
-  const empty: AttachTabResult = {
-    item: undefined,
-    error: undefined,
-    errorMessage: undefined,
-    sourceKind: undefined,
-  }
-
   try {
     const tabId = await getActiveTabId()
-    if (tabId === undefined) return empty
+    if (tabId === undefined) {
+      return { item: undefined, error: undefined, errorMessage: undefined, sourceKind: undefined }
+    }
+    return await attachTab(tabId, existingItems)
+  } catch {
+    return { item: undefined, error: undefined, errorMessage: undefined, sourceKind: undefined }
+  }
+}
 
+/**
+ * Dinh kem mot tab bat ky vao context (dung cho `@` mention — T-M1-05).
+ *
+ * - Tab da dinh kem roi → tra ve item do, khong capture lai.
+ * - Khong bao gio throw.
+ *
+ * @param tabId - Id tab can dinh kem.
+ * @param existingItems - Cac item da dinh kem.
+ */
+export async function attachTab(
+  tabId: number,
+  existingItems: readonly ContextItem[] = [],
+): Promise<AttachTabResult> {
+  try {
     // Tab da duoc dinh kem roi → khong capture lai.
     const existing = existingItems.find((item) => item.tabId === tabId)
     if (existing !== undefined) {
-      return { ...empty, item: existing, sourceKind: existing.sourceKind }
+      return {
+        item: existing,
+        error: undefined,
+        errorMessage: undefined,
+        sourceKind: existing.sourceKind,
+      }
     }
 
     const context = await captureTabContext(tabId)
@@ -62,13 +81,13 @@ export async function attachCurrentTab(
       sourceKind: context.sourceKind,
     }
 
-    // Trang rong (khong co url/title/text) → khong tao item.
+    // Trang rong (khong co url/title) → khong tao item.
     if (context.url.length === 0 && context.title.length === 0) return withError
 
     return {
       ...withError,
       item: {
-        id: `tab-${tabId}`,
+        id: tabItemId(tabId),
         kind: 'tab',
         tier: 'attachment',
         url: context.url,
@@ -80,7 +99,7 @@ export async function attachCurrentTab(
       },
     }
   } catch {
-    return empty
+    return { item: undefined, error: undefined, errorMessage: undefined, sourceKind: undefined }
   }
 }
 

@@ -7,7 +7,10 @@ import {
   type ProviderId,
 } from '@sidekick/shared'
 import { streamChat } from '@/lib/sseClient'
-import { attachCurrentTab as attachTab } from '@/lib/contextAttach'
+import {
+  attachCurrentTab as attachCurrentTabFromLib,
+  attachTab as attachTabFromLib,
+} from '@/lib/contextAttach'
 import { readContextEnabled } from '@/lib/storage'
 import { useChatStore, type ChatMessage } from '../store/chatStore'
 
@@ -73,7 +76,7 @@ export function useChat() {
   // Tab da dinh kem roi → khong capture lai (tiet kiem + tranh trung).
   const attachCurrentTab = useCallback(async () => {
     const state = useChatStore.getState()
-    const result = await attachTab(state.attachedItems)
+    const result = await attachCurrentTabFromLib(state.attachedItems)
     setContextError({
       error: result.error,
       message: result.errorMessage,
@@ -84,6 +87,25 @@ export function useChat() {
     }
     return result.item
   }, [attachItem, setContextError])
+
+  // Dinh kem mot tab bat ky vao context (dung cho `@` mention — T-M1-05).
+  // Tab da dinh kem roi → khong capture lai (tiet kiem + tranh trung).
+  const attachTab = useCallback(
+    async (tabId: number) => {
+      const state = useChatStore.getState()
+      const result = await attachTabFromLib(tabId, state.attachedItems)
+      setContextError({
+        error: result.error,
+        message: result.errorMessage,
+        sourceKind: result.sourceKind,
+      })
+      if (result.item !== undefined) {
+        attachItem(result.item)
+      }
+      return result.item
+    },
+    [attachItem, setContextError],
+  )
 
   // Giu AbortController de "Dung" huy stream.
   const abortRef = useRef<AbortController | undefined>(undefined)
@@ -227,6 +249,7 @@ export function useChat() {
     contextEnabled,
     budget,
     attachCurrentTab,
+    attachTab,
     removeItem,
     clearAttachedItems,
     setContextEnabled,

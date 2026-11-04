@@ -1,5 +1,11 @@
 import { Loader2, Send, Square } from 'lucide-react'
-import { type ChangeEvent, type KeyboardEvent } from 'react'
+import {
+  type ChangeEvent,
+  type KeyboardEvent,
+  type ReactNode,
+  type RefObject,
+  type SyntheticEvent,
+} from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 
@@ -10,12 +16,32 @@ export interface ComposerProps {
   onStop: () => void
   isStreaming: boolean
   disabled?: boolean
+  /**
+   * Popover `@` — hien thi danh sach tab de dinh kem (T-M1-05).
+   *
+   * `undefined` → khong render popover (chua go `@`).
+   */
+  mentionPopover?: ReactNode
+  /**
+   * Callback khi vi tri con tro thay doi (dung cho phat hien token `@`).
+   *
+   * @param value - Noi dung hien tai cua textarea.
+   * @param cursor - Chi so ky tu cua con tro.
+   */
+  onCursorChange?: (value: string, cursor: number) => void
+  /**
+   * Callback khi nguoi dung bam phim `Escape` trong textarea.
+   *
+   * Dung de dong popover `@` truoc khi `Escape` bi vung toi panel.
+   */
+  onEscape?: () => void
+  /**
+   * Ref cua textarea — app dung de dua con tro ve dung vi tri sau khi
+   * chuyen `@query` thanh `@ten tab`.
+   */
+  inputRef?: RefObject<HTMLTextAreaElement>
 }
 
-/**
- * Composer — o nhap cau hoi.
- * Auto-grow theo noi dung, gioi han theo `--composer-min-height` / `--composer-max-height`.
- */
 export function Composer({
   value,
   onChange,
@@ -23,8 +49,18 @@ export function Composer({
   onStop,
   isStreaming,
   disabled = false,
+  mentionPopover,
+  onCursorChange,
+  onEscape,
+  inputRef,
 }: ComposerProps) {
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>): void => {
+    // Escape → dong popover `@` truoc (khong chan event de panel khong bi vung).
+    if (event.key === 'Escape') {
+      onEscape?.()
+      return
+    }
+
     // Enter gui, Shift+Enter xuong dong.
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault()
@@ -37,6 +73,13 @@ export function Composer({
     target.style.height = 'auto'
     target.style.height = `${Math.min(target.scrollHeight, 240)}px`
     onChange(target.value)
+    onCursorChange?.(target.value, target.selectionStart ?? target.value.length)
+  }
+
+  // Cap nhat vi tri con tro khi nguoi dung bam/chon mot phan text.
+  const handleSelect = (event: SyntheticEvent<HTMLTextAreaElement>): void => {
+    const target = event.currentTarget
+    onCursorChange?.(target.value, target.selectionStart ?? target.value.length)
   }
 
   return (
@@ -45,16 +88,22 @@ export function Composer({
       data-testid="composer"
     >
       <div className="flex items-end gap-2">
-        <Textarea
-          value={value}
-          onChange={handleAutoGrow}
-          onKeyDown={handleKeyDown}
-          placeholder="Hoi Sidekick AI ve trang dang mo..."
-          disabled={disabled}
-          aria-label="Nhap cau hoi"
-          data-testid="composer-input"
-          className="max-h-[var(--composer-max-height)] min-h-[var(--composer-min-height)] flex-1"
-        />
+        <div className="relative flex-1">
+          {mentionPopover}
+          <Textarea
+            ref={inputRef}
+            value={value}
+            onChange={handleAutoGrow}
+            onKeyDown={handleKeyDown}
+            onSelect={handleSelect}
+            onClick={handleSelect}
+            placeholder="Hoi Sidekick AI ve trang dang mo... (go @ de dinh kem tab)"
+            disabled={disabled}
+            aria-label="Nhap cau hoi"
+            data-testid="composer-input"
+            className="max-h-[var(--composer-max-height)] min-h-[var(--composer-min-height)] w-full"
+          />
+        </div>
 
         {isStreaming ? (
           <Button
@@ -84,7 +133,7 @@ export function Composer({
       </div>
 
       <p className="mt-2 text-[length:var(--font-size-xs)] text-[var(--text-tertiary)]">
-        Enter de gui · Shift+Enter de xuong dong
+        Enter de gui · Shift+Enter de xuong dong · @ de dinh kem tab
       </p>
     </div>
   )
