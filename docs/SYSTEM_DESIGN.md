@@ -141,9 +141,9 @@ flowchart TB
 
 ## 3. Cấu trúc thư mục chi tiết
 
-> **Trạng thái M1 (2026-11-04, sau T-M1-01):** cây bên dưới là cấu trúc **đích**. M0 đã implement các phần in đậm; T-M1-01 bổ sung `content/extractor.ts` + `lib/pageContext.ts`. Các thư mục còn lại (`chat/`, `context/`, `skills/`, `tools/`, `settings/`, `workflow/`, `selection.ts`) sẽ được tạo ở M1–M4.
+> **Trạng thái M1 (2026-11-04, sau T-M1-23):** cây bên dưới là cấu trúc **đích**. M0 đã implement các phần in đậm; T-M1-01 bổ sung `content/extractor.ts` + `lib/pageContext.ts`; T-M1-23 bổ sung `lib/contextAttach.ts` + `lib/storage.ts` + `components/context/{ContextChips,ContextBudget}.tsx`. Các thư mục còn lại (`chat/`, `skills/`, `tools/`, `settings/`, `workflow/`, `selection.ts`) sẽ được tạo ở M1–M4.
 >
-> Thực tế M0 + T-M1-01 đã có:
+> Thực tế M0 + T-M1-01 + T-M1-23 đã có:
 > ```text
 > apps/extension/
 > ├─ public/{manifest.json, icons/{16,32,48,128}.png}
@@ -151,18 +151,20 @@ flowchart TB
 > ├─ src/
 > │  ├─ sidepanel/{App.tsx, main.tsx, index.css,
 > │  │            components/{PanelHeader,MessageBubble,Composer}.tsx,
+> │  │            components/context/{ContextNotice,ContextChips,ContextBudget}.tsx,
 > │  │            hooks/useChat.ts, store/chatStore.ts}
 > │  ├─ components/ui/{button,input,textarea}.tsx   # shadcn/ui
 > │  ├─ background/serviceWorker.ts
 > │  ├─ content/{contentScript.ts, extractor.ts}   # extractor = Readability-lite
-> │  ├─ lib/{apiClient,sseClient,pageContext,contextBudget,utils}.ts
+> │  ├─ lib/{apiClient,sseClient,pageContext,contextAttach,storage,utils}.ts
 > │  └─ types/globals.d.ts
-> ├─ e2e/{fixtures.ts,sidepanel.spec.ts,extractor.spec.ts}
-> ├─ tests/{apiClient,chatStore,sseClient,useChat,extractor,pageContext,contextBudget}.test.ts
+> ├─ e2e/{fixtures.ts,sidepanel.spec.ts,extractor.spec.ts,extract.spec.ts,context.spec.ts}
+> ├─ tests/{apiClient,chatStore,sseClient,useChat,extractor,pageContext,contextAttach}.test.ts
 > ├─ vite.config.ts                  # side panel + service worker (ESM)
 > ├─ vite.content.config.ts          # content script (IIFE, 1 file — §7.4)
 > ├─ vitest.config.ts · playwright.config.ts
 > ```
+> `packages/shared/src/` hiện có: `constants.ts` · `contextBudget.ts` · `errors.ts` · `events.ts` · `pageKind.ts` · `schemas/{chat,extract,provider}.ts` · `types/entities.ts`.
 > `apps/server/src/` hiện có: `routes/{health,chat,extract}.ts` · `services/chatService.ts` · `providers/*` · `middleware/*` · `config/env.ts` · `db/*` · `lib/{crypto,safeFetch,pdfExtractor,youtubeExtractor}.ts`.
 
 ```text
@@ -236,6 +238,7 @@ uddn_extension_chat/
 │     ├─ schemas/                 # Zod
 │     ├─ events.ts                # SSE event union
 │     ├─ errors.ts                # error codes
+│     ├─ contextBudget.ts         # estimateTokens · applyContextBudget · trimHistory
 │     └─ constants.ts
 ├─ design/
 │  ├─ tokens.json
@@ -352,7 +355,7 @@ X-Request-Id: <uuid v4>            // idempotency + tracing
 
 ### 4.2 Shape của `ChatRequest`
 
-> **Shape đang chạy thật (M0 + T-M1-01)** — nguồn sự thật là `packages/shared/src/schemas/chat.ts`:
+> **Shape đang chạy thật (M0 + T-M1-01 + T-M1-23)** — nguồn sự thật là `packages/shared/src/schemas/chat.ts`:
 >
 > ```ts
 > interface ChatRequest {
@@ -361,22 +364,56 @@ X-Request-Id: <uuid v4>            // idempotency + tracing
 >   provider?: 'mock' | 'groq' | 'openrouter' | 'gemini' | 'ollama'
 >   model?: string
 >   systemPrompt?: string
->   context?: {
->     url: string
->     title: string
->     selectedText?: string   // vùng đã bôi đen (FR-CONTEXT-04 — T-M1-02)
->     text?: string           // nội dung chín đã trích (FR-CONTEXT-01 — T-M1-01)
->     excerpt?: string        // trích đoạn ngắn để preview
->     tabId?: number
->   }
+>   context?: ContextBundle   // xem §4.2.1
 >   temperature?: number
 >   maxOutputTokens?: number
 >   stream?: boolean
 > }
 > ```
 >
-> Giới hạn: `MAX_PAGE_TEXT_CHARS = 40_000` (nội dung trang) · `MAX_EXCERPT_CHARS = 500` · `MAX_CONTEXT_CHARS = 100_000`.
->
+> Giới hạn: `MAX_PAGE_TEXT_CHARS = 40_000` (nội dung trang) · `MAX_EXCERPT_CHARS = 500` · `MAX_CONTEXT_CHARS = 100_000` · `MAX_CONTEXT_ITEMS = 20`.
+
+#### 4.2.1 Hợp đồng `context` — bundle item + tier ưu tiên (T-M1-23)
+
+> **Mô hình mới: chỉ những gì user chủ động đính kèm.** Trước T-M1-23, `context` là 1 object phẳng đại diện cho tab active và **luôn** được gửi ở mọi lượt chat.
+
+```ts
+/** Một nguồn context do user đính kèm. */
+interface ContextItem {
+  id: string                    // định danh để gỡ / cập nhật trong UI
+  kind: 'selection' | 'tab' | 'file'
+  tier: 'selection' | 'attachment' | 'currentTab'  // ưu tiên khi cắt bớt
+  url?: string
+  title: string
+  text?: string                 // nội dung đã trích (có thể bị cắt)
+  excerpt?: string              // trích đoạn ngắn để preview trên chip
+  sourceKind?: 'html' | 'pdf' | 'youtube'
+  tabId?: number
+}
+
+/** Bundle gửi lên BFF. */
+interface ContextBundle {
+  items: ContextItem[]          // tối đa 20 item
+}
+```
+
+**Quy tắc:**
+
+1. **Không tự đính kèm** — tab active **không** tự vào context. Chỉ vào khi user bấm "Thêm trang này" / `@` (T-M1-05) / bôi đen (T-M1-02) / upload file (T-M1-24).
+2. **Không đính kèm gì → không gửi `context`** — request chỉ có `messages` → chat hoạt động như LLM thuần (FR-CONTEXT-13). Lịch sử hội thoại **vẫn** được gửi để duy trì ngữ cảnh cuộc trò chuyện.
+3. **Ưu tiên khi cắt** — `selection` > `attachment` > `currentTab`; lịch sử chat cắt sau cùng (bằng `trimHistory`).
+4. **Toggle** — chip ở composer bật/tắt việc gửi context, mặc định **TẮT**; trạng thái lưu ở `chrome.storage.local` key `sidekick.contextEnabled`.
+5. **Backward compatible** — `chatRequestSchema.context` dùng `z.preprocess(normalizeContext, …)` nên vẫn nhận shape cũ phẳng `{ url, title, text, … }` → bọc thành `items[0]` (tier `currentTab`) + item `selection` nếu có `selectedText`. Eval harness / client cũ không vỡ.
+
+**Ngân sách context 2 tầng (FR-CONTEXT-07):**
+
+| Tầng | Nơi chạy | Vai trò |
+|---|---|---|
+| 1 — client | `apps/extension` (`buildRequestContext`) | Tính **ước lượng** để hiển thị meter "Đã dùng X/Y token" và tiết kiệm băng thông |
+| 2 — server | `apps/server` (`buildProviderMessages`) | **Cắt lại lần nữa** trước khi gọi provider → server là nguồn chân lý (client có thể gửi bản siêu lớn) |
+
+Cả 2 tầng dùng **cùng một hàm** `applyContextBudget()` trong `packages/shared/src/contextBudget.ts` → số liệu meter không lệch với cái thực sự gửi đi.
+
 > **Shape đích (M2+)** — multi-tab, skills, tools, settings:
 >
 > ```ts
@@ -635,6 +672,72 @@ flowchart LR
 - **2 tầng dự phòng** (InnerTube là API không chính thức): tầng 1 InnerTube → tầng 2 `ytInitialPlayerResponse` nhúng trong HTML watch page (parse bằng bộ đếm ngoặc, không regex) → hết cả 2 → `CONTEXT_TRANSCRIPT_UNAVAILABLE`.
 
 > **Ghi chú vận hành:** InnerTube là API **không chính thức** của YouTube → có thể đổi. Khi hỏng → `CONTEXT_TRANSCRIPT_UNAVAILABLE` → UI báo rõ, chat vẫn chạy bình thường.
+
+### 7.3.2 Mô hình "đính kèm chủ động" & ngân sách context (T-M1-23)
+
+> **Vấn đề đã giải quyết (T-M1-23):** trước đây `captureActiveContext()` **luôn** gửi nội dung tab active ở mọi lượt chat → (a) không có cách "chat như LLM thuần", (b) `context` chỉ biểu diễn được 1 nguồn → không cắt bớt theo thứ tự ưu tiên, (c) không có ngân sách token.
+
+#### Mô hình attach
+
+```mermaid
+flowchart LR
+  user["User bấm 'Thêm trang này'"] --> attach["attachCurrentTab()<br/>lib/contextAttach.ts"]
+  attach --> capture["captureTabContext(tabId)<br/>T-M1-01/21/22 — không đổi"]
+  capture --> item["ContextItem { tier: 'attachment' }"]
+  item --> store["chatStore.attachedItems"]
+  store --> budget["applyContextBudget()<br/>@sidekick/shared"]
+  budget --> meter["ContextBudget.tsx<br/>'Đã dùng X / Y token'"]
+  budget --> req["POST /api/chat { context: { items } }"]
+  req --> srv["server: applyContextBudget() lại<br/>+ trimHistory()"]
+  srv --> provider["Provider API"]
+```
+
+| Khái niệm | Giá trị |
+|---|---|
+| Nguồn context | Chỉ những gì user **chủ động** đính kèm: nút "Thêm trang này" · `@` (T-M1-05) · vùng bôi đen (T-M1-02) · file (T-M1-24) |
+| Không đính kèm | Request **không** có payload `context` → chat thuần LLM (FR-CONTEXT-13) |
+| Toggle | Chip ở composer bật/tắt context, mặc định **TẮT**, lưu ở `chrome.storage.local` key `sidekick.contextEnabled` |
+| Tier | `selection` (cao nhất) > `attachment` > `currentTab` — quyết định thứ tự cấp phát ngân sách |
+| Vị trí state | `chatStore` (side panel) — **không** đặt trong service worker (MV3 SW bị kill ~30s) |
+
+**Các file liên quan:**
+
+| File | Vai trò |
+|---|---|
+| `packages/shared/src/contextBudget.ts` | `estimateTokens()` · `applyContextBudget()` · `trimHistory()` — **nguồn sự thật duy nhất** cho ngân sách |
+| `packages/shared/src/schemas/chat.ts` | `contextItemSchema` · `contextBundleSchema` · `normalizeContext()` (backward compatible) |
+| `apps/extension/src/lib/contextAttach.ts` | `attachCurrentTab()` — bọc `captureTabContext()` thành `ContextItem`; không throw |
+| `apps/extension/src/lib/storage.ts` | `readContextEnabled()` / `writeContextEnabled()` — persist toggle |
+| `apps/extension/src/sidepanel/store/chatStore.ts` | `attachedItems` · `contextEnabled` · `budget` + actions |
+| `apps/extension/src/sidepanel/hooks/useChat.ts` | `buildRequestContext()` — dựng payload `context` theo budget |
+| `apps/extension/src/sidepanel/components/context/ContextChips.tsx` | Chip item + toggle + nút "Thêm trang này" |
+| `apps/extension/src/sidepanel/components/context/ContextBudget.tsx` | Meter "Đã dùng X / Y token" |
+| `apps/server/src/services/chatService.ts` | `buildContextPrompt()` render theo tier · `buildProviderMessages()` cắt lại + `trimHistory()` |
+
+#### Ngân sách token theo provider
+
+`maxTokens = contextWindow − reservedOutputTokens − CONTEXT_SAFETY_MARGIN_TOKENS`
+
+| Provider | `CONTEXT_WINDOWS` (token) |
+|---|---|
+| `gemini` | 1 000 000 |
+| `groq` | 128 000 |
+| `openrouter` | 128 000 |
+| `ollama` | 32 000 |
+| `mock` | 8 000 |
+
+- `CONTEXT_SAFETY_MARGIN_TOKENS = 2_000` — margin cho output + system prompt.
+- `MAX_CONTEXT_ITEMS = 20` — số item tối đa trong 1 bundle.
+
+**Cơ chế cắt bớt:**
+
+1. Cấp phát theo thứ tự tier: `selection` giữ trọn → `attachment` giữ trọn nếu còn chỗ → `currentTab` chỉ dùng phần dư.
+2. Item vượt chỗ → **cắt đầu** (`head slice`) + `truncated: true` + `droppedChars`.
+3. Hết chỗ → `droppedItems` tăng (UI báo "N nguồn bị cắt khỏi context").
+4. Phần dư ngân sách → `historyBudget` → `trimHistory()` cắt lượt chat **cũ** trước, **luôn giữ** lượt user cuối cùng.
+5. `estimateTokens()` là **heuristic** (`ceil(chars / 4)`) → xấp xỉ, ghi rõ trong docs. Số token thật hiển thị từ `usage` event của provider (T-M2-03).
+
+**Hai tầng, một hàm:** extension dùng `applyContextBudget()` để hiển thị meter + dựng payload; server gọi **cùng hàm** để cắt lại trước khi gọi provider (nguồn chân lý — client có thể gửi bản siêu lớn).
 
 ### 7.4 Build: content script phải là classic script
 

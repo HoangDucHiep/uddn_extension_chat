@@ -24,14 +24,35 @@
 | Hạng mục | Trạng thái |
 |---|---|
 | Docs | ✅ Đầy đủ 9 file (`docs/`) + `AGENTS.md` ở root |
-| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 xong** — 4 workspace, 187 unit test + 5 E2E |
+| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 xong** — 4 workspace, 229 unit test + 9 E2E |
 | Git | ✅ Đã init (`main`) · tag `v0.1` đánh dấu M0 |
-| Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: 3/25 task) |
-| Task tiếp theo | **T-M1-23** — ngân sách context & cắt bớt thông minh (FR-CONTEXT-07) |
+| Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **5/25 task**) |
+| Task tiếp theo | **T-M1-05** — `@` multi-tab (nguồn item tier `attachment`) → T-M1-02 (selection, tier cao nhất) → T-M1-24 (upload file) |
 
 ### Đang làm dở
 
-_(Không có — T-M1-21 + T-M1-22 đã commit, task kế tiếp T-M1-23)_
+_(Không có — T-M1-23 đã commit, task kế tiếp T-M1-05)_
+
+### Việc đã xong gần nhất (T-M1-23 — Ngân sách context & mô hình "đính kèm chủ động")
+
+- **Contract** — `packages/shared/src/contextBudget.ts` (`estimateTokens` · `applyContextBudget` · `trimHistory`) + `schemas/chat.ts` (`contextItemSchema` · `contextBundleSchema` · `normalizeContext`) + `constants.ts` (`CONTEXT_WINDOWS` · `CONTEXT_SAFETY_MARGIN_TOKENS` · `MAX_CONTEXT_ITEMS`).
+- **Server** — `buildContextPrompt()` render item theo tier với nhãn nguồn; `buildProviderMessages()` áp `applyContextBudget()` + `trimHistory()` → server cắt lại lần nữa (nguồn chân lý).
+- **Extension** — `lib/contextAttach.ts` (`attachCurrentTab`) · `lib/storage.ts` (persist toggle) · `chatStore` (`attachedItems` · `contextEnabled` · `budget`) · `useChat` (`buildRequestContext`) · `ContextChips.tsx` · `ContextBudget.tsx` · `App.tsx` mount 2 component trên Composer.
+- **Hành vi đổi (quan trọng):** context **không còn tự capture** tab active mỗi lượt. Không đính kèm gì → request **không** có payload `context` → chat thuần LLM (FR-CONTEXT-13).
+- **Test** — +42 unit test (tổng 229) + **4 E2E mới** (`e2e/context.spec.ts`); `e2e/extract.spec.ts` cập nhật (phải bấm "Thêm trang này" trước khi trích xuất). Bằng chứng: `docs/IMPLEMENTATION_PLAN.md` §3.1c.
+
+### Quyết định kỹ thuật mới (T-M1-23)
+
+| Quyết định | Lý do |
+|---|---|
+| Mô hình "đính kèm chủ động" (toggle context mặc định **TẮT**) thay vì "tự share tab active" | Đã chốt với user: cần có đường "chat như LLM thuần" + biểu diễn được nhiều nguồn theo thứ tự ưu tiên (FR-CONTEXT-07/13). Đánh đổi 1 điểm parity "tiện" lấy 1 điểm "minh bạch + riêng tư" — đã ghi trung thực trong `COMPARISON_MATRIX.md` §D/§E + `EVAL_PLAN.md` FC-12 |
+| Logic ngân sách đặt ở `packages/shared` (`contextBudget.ts`), **dùng chung** client + server | Meter "đã dùng X/Y" không được lệch với cái thực sự gửi đi; server vẫn cắt lại (nguồn chân lý) |
+| `context` đổi sang bundle `{ items: ContextItem[] }` có `tier` | Cần nhiều nguồn + thứ tự ưu tiên; `tier` là thứ tự cấp phát ngân sách (`selection` > `attachment` > `currentTab`) |
+| `z.preprocess(normalizeContext, …)` — nhận cả shape cũ lẫn mới | Eval harness / client cũ không vỡ khi đổi contract |
+| `estimateTokens` là heuristic `ceil(chars/4)`, không thêm dependency tokenizer | Không kéo thêm lib vào bundle; số token thật hiển thị từ `usage` event (T-M2-03). Docs ghi rõ là **xấp xỉ** |
+| Đính kèm item **tự bật** toggle context | User vừa chủ động yêu cầu dùng context → không bắt họ phải tìm nút toggle; vẫn tắt được bằng tay |
+| `chatStore.reset()` giữ nguyên `attachedItems` + `contextEnabled` | "Xoá cuộc trò chuyện" không nên xoá nguồn context user đang dùng |
+| T-M1-04 **hấp thụ** vào T-M1-23 | Chip + toggle là cùng một UI, tách làm trùng lặp |
 
 ### Việc đã xong gần nhất (T-M1-21 + T-M1-22 — Trích xuất PDF & transcript YouTube)
 
@@ -63,7 +84,11 @@ Rà soát toàn bộ `docs/` đối chiếu `REQUIREMENTS.md` ↔ `IMPLEMENTATIO
 - **Quyết định:** nâng `FR-CONTEXT-05` / `FR-CONTEXT-06` từ **Should → Must** (Edge A20 + Gemini B10 đều ở mức Must) → M1 tăng 20 → 25 task.
 - **Trạng thái:** chỉ sửa **docs**, chưa viết code. Task implement lần lượt: T-M1-21 → T-M1-22 → T-M1-23 → T-M1-24 → T-M1-25.
 
-> **Cập nhật 2026-11-04 (sau khi implement):** T-M1-21 + T-M1-22 **đã xong**. M1 hiện **3/25 task**. Task kế tiếp: T-M1-23 (ngân sách context) → T-M1-24 (upload ảnh) → T-M1-25 (onboarding) → rồi quay lại T-M1-02 (selection context) → T-M1-06 (truyền context) — vì T-M1-06 cần `contextBudget` từ T-M1-23 nên làm sau.
+> **Cập nhật 2026-11-04 (sau khi implement):** T-M1-21 + T-M1-22 + **T-M1-23** **đã xong**. M1 hiện **5/25 task** (T-M1-01 · T-M1-21 · T-M1-22 · T-M1-23 + T-M1-04 hấp thụ). Thứ tự tiếp theo: **T-M1-05** (`@` multi-tab — nguồn item tier `attachment`) → **T-M1-02** (selection — tier cao nhất) → **T-M1-24** (upload file — tier `attachment`) → **T-M1-25** (onboarding) → rồi quay lại **T-M1-06** (truyền context — contract `context.items[]` đã sẵn sàng) → T-M1-07 (markdown/code).
+>
+> **Cảnh báo khi làm T-M1-05 / T-M1-02 / T-M1-24:** các task này giờ chỉ cần **tạo ra `ContextItem`** (đúng `kind` + `tier`) rồi gọi `attachItem()` — logic cắt bớt, meter, toggle, prompt rendering đã xong ở T-M1-23. Không cần sửa lại logic budget.
+>
+> **Lưu ý khi sửa E2E cũ:** context không còn tự capture mỗi lượt → test nào dựa vào việc gửi prompt là thấy `ContextNotice` đều phải bấm "Thêm trang này" trước (xem `e2e/extract.spec.ts` đã cập nhật).
 
 ### Việc đã xong gần nhất (T-M1-01 — Content script extractor)
 
@@ -114,6 +139,10 @@ Rà soát toàn bộ `docs/` đối chiếu `REQUIREMENTS.md` ↔ `IMPLEMENTATIO
 | PDF/YouTube extract **ở BFF chứ không ở content script** | PDF viewer là plugin native của Chrome (content script không inject được); transcript YouTube nằm ở `captionTracks` chứ không phải DOM text. Cả 2 nhánh chuẩn hoá về cùng shape `context.text` → `buildContextPrompt()` không phân biệt nguồn (`docs/SYSTEM_DESIGN.md` §7.3.1) |
 | Bảng FR ↔ Task đặt ở `REQUIREMENTS.md` §11.1 (không phải trong plan) | FR là nguồn chân lý; plan chỉ giữ bản rút gọn theo nhóm ở §3.2 → tránh trùng lặp 2 nơi dễ lệch |
 | `FR-WORKFLOW-04` (trigger theo sự kiện) defer sang M5 | `chrome.tabs.onUpdated` không đáng tin trong MV3 (SW bị kill ~30s) → phải dùng `chrome.alarms` ≥ 30s hoặc polling; rủi ro cao, không trên đường găng |
+| **Context chỉ gửi khi user chủ động đính kèm** (2026-11-04, T-M1-23) | Đã chốt với user: cần đường "chat như LLM thuần" (FR-CONTEXT-13) + biểu diễn nhiều nguồn theo thứ tự ưu tiên. Edge/Gemini mặc định share tab → khác biệt được ghi trung thực trong `COMPARISON_MATRIX.md` §D/§E + `EVAL_PLAN.md` FC-12 |
+| **Toggle context mặc định TẮT, nhưng đính kèm item thì tự bật** (T-M1-23) | User vừa chủ động yêu cầu dùng context → không bắt họ tìm nút toggle; vẫn tắt được bằng tay |
+| Logic ngân sách context đặt ở `packages/shared` dùng chung client + server | Meter "đã dùng X/Y" không được lệch với cái thực sự gửi đi; server cắt lại là nguồn chân lý |
+| `context` = bundle `{ items: ContextItem[] }` có `tier`, nhận cả shape cũ qua `z.preprocess` | Nhiều nguồn + thứ tự ưu tiên; backward compatible để eval harness / client cũ không vỡ |
 
 ---
 

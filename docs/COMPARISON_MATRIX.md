@@ -120,7 +120,7 @@ Cột ưu tiên: **M** = Must (M1) · **S** = Should (M2) · **C** = Could (M2/M
 | Nhóm | Edge Copilot | Chrome Gemini | Sidekick AI | Gap còn lại sau M1 |
 |---|---|---|---|---|
 | Lõi chat (streaming, markdown, code) | ✅ | ✅ | ✅ | — |
-| Context trang | ✅ | ✅ (mặc định bật) | ✅ (chọn lọc) | — |
+| Context trang | ✅ | ✅ (mặc định bật) | ✅ (**đính kèm chủ động** — T-M1-23) | — |
 | Context PDF / video (transcript) | ✅ (A20) | ✅ (B10) | ✅ (T-M1-21/22) | — |
 | Multi-tab | ✅ không giới hạn | ✅ tối đa 10 | ✅ không giới hạn | — |
 | Selection → hỏi | ✅ | ✅ | ✅ | — |
@@ -144,6 +144,11 @@ Cột ưu tiên: **M** = Must (M1) · **S** = Should (M2) · **C** = Could (M2/M
 > **Ưu tiên cột "Ưu tiên ta":** `M` = Must (M1) · `S` = Should (M2) · `C` = Could (M2/M3) · `—` = không triển khai.
 > Workflow/scheduler (A28, B28, C15) được đánh dấu **M4 — implement sau cùng**, vì không nằm trong yêu cầu bắt buộc của giảng viên và là phần đầu tiên bị cắt nếu thiếu thời gian (xem [`REQUIREMENTS.md`](REQUIREMENTS.md) §9.3).
 
+> **Khác biệt cơ chế context (T-M1-23) — cần nói rõ khi trình bày:**
+> Edge Copilot và Chrome Gemini **mặc định share tab** (bấm vào icon là dùng ngay). Sidekick AI chọn mô hình **đính kèm chủ động**: tab hiện tại **không** tự vào context; user phải bấm "Thêm trang này" (hoặc `@` / bôi đen / upload file) thì nguồn đó mới được gửi lên. Toggle bật/tắt context **mặc định TẮT** và được lưu lại.
+> - **Đánh đổi:** mất 1 điểm "tiện — không cần thao tác" so với Edge/Gemini; đổi lại có 1 điểm "minh bạch + riêng tư" mà Edge/Gemini **không** có (chip luôn hiện đang chia sẻ gì · không gửi gì khi không chủ động yêu cầu · có meter "đã dùng X/Y token").
+> - **Ảnh hưởng eval:** nhóm task `general_qa` (chat không cần trang) đo đúng đường này — xem [`EVAL_PLAN.md`](EVAL_PLAN.md) §7 (FC-9). Không so sánh "share tab mặc định" của Edge/Gemini với "đính kèm chủ động" của Sidekick như cùng một hành vi.
+
 ---
 
 ## E. Khoảng trống cần đóng (checklist parity)
@@ -154,10 +159,11 @@ Dùng làm acceptance checklist cho M1.
 - [ ] Panel giữ nguyên khi chuyển tab
 - [ ] Stream token-by-token, hiện dần — ✅ M0
 - [ ] Markdown + bảng + code block + copy + syntax highlight — ⬜ T-M1-07
-- [ ] Đọc nội dung trang hiện tại, bật/tắt được — đọc: ✅ T-M1-01 · bật/tắt: ⬜ T-M1-04
+- [ ] Đọc nội dung trang hiện tại, bật/tắt được — đọc: ✅ T-M1-01 · bật/tắt: ✅ T-M1-04 (hấp thụ bởi T-M1-23)
 - [ ] Đọc nội dung file PDF (text-based) — ✅ T-M1-21
 - [ ] Lấy transcript video YouTube — ✅ T-M1-22
-- [ ] Ngân sách context + cắt bớt thông minh ("đã dùng X/Y token") — ⬜ T-M1-23
+- [ ] Ngân sách context + cắt bớt thông minh ("đã dùng X/Y token") — ✅ T-M1-23
+- [ ] Chat được mà không cần đính kèm trang/tài liệu nào (chat thuần LLM) — ✅ T-M1-23 (FR-CONTEXT-13) · *giới hạn: web search bật ở M2 — FR-TOOLS-03*
 - [ ] Upload ảnh kèm câu hỏi — ⬜ T-M1-24
 - [ ] `@` đính kèm tab (nhiều tab), hiện chip trạng thái — ⬜ T-M1-05
 - [ ] Bôi đen → hỏi (selection context) — ⬜ T-M1-02

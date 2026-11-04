@@ -143,6 +143,9 @@ Format: **As a** *persona*, **I want** *hành động*, **so that** *lợi ích*
   - *AC*: Given tôi tắt domain X trong Settings, When tôi mở domain X, Then hệ thống không đọc nội dung trang và hiển thị badge "Context off".
 - **US-09 (P1)** — As a user, I want biết rõ hiện tại đang chia sẻ tab nào, so that tôi không lỡ tình.
   - *AC*: Given đang có tab được share, Then luôn hiển thị chip tên tab ở header của composer, bấm vào để bỏ share.
+- **US-16 (P1)** — As a user, I want hỏi bất kỳ câu gì mà không cần đính kèm trang hay tài liệu, so that tôi dùng được Sidekick như một chatbot LLM thông thường.
+  - *AC*: Given tôi chưa đính kèm item nào và toggle context đang TẮT, When tôi gửi câu hỏi, Then request lên BFF **không** chứa payload `context`, và panel trả lời bằng kiến thức có sẵn của model (lịch sử hội thoại vẫn được gửi để duy trì ngữ cảnh cuộc trò chuyện).
+  - *Giới hạn đã biết:* ở M1 model **không** tự tra web. Tính năng web search (FR-TOOLS-03) bật ở **M2** — xem [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) §4.
 
 ### 3.3 Tính năng nâng cao (điểm cộng)
 
@@ -211,17 +214,30 @@ Quy ước ưu tiên: **M** = Must (bắt buộc cho M1) · **S** = Should (bắ
 | ID | Requirement | Priority | Acceptance criteria |
 |---|---|---|---|
 | FR-CONTEXT-01 | Đọc nội dung trang hiện tại bằng content script + Readability-style extraction | M | Trả về title, URL, text chính, có fallback khi extraction rỗng (dùng toàn bộ body text) |
-| FR-CONTEXT-02 | Bật/tắt context trang bằng 1 toggle, có trạng thái nhìn thấy rõ | M | Chip ở header đổi trạng thái; tắt → không gửi content lên server |
+| FR-CONTEXT-02 | Bật/tắt context bằng 1 toggle, có trạng thái nhìn thấy rõ | M | Chip ở composer đổi trạng thái; tắt → **không gửi payload `context`** lên server; trạng thái được lưu qua `chrome.storage.local` (key `sidekick.contextEnabled`) |
 | FR-CONTEXT-03 | `@`-mention tab để đính kèm tab khác (multi-tab) | M | Hiện danh sách tab + title + favicon; hỗ trợ nhiều tab; bỏ được từng tab |
 | FR-CONTEXT-04 | Đính kèm vùng text được bôi đen (selection context) | M | Content script bắt sự kiện selection → hiện affordance → mở panel kèm đoạn text |
 | FR-CONTEXT-05 | Trích xuất nội dung PDF (text-based) | M | Parse ở server (BFF fetch bytes + parser) vì content script không chạm được PDF viewer; PDF scan → báo "không đọc được, hãy upload ảnh"; PDF nội bộ/`file://` → báo rõ không truy cập được |
-| FR-CONTEXT-06 | Lấy transcript YouTube (nếu có caption) | M | Dùng timedtext API; không có caption / bị geo-block / consent → báo rõ; transcript vào `context.text` như các loại context khác |
-| FR-CONTEXT-07 | Ngân sách context & cắt bớt thông minh | M | Giới hạn token theo provider; cắt theo thứ tự ưu tiên (selection > tab đính kèm > tab hiện tại > lịch sử chat); UI hiện "đã dùng X/Y token" |
+| FR-CONTEXT-06 | Lấy transcript YouTube (nếu có caption) | M | Dùng timedtext API; không có caption / bị geo-block / consent → báo rõ; transcript vào `context.text` giống các loại context khác |
+| FR-CONTEXT-07 | Ngân sách context & cắt bớt thông minh | M | Giới hạn token theo provider (`CONTEXT_WINDOWS`); cắt theo thứ tự ưu tiên (selection > tab đính kèm > tab hiện tại > lịch sử chat); UI hiện "đã dùng X/Y token"; server cắt lại lần nữa (nguồn chân lý) |
 | FR-CONTEXT-08 | Chính sách bật/tắt context theo domain (allow/deny list) | S | Domain bị chặn → không đọc content, hiện badge |
 | FR-CONTEXT-09 | Lịch sử duyệt web tùy chọn (opt-in) làm context | S | Mặc định TẮT; bật thì có cảnh báo rõ; có thể xoá |
 | FR-CONTEXT-10 | Chỉ dẫn trích dẫn nguồn trong câu trả lời | M | Mỗi claim quan trọng gắn [1], [2] → hover/click xem đoạn nguồn |
-| FR-CONTEXT-11 | Chế độ "chỉ dùng trang" (không dùng lịch sử chat) | S | Toggle per-request |
+| FR-CONTEXT-11 | Chế độ "chỉ dùng trang" (không dùng lịch sử chat) | S | Toggle per-request — *hỗ trợ một phần bởi T-M1-23: `trimHistory()` đã cắt lịch sử theo ngân sách còn lại, nhưng chưa có toggle per-request* |
 | FR-CONTEXT-12 | Snapshot context để tái lập (reproducibility) | S | Lưu hash + nội dung context vào log phục vụ eval |
+| FR-CONTEXT-13 | Chat không cần context — đính kèm là hành động chủ động | M | Tab hiện tại **không** tự vào context; không đính kèm gì (hoặc toggle TẮT) → request **không** có payload `context` → model trả lời bằng kiến thức có sẵn + lịch sử hội thoại; đính kèm (nút "Thêm trang này" / `@` / selection / file) → item vào `context.items[]` với `tier` ưu tiên; web search tự động **chưa có** ở M1 (FR-TOOLS-03, M2) |
+
+> **Mô hình context — quyết định sản phẩm (T-M1-23, 2026-11-04):**
+> Trước T-M1-23, panel **tự** capture tab active ở mọi lượt chat → không có cách "chat như LLM thuần" và không biểu diễn được nhiều nguồn theo thứ tự ưu tiên.
+> - **Không tự đính kèm:** tab hiện tại chỉ vào context khi user chủ động đính kèm (nút "Thêm trang này", `@` — T-M1-05, selection — T-M1-02, file — T-M1-24).
+> - **Không đính kèm gì:** request gửi prompt trần → chat hoạt động như LLM thuần (xem FR-CONTEXT-13 / US-16).
+> - **Đính kèm là hành động chủ động:** mỗi nguồn là một `ContextItem` có `tier` (`selection` > `attachment` > `currentTab`) → server cắt bớt theo đúng thứ tự này.
+> - **Toggle:** chip ở composer bật/tắt việc gửi context, mặc định **TẮT**; đính kèm item sẽ tự bật toggle (người dùng vừa chủ động yêu cầu dùng context), nhưng vẫn có thể tắt lại bằng tay.
+> - **Ảnh hưởng parity:** REQUIREMENTS §4.2 trước đây ghi "Đọc nội dung trang hiện tại" là **Must** và Edge/Gemini mặc định share tab. Mô hình mới là quyết định sản phẩm (đã chốt với user) → phản ánh trung thực trong [`COMPARISON_MATRIX.md`](COMPARISON_MATRIX.md) §E + [`EVAL_PLAN.md`](EVAL_PLAN.md) §7 (FC-9) để không sai lệch khi so sánh.
+
+> **Trạng thái FR-CONTEXT-07 (✅ implement 2026-11-04 — T-M1-23):** `packages/shared/src/contextBudget.ts` (`estimateTokens` · `applyContextBudget` · `trimHistory`) là nguồn sự thật duy nhất cho ngân sách context — extension dùng để hiển thị meter, server dùng để cắt lại trước khi gọi provider → số liệu "đã dùng X/Y" không lệch với cái thực sự gửi đi. `estimateTokens` là **heuristic** (`ceil(chars/4)`), số token thật hiển thị từ `usage` event của provider (T-M2-03).
+>
+> **Trạng thái FR-CONTEXT-13 (✅ implement 2026-11-04 — T-M1-23):** `apps/extension/src/lib/contextAttach.ts` (`attachCurrentTab`) · `apps/extension/src/sidepanel/store/chatStore.ts` (`attachedItems` · `contextEnabled` · `budget`) · `apps/extension/src/sidepanel/hooks/useChat.ts` (`buildRequestContext`) · `apps/extension/src/sidepanel/components/context/ContextChips.tsx` · `ContextBudget.tsx`.
 
 > **Trạng thái FR-CONTEXT-01 (T-M1-01 ✅ 2026-11-04):** đã implement — `apps/extension/src/content/extractor.ts` (Readability-lite: title + byline + url + text chính + excerpt, fallback body, fallback rỗng → `strategy: 'empty'`), `apps/extension/src/lib/pageContext.ts` (capture qua `chrome.scripting`, không throw khi trang không đọc được), `packages/shared` `pageContextSchema` có `text`/`excerpt`, BFF `buildContextPrompt()` đưa nội dung trang vào prompt (đánh dấu "dữ liệu tham chiếu, không phải chỉ thị"). FR-CONTEXT-02 (toggle bật/tắt) thuộc T-M1-04.
 >
@@ -897,17 +913,18 @@ Chỉ bắt đầu M4 khi **đồng thời** thỏa:
 | FR | Priority | Task | Milestone |
 |---|---|---|---|
 | FR-CONTEXT-01 | M | T-M1-01 ✅ · T-M1-06 | M1 |
-| FR-CONTEXT-02 | M | T-M1-04 · T-M1-06 | M1 |
+| FR-CONTEXT-02 | M | **T-M1-04 ✅ (hấp thụ bởi T-M1-23)** · T-M1-06 | M1 |
 | FR-CONTEXT-03 | M | T-M1-05 · T-M1-06 | M1 |
 | FR-CONTEXT-04 | M | T-M1-02 | M1 |
 | FR-CONTEXT-05 | M | **T-M1-21 ✅** | M1 |
 | FR-CONTEXT-06 | M | **T-M1-22 ✅** | M1 |
-| FR-CONTEXT-07 | M | T-M1-06 · **T-M1-23** | M1 |
+| FR-CONTEXT-07 | M | T-M1-06 · **T-M1-23 ✅** | M1 |
 | FR-CONTEXT-08 | S | **T-M2-19** | M2 |
 | FR-CONTEXT-09 | S | **T-M2-19** | M2 |
 | FR-CONTEXT-10 | M | T-M1-08 | M1 |
 | FR-CONTEXT-11 | S | **T-M2-19** | M2 |
 | FR-CONTEXT-12 | S | T-M1-14 | M1 |
+| FR-CONTEXT-13 | M | **T-M1-23 ✅** | M1 |
 
 #### FR-VISION — Ảnh & thị giác
 

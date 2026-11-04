@@ -8,6 +8,38 @@
 
 ## [Unreleased]
 ### Added
+- **T-M1-23 — Ngân sách context & cắt bớt thông minh (FR-CONTEXT-07) + mô hình "đính kèm chủ động" (FR-CONTEXT-13)**
+  - `packages/shared/src/contextBudget.ts` (mới) — `estimateTokens()` (`ceil(chars/4)` — heuristic, ghi rõ là xấp xỉ) · `applyContextBudget()` (cấp phát theo tier `selection` → `attachment` → `currentTab`, item vượt chỗ bị **cắt đầu** + `truncated` + `droppedChars`, trả `{ items, usedTokens, maxTokens, historyBudget, droppedItems }`) · `trimHistory()` (giữ lượt mới nhất trước, **luôn giữ** lượt user cuối cùng).
+  - `packages/shared/src/schemas/chat.ts` — `contextItemSchema` (`id`/`kind`/`tier`/`url?`/`title`/`text?`/`excerpt?`/`sourceKind?`/`tabId?`) · `contextBundleSchema` (`{ items }`, max 20) · `normalizeContext()` — `chatRequestSchema.context` dùng `z.preprocess(normalizeContext, …)` nên **nhận cả** shape mới `{ items }` lẫn shape cũ phẳng `{ url, title, text }` (→ bọc thành `items[0]` tier `currentTab`) → backward compatible cho eval harness / client cũ.
+  - `packages/shared/src/constants.ts` — `CONTEXT_WINDOWS` (gemini 1 000 000 · groq/openrouter 128 000 · ollama 32 000 · mock 8 000) · `CONTEXT_SAFETY_MARGIN_TOKENS = 2_000` · `MAX_CONTEXT_ITEMS = 20`.
+  - `apps/server/src/services/chatService.ts` — `buildContextPrompt(context)` render từng item theo tier với nhãn nguồn rõ ràng (`[Đã bôi đen]` · `[Tab đính kèm]` · `[File đính kèm]` · `[Trang hiện tại]`) · `buildProviderMessages()` áp `applyContextBudget()` + `trimHistory()` → **server cắt lại lần nữa** (nguồn chân lý, client có thể gửi bản siêu lớn).
+  - `apps/extension/src/lib/contextAttach.ts` (mới) — `attachCurrentTab()` bọc `captureTabContext()` (giữ nguyên 3 nhánh html/pdf/youtube của T-M1-01/21/22 → không regression) thành `ContextItem` tier `attachment`; **không bao giờ throw** (lỗi trả qua `error`/`errorMessage`); tab đã đính kèm → không capture lại.
+  - `apps/extension/src/lib/storage.ts` (mới) — `readContextEnabled()` / `writeContextEnabled()` — persist toggle ở `chrome.storage.local` key `sidekick.contextEnabled`; mọi lỗi bị nuốt (storage không truy cập được → dùng giá trị mặc định).
+  - `apps/extension/src/sidepanel/store/chatStore.ts` — thêm `attachedItems: ContextItem[]` · `contextEnabled: boolean` (mặc định **false**) · `budget: ContextBudgetResult | undefined` + actions `attachItem` · `removeItem` · `clearAttachedItems` · `setContextEnabled` · `hydrateContextEnabled` · `recomputeBudget`. `reset()` giữ nguyên context đã đính kèm (clear cuộc trò chuyện không xoá nguồn context của user).
+  - `apps/extension/src/sidepanel/hooks/useChat.ts` — **bỏ** `captureActiveContext()` (tự capture tab active mỗi lượt) → thay bằng `buildRequestContext()`: `contextEnabled === false` hoặc không có item → **không gửi payload `context`** (chat thuần LLM) ; ngược lại → `applyContextBudget()` rồi gửi `context.items`. Bổ sung `attachCurrentTab()` (user chủ động đính kèm) + hydrate toggle từ storage.
+  - `apps/extension/src/sidepanel/components/context/ContextChips.tsx` (mới) — chip từng item đã đính kèm (icon theo `kind`: `MousePointer`/`Globe`/`FileText` + title + nút xoá có `aria-label` tiếng Việt) · chip toggle `role="switch"` · nút "Thêm trang này". *(T-M1-04 được hấp thụ)*
+  - `apps/extension/src/sidepanel/components/context/ContextBudget.tsx` (mới) — meter "Đã dùng X / Y token" · màu theo ngưỡng `< 70%` `--success` · `70–90%` `--warning` · `> 90%` `--danger` · dòng phụ "N nguồn bị cắt khỏi context" · `role="status"` + `aria-live="polite"`.
+  - `apps/extension/src/sidepanel/App.tsx` — mount `ContextChips` + `ContextBudget` phía trên `Composer`; `ContextNotice` giữ nguyên.
+  - **Test** — `packages/shared/tests/contextBudget.test.ts` (mới) · `packages/shared/tests/chatSchema.test.ts` (mở rộng: 2 shape context) · `apps/server/tests/contextPrompt.test.ts` (mở rộng: render nhiều item theo tier · server tự cắt lại · `trimHistory`) · `apps/extension/tests/contextAttach.test.ts` (mới, 6 test) · `apps/extension/tests/chatStore.test.ts` (+8 test context) · `apps/extension/tests/useChat.test.ts` (3 test context viết lại).
+  - **E2E** — `apps/extension/e2e/context.spec.ts` (mới, 4 kịch bản): (1) không đính kèm → request **không** có `context`; (2) bấm "Thêm trang này" → chip hiện + `context.items[0].tier === 'attachment'`; (3) meter hiện "… / … token"; (4) tắt toggle → request lại không có `context`. `apps/extension/e2e/extract.spec.ts` cập nhật: phải bấm "Thêm trang này" trước khi trích xuất (context không còn tự capture mỗi lượt).
+  - **Số test toàn repo:** **229 unit** (shared 59 · server 96 · extension 74) + **9 E2E**.
+
+### Changed
+- **Hành vi sản phẩm (T-M1-23):** context **không còn tự động** gửi tab active ở mọi lượt chat → chuyển sang mô hình "**chỉ những gì user chủ động đính kèm**". Không đính kèm gì (hoặc toggle TẮT) → request gửi prompt trần → chat hoạt động như LLM thuần. Đính kèm (nút "Thêm trang này" · `@` · bôi đen · upload file) → item vào `context.items[]` với `tier` ưu tiên. Toggle mặc định **TẮT**; đính kèm item tự bật toggle (user vừa yêu cầu dùng context) nhưng vẫn tắt được bằng tay.
+  - `docs/REQUIREMENTS.md` §4.2 — sửa FR-CONTEXT-02 · **thêm FR-CONTEXT-13** (chat không cần context) · §3 thêm **US-16** · §11.1 map FR-CONTEXT-13 → T-M1-23 · ghi chú FR-CONTEXT-11 (chỉ hỗ trợ một phần bởi `trimHistory`).
+  - `docs/SYSTEM_DESIGN.md` §4.2.1 (mới) — hợp đồng `context` bundle + item + tier + quy tắc backward compatible · §7.3.2 (mới) — mô hình attach + ngân sách token theo provider + 2 tầng client/server · §3 (cây thư mục).
+  - `docs/IMPLEMENTATION_PLAN.md` §3 — T-M1-23 ✅ · T-M1-04 ✅ (hấp thụ) · §3.1c (mới) bảng verify T-M1-23 · §3.2 traceability FR-CONTEXT-01..13.
+  - `docs/COMPARISON_MATRIX.md` §D — dòng "Context trang" ghi rõ Sidekick dùng cơ chế **đính kèm chủ động** (Edge/Gemini mặc định share tab) + ghi chú khác biệt + §E tick 3 dòng.
+  - `docs/EVAL_PLAN.md` §3.2 — nhóm task mới `general_qa` (chat không cần context, ≥ 4 task) · tổng ≥ 52 task · §9 thêm **FC-12** (trạng thái context giống nhau) + ghi chú công bằng về cơ chế context.
+  - `docs/DESIGN_SYSTEM_BRIEF.md` §3.4 — spec chi tiết `ContextChips` + `ContextBudget` (vị trí · token · a11y) · §4 thêm trạng thái "không đính kèm gì".
+  - `AGENTS.md` §6 + `docs/README.md` — số task M1 (3/25 → **5/25**) · số unit test (187 → **229**) · task kế tiếp.
+
+### Fixed
+- Số liệu meter "đã dùng X/Y token" không lệch với cái thực sự gửi đi: extension và server dùng **cùng** hàm `applyContextBudget()` từ `@sidekick/shared`.
+
+### Docs
+- `docs/REQUIREMENTS.md` · `docs/SYSTEM_DESIGN.md` · `docs/IMPLEMENTATION_PLAN.md` · `docs/COMPARISON_MATRIX.md` · `docs/EVAL_PLAN.md` · `docs/DESIGN_SYSTEM_BRIEF.md` · `docs/CHANGELOG.md` · `docs/HANDOFF.md` · `AGENTS.md` · `docs/README.md` — đồng bộ theo T-M1-23.
+
 - **T-M1-21 / T-M1-22 — Hoàn thiện theo plan: chặn hostname nội bộ + fallback `ytInitialPlayerResponse` + `pageKindSchema`**
   - `apps/server/src/lib/safeFetch.ts` — chặn thêm hostname nội bộ trước khi DNS resolve: `localhost` · `localhost.localdomain` · `*.local` · `*.internal` · `*.localdomain` (một số host nội bộ không resolve được hoặc resolve ra IP công cộng nhưng vẫn chỉ tới dịch vụ trong Docker network).
   - `apps/server/src/lib/youtubeExtractor.ts` — **2 tầng dự phòng** thay vì 1 tầng: tầng 1 InnerTube (`youtubei/v1/player`, client `ANDROID`) → tầng 2 parse `ytInitialPlayerResponse` nhúng trong HTML watch page (dùng bộ đếm ngoặc có nhận biết chuỗi/escape, không dùng regex) → hết cả 2 → `CONTEXT_TRANSCRIPT_UNAVAILABLE`. Hàm `resolvePlayerResponse()` chỉ nhảy sang tầng 2 khi lỗi là lỗi mạng/parse (`CONTEXT_EXTRACT_FAILED`), lỗi nghiệp vụ vẫn trả thẳng.

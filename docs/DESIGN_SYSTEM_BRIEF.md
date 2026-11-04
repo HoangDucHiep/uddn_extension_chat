@@ -175,6 +175,25 @@ Nguồn sự thật: `design/tokens.json` → generate ra `design/tokens.css` (C
 | `ProviderBadge` | Chip provider/model + nguồn key đang dùng | FR-PROVIDER-09 | |
 | `ContextNotice` | Banner lỗi trích xuất context (PDF scan, không có caption, không tải được file) — nằm ngay trên Composer, có nút đóng | FR-CONTEXT-05, FR-CONTEXT-06 | Người dùng tưởng chatbot bị hỏng → mất niềm tin |
 
+#### `ContextChips` (đã implement T-M1-23 — hấp thụ T-M1-04)
+
+- **Vị trí:** ngay trên `Composer`, dưới `ContextNotice`, trên `ContextBudget`. Chiếm 1 hàng, `flex-wrap`.
+- **Nội dung:** chip toggle `role="switch"` ("Context") · chip từng item đã đính kèm · nút "Thêm trang này".
+- **Mô hình (T-M1-23):** context **không** tự động — chỉ những gì user chủ động đính kèm mới có chip. Toggle mặc định **TẮT**; đính kèm item sẽ tự bật toggle (user vừa yêu cầu dùng context) nhưng vẫn tắt được bằng tay.
+- **Icon theo `kind`:** `MousePointer` (selection) · `Globe` (tab) · `FileText` (file) — `lucide-react`.
+- **Nút xoá chip:** `aria-label` tiếng Việt (`"Xoá context {title}"`), icon `X`.
+- **Token:** `--border-default` (viền) · `--surface-raised` (nền chip) · `--surface-panel` (nền hàng) · `--text-secondary` (nhãn) · `--text-tertiary` (icon xoá) · `--color-accent` + `--color-accent-subtle` (toggle đang bật) · `--font-size-xs` · `--radius-full`.
+- **A11y:** toggle dùng `role="switch"` + `aria-checked`; mọi nút có `aria-label` tiếng Việt; focus ring `--focus-ring`; không dùng màu là tín hiệu duy nhất (toggle có cả chữ "Context" + chấm tròn).
+
+#### `ContextBudget` (đã implement T-M1-23)
+
+- **Vị trí:** ngay dưới hàng `ContextChips`, trên `Composer`. Chỉ render khi **có** context item.
+- **Hiển thị:** "Đã dùng 1.2k / 8k token" (rút gọn `k`, < 1000 hiện số thẳng) · dòng phụ "N nguồn bị cắt khỏi context" khi có item bị loại hẳn · "Một số nguồn bị rút gọn" khi có item bị cắt một phần.
+- **Ngưỡng màu:** `< 70%` → `--success` / `--success-subtle` · `70–90%` → `--warning` / `--warning-subtle` · `> 90%` → `--danger` / `--danger-subtle`.
+- **Token:** `--success` · `--warning` · `--danger` (+ biến thể `*-subtle`) · `--text-tertiary` (dòng phụ) · `--font-size-xs`.
+- **A11y:** `role="status"` + `aria-live="polite"`; trạng thái có **icon + chữ** (không chỉ màu — WCAG 2.2 §5.1.3).
+- **Lưu ý:** số token là **ước lượng** (`ceil(chars/4)`) → UI ghi "Đã dùng", không ghi "chính xác". Số token thật hiển thị ở `UsageBadge` (T-M2-03).
+
 **`ContextNotice` (đã implement T-M1-21/T-M1-22)** — vị trí: giữa thread và Composer. Token dùng: `--warning-subtle` (nền) · `--warning` (icon) · `--text-secondary` (nội dung) · `--border-default` (đường kẻ) · `--font-size-sm`. Icon `lucide-react`: `FileWarning` (lỗi PDF) · `AlertTriangle` (lỗi chung) · `X` (đóng). A11y: `role="status"` + `aria-live="polite"` · nút đóng có `aria-label` (tiếng Việt) · focus ring theo `--focus-ring`. Không tự động ẩn (người dùng tự đóng).
 
 ### 3.5 Overlays & feedback
@@ -224,6 +243,7 @@ Nguồn sự thật: `design/tokens.json` → generate ra `design/tokens.css` (C
 | **Context không đọc được** (PDF scan / `file://`) | Chip context báo lỗi rõ + hướng dẫn "hãy upload ảnh"; **không** block chat | FR-CONTEXT-05 |
 | **Transcript không có** (YouTube không caption / geo-block) | Chip context báo "không lấy được transcript" + gợi ý dùng mô tả video; **không** block chat | FR-CONTEXT-06 |
 | **Context vượt ngân sách** | Badge "đã dùng X/Y token" + liên kết xem phần bị cắt bớt | FR-CONTEXT-07 |
+| **Không đính kèm gì (chat thuần LLM)** | Chip "Context" ở trạng thái TẮT · không có chip nguồn · **không** hiện meter · gợi ý "Thêm trang này" nếu user hỏi về trang đang xem | FR-CONTEXT-13 |
 
 ---
 

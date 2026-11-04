@@ -79,7 +79,7 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | T-M1-01 | Content script: extractor Readability-lite | FR-CONTEXT-01, NFR-PERF-04 | `apps/extension/src/content/extractor.ts` | Trích được title + nội dung chính trên bài blog/docs; ≤ 800ms cho DOM ≤ 2MB | L | ✅ |
 | T-M1-02 | Content script: selection context | FR-CONTEXT-04 | `content/selection.ts` | Bôi đen → panel nhận đúng đoạn text | M | ⬜ |
 | T-M1-03 | Service worker: mở/toggle panel, context menu, shortcut | FR-UX-01 | `apps/extension/src/background/*` | Toolbar click toggle; `Ctrl+Shift+K` mở; context menu "Ask Sidekick" | M | ⬜ |
-| T-M1-04 | Context chips + toggle bật/tắt context trang | FR-CONTEXT-02, NFR-SEC-02 | `sidepanel/components/context/ContextChips.tsx` | Chip hiển thị domain đang share; bỏ chip được; tắt → không gửi content | M | ⬜ |
+| T-M1-04 | Context chips + toggle bật/tắt context trang | FR-CONTEXT-02, NFR-SEC-02 | `sidepanel/components/context/ContextChips.tsx` | Chip hiển thị domain đang share; bỏ chip được; tắt → không gửi content | M | ✅ *(hấp thụ bởi T-M1-23)* |
 | T-M1-05 | `@` mention multi-tab | FR-CONTEXT-03 | `context/MentionPopover.tsx`, `hooks/useTabs.ts` | Gõ `@` → list tab (title+favicon), chọn nhiều được | L | ⬜ |
 | T-M1-06 | Truyền context sang BFF (tab list + content) | FR-CONTEXT-01/02/03, FR-CONTEXT-07 | `apps/server/src/lib/contextBuilder.ts` | Log `request_logs.context_hash` khớp với context đã gửi | M | ⬜ |
 | T-M1-07 | Markdown render + code block + copy + highlight | FR-CHAT-02/03/04, NFR-SEC-04, NFR-PERF-02 | `sidepanel/components/chat/MessageContent.tsx`, `CodeBlock.tsx`, `MarkdownTable.tsx` | Render table/code; copy → "Đã sao chép"; highlight đúng ngôn ngữ; sanitize HTML (chặn XSS) | L | ⬜ |
@@ -98,7 +98,7 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | T-M1-20 | Responsive 320–640px + a11y pass cơ bản | FR-UX-06/07/09/10, NFR-A11Y-01..05, NFR-PERF-03 | style fixes | Không tràn ngang ở 320px; focus ring đủ; icon có aria-label; streaming OK với screen reader | M | ⬜ |
 | T-M1-21 | Trích xuất PDF (text-based) | FR-CONTEXT-05 | `apps/server/src/routes/extract.ts`, `apps/server/src/lib/pdfExtractor.ts`, `apps/server/src/lib/safeFetch.ts`, `apps/extension/src/lib/pageContext.ts` | Detect URL PDF → BFF fetch bytes + parse → `context.text`; PDF scan → báo "không đọc được, hãy upload ảnh"; `file://`/PDF nội bộ → báo rõ | L | ✅ |
 | T-M1-22 | Transcript YouTube | FR-CONTEXT-06 | `apps/server/src/routes/extract.ts`, `apps/server/src/lib/youtubeExtractor.ts` | Lấy `captionTracks` → `timedtext` → `context.text`; không có caption / geo-block / consent → báo rõ; không crash chat | M | ✅ |
-| T-M1-23 | Ngân sách context & cắt bớt thông minh | FR-CONTEXT-07 | `apps/extension/src/lib/contextBudget.ts`, `sidepanel/components/context/ContextBudget.tsx` | Cắt theo thứ tự selection > tab đính kèm > tab hiện tại > lịch sử chat; UI hiện "đã dùng X/Y token" | M | ⬜ |
+| T-M1-23 | Ngân sách context & cắt bớt thông minh | FR-CONTEXT-07, FR-CONTEXT-13 | `packages/shared/src/contextBudget.ts`, `apps/extension/src/lib/contextAttach.ts`, `sidepanel/components/context/{ContextChips,ContextBudget}.tsx` | Cắt theo thứ tự selection > tab đính kèm > tab hiện tại > lịch sử chat; UI hiện "đã dùng X/Y token"; không đính kèm gì → chat thuần LLM | M | ✅ |
 | T-M1-24 | Upload ảnh (paste / drag-drop / file picker) | FR-VISION-01 | `sidepanel/components/composer/ImageAttachment.tsx`, `lib/imageUpload.ts` | Preview trước khi gửi; xoá được; gửi kèm văn bản; giới hạn kích thước | M | ⬜ |
 | T-M1-25 | Onboarding lần đầu (3 bước) | FR-UX-02 | `sidepanel/components/onboarding/*` | Quyền → chọn provider → thử câu hỏi; skippable; cần nhập key hoặc bật Ollama | M | ⬜ |
 
@@ -148,6 +148,35 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 
 > **Rủi ro còn lại:** InnerTube là API không chính thức của YouTube → có thể đổi. Khi hỏng → `CONTEXT_TRANSCRIPT_UNAVAILABLE` → UI báo rõ, chat vẫn chạy. Xem rủi ro đầy đủ ở [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.3.1.
 
+### 3.1c Kết quả verify T-M1-23 (2026-11-04)
+
+> **Quyết định sản phẩm:** đổi mô hình context từ "tự share tab active mỗi lượt" sang "**chỉ những gì user chủ động đính kèm**" (FR-CONTEXT-13 / US-16). Đã chốt với user — phản ánh trung thực trong `REQUIREMENTS.md` §4.2 · `COMPARISON_MATRIX.md` §E · `EVAL_PLAN.md` §7 (FC-9).
+
+| Hạng mục | Kết quả |
+|---|---|
+| `packages/shared/src/contextBudget.ts` | ✅ `estimateTokens()` (`ceil(chars/4)`) · `applyContextBudget()` (cấp phát theo tier `selection` → `attachment` → `currentTab`, cắt đầu + `truncated` + `droppedChars`, trả `historyBudget`) · `trimHistory()` (giữ lượt mới nhất, luôn giữ lượt user cuối) |
+| `packages/shared/src/schemas/chat.ts` | ✅ `contextItemSchema` · `contextBundleSchema` (max 20 item) · `normalizeContext()` — `z.preprocess` nhận **cả** shape mới `{ items }` và shape cũ phẳng `{ url, title, text }` → backward compatible |
+| `packages/shared/src/constants.ts` | ✅ `CONTEXT_WINDOWS` (gemini 1M · groq/openrouter 128k · ollama 32k · mock 8k) · `CONTEXT_SAFETY_MARGIN_TOKENS = 2_000` · `MAX_CONTEXT_ITEMS = 20` |
+| `apps/server/src/services/chatService.ts` | ✅ `buildContextPrompt()` render item theo tier + nhãn nguồn (`[Đã bôi đen]` · `[Tab đính kèm]` · `[File đính kèm]` · `[Trang hiện tại]`) · `buildProviderMessages()` áp `applyContextBudget()` + `trimHistory()` → **server cắt lại lần nữa (nguồn chân lý)** |
+| `apps/extension/src/lib/contextAttach.ts` | ✅ `attachCurrentTab()` bọc `captureTabContext()` (giữ nguyên 3 nhánh html/pdf/youtube của T-M1-01/21/22) → `ContextItem` tier `attachment`; không throw; tab đã đính kèm → không capture lại |
+| `apps/extension/src/lib/storage.ts` | ✅ `readContextEnabled()` / `writeContextEnabled()` — persist key `sidekick.contextEnabled` trong `chrome.storage.local`, mọi lỗi bị nuốt |
+| `apps/extension/src/sidepanel/store/chatStore.ts` | ✅ `attachedItems` · `contextEnabled` (mặc định `false`) · `budget` · actions `attachItem` / `removeItem` / `clearAttachedItems` / `setContextEnabled` / `hydrateContextEnabled` / `recomputeBudget`; `reset()` giữ nguyên context đã đính kèm |
+| `apps/extension/src/sidepanel/hooks/useChat.ts` | ✅ **Bỏ** `captureActiveContext()` → `buildRequestContext()`: `contextEnabled === false` hoặc không có item → **không gửi payload `context`**; ngược lại → `applyContextBudget()` rồi gửi `context.items` |
+| `apps/extension/src/sidepanel/components/context/ContextChips.tsx` | ✅ Chip mỗi item (icon theo `kind`: `MousePointer`/`Globe`/`FileText` + title + nút xoá `aria-label` tiếng Việt) · chip toggle `role="switch"` · nút "Thêm trang này" |
+| `apps/extension/src/sidepanel/components/context/ContextBudget.tsx` | ✅ Meter "Đã dùng X / Y token" · màu theo ngưỡng `<70%` `--success` · `70–90%` `--warning` · `>90%` `--danger` · dòng phụ "N nguồn bị cắt khỏi context" · `role="status"` + `aria-live="polite"` |
+| `apps/extension/src/sidepanel/App.tsx` | ✅ Mount `ContextChips` + `ContextBudget` phía trên `Composer`; `ContextNotice` giữ nguyên |
+| Unit test | ✅ **229** test toàn repo — shared 59 (`contextBudget` 25 · `chatSchema` +12) · server 96 (`contextPrompt` mở rộng) · extension 74 (`contextAttach` 6 · `chatStore` +8 · `useChat` context 3) |
+| E2E | ✅ `e2e/context.spec.ts` — 4 kịch bản: (1) không đính kèm → request **không** có `context`; (2) bấm "Thêm trang này" → chip hiện + `context.items[0].tier === 'attachment'`; (3) meter hiện "… / … token"; (4) tắt toggle → request không còn `context`. `e2e/extract.spec.ts` cập nhật: phải bấm "Thêm trang này" trước khi trích xuất |
+| `pnpm typecheck` | ✅ pass (shared · server · extension) |
+| `pnpm lint` | ✅ pass (0 error, 0 warning) |
+| `pnpm test` | ✅ pass — shared 59 · server 96 · extension 74 (tổng **229**) |
+| `pnpm build` | ✅ pass — `dist/content.js` vẫn là **IIFE 1 file, không `import`** (4.81 kB) |
+| `pnpm test:e2e` | ✅ pass — **9/9** (4 kịch bản `context.spec.ts` + 2 `extract.spec.ts` + 3 kịch bản cũ) |
+
+> **Ảnh hưởng parity (cần nói rõ khi trình bày):** Edge Copilot / Chrome Gemini mặc định share tab. Sidekick AI chọn mô hình **đính kèm chủ động** (toggle mặc định TẮT) → đánh đổi 1 điểm "tiện" lấy 1 điểm "minh bạch + riêng tư". Đã ghi trong `COMPARISON_MATRIX.md` §E và `EVAL_PLAN.md` §7 (FC-9) để so sánh công bằng.
+>
+> **Còn lại:** `@` multi-tab (T-M1-05) → selection (T-M1-02) → upload file (T-M1-24) — 3 nguồn này đều là `ContextItem` mới, chỉ cần tạo item với `tier` đúng; `applyContextBudget()` đã xử lý sẵn.
+
 ### 3.2 Traceability FR → Task
 
 > Bảng đầy đủ FR → Task (kèm milestone) nằm ở [`REQUIREMENTS.md`](REQUIREMENTS.md) §11.1 — nơi duy nhất cần cập nhật khi thêm/bớt task.
@@ -156,7 +185,7 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | Nhóm | FR trong nhóm | Task phụ trách | Ghi chú |
 |---|---|---|---|
 | FR-CHAT-01..14 | 14 FR | T-M0-10 · T-M0-13 · T-M1-07/09/10/11/13/19 | FR-CHAT-04 (bảng Markdown) đã nằm trong T-M1-07 |
-| FR-CONTEXT-01..12 | 12 FR | T-M1-01/02/04/05/06/08/14 · **T-M1-21/22/23** · **T-M2-19** | FR-CONTEXT-05/06 nâng lên Must (2026-11-04) |
+| FR-CONTEXT-01..13 | 13 FR | T-M1-01/02/04/05/06/08/14 · **T-M1-21/22/23** · **T-M2-19** | FR-CONTEXT-05/06 nâng lên Must (2026-11-04) · FR-CONTEXT-13 (chat không cần context) do T-M1-23 |
 | FR-VISION-01..05 | 5 FR | **T-M1-24** (upload) · **T-M2-22** (mở rộng) | FR-VISION-01 nâng lên M |
 | FR-TOOLS-01..06 | 6 FR | T-M2-07/08/09/10/11/18 · **T-M2-20** | FR-TOOLS-03 (web search) tách riêng khỏi tool registry |
 | FR-SKILL-01..07 | 7 FR | T-M2-04/05/06 · **T-M2-21** | FR-SKILL-04 (skill mẫu) + FR-SKILL-06 (điều kiện) tách task |

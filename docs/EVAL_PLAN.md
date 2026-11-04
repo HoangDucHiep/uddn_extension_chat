@@ -98,10 +98,14 @@ flowchart LR
 | *(bổ sung)* | `vision` | Hỏi về ảnh trên trang / upload ảnh | 4 |
 | *(bổ sung)* | `doc_extract` | Đọc file PDF (text-based) — đối chiếu khả năng tương đương Edge Copilot (A20) | 2 |
 | *(bổ sung)* | `video_transcript` | Tóm tắt video YouTube từ transcript — đối chiếu Chrome Gemini (B10) | 2 |
+| *(bổ sung)* | `general_qa` | **Chat không cần trang/tài liệu** — hỏi đáp kiến thức chung, viết code, giải thích khái niệm (đo đường "chat thuần LLM" — FR-CONTEXT-13) | 4 |
 
-**Tổng ≥ 48 task.** Mỗi nhóm có cả task tiếng Việt và tiếng Anh (≥ 40% tiếng Việt).
+**Tổng ≥ 52 task.** Mỗi nhóm có cả task tiếng Việt và tiếng Anh (≥ 40% tiếng Việt).
 
 > **Nhóm `doc_extract` + `video_transcript` thêm 2026-11-04** do `FR-CONTEXT-05` (PDF) và `FR-CONTEXT-06` (YouTube) được nâng lên **Must** (T-M1-21/22) → cần số liệu đối chiếu trong `EVAL_REPORT.md`. 2 task mỗi nhóm (≥ 1 tiếng Việt) là mức tối thiểu để có số liệu; tăng nếu còn thời gian.
+>
+> **Nhóm `general_qa` thêm 2026-11-04 (T-M1-23):** trước T-M1-23, panel **tự** gửi nội dung tab active ở mọi lượt → không đo được đường "chat không cần context". Sau T-M1-23, Sidekick AI hỗ trợ đúng đường này (toggle context TẮT mặc định → request không có payload `context`). Nhóm này đo đường đó cho cả 3 hệ thống.
+> - **Lưu ý công bằng:** ở M1, model của Sidekick **không** tự tra web (web search = FR-TOOLS-03, bật ở M2). Các task `general_qa` phải được chọn sao cho **kiến thức nằm trong pretrained model** (không cần tra cứu sự kiện mới nhất) → nếu không, cả 3 hệ thống đều thua → đo được "nguồn lực" chứ không phải "chất lượng". Ghi rõ điều này vào `notes` của run.
 
 ### 3.2.1 Nhóm `workflow` (M4 — chỉ chạy nếu đã implement workflow)
 
@@ -466,8 +470,14 @@ Trước khi judge, mapping thật → nhãn giả được lưu ở `apps/eval/
 | FC-9 | Điều kiện phụ thuộc hệ sinh thái được ghi rõ | M365-only, AI-Pro-only, yêu cầu đăng nhập Google/Microsft được đánh dấu | `notes` |
 | FC-10 | Công khai giới hạn | Mục 1.2 + §8.3 | `EVAL_REPORT.md` |
 | FC-11 | Tính năng bị gate theo gói tính **đánh dấu N/A, không tính 0** | VD: Copilot Voice (chỉ M365), Auto Browse (chỉ AI Pro/Ultra), Skills (chỉ Chrome ≥ 147 + en-US) → ghi "N/A (cần M365)" thay vì 0 điểm | `notes`, bảng kết quả |
+| FC-12 | **Trạng thái context giống nhau** (thêm 2026-11-04 — T-M1-23) | Ghi rõ từng lượt: lượt nào **có** đính kèm trang/tài liệu, lượt nào **không**. Với Sidekick: toggle context **TẮT** + không đính kèm → request không có payload `context`. Với Edge/Gemini: tắt context / bắt đầu chat mới trước khi hỏi. Không so sánh "Edge/Gemini share tab mặc định" với "Sidekick đính kèm chủ động" như cùng một hành vi | `notes` (mỗi task), `dataset_meta.json` |
 
 > **Lưu ý về tính công bằng:** điểm 0 cho một tính năng bị khóa theo gói thuê bao sẽ làm kết quả thiên lệch về phía hệ thống ta (hệ thống ta cho mọi tính năng với user free). Cách xử lý đúng: tách bảng kết quả thành **"tính năng mở cho mọi người"** và **"tính năng bị gate"**, chấm riêng từng bảng, và nêu rõ trong kết luận.
+
+> **Lưu ý về cơ chế context (FC-12, T-M1-23):** Sidekick AI dùng mô hình **đính kèm chủ động** (toggle mặc định TẮT), còn Edge Copilot / Chrome Gemini **mặc định share tab**. Đây là khác biệt thiết kế có chủ ý, không phải thiếu sót. Cách so sánh công bằng:
+> 1. Với task `page_qa` / `summarize` / `cross_tab` / `doc_extract` / `video_transcript` → **cả 3 hệ thống** đều phải có cùng nguồn context → ghi rõ nguồn trong `notes`.
+> 2. Với task `general_qa` → **cả 3 hệ thống** đều **không** có context ngoài lịch sử hội thoại → đây là nơi Sidekick có lợi thế về "không gửi gì thừa" nhưng cũng là nơi Edge/Gemini có lợi thế nếu đã bật web search.
+> 3. Trong phần kết luận (`EVAL_REPORT.md` §8.3) phải nêu rõ **cơ chế** của từng hệ thống, không để người đọc tưởng Sidekick "quên" gửi context.
 
 ---
 
@@ -477,7 +487,7 @@ Trước khi judge, mapping thật → nhãn giả được lưu ở `apps/eval/
 
 | Tuần | Công việc | Đầu ra |
 |---|---|---|
-| W1 (M2 đầu) | Soạn dataset 48 task + snapshot trang + `must_include_facts` | `tasks.json` v1.0 |
+| W1 (M2 đầu) | Soạn dataset 52 task + snapshot trang + `must_include_facts` | `tasks.json` v1.0 |
 | W1 | Viết harness `runners/ours.ts` + `aggregate.ts` | Chạy được trên hệ thống ta |
 | W2 | Thu thập thủ công Edge + Gemini (n=3) | `results/manual/**` |
 | W2 | Viết judge prompt + `run_judge.ts` + chạy judge | `results/judged/**` |
@@ -499,7 +509,7 @@ Trước khi judge, mapping thật → nhãn giả được lưu ở `apps/eval/
 
 | Rủi ro | Ảnh hưởng | Dự phòng |
 |---|---|---|
-| Thu thập transcript thủ công tốn thời gian | Có | Ưu tiên 20 task cốt lõi × n=3 thay vì 48 task × n=3; tự động hoá phần của hệ thống ta trước |
+| Thu thập transcript thủ công tốn thời gian | Có | Ưu tiên 20 task cốt lõi × n=3 thay vì 52 task × n=3; tự động hoá phần của hệ thống ta trước |
 | Không đo được latency chính xác của built-in | Medium | Đo từ video quay màn hình, ghi rõ sai số ±150ms |
 | Model free tier kém hơn → thua rõ | Cao | Bổ sung "điểm hạ tầng/tính năng" (privacy, BYOK, MCP, log, self-host) vào bảng so sánh; phân tích theo 2 nhóm: *model capability* vs *assistant system* |
 | Judge LLM thiên lệch về câu trả lời dài/đẹp | Cao | Blind labeling + prompt chặt + kiểm chứng với human score + câu hỏi đối chiếu độ dài |
@@ -510,9 +520,10 @@ Trước khi judge, mapping thật → nhãn giả được lưu ở `apps/eval/
 
 ## 12. Phụ lục — Checklist bắt đầu Eval
 
-- [ ] Dataset ≥ 44 task, có `must_include_facts` cho ≥ 80% task
+- [ ] Dataset ≥ 48 task, có `must_include_facts` cho ≥ 80% task
 - [ ] ≥ 40% task tiếng Việt
 - [ ] Có nhóm `doc_extract` (PDF) và `video_transcript` (YouTube) — để đối chiếu A20 / B10
+- [ ] Có nhóm `general_qa` (chat không cần context) — đo FR-CONTEXT-13 · task chỉ dùng kiến thức pretrained (không cần web search)
 - [ ] Snapshot cho 100% task
 - [ ] Harness chạy được 1 lệnh, log đủ TTFT/latency/token/cost
 - [ ] Transcript Edge/Gemini đúng template, có `notes` về điều kiện phụ thuộc gói
@@ -523,5 +534,5 @@ Trước khi judge, mapping thật → nhãn giả được lưu ở `apps/eval/
 - [ ] Ảnh chụp màn hình cho ít nhất 12 task × 3 hệ thống
 - [ ] Radar chart + scatter quality/latency/cost
 - [ ] Kết luận có đề xuất cải thiện cụ thể cho hạng mục thấp nhất
-- [ ] Nhóm task `workflow` chỉ đưa vào dataset **nếu M4 đã implement**; nếu không → bỏ nhóm, ghi rõ trong báo cáo (task count điều chỉnh 44 → 40)
+- [ ] Nhóm task `workflow` chỉ đưa vào dataset **nếu M4 đã implement**; nếu không → bỏ nhóm, ghi rõ trong báo cáo (task count điều chỉnh 48 → 44)
 - [ ] `EVAL_REPORT.md` được commit vào repo (không git-ignore) — đây là sản phẩm nộp bài
