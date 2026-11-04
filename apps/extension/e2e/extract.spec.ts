@@ -9,6 +9,9 @@ import { test } from './fixtures.js'
  *  - BFF tra loi nghiep vu (HTTP 200 + `error`) → panel hien thi `ContextNotice`
  *    instead of crash (FR-CONTEXT-05, docs/SYSTEM_DESIGN.md §7.3.1).
  *
+ * Luu y (T-M1-23): context khong tu capture moi luot — chi trich xuat khi
+ * user bam "Them trang nay". Test phai bam nut do truoc.
+ *
  * BFF duoc stub bang `page.route` → test chay doc lap, khong can server that.
  *
  * Docs: docs/SYSTEM_DESIGN.md §7.3.1
@@ -58,8 +61,8 @@ test('panel hien thi ContextNotice khi PDF khong trich duoc duoc', async ({
 
   await panel.goto(`chrome-extension://${extensionId}/sidepanel.html`)
 
-  await panel.getByTestId('composer-input').fill('Tom tat tai lieu')
-  await panel.getByTestId('composer-send').click()
+  // Chi trich xuat khi user dinh kem trang (T-M1-23).
+  await panel.getByTestId('context-add-tab').click()
 
   const notice = panel.getByTestId('context-notice')
   await expect(notice).toBeVisible({ timeout: 20_000 })
@@ -111,8 +114,8 @@ test('panel hien thi ContextNotice khi video khong co phu de', async ({
 
   await panel.goto(`chrome-extension://${extensionId}/sidepanel.html`)
 
-  await panel.getByTestId('composer-input').fill('Video noi gi?')
-  await panel.getByTestId('composer-send').click()
+  // Chi trich xuat khi user dinh kem trang (T-M1-23).
+  await panel.getByTestId('context-add-tab').click()
 
   const notice = panel.getByTestId('context-notice')
   await expect(notice).toBeVisible({ timeout: 20_000 })
