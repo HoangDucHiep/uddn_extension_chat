@@ -22,6 +22,7 @@ apps/eval/results/**/*.tmp
 
 # ===== Logs =====
 *.log
+.serverlog*.txt
 npm-debug.log*
 pnpm-debug.log*
 yarn-error.log*
