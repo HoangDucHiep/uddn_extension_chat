@@ -99,14 +99,14 @@ pnpm eval:run                # chạy eval harness
 | Milestone | Trạng thái | Ghi chú |
 |---|---|---|
 | **M0 — Foundation** | ✅ Hoàn thành | 15/15 task · 91 unit test + 2 E2E · tag `v0.1` |
-| **M1 — Parity** | 📋 Sắp bắt đầu | Bắt đầu từ T-M1-01 (content script extractor) |
+| **M1 — Parity** | 🚧 Đang làm | 1/20 task (T-M1-01 ✅) · 120 unit test + 3 E2E |
 | **M2 — Advanced & Eval** | ⬜ Chưa bắt đầu | `EVAL_REPORT.md` là deliverable bắt buộc |
 | **M3 — Polish & Deliverable** | ⬜ Chưa bắt đầu | |
 | **M4 — Workflow** | ⬜ Tuỳ chọn | Chỉ sau M3 + đã có eval report |
 
 **Trạng thái docs:** ✅ Requirements · ✅ Design System Brief · ✅ System Design · ✅ Implementation Plan · ✅ Comparison Matrix · ✅ Eval Plan · ✅ Handoff · ✅ Changelog
 
-**Việc tiếp theo:** bắt đầu **T-M1-01** theo [`IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) §3.
+**Việc tiếp theo:** **T-M1-02** — content script selection context (FR-CONTEXT-04) theo [`IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) §3.
 
 ---
 

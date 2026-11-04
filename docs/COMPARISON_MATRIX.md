@@ -149,25 +149,25 @@ Cột ưu tiên: **M** = Must (M1) · **S** = Should (M2) · **C** = Could (M2/M
 
 Dùng làm acceptance checklist cho M1.
 
-- [ ] Side panel mở được từ toolbar icon (không `default_popup`)
+- [ ] Side panel mở được từ toolbar icon (không `default_popup`) — ✅ M0
 - [ ] Panel giữ nguyên khi chuyển tab
-- [ ] Stream token-by-token, hiện dần
-- [ ] Markdown + bảng + code block + copy + syntax highlight
-- [ ] Đọc nội dung trang hiện tại, bật/tắt được
-- [ ] `@` đính kèm tab (nhiều tab), hiện chip trạng thái
-- [ ] Bôi đen → hỏi (selection context)
-- [ ] Nút tóm tắt 1-click
-- [ ] Prompt gợi ý theo loại trang
-- [ ] Nhiều conversation: tạo / đổi tên / xoá / ghim
-- [ ] Stop / Regenerate / Edit-resend
-- [ ] Export conversation (Markdown / JSON)
+- [ ] Stream token-by-token, hiện dần — ✅ M0
+- [ ] Markdown + bảng + code block + copy + syntax highlight — ⬜ T-M1-07
+- [ ] Đọc nội dung trang hiện tại, bật/tắt được — đọc: ✅ T-M1-01 · bật/tắt: ⬜ T-M1-04
+- [ ] `@` đính kèm tab (nhiều tab), hiện chip trạng thái — ⬜ T-M1-05
+- [ ] Bôi đen → hỏi (selection context) — ⬜ T-M1-02
+- [ ] Nút tóm tắt 1-click — ⬜ T-M1-11
+- [ ] Prompt gợi ý theo loại trang — ⬜ T-M1-11
+- [ ] Nhiều conversation: tạo / đổi tên / xoá / ghim — ⬜ T-M1-09
+- [ ] Stop / Regenerate / Edit-resend — ⬜ T-M1-10
+- [ ] Export conversation (Markdown / JSON) — ⬜ T-M1-13
 - [ ] Skills `/` + tạo/sửa/xoá skill + library có sẵn + trang duyệt skill library
 - [ ] Không bắt buộc đăng nhập tài khoản Microsoft/Google (BYOK hoặc local model)
-- [ ] Settings: theme, cỡ chữ, chiều rộng, provider/key, quản lý dữ liệu, i18n VI/EN
-- [ ] Token/cost hiển thị
-- [ ] Keyboard shortcuts cấu hình được
-- [ ] Log request đầy đủ vào DB
-- [ ] Direct/BYOK fallback khi BFF down
+- [ ] Settings: theme, cỡ chữ, chiều rộng, provider/key, quản lý dữ liệu, i18n VI/EN — ⬜ T-M1-12/16/17
+- [ ] Token/cost hiển thị — ⬜ T-M2-03
+- [ ] Keyboard shortcuts cấu hình được — ⬜ T-M1-18
+- [ ] Log request đầy đủ vào DB — ⬜ T-M1-14
+- [ ] Direct/BYOK fallback khi BFF down — ⬜ T-M1-15
 
 ### E.2 Checklist M4 — Workflow (ngoài đường găng, chỉ làm sau khi M0–M3 xong)
 

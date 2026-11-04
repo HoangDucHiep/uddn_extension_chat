@@ -12,6 +12,22 @@ interface StorageArea {
 
 const storage: Record<string, unknown> = {}
 
+/**
+ * Mock duoc gan generic de `vi.mocked()` trong test giu dung chu ky ham
+ * goc cua Chrome API (neu mock khong generic, TS suy ra `void`).
+ */
+const tabsGetMock = vi.fn(
+  async (_tabId: number): Promise<chrome.tabs.Tab | undefined> => undefined,
+)
+const tabsQueryMock = vi.fn(
+  async (_query: chrome.tabs.QueryInfo): Promise<chrome.tabs.Tab[]> => [],
+)
+const executeScriptMock = vi.fn(
+  async (
+    _injection: chrome.scripting.ScriptInjection<[], unknown>,
+  ): Promise<chrome.scripting.InjectionResult[]> => [],
+)
+
 const chromeMock = {
   storage: {
     local: {
@@ -27,6 +43,13 @@ const chromeMock = {
   runtime: {
     sendMessage: vi.fn(async () => undefined),
     onMessage: { addListener: vi.fn() },
+  },
+  tabs: {
+    get: tabsGetMock,
+    query: tabsQueryMock,
+  },
+  scripting: {
+    executeScript: executeScriptMock,
   },
 }
 

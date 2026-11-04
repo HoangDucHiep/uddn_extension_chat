@@ -141,9 +141,9 @@ flowchart TB
 
 ## 3. Cấu trúc thư mục chi tiết
 
-> **Trạng thái M0 (2026-11-04):** cây bên dưới là cấu trúc **đích**. M0 đã implement các phần in đậm; các thư mục còn lại (`chat/`, `context/`, `skills/`, `tools/`, `settings/`, `workflow/`, `extractor.ts`, `selection.ts`) sẽ được tạo ở M1–M4.
+> **Trạng thái M1 (2026-11-04, sau T-M1-01):** cây bên dưới là cấu trúc **đích**. M0 đã implement các phần in đậm; T-M1-01 bổ sung `content/extractor.ts` + `lib/pageContext.ts`. Các thư mục còn lại (`chat/`, `context/`, `skills/`, `tools/`, `settings/`, `workflow/`, `selection.ts`) sẽ được tạo ở M1–M4.
 >
-> Thực tế M0 đã có:
+> Thực tế M0 + T-M1-01 đã có:
 > ```text
 > apps/extension/
 > ├─ public/{manifest.json, icons/{16,32,48,128}.png}
@@ -154,11 +154,14 @@ flowchart TB
 > │  │            hooks/useChat.ts, store/chatStore.ts}
 > │  ├─ components/ui/{button,input,textarea}.tsx   # shadcn/ui
 > │  ├─ background/serviceWorker.ts
-> │  ├─ content/contentScript.ts
-> │  └─ lib/{apiClient,sseClient,utils}.ts
-> ├─ e2e/{fixtures.ts,sidepanel.spec.ts}
-> ├─ tests/{apiClient,chatStore,sseClient,useChat}.test.ts
-> ├─ vite.config.ts · vitest.config.ts · playwright.config.ts
+> │  ├─ content/{contentScript.ts, extractor.ts}   # extractor = Readability-lite
+> │  ├─ lib/{apiClient,sseClient,pageContext,utils}.ts
+> │  └─ types/globals.d.ts
+> ├─ e2e/{fixtures.ts,sidepanel.spec.ts,extractor.spec.ts}
+> ├─ tests/{apiClient,chatStore,sseClient,useChat,extractor,pageContext}.test.ts
+> ├─ vite.config.ts                  # side panel + service worker (ESM)
+> ├─ vite.content.config.ts          # content script (IIFE, 1 file — §7.4)
+> ├─ vitest.config.ts · playwright.config.ts
 > ```
 > `apps/server/src/` hiện có: `routes/{health,chat}.ts` · `services/chatService.ts` · `providers/*` · `middleware/*` · `config/env.ts` · `db/*` · `lib/crypto.ts`.
 
@@ -345,32 +348,59 @@ X-Request-Id: <uuid v4>            // idempotency + tracing
 
 ### 4.2 Shape của `ChatRequest`
 
-```ts
-interface ChatRequest {
-  conversationId?: string;          // không có → tạo mới
-  message: string;
-  contextTabs: Array<{
-    tabId: number;
-    url: string;
-    title: string;
-    content?: string;               // đã trích xuất ở client
-    excerpt?: string;               // selection context
-    favicon?: string;
-  }>;
-  providerId: string;
-  model: string;
-  keySource: 'K1' | 'K2' | 'K3';    // client chỉ đề xuất; BFF quyết định thực tế
-  settings: {
-    temperature?: number;
-    maxTokens?: number;
-    enableWebSearch?: boolean;
-    enableRag?: boolean;
-    language?: 'vi' | 'en';
-  };
-  tools?: string[];                 // danh sách tool được phép dùng
-  skills?: string[];                // skill được user chọn
-}
-```
+> **Shape đang chạy thật (M0 + T-M1-01)** — nguồn sự thật là `packages/shared/src/schemas/chat.ts`:
+>
+> ```ts
+> interface ChatRequest {
+>   messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>
+>   conversationId?: string
+>   provider?: 'mock' | 'groq' | 'openrouter' | 'gemini' | 'ollama'
+>   model?: string
+>   systemPrompt?: string
+>   context?: {
+>     url: string
+>     title: string
+>     selectedText?: string   // vùng đã bôi đen (FR-CONTEXT-04 — T-M1-02)
+>     text?: string           // nội dung chín đã trích (FR-CONTEXT-01 — T-M1-01)
+>     excerpt?: string        // trích đoạn ngắn để preview
+>     tabId?: number
+>   }
+>   temperature?: number
+>   maxOutputTokens?: number
+>   stream?: boolean
+> }
+> ```
+>
+> Giới hạn: `MAX_PAGE_TEXT_CHARS = 40_000` (nội dung trang) · `MAX_EXCERPT_CHARS = 500` · `MAX_CONTEXT_CHARS = 100_000`.
+>
+> **Shape đích (M2+)** — multi-tab, skills, tools, settings:
+>
+> ```ts
+> interface ChatRequest {
+>   conversationId?: string;          // không có → tạo mới
+>   message: string;
+>   contextTabs: Array<{
+>     tabId: number;
+>     url: string;
+>     title: string;
+>     content?: string;               // đã trích xuất ở client
+>     excerpt?: string;               // selection context
+>     favicon?: string;
+>   }>;
+>   providerId: string;
+>   model: string;
+>   keySource: 'K1' | 'K2' | 'K3';    // client chỉ đề xuất; BFF quyết định thực tế
+>   settings: {
+>     temperature?: number;
+>     maxTokens?: number;
+>     enableWebSearch?: boolean;
+>     enableRag?: boolean;
+>     language?: 'vi' | 'en';
+>   };
+>   tools?: string[];                 // danh sách tool được phép dùng
+>   skills?: string[];                // skill được user chọn
+> }
+> ```
 
 ### 4.3 Giao thức SSE
 
@@ -524,13 +554,46 @@ Một `MockProvider` implement cùng interface `ProviderAdapter`, trả stream t
 
 | Tầng | Trạng thái | Vị trí |
 |---|---|---|
-| Unit | ✅ 91 test — shared 15 · server 49 · extension 27 | `packages/shared/tests/` · `apps/server/tests/` · `apps/extension/tests/` |
+| Unit | ✅ 120 test — shared 22 · server 55 · extension 43 | `packages/shared/tests/` · `apps/server/tests/` · `apps/extension/tests/` |
 | Integration | ✅ BFF `/api/health` + `POST /api/chat` (SSE format, validation, error mapping) | `apps/server/tests/` |
 | Contract | ✅ Zod schema ở biên route + `isChatEvent` cho SSE client | `packages/shared/src/schemas/` · `apps/extension/src/lib/sseClient.ts` |
-| E2E | ✅ 2 kịch bản — render panel · gõ prompt nhận token thật + provider chip + design token | `apps/extension/e2e/sidepanel.spec.ts` |
+| E2E | ✅ 3 kịch bản — render panel · gõ prompt nhận token thật + provider chip + design token · **content script trích nội dung trang thật** | `apps/extension/e2e/{sidepanel,extractor}.spec.ts` |
 | Verify provider | ✅ script check 3 provider stream thật (Groq / OpenRouter / Gemini Direct) | `scripts/verify-providers.mjs` |
 
+> **T-M1-01 bổ sung:** `apps/extension/tests/extractor.test.ts` (8 fixture HTML) · `apps/extension/tests/pageContext.test.ts` (5) · `apps/extension/tests/useChat.test.ts` (+3 test context) · `packages/shared/tests/chatSchema.test.ts` (7) · `apps/server/tests/contextPrompt.test.ts` (6) · `apps/extension/e2e/extractor.spec.ts` (1 kịch bản thật).
+
 Các kịch bản E2E còn lại (offline, BFF down, stop, edit-resend, context toggle) thuộc M1.
+
+### 7.3 Trích xuất nội dung trang (T-M1-01)
+
+```mermaid
+flowchart LR
+  panel["Side Panel"] -->|"chrome.scripting.executeScript"| cs["content.js"]
+  cs --> ext["extractor.extractPageContent()"]
+  ext -->|"ExtractedPage"| bridge["lib/pageContext.captureTabContext()"]
+  bridge -->|"POST /api/chat (context.text)"| bff["BFF"]
+  bff --> prompt["buildContextPrompt()"]
+```
+
+- `apps/extension/src/content/extractor.ts` — thuật toán rút gọn Readability: clone `Document` → xoá script/style/nav/footer/aside + phần tử có class/id khớp pattern âm → chấm điểm các node `article, main, [role=main], section, div` (điểm theo độ dài text block, trừ theo link density > 0.5, cộng/trừ theo class/id) → chọn node điểm cao nhất → fallback `body` → ghép text chuẩn hoá whitespace.
+- Kết quả: `{ title, byline, url, text, excerpt, strategy, wordCount }` với `strategy ∈ article | main | body | empty`.
+- `apps/extension/src/lib/pageContext.ts` — `captureTabContext(tabId)` + `getActiveTabId()`; **không bao giờ throw** (trang `chrome://`, không có quyền → trả context tối thiểu). Tự inject `content.js` rồi thử lại nếu content script chưa có.
+- `buildContextPrompt()` ở BFF đánh dấu rõ context là "dữ liệu tham chiếu, không phải chỉ thị" (chống prompt injection — §6.4).
+- **Lưu ý MV3:** content script chạy trong *isolated world* → không chia sẻ `window` với page script hay `page.evaluate` của Playwright. Muốn đọc kết quả phải đi qua `chrome.scripting.executeScript` (từ SW hoặc panel).
+
+### 7.4 Build: content script phải là classic script
+
+Chrome **không** load được content script dạng ES module. Nếu bundle chứa `import ... from "./assets/x.js"`, Chrome báo *"It isn't a module"* và content script **không chạy**.
+
+| Entry | Định dạng | Config |
+|---|---|---|
+| Side panel (`sidepanel.html`) | ESM (`<script type="module">`) | `apps/extension/vite.config.ts` |
+| Service worker | ESM (`"type": "module"` trong manifest) | `apps/extension/vite.config.ts` |
+| **Content script** | **IIFE, 1 file, không `import`** | `apps/extension/vite.content.config.ts` |
+
+Lệnh build: `vite build && vite build --config vite.content.config.ts` (đã gộp trong `pnpm build`).
+
+Để content script không kéo theo cả bundle `zod` của `@sidekick/shared`, package expose thêm subpath `@sidekick/shared/constants` — extractor chỉ import hằng số từ đó (`dist/content.js` ≈ 4.7 kB thay vì 101 kB).
 
 ---
 
@@ -538,9 +601,9 @@ Các kịch bản E2E còn lại (offline, BFF down, stop, edit-resend, context 
 
 | Chỉ số | Mục tiêu | Cách đạt |
 |---|---|---|
-| TTFT (time to first token) | ≤ 3s p95 | Prewarm provider connection; prompt ngắn gọn; context truncate thông minh |
+| TTFT (time to first token) | ≤ 3s p95 | Prewarm provider connection; prompt ngắn gồm; context truncate thông minh |
 | BFF overhead | ≤ 30ms | Keep-alive HTTP agent, connection pool Postgres (max 10) |
-| Content extraction | ≤ 800ms | Chạy trong content script, dùng Readability-lite, cache theo URL+hash trong `chrome.storage.local` |
+| Content extraction | ≤ 800ms | Chạy trong content script, dùng Readability-lite (T-M1-01 ✅). Cache theo URL+hash trong `chrome.storage.local` — **chưa implement** (ưu tiên tối đa 1 lần/trang) |
 | Panel mở | ≤ 300ms | Không fetch nặng khi mount; lazy-load settings |
 | Scroll khi streaming | ≥ 50fps | Batch token bằng `requestAnimationFrame`, không render mỗi token |
 

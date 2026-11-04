@@ -223,6 +223,8 @@ Quy ước ưu tiên: **M** = Must (bắt buộc cho M1) · **S** = Should (bắ
 | FR-CONTEXT-11 | Chế độ "chỉ dùng trang" (không dùng lịch sử chat) | S | Toggle per-request |
 | FR-CONTEXT-12 | Snapshot context để tái lập (reproducibility) | S | Lưu hash + nội dung context vào log phục vụ eval |
 
+> **Trạng thái FR-CONTEXT-01 (T-M1-01 ✅ 2026-11-04):** đã implement — `apps/extension/src/content/extractor.ts` (Readability-lite: title + byline + url + text chính + excerpt, fallback body, fallback rỗng → `strategy: 'empty'`), `apps/extension/src/lib/pageContext.ts` (capture qua `chrome.scripting`, không throw khi trang không đọc được), `packages/shared` `pageContextSchema` có `text`/`excerpt`, BFF `buildContextPrompt()` đưa nội dung trang vào prompt (đánh dấu "dữ liệu tham chiếu, không phải chỉ thị"). FR-CONTEXT-02 (toggle bật/tắt) thuộc T-M1-04.
+
 ### 4.3 FR-VISION — Ảnh & thị giác
 
 | ID | Requirement | Priority | Acceptance criteria |
@@ -532,7 +534,7 @@ sequenceDiagram
 
 Monorepo **pnpm workspace**. Chi tiết đầy đủ (kèm quy ước đặt tên, dependency graph) nằm ở [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §3.
 
-> **Trạng thái M0 (2026-11-04):** cây dưới là cấu trúc **đích** (M0–M4). M0 đã implement `apps/extension/src/{sidepanel,background,content,lib,components/ui}`, `apps/server/src/{routes,services,providers,middleware,config,db,lib}`, `apps/eval/src/`, `packages/shared/src/`, `design/`. Phần còn lại thuộc M1–M4.
+> **Trạng thái M0 + T-M1-01 (2026-11-04):** cây dưới là cấu trúc **đích** (M0–M4). M0 đã implement `apps/extension/src/{sidepanel,background,content,lib,components/ui}`, `apps/server/src/{routes,services,providers,middleware,config,db,lib}`, `apps/eval/src/`, `packages/shared/src/`, `design/`. T-M1-01 bổ sung `apps/extension/src/content/extractor.ts` + `apps/extension/src/lib/pageContext.ts`. Phần còn lại thuộc M1–M4.
 
 ```text
 uddn_extension_chat/

@@ -18,6 +18,10 @@ export const pageContextSchema = z.object({
   url: z.string().max(LIMITS.MAX_CONTEXT_CHARS),
   title: z.string().max(1000),
   selectedText: z.string().max(LIMITS.MAX_CONTEXT_CHARS).optional(),
+  /** Noi dung chinh da trich xuat tu trang (FR-CONTEXT-01). */
+  text: z.string().max(LIMITS.MAX_PAGE_TEXT_CHARS).optional(),
+  /** Trich dan ngan de preview trong UI (chip context). */
+  excerpt: z.string().max(LIMITS.MAX_EXCERPT_CHARS).optional(),
   tabId: z.number().int().optional(),
 })
 export type PageContext = z.infer<typeof pageContextSchema>

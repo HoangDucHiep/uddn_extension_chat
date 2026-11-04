@@ -22,6 +22,10 @@ export const LIMITS = {
   MAX_OUTPUT_TOKENS: 4096,
   REQUEST_TIMEOUT_MS: 120_000,
   MAX_SSE_BUFFER_BYTES: 1_000_000,
+  /** Do dai toi da cua noi dung trang da trich xuat (ky tu). */
+  MAX_PAGE_TEXT_CHARS: 40_000,
+  /** Do dai toi da cua excerpt/selection context. */
+  MAX_EXCERPT_CHARS: 500,
 } as const
 
 /** Endpoint cua BFF. */

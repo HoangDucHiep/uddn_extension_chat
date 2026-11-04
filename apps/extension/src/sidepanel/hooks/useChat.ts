@@ -1,6 +1,7 @@
 import { useCallback, useRef } from 'react'
-import type { ChatEvent } from '@sidekick/shared'
+import type { ChatEvent, PageContext } from '@sidekick/shared'
 import { streamChat } from '@/lib/sseClient'
+import { captureTabContext, getActiveTabId } from '@/lib/pageContext'
 import { useChatStore, type ChatMessage } from '../store/chatStore'
 
 /**
@@ -70,6 +71,10 @@ export function useChat() {
 
       let sawDone = false
 
+      // Lay context trang hien tai (FR-CONTEXT-01).
+      // KHONG de loi lam chat that bai — context la thong tin bonus.
+      const context = await captureActiveContext()
+
       const handleEvent = (event: ChatEvent): void => {
         switch (event.type) {
           case 'meta':
@@ -111,7 +116,11 @@ export function useChat() {
 
       try {
         for await (const event of streamChat(
-          { messages: history, conversationId: useChatStore.getState().conversationId },
+          {
+            messages: history,
+            conversationId: useChatStore.getState().conversationId,
+            ...(context === undefined ? {} : { context }),
+          },
           { signal: controller.signal, onEvent: handleEvent },
         )) {
           // Event da duoc xu ly trong onEvent.
@@ -154,5 +163,26 @@ export function useChat() {
     send,
     stop,
     clear,
+  }
+}
+
+/**
+ * Capture context cua tab dang active.
+ *
+ * Tra `undefined` khi khong lay duoc (khong co tab, trang khong doc duoc)
+ * de request van gui len BFF binh thuong — context chi la du lieu bonus.
+ */
+async function captureActiveContext(): Promise<PageContext | undefined> {
+  try {
+    const tabId = await getActiveTabId()
+    if (tabId === undefined) return undefined
+
+    const context = await captureTabContext(tabId)
+    // Trang rong (khong co url/title/text) → bo qua, khong gui context rong.
+    if (context.url.length === 0 && context.title.length === 0) return undefined
+
+    return context
+  } catch {
+    return undefined
   }
 }

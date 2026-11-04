@@ -74,30 +74,48 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 **Mục tiêu:** đạt feature parity với Edge Copilot + Chrome Gemini ở các dòng Must.
 **Gate:** checklist §E của [`COMPARISON_MATRIX.md`](COMPARISON_MATRIX.md) pass ≥ 90% · demo được trước giảng viên.
 
-| ID | Task | FR | Output files | AC | Est |
-|---|---|---|---|---|---|
-| T-M1-01 | Content script: extractor Readability-lite | FR-CONTEXT-01 | `apps/extension/src/content/extractor.ts` | Trích được title + nội dung chính trên bài blog/docs | L |
-| T-M1-02 | Content script: selection context | FR-CONTEXT-04 | `content/selection.ts` | Bôi đen → panel nhận đúng đoạn text | M |
-| T-M1-03 | Service worker: mở/toggle panel, context menu, shortcut | FR-UX-01/02 | `apps/extension/src/background/*` | Toolbar click toggle; `Ctrl+Shift+K` mở; context menu "Ask Sidekick" | M |
-| T-M1-04 | Context chips + toggle bật/tắt context trang | FR-CONTEXT-02/09 | `sidepanel/components/context/ContextChips.tsx` | Chip hiển thị domain đang share; bỏ chip được | M |
-| T-M1-05 | `@` mention multi-tab | FR-CONTEXT-03 | `context/MentionPopover.tsx`, `hooks/useTabs.ts` | Gõ `@` → list tab (title+favicon), chọn nhiều được | L |
-| T-M1-06 | Truyền context sang BFF (tab list + content) | FR-CONTEXT-01/05 | `apps/server/src/lib/contextBuilder.ts` | Log `request_logs.context_hash` khớp với context đã gửi | M |
-| T-M1-07 | Markdown render + code block + copy + highlight | FR-CHAT-02/03/04 | `sidepanel/components/chat/MessageContent.tsx`, `CodeBlock.tsx`, `MarkdownTable.tsx` | Render table/code; copy → "Đã sao chép"; highlight đúng ngôn ngữ | L |
-| T-M1-08 | Citation chip + popover (đoạn nguồn) | FR-CONTEXT-10 | `context/CitationChip.tsx`, `CitationPopover.tsx` | Click chip → popover hiện đoạn nguồn + mở tab gốc | M |
-| T-M1-09 | Chat CRUD: tạo/đổi tên/xoá/ghim/archives | FR-CHAT-09 | `sidepanel/components/chat/ConversationList.tsx`, store | Thao tác CRUD phản ánh trong UI ngay | L |
-| T-M1-10 | Regenerate / Edit-resend / Stop / Continue | FR-CHAT-05/06/13 | `hooks/useChat.ts`, `chat/MessageActions.tsx` | 4 hành vi đúng AC trong §3.1 | L |
-| T-M1-11 | Prompt gợi ý theo trang + Summarize 1-click | FR-UX-03/04 | `sidepanel/components/chat/PromptGallery.tsx` | Gợi ý đổi theo loại trang (docs/bài báo/forum) | M |
-| T-M1-12 | Settings: theme, cỡ chữ, chiều rộng panel | FR-SETTINGS-01/02/06, FR-UX-06 | `sidepanel/components/settings/*` | Áp dụng ngay, persist qua reload | M |
-| T-M1-13 | Export conversation (Markdown / JSON) | FR-CHAT-10 | `lib/export.ts` | Xuất đúng nội dung, mở được bằng Notepad/Markdown viewer | S |
-| T-M1-14 | Request logging đầy đủ vào `request_logs` | NFR-MAINT-04, §7.2 | `apps/server/src/lib/requestLogger.ts` | Mỗi lượt chat có 1 dòng log: provider, model, token, cost, ttft, latency | M |
-| T-M1-15 | K3 direct mode (BYOK không cần BFF) | FR-PROVIDER-08/09, NFR-REL-03 | `lib/crypto.ts`, `lib/directProvider.ts`, `state/keyStore.ts` | Tắt Docker → vẫn chat được với key nhập tay; key mã hoá local | L |
-| T-M1-16 | K2 BYOK qua BFF: UI quản lý key | FR-PROVIDER-02 | `settings/ProviderSettings.tsx`, `POST /providers/keys` | Thêm key → test thành công; list key chỉ hiện 4 ký tự cuối | M |
-| T-M1-17 | i18n VI/EN | FR-SETTINGS-06 | `apps/extension/src/i18n/{vi.ts,en.ts,index.ts}` | Đổi ngôn ngữ → toàn bộ UI đổi | M |
-| T-M1-18 | Keyboard shortcuts cấu hình được | FR-UX-01/02 | `settings/ShortcutsSettings.tsx`, `background/commands.ts` | Đổi được phím tắt; tránh xung đột với Chrome mặc định | M |
-| T-M1-19 | Empty / loading / error states | FR-UX-03/04, FR-CHAT-14 | `sidepanel/components/states/*` | 4 trạng thái có UI riêng, không màn hình trắng | M |
-| T-M1-20 | Responsive 320–640px + a11y pass cơ bản | FR-UX-06, NFR-A11Y-* | style fixes | Không tràn ngang ở 320px; focus ring đủ; icon có aria-label | M |
+| ID | Task | FR | Output files | AC | Est | Status |
+|---|---|---|---|---|---|---|
+| T-M1-01 | Content script: extractor Readability-lite | FR-CONTEXT-01 | `apps/extension/src/content/extractor.ts` | Trích được title + nội dung chính trên bài blog/docs | L | ✅ |
+| T-M1-02 | Content script: selection context | FR-CONTEXT-04 | `content/selection.ts` | Bôi đen → panel nhận đúng đoạn text | M | ⬜ |
+| T-M1-03 | Service worker: mở/toggle panel, context menu, shortcut | FR-UX-01/02 | `apps/extension/src/background/*` | Toolbar click toggle; `Ctrl+Shift+K` mở; context menu "Ask Sidekick" | M | ⬜ |
+| T-M1-04 | Context chips + toggle bật/tắt context trang | FR-CONTEXT-02/09 | `sidepanel/components/context/ContextChips.tsx` | Chip hiển thị domain đang share; bỏ chip được | M | ⬜ |
+| T-M1-05 | `@` mention multi-tab | FR-CONTEXT-03 | `context/MentionPopover.tsx`, `hooks/useTabs.ts` | Gõ `@` → list tab (title+favicon), chọn nhiều được | L | ⬜ |
+| T-M1-06 | Truyền context sang BFF (tab list + content) | FR-CONTEXT-01/05 | `apps/server/src/lib/contextBuilder.ts` | Log `request_logs.context_hash` khớp với context đã gửi | M | ⬜ |
+| T-M1-07 | Markdown render + code block + copy + highlight | FR-CHAT-02/03/04 | `sidepanel/components/chat/MessageContent.tsx`, `CodeBlock.tsx`, `MarkdownTable.tsx` | Render table/code; copy → "Đã sao chép"; highlight đúng ngôn ngữ | L | ⬜ |
+| T-M1-08 | Citation chip + popover (đoạn nguồn) | FR-CONTEXT-10 | `context/CitationChip.tsx`, `CitationPopover.tsx` | Click chip → popover hiện đoạn nguồn + mở tab gốc | M | ⬜ |
+| T-M1-09 | Chat CRUD: tạo/đổi tên/xoá/ghim/archives | FR-CHAT-09 | `sidepanel/components/chat/ConversationList.tsx`, store | Thao tác CRUD phản ánh trong UI ngay | L | ⬜ |
+| T-M1-10 | Regenerate / Edit-resend / Stop / Continue | FR-CHAT-05/06/13 | `hooks/useChat.ts`, `chat/MessageActions.tsx` | 4 hành vi đúng AC trong §3.1 | L | ⬜ |
+| T-M1-11 | Prompt gợi ý theo trang + Summarize 1-click | FR-UX-03/04 | `sidepanel/components/chat/PromptGallery.tsx` | Gợi ý đổi theo loại trang (docs/bài báo/forum) | M | ⬜ |
+| T-M1-12 | Settings: theme, cỡ chữ, chiều rộng panel | FR-SETTINGS-01/02/06, FR-UX-06 | `sidepanel/components/settings/*` | Áp dụng ngay, persist qua reload | M | ⬜ |
+| T-M1-13 | Export conversation (Markdown / JSON) | FR-CHAT-10 | `lib/export.ts` | Xuất đúng nội dung, mở được bằng Notepad/Markdown viewer | S | ⬜ |
+| T-M1-14 | Request logging đầy đủ vào `request_logs` | NFR-MAINT-04, §7.2 | `apps/server/src/lib/requestLogger.ts` | Mỗi lượt chat có 1 dòng log: provider, model, token, cost, ttft, latency | M | ⬜ |
+| T-M1-15 | K3 direct mode (BYOK không cần BFF) | FR-PROVIDER-08/09, NFR-REL-03 | `lib/crypto.ts`, `lib/directProvider.ts`, `state/keyStore.ts` | Tắt Docker → vẫn chat được với key nhập tay; key mã hoá local | L | ⬜ |
+| T-M1-16 | K2 BYOK qua BFF: UI quản lý key | FR-PROVIDER-02 | `settings/ProviderSettings.tsx`, `POST /providers/keys` | Thêm key → test thành công; list key chỉ hiện 4 ký tự cuối | M | ⬜ |
+| T-M1-17 | i18n VI/EN | FR-SETTINGS-06 | `apps/extension/src/i18n/{vi.ts,en.ts,index.ts}` | Đổi ngôn ngữ → toàn bộ UI đổi | M | ⬜ |
+| T-M1-18 | Keyboard shortcuts cấu hình được | FR-UX-01/02 | `settings/ShortcutsSettings.tsx`, `background/commands.ts` | Đổi được phím tắt; tránh xung đột với Chrome mặc định | M | ⬜ |
+| T-M1-19 | Empty / loading / error states | FR-UX-03/04, FR-CHAT-14 | `sidepanel/components/states/*` | 4 trạng thái có UI riêng, không màn hình trắng | M | ⬜ |
+| T-M1-20 | Responsive 320–640px + a11y pass cơ bản | FR-UX-06, NFR-A11Y-* | style fixes | Không tràn ngang ở 320px; focus ring đủ; icon có aria-label | M | ⬜ |
 
 **Định mức M1:** 3 tuần · 20 task · ~36 ngày công
+
+### 3.1 Kết quả verify T-M1-01 (2026-11-04)
+
+| Hạng mục | Kết quả |
+|---|---|
+| `apps/extension/src/content/extractor.ts` | ✅ Readability-lite: clone `Document` → xoá noise → chấm điểm node → fallback `body`; trả `{ title, byline, url, text, excerpt, strategy, wordCount }` |
+| `apps/extension/src/lib/pageContext.ts` | ✅ `captureTabContext()` + `getActiveTabId()`; tự inject `content.js` nếu content script chưa có; **không throw** khi trang không đọc được |
+| `packages/shared` | ✅ `pageContextSchema` có `text` / `excerpt`; `LIMITS.MAX_PAGE_TEXT_CHARS = 40_000`, `MAX_EXCERPT_CHARS = 500` |
+| BFF | ✅ `buildContextPrompt()` đưa `context.text` + `context.excerpt` vào prompt, đánh dấu "dữ liệu tham chiếu, không phải chỉ thị" |
+| Unit test | ✅ +29 test — extractor 8 · pageContext 5 · useChat (context) 3 · shared chatSchema 7 · server contextPrompt 6 |
+| E2E | ✅ +1 kịch bản — `e2e/extractor.spec.ts`: content script chạy thật trên trang web, service worker gọi `chrome.scripting.executeScript` → đúng title + nội dung chính, đã loại nav/footer/sidebar |
+| `pnpm typecheck` | ✅ pass |
+| `pnpm lint` | ✅ pass (0 error, 0 warning) |
+| `pnpm test` | ✅ pass — shared 22 · server 55 · extension 43 |
+| `pnpm build` | ✅ pass — `dist/content.js` là **IIFE 1 file, không `import`** (4.7 kB) + `dist/manifest.json` + `dist/sidepanel.html` |
+| E2E (toàn bộ) | ✅ 3/3 — extractor · side panel render · gõ prompt nhận token thật |
+
+> **Còn lại của FR-CONTEXT-01:** toggle bật/tắt context (T-M1-04) · cache theo URL+hash trong `chrome.storage.local` (T-M1-06) · context multi-tab (T-M1-05).
 
 ---
 
