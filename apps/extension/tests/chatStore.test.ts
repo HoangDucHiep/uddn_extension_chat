@@ -194,3 +194,93 @@ describe('useChatStore — context (FR-CONTEXT-07)', () => {
     expect(state.messages).toEqual([])
   })
 })
+
+/**
+ * Selection context (T-M1-02, FR-CONTEXT-04).
+ *
+ * Doan text user boi den co `tier: 'selection'` — tier CAO NHAT → phai
+ * dung dau trong thu tu uu tien cat bot, va chi dung khi user dinh kem.
+ */
+describe('useChatStore — selection context (T-M1-02)', () => {
+  /**
+   * Reset store cho ve trang thai ban dau.
+   *
+   * `reset()` **giu nguyen** `attachedItems` + `contextEnabled` (theo design
+   * cua store) → phai clear them truoc moi test.
+   */
+  beforeEach(() => {
+    useChatStore.getState().clearAttachedItems()
+    useChatStore.getState().setContextEnabled(false)
+  })
+
+  /** Item selection hop le. */
+  const selectionItem = {
+    id: 'selection-abc123',
+    kind: 'selection' as const,
+    tier: 'selection' as const,
+    title: 'Doan da boi den',
+    text: 'Doan van ban da boi den tren trang web de gui sang Sidekick AI.',
+    excerpt: 'Doan van ban da boi den tren trang web de gui sang Sidekick AI.',
+    url: 'https://example.com/bai-viet',
+  }
+
+  it('dinh kem item selection → contextEnabled tu bat', () => {
+    expect(useChatStore.getState().contextEnabled).toBe(false)
+
+    useChatStore.getState().attachItem(selectionItem)
+
+    const state = useChatStore.getState()
+    expect(state.attachedItems).toHaveLength(1)
+    expect(state.attachedItems[0]?.kind).toBe('selection')
+    expect(state.attachedItems[0]?.tier).toBe('selection')
+    // Dinh kem = user chu dong muon dung context → context bat.
+    expect(state.contextEnabled).toBe(true)
+  })
+
+  it('dinh kem item selection → budget duoc tinh lai', () => {
+    useChatStore.getState().attachItem(selectionItem)
+
+    const state = useChatStore.getState()
+    expect(state.budget).toBeDefined()
+    expect(state.budget?.items).toHaveLength(1)
+    expect(state.budget?.items[0]?.tier).toBe('selection')
+    // Token uoc luong > 0 (chuoi text > 0 ky tu).
+    expect(state.budget?.usedTokens).toBeGreaterThan(0)
+  })
+
+  it('bam lai cung doan selection → thay item, khong nhan ban', () => {
+    useChatStore.getState().attachItem(selectionItem)
+    useChatStore.getState().attachItem({ ...selectionItem, excerpt: 'Doan cap nhat' })
+
+    const state = useChatStore.getState()
+    expect(state.attachedItems).toHaveLength(1)
+    expect(state.attachedItems[0]?.excerpt).toBe('Doan cap nhat')
+  })
+
+  it('selection co tier CAO NHAT → dung dau trong thu tu uu tien', () => {
+    useChatStore.getState().attachItem({
+      id: 'tab-1',
+      kind: 'tab',
+      tier: 'attachment',
+      title: 'Bai viet',
+      text: 'Noi dung tab',
+    })
+    useChatStore.getState().attachItem(selectionItem)
+
+    const state = useChatStore.getState()
+    expect(state.attachedItems).toHaveLength(2)
+    // `budget.items` duoc sap xep theo `CONTEXT_TIER_ORDER` → selection dung dau.
+    expect(state.budget?.items).toHaveLength(2)
+    expect(state.budget?.items[0]?.tier).toBe('selection')
+    expect(state.budget?.items[1]?.tier).toBe('attachment')
+  })
+
+  it('removeItem xoa item selection theo id', () => {
+    useChatStore.getState().attachItem(selectionItem)
+    useChatStore.getState().removeItem(selectionItem.id)
+
+    const state = useChatStore.getState()
+    expect(state.attachedItems).toHaveLength(0)
+    expect(state.budget).toBeUndefined()
+  })
+})

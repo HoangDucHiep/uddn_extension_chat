@@ -8,9 +8,8 @@ vi.mock('@/lib/pageContext', () => ({
   getActiveTabId: () => getActiveTabIdMock(),
 }))
 
-const { attachCurrentTab, attachTab, tabItemId } = await import(
-  '../src/lib/contextAttach.js'
-)
+const { attachCurrentTab, attachTab, attachSelection, captureActiveSelection, tabItemId } =
+  await import('../src/lib/contextAttach.js')
 
 /**
  * Unit test cho `contextAttach` — dinh kem tab vao context (T-M1-05).
@@ -128,5 +127,128 @@ describe('attachCurrentTab', () => {
 describe('tabItemId', () => {
   it('sinh id dinh danh theo tabId', () => {
     expect(tabItemId(42)).toBe('tab-42')
+  })
+})
+
+describe('attachSelection', () => {
+  const selection = {
+    id: 'selection-abc',
+    text: 'Doan van ban da boi den tren trang web',
+    url: 'https://example.com/',
+    title: 'Bai viet mau',
+    tabId: 42,
+    createdAt: 1_700_000_000_000,
+  }
+
+  it('tao item context voi kind/tier selection', () => {
+    const result = attachSelection(selection)
+
+    expect(result.item).toBeDefined()
+    expect(result.item?.kind).toBe('selection')
+    expect(result.item?.tier).toBe('selection')
+    expect(result.item?.text).toBe('Doan van ban da boi den tren trang web')
+    expect(result.item?.url).toBe('https://example.com/')
+    expect(result.item?.title).toBe('Bai viet mau')
+    expect(result.item?.tabId).toBe(42)
+    expect(result.item?.id).toBe('selection-abc')
+  })
+
+  it('doan chon co tier CAO NHAT (uoc tien cat bot)', () => {
+    const result = attachSelection(selection)
+
+    // `selection` phai dung dau trong thu tu uu tien.
+    expect(result.item?.tier).toBe('selection')
+  })
+
+  it('tao excerpt ngan de preview tren chip', () => {
+    const result = attachSelection(selection)
+
+    expect(result.item?.excerpt).toBeDefined()
+    expect(result.item?.excerpt?.length).toBeLessThanOrEqual(
+      selection.text.length,
+    )
+  })
+
+  it('doan rong → error CONTEXT_SELECTION_EMPTY, khong tao item', () => {
+    const result = attachSelection({ ...selection, text: '   ' })
+
+    expect(result.item).toBeUndefined()
+    expect(result.error).toBe('CONTEXT_SELECTION_EMPTY')
+    expect(result.errorMessage).toBeDefined()
+  })
+
+  it('id rong → sinh id tu hash noi dung', () => {
+    const result = attachSelection({ ...selection, id: '' })
+
+    expect(result.item?.id).toMatch(/^selection-[0-9a-f]+$/)
+  })
+
+  it('khong co url → bo qua truong url (khong tao undefined)', () => {
+    const result = attachSelection({ ...selection, url: '' })
+
+    expect(result.item?.url).toBeUndefined()
+  })
+
+  it('khong co tabId → bo qua truong tabId', () => {
+    const result = attachSelection({ ...selection, tabId: undefined })
+
+    expect(result.item?.tabId).toBeUndefined()
+  })
+
+  it('khong co title → dung nhan mac dinh', () => {
+    const result = attachSelection({ ...selection, title: '' })
+
+    expect(result.item?.title).toBe('Đoạn đã bôi đen')
+  })
+})
+
+describe('captureActiveSelection', () => {
+  it('doc duoc selection tren tab active', async () => {
+    getActiveTabIdMock.mockResolvedValue(5)
+    const { executeScriptMock, injectionResult } = await import('./setup.js')
+    executeScriptMock.mockResolvedValueOnce([
+      injectionResult({
+        text: 'Doan van ban dang boi tren trang',
+        title: 'Bai viet mau',
+        url: 'https://example.com/',
+      }),
+    ])
+
+    const result = await captureActiveSelection()
+
+    expect(result?.text).toBe('Doan van ban dang boi tren trang')
+    expect(result?.title).toBe('Bai viet mau')
+    expect(result?.tabId).toBe(5)
+    expect(result?.id).toMatch(/^selection-[0-9a-f]+$/)
+  })
+
+  it('selection rong → undefined', async () => {
+    getActiveTabIdMock.mockResolvedValue(5)
+    const { executeScriptMock, injectionResult } = await import('./setup.js')
+    executeScriptMock.mockResolvedValueOnce([injectionResult(null)])
+
+    expect(await captureActiveSelection()).toBeUndefined()
+  })
+
+  it('selection qua ngan → undefined', async () => {
+    getActiveTabIdMock.mockResolvedValue(5)
+    const { executeScriptMock, injectionResult } = await import('./setup.js')
+    executeScriptMock.mockResolvedValueOnce([injectionResult({ text: 'ngan' })])
+
+    expect(await captureActiveSelection()).toBeUndefined()
+  })
+
+  it('khong co tab active → undefined', async () => {
+    getActiveTabIdMock.mockResolvedValue(undefined)
+
+    expect(await captureActiveSelection()).toBeUndefined()
+  })
+
+  it('executeScript that bai → undefined, khong throw', async () => {
+    getActiveTabIdMock.mockResolvedValue(5)
+    const { executeScriptMock } = await import('./setup.js')
+    executeScriptMock.mockRejectedValueOnce(new Error('no permission'))
+
+    expect(await captureActiveSelection()).toBeUndefined()
   })
 })
