@@ -13,10 +13,14 @@ import {
   CONTEXT_WINDOWS,
   DEFAULT_SYSTEM_PROMPT,
   ERROR_CODES,
+  hashContextItems,
+  hashString,
   trimHistory,
   VISION,
+  type BudgetedContextItem,
   type ChatEvent,
   type ChatRequest,
+  type ContextBudgetResult,
   type ContextBundle,
   type ContextItem,
   type ImageAttachment,
@@ -45,6 +49,13 @@ export interface ChatServiceDeps {
   logFullContent: boolean
   /** Ghi request_logs vao DB (mac dinh false). */
   logRequests: boolean
+  /**
+   * Luu snapshot context vao `request_logs.context_snapshot` (mac dinh false).
+   *
+   * Snapshot chua **noi dung trang** → du lieu nhay cam → mac dinh TAT
+   * (khớp retention policy `docs/SYSTEM_DESIGN.md` §5.2).
+   */
+  logContextSnapshot: boolean
 }
 
 export interface ChatStreamResult {
@@ -189,10 +200,18 @@ export function createChatStream(
     }
 
     // --- 4. Stream provider ---
+    // Tinh ngan sach context **mot lan** (server la nguon chan su that) →
+    // dung lai cho ca prompt builder va `context_hash` trong log.
+    const contextBudget = resolveContextItems(request, {
+      provider: resolvedProvider,
+      reservedOutputTokens: request.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
+    })
+
     const messagesForProvider = buildProviderMessages(request, {
       provider: resolvedProvider,
       reservedOutputTokens: request.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
       images: imagesForProvider,
+      contextBudget,
     })
     const startedAt = Date.now()
     let firstTokenAt: number | undefined
@@ -274,6 +293,9 @@ export function createChatStream(
       keySource: resolvedKeySource,
       promptText: messagesForProvider.map((message) => message.content).join('\n'),
       responseText: text,
+      // Context **da cat ngan sach** — dung chinh danh sach nay da gui cho
+      // provider (T-M1-06) → `context_hash` khop voi context that.
+      contextItems: contextBudget.items,
       tokensIn,
       tokensOut,
       ttftMs,
@@ -309,6 +331,14 @@ export interface BuildProviderMessagesOptions {
    * de model thay anh cung cau hoi hien tai.
    */
   images?: readonly ProviderImage[]
+  /**
+   * Ngan sach context **da tinh san** (T-M1-06).
+   *
+   * `createChatStream()` can giu dung context da cat de tinh `context_hash` →
+   * tranh goi `applyContextBudget()` 2 lan (2 lan se cho 2 ket qua khac nhau
+   * neu state thay doi giua 2 lan goi).
+   */
+  contextBudget?: ContextBudgetResult
 }
 
 /** Mot turn san de gui cho provider (co the kem anh). */
@@ -316,6 +346,30 @@ export interface ProviderMessage {
   role: 'system' | 'user' | 'assistant'
   content: string
   attachments?: ProviderImage[]
+}
+
+/**
+ * Tinh ngan sach context **mot lan** cho request.
+ *
+ * Day la **nguon chan su that** cua context trong mot luot chat (T-M1-06):
+ * ca prompt builder va `request_logs.context_hash` deu phai dung chung ket qua
+ * nay → `context_hash` luon khop voi context da gui cho provider.
+ *
+ * @param request - Request cua client.
+ * @param options - Provider + token danh rieng cho output.
+ */
+export function resolveContextItems(
+  request: ChatRequest,
+  options: { provider?: ProviderId; reservedOutputTokens?: number } = {},
+): ContextBudgetResult {
+  const providerId = options.provider ?? 'mock'
+  const contextWindow = CONTEXT_WINDOWS[providerId] ?? CONTEXT_WINDOWS.mock
+  const reservedOutputTokens = options.reservedOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS
+
+  return applyContextBudget(request.context?.items ?? [], {
+    contextWindow,
+    reservedOutputTokens,
+  })
 }
 
 /**
@@ -331,14 +385,12 @@ export function buildProviderMessages(
 ): ProviderMessage[] {
   const systemPrompt = request.systemPrompt ?? DEFAULT_SYSTEM_PROMPT
   const providerId = options.provider ?? 'mock'
-  const contextWindow = CONTEXT_WINDOWS[providerId] ?? CONTEXT_WINDOWS.mock
   const reservedOutputTokens = options.reservedOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS
   const images = options.images ?? []
 
-  const budget = applyContextBudget(request.context?.items ?? [], {
-    contextWindow,
-    reservedOutputTokens,
-  })
+  const budget =
+    options.contextBudget ??
+    resolveContextItems(request, { provider: providerId, reservedOutputTokens })
 
   // Anh ton token context nhung khong phai text → uoc luong bang quy uoc
   // 258 token/anh va truoc khoi ngan sach lich su.
@@ -522,6 +574,8 @@ async function persistRequestLog(
     keySource: string
     promptText: string
     responseText: string
+    /** Context **da cat ngan sach** — dung de tinh `context_hash` + snapshot. */
+    contextItems: readonly BudgetedContextItem[]
     tokensIn: number
     tokensOut: number
     ttftMs: number
@@ -532,14 +586,21 @@ async function persistRequestLog(
   if (!deps.logRequests) return
 
   try {
-    await db_insertRequestLog(deps.db, data, deps.logFullContent)
+    await db_insertRequestLog(deps.db, data, deps.logFullContent, deps.logContextSnapshot)
   } catch (error) {
     // Log that bai khong duoc lam fail chat.
     console.error('[chat] khong ghi duoc request_logs:', error instanceof Error ? error.message : error)
   }
 }
 
-/** Ghi 1 dong request_logs. */
+/**
+ * Ghi 1 dong request_logs.
+ *
+ * `context_hash` = hash cua **context thuc su da gui cho provider** (khong
+ * phai hash cua toan bo prompt) → AC "context_hash khop voi context da gui".
+ * `context_snapshot` = jsonb chua context da cat — **mac dinh TAT** (noi dung
+ * trang la du lieu nhay cam) → chi bat khi setting `LOG_CONTEXT_SNAPSHOT=true`.
+ */
 async function db_insertRequestLog(
   db: Database,
   data: {
@@ -550,6 +611,7 @@ async function db_insertRequestLog(
     keySource: string
     promptText: string
     responseText: string
+    contextItems: readonly BudgetedContextItem[]
     tokensIn: number
     tokensOut: number
     ttftMs: number
@@ -557,7 +619,10 @@ async function db_insertRequestLog(
     error: string | undefined
   },
   logFullContent: boolean,
+  logContextSnapshot: boolean,
 ): Promise<void> {
+  const contextHash = hashContextItems(data.contextItems)
+
   await db.insert(requestLogs).values({
     requestId: data.requestId,
     conversationId: data.conversationId,
@@ -566,7 +631,12 @@ async function db_insertRequestLog(
     keySource: data.keySource,
     promptText: logFullContent ? data.promptText : null,
     responseText: logFullContent ? data.responseText : null,
-    contextHash: hashText(data.promptText),
+    contextHash: contextHash.length > 0 ? contextHash : null,
+    // Khong co context → `null` (dong nhat voi `context_hash = null`).
+    contextSnapshot:
+      logContextSnapshot && data.contextItems.length > 0
+        ? buildContextSnapshot(data.contextItems)
+        : null,
     tokensIn: data.tokensIn,
     tokensOut: data.tokensOut,
     ttftMs: data.ttftMs,
@@ -575,14 +645,40 @@ async function db_insertRequestLog(
   })
 }
 
-/** Hash SHA-256 rut gon — thay cho luu prompt day du khi setting tat. */
+/**
+ * Hash chuoi (dung chung `hashString` tu `packages/shared`).
+ *
+ * Hash FNV-1a 32-bit → hex. KHONG phai ham bao mat — chi de so sanh/doi
+ * chieu noi dung. Comment cu "SHA-256 rut gon" truoc day sai voi code.
+ *
+ * @param text - Chuoi can bam.
+ */
 export function hashText(text: string): string {
-  let hash = 0
-  for (let i = 0; i < text.length; i += 1) {
-    hash = (hash << 5) - hash + text.charCodeAt(i)
-    hash |= 0
-  }
-  return Math.abs(hash).toString(16)
+  return hashString(text)
+}
+
+/**
+ * Snapshot context da cat ngan sach — luu vao `request_logs.context_snapshot`.
+ *
+ * Chi dung khi setting `LOG_CONTEXT_SNAPSHOT=true` (mac dinh TAT) vi chua
+ * **noi dung trang** → du lieu nhay cam.
+ *
+ * @param items - Context item da cat ngan sach.
+ */
+export function buildContextSnapshot(
+  items: readonly BudgetedContextItem[],
+): Array<Record<string, unknown>> {
+  return items.map((item) => ({
+    id: item.id,
+    kind: item.kind,
+    tier: item.tier,
+    url: item.url ?? null,
+    title: item.title,
+    sourceKind: item.sourceKind ?? null,
+    text: item.text ?? null,
+    excerpt: item.excerpt ?? null,
+    truncated: item.truncated,
+  }))
 }
 
 /** Lay conversation gan nhat (phuc vu context cho lenh sau). */

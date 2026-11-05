@@ -40,6 +40,16 @@ const envSchema = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((value) => value === 'true'),
+  /**
+   * Luu snapshot context vao `request_logs.context_snapshot` (mac dinh TAT).
+   *
+   * Snapshot chua noi dung trang → du lieu nhay cam. `context_hash` luon duoc
+   * ghi (khong chua noi dung).
+   */
+  LOG_CONTEXT_SNAPSHOT: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
 })
 

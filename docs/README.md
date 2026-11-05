@@ -1,7 +1,7 @@
 # Documentation Index — Sidekick AI (Chrome Extension Chat Sidebar)
 
 **Dự án:** Extension chat-bot sidebar cho trình duyệt, cạnh tranh với Edge Copilot Sidebar và Chrome Gemini Sidebar.
-**Giai đoạn hiện tại:** **M0 (Foundation) đã implement xong** (tag `v0.1`) · đang làm **M1 (Parity)** — 9/25 task (T-M1-01, T-M1-04 ✅ hấp thụ, T-M1-05, T-M1-21, T-M1-22, T-M1-23, T-M1-02, T-M1-24, T-M1-25 ✅) · 648 unit test + 29 E2E.
+**Giai đoạn hiện tại:** **M0 (Foundation) đã implement xong** (tag `v0.1`) · đang làm **M1 (Parity)** — 10/25 task (T-M1-01, T-M1-04 ✅ hấp thụ, T-M1-05, T-M1-21, T-M1-22, T-M1-23, T-M1-02, T-M1-24, T-M1-25, T-M1-06 ✅) · 696 unit test + 32 E2E.
 **Entry point cho agent:** [`../AGENTS.md`](../AGENTS.md) · [`HANDOFF.md`](HANDOFF.md)
 
 ---
@@ -99,21 +99,21 @@ Chi tiết lý do & hệ quả: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §2 (12 A
 
 | Tài liệu | Phiên bản | Ngày | Trạng thái |
 |---|---|---|---|
-| REQUIREMENTS.md | v1.4 | 2026-11-04 | ✅ Đã cập nhật — FR-CONTEXT-04 (selection context) đã implement (T-M1-02) |
-| COMPARISON_MATRIX.md | v1.4 | 2026-11-04 | ✅ Đã cập nhật — "Bôi đen → hỏi" đạt parity (§E tick ✅) |
-| EVAL_PLAN.md | v1.1 | 2026-11-04 | ✅ Đã cập nhật — thêm nhóm `doc_extract` + `video_transcript` (dataset 48 task) |
-| DESIGN_SYSTEM_BRIEF.md | v1.3 | 2026-11-04 | ✅ Đã cập nhật — component `SelectionAffordance` (§3.5) |
-| SYSTEM_DESIGN.md | v1.5 | 2026-11-04 | ✅ Đã cập nhật — §7.3.4 (selection context) · §7.2.1 (số test) |
-| IMPLEMENTATION_PLAN.md | v1.4 | 2026-11-04 | ✅ Đã cập nhật — T-M1-02 ✅ + §3.1f bảng verify |
-| HANDOFF.md | v1.5 | 2026-11-04 | ✅ Đã cập nhật — T-M1-02 selection context |
-| CHANGELOG.md | v1.5 | 2026-11-04 | ✅ Đang theo dõi |
+| REQUIREMENTS.md | v1.5 | 2026-11-05 | ✅ Đã cập nhật — FR-CONTEXT-01 (cache URL+hash) + FR-CONTEXT-12 (hash context & snapshot theo setting) — T-M1-06 |
+| COMPARISON_MATRIX.md | v1.5 | 2026-11-05 | ✅ Đã cập nhật — 2 dòng parity mới (tái lập lượt chat · cache context) — T-M1-06 |
+| EVAL_PLAN.md | v1.2 | 2026-11-05 | ✅ Đã cập nhật — §3.4.1 `context_hash` là khoá tái lập lượt chat — T-M1-06 |
+| DESIGN_SYSTEM_BRIEF.md | v1.4 | 2026-11-05 | ✅ Đã cập nhật — §3.5.1 cache context (**không có UI mới**) — T-M1-06 |
+| SYSTEM_DESIGN.md | v1.6 | 2026-11-05 | ✅ Đã cập nhật — §7.3.5 (hash context · snapshot · cache) · §7.2.1 (số test) · §7.2.2 (mutation vòng 3) — T-M1-06 |
+| IMPLEMENTATION_PLAN.md | v1.5 | 2026-11-05 | ✅ Đã cập nhật — T-M1-06 ✅ + §3.1i bảng verify — T-M1-06 |
+| HANDOFF.md | v1.6 | 2026-11-05 | ✅ Đã cập nhật — T-M1-06 hash context + snapshot + cache |
+| CHANGELOG.md | v1.6 | 2026-11-05 | ✅ Đang theo dõi |
 
 ## Trạng thái milestone
 
 | Milestone | Nội dung | Trạng thái |
 |---|---|---|
 | **M0 — Foundation** (2 tuần) | Monorepo, shared types, Docker/Postgres, Drizzle, BFF skeleton, provider Gemini, SSE, side panel shell | ✅ Xong (tag `v0.1`) |
-| **M1 — Parity** (3 tuần) | Content extraction (HTML + PDF + YouTube transcript), context đính kèm chủ động + ngân sách token, `@` multi-tab, selection, citations, markdown/code, conversation CRUD, settings, upload ảnh, onboarding, logging, K2/K3 | 🚧 Đang làm — 9/25 task (T-M1-01, T-M1-04 ✅ hấp thụ, T-M1-05, T-M1-21, T-M1-22, T-M1-23, T-M1-02, T-M1-24, T-M1-25 ✅) |
+| **M1 — Parity** (3 tuần) | Content extraction (HTML + PDF + YouTube transcript), context đính kèm chủ động + ngân sách token, `@` multi-tab, selection, citations, markdown/code, conversation CRUD, settings, upload ảnh, onboarding, logging, K2/K3 | 🚧 Đang làm — 10/25 task (T-M1-01, T-M1-04 ✅ hấp thụ, T-M1-05, T-M1-21, T-M1-22, T-M1-23, T-M1-02, T-M1-24, T-M1-25, T-M1-06 ✅) |
 | **M2 — Advanced & Eval** (3 tuần) | Multi-provider, skills, tool registry + MCP, RAG, token/cost UI, **EVAL_REPORT** | ⬜ Chưa bắt đầu |
 | **M3 — Polish & Deliverable** (1 tuần) | Design system, states, a11y audit, i18n, demo video, slide, README, backup DB, ADR | ⬜ Chưa bắt đầu |
 | **M4 — Workflow** (tuỳ chọn, 2 tuần) | Scheduler, workflow CRUD, run log, import/export, notification | ⬜ Ngoài đường găng |

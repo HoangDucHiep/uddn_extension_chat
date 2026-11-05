@@ -22,6 +22,14 @@ export const CONTEXT_ENABLED_STORAGE_KEY = 'sidekick.contextEnabled'
 export const PENDING_SELECTION_STORAGE_KEY = 'sidekick.pendingSelection'
 
 /**
+ * Khoa luu cache context theo URL (T-M1-06).
+ *
+ * Giu nhung trang da capture de khong trich xuat lai + fallback khi trang
+ * dang loi. Co TTL + gioi han so entry (xem `lib/contextCache.ts`).
+ */
+export const CONTEXT_CACHE_STORAGE_KEY = 'sidekick.contextCache'
+
+/**
  * Doc trang thai bat/tat context da luu.
  *
  * Mac dinh `false` — context chi duoc gui khi user chu dong dinh kem.

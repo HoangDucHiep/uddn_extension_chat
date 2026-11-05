@@ -610,7 +610,7 @@ Mỗi `ProviderAdapter` phải cài `supportsVision(model: string): boolean`. Kh
 |---|---|---|
 | `messages`, `citations`, `tool_calls` | Giữ vô hạn (lịch sử chat của user) | Xoá theo conversation |
 | `request_logs` | 90 ngày | 30 / 365 / vô hạn |
-| `context_snapshot` | **Tắt mặc định** (chỉ lưu `context_hash`) | Bật để debug |
+| `context_snapshot` | **Tắt mặc định** (chỉ lưu `context_hash`) | Bật để debug — qua setting `LOG_CONTEXT_SNAPSHOT` (T-M1-06) |
 | `rag_documents` | Giữ cùng với nguồn | Xoá thủ công |
 | `eval_runs` / `eval_results` | Vô hạn (bằng chứng đồ án) | — |
 | `provider_keys` | Giữ đến khi user xoá | — |
@@ -726,8 +726,8 @@ Các kịch bản E2E còn lại (offline, BFF down, stop, edit-resend, context 
 
 | Tầng | Số test | Vị trí |
 |---|---|---|
-| Unit | **547** — shared 103 · server 166 · extension 278 | `packages/shared/tests/` · `apps/server/tests/` · `apps/extension/tests/` |
-| E2E | **23** | `apps/extension/e2e/` |
+| Unit | **696** — shared 140 · server 224 · extension 332 | `packages/shared/tests/` · `apps/server/tests/` · `apps/extension/tests/` |
+| E2E | **32** | `apps/extension/e2e/` |
 
 ### 7.2.2 Audit chất lượng test bằng mutation testing (2026-11-04)
 
@@ -785,6 +785,18 @@ Các kịch bản E2E còn lại (offline, BFF down, stop, edit-resend, context 
 | E2E `context.spec.ts` · `extract.spec.ts` · `mention.spec.ts` | ⚠️ Chrome thật nhưng BFF **bị stub** bằng `page.route` → chỉ kiểm phía client |
 
 **Kết luận & hệ quả:** sau vòng 2, **cả 8 blind spot đã được đóng** bằng test cụ thể, và 5 mutation re-check đều bị bắt → không có bằng chứng test bị "tình cho đúng".
+
+**Vòng 3 — T-M1-06 (2026-11-05):** 5 mutation spot-check cho hash context / snapshot / cache — **tất cả đều bị bắt**:
+
+| # | Mutation | Test bắt được |
+|---|---|---|
+| 1 | Bỏ `sort` trong `hashContextItems()` | `packages/shared/tests/contextHash.test.ts` — "thu tu item khac → CUNG hash" |
+| 2 | `context_hash` lấy hash của **prompt** (hành vi cũ) | `apps/server/tests/requestLogContext.test.ts` — 3 test fail (hash context · đổi câu hỏi · không có context → null) |
+| 3 | Bỏ nhánh `logContextSnapshot` (luôn `null`) | `apps/server/tests/requestLogContext.test.ts` — "bat → context_snapshot chua id/url/title/text" |
+| 4 | Bỏ check `contentHash` khi ghi cache | `apps/extension/tests/contextAttach.test.ts` — "noi dung KHONG doi → giu nguyen capturedAt" |
+| 5 | Bỏ `prune()` khi vượt giới hạn entry | `apps/extension/tests/contextCache.test.ts` — "vuot gioi han → giu entry moi nhat" |
+
+> Mutation #4 ban đầu **sống sót** (test chỉ kiểm text cuối cùng → ghi đè hay không cho kết quả giống nhau) → đã bổ sung test khẳng định `capturedAt` **không** bị reset khi nội dung không đổi → mutation bị bắt.
 
 ### 7.3 Trích xuất nội dung trang (T-M1-01)
 
@@ -1032,6 +1044,116 @@ flowchart LR
 | Đoạn chờ quá TTL (5 phút) → bỏ | User đã chuyển sang task khác → tránh đính kèm nhầm |
 | Id item = hash nội dung (`selection-<hash>`) | Bôi đen lại cùng đoạn → **thay** item cũ, không nhân bản |
 | Chỉ đính kèm khi user **chủ động** bấm nút | FR-CONTEXT-13 — không tự ý gửi nội dung trang |
+
+### 7.3.5 Hash context · snapshot log · cache theo URL (T-M1-06)
+
+> Nguồn sự thật cho hợp đồng: [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.2 (FR-CONTEXT-01, FR-CONTEXT-12).
+
+Ba mảnh độc lập, cùng phục vụ **tái lập lượt chat** (reproducibility) và **tránh trích xuất lại**:
+
+#### (a) Hash context — `packages/shared/src/contextHash.ts`
+
+Hàm hash **thuần**, không phụ thuộc runtime (`node:crypto` không dùng) → dùng được cho extension, server, content script.
+
+| Hàm | Mô tả |
+|---|---|
+| `hashString(text): string` | FNV-1a 32-bit → hex 8 ký tự. **Không phải** hàm bảo mật — chỉ để so sánh/đối chiếu |
+| `hashContextItems(items): string` | Hash deterministic của danh sách context item |
+| `contextHashKey(url): string` | Khoá cache theo URL đã chuẩn hoá |
+
+**Tính deterministic của `hashContextItems()`** — 2 quy tắc:
+
+1. Sắp xếp item theo `CONTEXT_TIER_ORDER` (`selection` > `attachment` > `currentTab`) rồi theo `id` → thứ tự gửi không làm đổi hash.
+2. Chỉ hash các trường **ảnh hưởng nội dung**: `id | kind | tier | url | title | sourceKind | text` (nối bằng `\u0000`). `truncated` / `droppedChars` / `tokens` là thuộc tính ngân sách → **không** tính.
+
+Danh sách rỗng → `''` (server ghi `null`).
+
+#### (b) Server: `context_hash` + `context_snapshot`
+
+**Nguồn sự thật duy nhất:** `resolveContextItems(request, options)` trong `apps/server/src/services/chatService.ts` chạy `applyContextBudget()` **một lần** → trả về `ContextBudgetResult`. Cả hai nơi dùng:
+
+| Nơi dùng | Mục đích |
+|---|---|
+| `buildProviderMessages()` | Dựng prompt gửi provider (nhận `options.contextBudget` đã tính sẵn) |
+| `persistRequestLog()` | Tính `context_hash` + `context_snapshot` |
+
+```mermaid
+flowchart LR
+  req["ChatRequest"] --> rci["resolveContextItems()<br/>applyContextBudget() — 1 LẦN"]
+  rci --> bpm["buildProviderMessages()<br/>→ messages cho provider"]
+  rci --> log["persistRequestLog()<br/>context_hash = hashContextItems(items)"]
+  log --> db["request_logs"]
+```
+
+| Cột | Ghi khi nào | Nội dung |
+|---|---|---|
+| `context_hash` | **Luôn** (khi có context) | Hash 8 ký tự của context **đã cắt ngân sách**. Không có context → `null` |
+| `context_snapshot` | **Chỉ khi `LOG_CONTEXT_SNAPSHOT=true`** (mặc định TẮT) | jsonb `[{ id, kind, tier, url, title, sourceKind, text, excerpt, truncated }]` |
+
+> **Vì sao hash phải là của context chứ không phải của prompt?** Trước T-M1-06, `context_hash` = hash của **toàn bộ prompt** (system + lịch sử + context) → đổi câu hỏi là đổi hash, không dùng được để đối chiếu "cùng context". Nay hash chỉ phụ thuộc context → đổi câu hỏi → hash **không đổi**; đổi nội dung context → hash **đổi**.
+
+> **Vì sao snapshot mặc định TẮT?** Snapshot chứa **nội dung trang** (dữ liệu nhạy cảm). Cờ riêng `LOG_CONTEXT_SNAPSHOT` — **không** gộp với `logFullContent` (setting FR-SETTINGS-04) để không vô tình bật lưu nội dung. Khớp retention policy §5.2.
+
+| Setting | Mặc định | Nơi khai báo |
+|---|---|---|
+| `LOG_REQUESTS` | `false` | `apps/server/src/config/env.ts` |
+| `LOG_CONTEXT_SNAPSHOT` | `false` | `apps/server/src/config/env.ts` → `ChatServiceDeps.logContextSnapshot` |
+
+#### (c) Extension: cache context theo URL — `apps/extension/src/lib/contextCache.ts`
+
+Lưu trong `chrome.storage.local`, key `sidekick.contextCache` (object `Record<cacheKey, entry>`).
+
+```ts
+interface ContextCacheEntry {
+  key: string          // contextHashKey(url) — bỏ fragment/query, lowercase host
+  url: string
+  title: string
+  text: string
+  excerpt: string | undefined
+  sourceKind: PageKind | undefined
+  contentHash: string  // hashString(text) — phát hiện nội dung đã đổi
+  capturedAt: number   // epoch ms
+}
+```
+
+| Hằng số | Giá trị | Ý nghĩa |
+|---|---|---|
+| `CONTEXT_CACHE_TTL_MS` | 30 phút | Hết hạn → entry bị xoá |
+| `CONTEXT_CACHE_MAX_ENTRIES` | 20 | Vượt → prune, giữ entry **mới nhất** |
+
+**Luồng trong `attachTab()`** (`apps/extension/src/lib/contextAttach.ts`):
+
+```mermaid
+flowchart TD
+  cap["captureTabContext(tabId)"] --> chk{"có text?"}
+  chk -->|"có"| cmp{"contentHash khác<br/>bản cache?"}
+  cmp -->|"khác"| wr["writeCachedContext(fresh)<br/>capturedAt mới"]
+  cmp -->|"giống"| skip["giữ bản cũ<br/>TTL không bị reset"]
+  chk -->|"không (trang lỗi)"| fb{"còn trong TTL?"}
+  fb -->|"có"| use["dùng text đã cache"]
+  fb -->|"không"| none["item không có text<br/>(giữ nguyên hành vi cũ)"]
+```
+
+| Quy tắc | Lý do |
+|---|---|
+| Nội dung không đổi → **không** ghi lại cache | Không reset TTL → trang cũ vẫn hết hạn đúng hạn |
+| Nội dung đổi → ghi đè, `capturedAt` mới | Trang đã cập nhật → cache phải mới |
+| Trang lỗi → fallback về bản cache | PDF scan / extractor rỗng / mất mạng vẫn chat được |
+| Lỗi storage → **không throw** | Cache là tối ưu, không được làm hỏng chat |
+
+> **Ràng buộc MV3:** cache nằm ở `chrome.storage.local` (không phải biến trong service worker — SW bị kill sau ~30 s). Content script **không** import `contextHash.ts` (giữ bundle nhỏ) — dùng subpath `@sidekick/shared/constants` như hiện tại.
+
+#### (d) File liên quan
+
+| File | Vai trò |
+|---|---|
+| `packages/shared/src/contextHash.ts` | `hashString()` · `hashContextItems()` · `contextHashKey()` |
+| `packages/shared/src/constants.ts` | `CONTEXT_CACHE_TTL_MS` · `CONTEXT_CACHE_MAX_ENTRIES` |
+| `apps/server/src/services/chatService.ts` | `resolveContextItems()` · `buildProviderMessages()` · `persistRequestLog()` · `buildContextSnapshot()` |
+| `apps/server/src/config/env.ts` | `LOG_CONTEXT_SNAPSHOT` |
+| `apps/extension/src/lib/contextCache.ts` | `readCachedContext()` · `writeCachedContext()` · `clearContextCache()` · `toCacheEntry()` · `hasContentChanged()` |
+| `apps/extension/src/lib/contextAttach.ts` | Nối cache vào `attachTab()` (ghi + fallback) |
+| `apps/extension/src/lib/storage.ts` | `CONTEXT_CACHE_STORAGE_KEY` |
 
 ### 7.4 Ảnh đính kèm & vision input (T-M1-24)
 

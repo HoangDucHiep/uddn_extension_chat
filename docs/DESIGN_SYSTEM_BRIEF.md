@@ -244,6 +244,24 @@ Component `SelectionAffordance` — nút nổi "Hỏi Sidekick" xuất hiện c�
 
 Nút tương ứng trong panel: `ContextChips` → nút "Dính đoạn đã chọn" (icon `MousePointer2`, `data-testid="context-add-selection"`).
 
+### 3.5.1 Cache context theo URL (T-M1-06) — **KHÔNG có UI mới**
+
+> Nguồn: [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.2 (FR-CONTEXT-01) · kiến trúc: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.3.5.
+
+| Hạng mục | Kết luận |
+|---|---|
+| Component mới | **Không** — không có UI nào được thêm |
+| Design token mới | **Không** — không dùng màu/giá trị mới |
+| Hành vi chip hiện tại | **Không đổi** — `ContextChips` / `ContextBudget` giữ nguyên |
+| a11y | **Không đổi** — không có interactive element mới |
+
+Cache context chạy **hoàn toàn ngầm** ở tầng `lib/` (`contextCache.ts` + `contextAttach.ts`):
+
+- User bấm "Thêm trang này" → `attachTab()` trích xuất → nếu thành công thì **ghi vào cache** (không có phản hồi trực quan nào cho user).
+- Lần sau bấm lại cùng trang, hoặc trang đang lỗi → dùng bản cache → chip hiện **y hệt** như bình thường (vì `ContextItem` trả về giống nhau).
+
+> **Vì sao không hiện badge "đang lấy từ cache"?** DP-3 nói context luôn nhìn thấy, nhưng cache là **tối ưu kỹ thuật**, không phải thay đổi nguồn sự thật mà user cần biết. Hiện badge sẽ gây nhiễu (DP-2) và tạo cảm giác "nội dung bị cũ" khi thực ra cache vừa mới (TTL 30 phút). Nếu sau này cần minh bạch, có thể thêm vào `ContextNotice` (M2) — nhưng đó là quyết định sản phẩm riêng.
+
 ### 3.6 Overlays & feedback
 
 | Component | Mô tả |

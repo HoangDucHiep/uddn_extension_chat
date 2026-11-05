@@ -8,6 +8,31 @@
 
 ## [Unreleased]
 ### Added
+- **T-M1-06 — Hash context + snapshot log + cache theo URL+hash (FR-CONTEXT-01 / FR-CONTEXT-12)**
+  - `packages/shared/src/contextHash.ts` (mới) — `hashString(text)` (FNV-1a 32-bit → hex, **thuần** — không `node:crypto` → dùng được cho extension + server) · `hashContextItems(items)` (hash **deterministic**: sort theo `CONTEXT_TIER_ORDER` rồi `id`, nối `id|kind|tier|url|title|sourceKind|text` bằng `\u0000`; `truncated`/`droppedChars`/`tokens` là thuộc tính ngân sách nên **không** tính; rỗng → `''`) · `contextHashKey(url)` (bỏ fragment + query, lowercase host).
+  - `packages/shared/src/constants.ts` — thêm `CONTEXT_CACHE_TTL_MS = 30 * 60_000` (30 phút) · `CONTEXT_CACHE_MAX_ENTRIES = 20`.
+  - `packages/shared/src/index.ts` — export `contextHash.ts`.
+  - `apps/server/src/services/chatService.ts` — `resolveContextItems(request, options)` (**mới**): chạy `applyContextBudget()` **một lần** → nguồn sự thật duy nhất cho cả prompt builder lẫn request log. `buildProviderMessages()` nhận thêm `options.contextBudget` (giữ **nguyên chữ ký** cũ) · `persistRequestLog()` nhận `contextItems` · `context_hash = hashContextItems(contextBudget.items)` (không có context → `null`) · `context_snapshot` jsonb `[{ id, kind, tier, url, title, sourceKind, text, excerpt, truncated }]` — **chỉ khi** `logContextSnapshot` bật · `buildContextSnapshot()` (export) · `hashText()` nay trỏ về `hashString()` (comment cũ ghi "SHA-256 rút gọn" nhưng code là djb2 → đã sửa).
+  - `apps/server/src/services/chatService.ts` (`ChatServiceDeps`) — thêm `logContextSnapshot: boolean`.
+  - `apps/server/src/config/env.ts` — thêm `LOG_CONTEXT_SNAPSHOT` (`'true'|'false'`, mặc định `'false'`).
+  - `apps/server/src/index.ts` — truyền `logContextSnapshot: env.LOG_CONTEXT_SNAPSHOT`.
+  - `apps/extension/src/lib/contextCache.ts` (mới) — `readCachedContext(url, now?)` (tự xoá entry hết TTL) · `writeCachedContext(entry)` (ghi đè theo key + **prune** khi vượt `CONTEXT_CACHE_MAX_ENTRIES`) · `clearContextCache()` · `toCacheEntry(context, now?)` · `hasContentChanged(cached, fresh)` — lưu `chrome.storage.local` key `sidekick.contextCache`; **không bao giờ throw** khi lỗi storage.
+  - `apps/extension/src/lib/contextAttach.ts` — `attachTab()`: ghi cache khi trích xuất thành công (nội dung không đổi → **không** ghi lại, giữ `capturedAt`) · **fallback** về bản cache khi trang đang lỗi (PDF scan · extractor rỗng · mất mạng).
+  - `apps/extension/src/lib/storage.ts` — thêm `CONTEXT_CACHE_STORAGE_KEY = 'sidekick.contextCache'`.
+  - **Test** — `packages/shared/tests/contextHash.test.ts` (mới, 17 test) · `apps/server/tests/requestLogContext.test.ts` (mới, 10 test) · `apps/extension/tests/contextCache.test.ts` (mới, 15 test) · `apps/extension/tests/contextAttach.test.ts` (+2 test cache: nội dung không đổi → giữ `capturedAt`; nội dung đổi → `capturedAt` mới) · `apps/extension/e2e/contextCache.spec.ts` (mới, 3 kịch bản).
+  - **Số test toàn repo:** 648 → **696 unit** (shared 140 · server 224 · extension 332) + 29 → **32 E2E**.
+  - **Mutation spot-check:** 5/5 mutation bị bắt — bỏ `sort` trong `hashContextItems` (1 test fail) · `context_hash` lấy hash của prompt (3 test fail) · bỏ nhánh `logContextSnapshot` (1 test fail) · bỏ check `contentHash` khi ghi cache (1 test fail) · bỏ `prune()` (1 test fail).
+  - **Docs** — `REQUIREMENTS.md` §4.2 (FR-CONTEXT-01 · FR-CONTEXT-12 + ghi chú trạng thái) · §11.1 (bảng traceability) · `SYSTEM_DESIGN.md` §7.3.5 (mới) · §7.2.1 (số test) · §7.2.2 (mutation vòng 3) · §5.2 (retention) · `DESIGN_SYSTEM_BRIEF.md` §3.5.1 (**không có UI mới**) · `IMPLEMENTATION_PLAN.md` task card T-M1-06 ✅ + §3.1i + §3.2 · `COMPARISON_MATRIX.md` §C (C5) + §E (2 dòng mới) · `EVAL_PLAN.md` §3.4.1 (`context_hash` là khoá tái lập lượt chat) · `HANDOFF.md` §2 · `AGENTS.md` + `docs/README.md` (số task/test, việc tiếp theo).
+
+### Changed
+- `apps/server/src/services/chatService.ts` — **`request_logs.context_hash` đổi nguồn**: trước đây là `hashText(data.promptText)` (hash của **toàn bộ prompt**: system + history + context) → nay là hash của **context thật đã gửi cho provider** (đã cắt ngân sách). Hệ quả: đổi câu hỏi → hash **không** đổi; đổi nội dung context → hash **đổi** (AC của T-M1-06).
+- `request_logs.context_snapshot` trước đây **luôn `null`** (cột có sẵn trong schema + migration `0000` nhưng không được ghi) → nay ghi jsonb khi bật setting `LOG_CONTEXT_SNAPSHOT` (mặc định **TẮT** vì snapshot chứa nội dung trang). Cờ **riêng**, **không** gộp với `logFullContent`.
+- `apps/server/tests/chatService.test.ts` — thêm `logContextSnapshot: false` vào các `ChatServiceDeps` fixture.
+
+### Fixed
+- `apps/server/src/services/chatService.ts` — comment của `hashText()` ghi sai "SHA-256 rút gọn" trong khi code là djb2 → sửa thành FNV-1a 32-bit và trỏ về hàm dùng chung `hashString()`.
+
+### Added
 - **T-M1-25 — Onboarding 3 bước lần đầu (FR-UX-02)**
   - `packages/shared/src/types/entities.ts` — `providerInfoSchema`: `keySource` thêm `'none'` (provider không cần key) · thêm `note?: string` (vd "Ollama chưa chạy").
   - `packages/shared/src/schemas/provider.ts` — `providerKeyRecordSchema` (id · providerId · label · masked · createdAt) · `providerKeyTestResultSchema` (ok · latencyMs · error?) · `providersResponseSchema` · `providerKeyListResponseSchema` · `saveProviderKeyResponseSchema`.

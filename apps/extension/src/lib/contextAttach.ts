@@ -16,6 +16,12 @@
 import type { ContextItem } from '@sidekick/shared'
 import { LIMITS } from '@sidekick/shared/constants'
 import { isMeaningfulSelection, normalizeSelectionText } from '../content/selection.js'
+import {
+  hasContentChanged,
+  readCachedContext,
+  toCacheEntry,
+  writeCachedContext,
+} from './contextCache'
 import { captureTabContext, getActiveTabId } from './pageContext'
 import {
   SELECTION_EMPTY_ERROR_CODE,
@@ -94,6 +100,52 @@ export async function attachTab(
     // Trang rong (khong co url/title) → khong tao item.
     if (context.url.length === 0 && context.title.length === 0) return withError
 
+    // --- Cache theo URL (T-M1-06) ---
+    // Trang co noi dung → ghi cache (de lan sau khong phai trich xuat lai).
+    // Trang khong doc duoc (extractor rong, PDF scan, mat mang) → fallback
+    // sang ban da cache (neu con han).
+    const fresh = toCacheEntry(context)
+    const cached = await readCachedContext(context.url)
+
+    if (context.text !== undefined && context.text.length > 0) {
+      if (hasContentChanged(cached, fresh)) {
+        await writeCachedContext(fresh)
+      }
+      return {
+        ...withError,
+        item: {
+          id: tabItemId(tabId),
+          kind: 'tab',
+          tier: 'attachment',
+          url: context.url,
+          title: context.title,
+          text: context.text,
+          ...(context.excerpt !== undefined ? { excerpt: context.excerpt } : {}),
+          ...(context.sourceKind !== undefined ? { sourceKind: context.sourceKind } : {}),
+          tabId,
+        },
+      }
+    }
+
+    // Khong co text → thu dung ban da cache.
+    if (cached !== undefined) {
+      return {
+        ...withError,
+        item: {
+          id: tabItemId(tabId),
+          kind: 'tab',
+          tier: 'attachment',
+          url: context.url.length > 0 ? context.url : cached.url,
+          title: context.title.length > 0 ? context.title : cached.title,
+          text: cached.text,
+          ...(cached.excerpt !== undefined ? { excerpt: cached.excerpt } : {}),
+          ...(cached.sourceKind !== undefined ? { sourceKind: cached.sourceKind } : {}),
+          tabId,
+        },
+      }
+    }
+
+    // Khong co text va khong co cache → giu nguyen hanh vi cu (item khong text).
     return {
       ...withError,
       item: {
@@ -102,7 +154,6 @@ export async function attachTab(
         tier: 'attachment',
         url: context.url,
         title: context.title,
-        ...(context.text !== undefined ? { text: context.text } : {}),
         ...(context.excerpt !== undefined ? { excerpt: context.excerpt } : {}),
         ...(context.sourceKind !== undefined ? { sourceKind: context.sourceKind } : {}),
         tabId,

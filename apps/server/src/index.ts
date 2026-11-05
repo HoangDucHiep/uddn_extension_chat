@@ -40,6 +40,7 @@ async function main(): Promise<void> {
     ollamaBaseUrl: env.OLLAMA_BASE_URL,
     logFullContent: false,
     logRequests: env.LOG_REQUESTS,
+    logContextSnapshot: env.LOG_CONTEXT_SNAPSHOT,
     version: VERSION,
     allowedOrigins,
     logLevel: env.LOG_LEVEL,

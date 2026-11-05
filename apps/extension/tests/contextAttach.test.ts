@@ -21,7 +21,6 @@ beforeEach(() => {
   getActiveTabIdMock.mockReset()
   getActiveTabIdMock.mockResolvedValue(undefined)
 })
-
 describe('attachTab', () => {
   it('tao item context voi tier attachment cho tab bat ky', async () => {
     captureTabContextMock.mockResolvedValue({
@@ -96,6 +95,172 @@ describe('attachTab', () => {
 
     expect(result.item).toBeUndefined()
     expect(result.error).toBeUndefined()
+  })
+})
+
+describe('cache context theo URL (T-M1-06)', () => {
+  beforeEach(async () => {
+    const { clearContextCache } = await import('../src/lib/contextCache.js')
+    await clearContextCache()
+  })
+
+  it('trang co noi dung → duoc ghi vao cache', async () => {
+    captureTabContextMock.mockResolvedValue({
+      url: 'https://example.com/bai-viet',
+      title: 'Bai viet',
+      tabId: 42,
+      text: 'Noi dung chinh.',
+      sourceKind: 'html',
+    })
+
+    await attachTab(42)
+
+    const { readCachedContext } = await import('../src/lib/contextCache.js')
+    const cached = await readCachedContext('https://example.com/bai-viet')
+    expect(cached?.text).toBe('Noi dung chinh.')
+  })
+
+  it('trang khong doc duoc → FALLBACK ve noi dung da cache', async () => {
+    const { writeCachedContext } = await import('../src/lib/contextCache.js')
+    await writeCachedContext({
+      url: 'https://example.com/file.pdf',
+      title: 'file.pdf',
+      text: 'Noi dung PDF da capture truoc.',
+      excerpt: 'Noi dung PDF da capture truoc.',
+      sourceKind: 'pdf',
+      contentHash: 'hash-pdf',
+      capturedAt: Date.now(),
+    })
+
+    captureTabContextMock.mockResolvedValue({
+      url: 'https://example.com/file.pdf',
+      title: 'file.pdf',
+      tabId: 7,
+      sourceKind: 'pdf',
+      contextError: 'CONTEXT_PDF_NOT_READABLE',
+      contextErrorMessage: 'Khong doc duoc file PDF.',
+    })
+
+    const result = await attachTab(7)
+
+    expect(result.error).toBe('CONTEXT_PDF_NOT_READABLE')
+    // Van tra ve item — nhung dung NOI DUNG DA CACHE thay vi rong.
+    expect(result.item?.text).toBe('Noi dung PDF da capture truoc.')
+  })
+
+  it('noi dung moi khac → ghi de ban cache (khong dung ban cu)', async () => {
+    const { readCachedContext, writeCachedContext } = await import('../src/lib/contextCache.js')
+    await writeCachedContext({
+      url: 'https://example.com/bai-viet',
+      title: 'Bai viet',
+      text: 'NOI DUNG CU.',
+      excerpt: undefined,
+      sourceKind: 'html',
+      contentHash: 'hash-old',
+      capturedAt: Date.now() - 1000,
+    })
+
+    captureTabContextMock.mockResolvedValue({
+      url: 'https://example.com/bai-viet',
+      title: 'Bai viet',
+      tabId: 42,
+      text: 'NOI DUNG MOI.',
+      sourceKind: 'html',
+    })
+
+    const result = await attachTab(42)
+
+    expect(result.item?.text).toBe('NOI DUNG MOI.')
+
+    const cached = await readCachedContext('https://example.com/bai-viet')
+    expect(cached?.text).toBe('NOI DUNG MOI.')
+  })
+
+  it('URL khac → khong dung nhầm cache cua trang khac', async () => {
+    const { writeCachedContext } = await import('../src/lib/contextCache.js')
+    await writeCachedContext({
+      url: 'https://example.com/a',
+      title: 'A',
+      text: 'NOI DUNG A.',
+      excerpt: undefined,
+      sourceKind: 'html',
+      contentHash: 'hash-a',
+      capturedAt: Date.now(),
+    })
+
+    captureTabContextMock.mockResolvedValue({
+      url: 'https://example.com/b',
+      title: 'B',
+      tabId: 43,
+      sourceKind: 'html',
+    })
+
+    const result = await attachTab(43)
+
+    expect(result.item?.text).toBeUndefined()
+  })
+
+  it('noi dung KHONG doi → giu nguyen capturedAt (khong refresh TTL)', async () => {
+    const { readCachedContext } = await import('../src/lib/contextCache.js')
+
+    captureTabContextMock.mockResolvedValue({
+      url: 'https://example.com/bai-viet',
+      title: 'Bai viet',
+      tabId: 42,
+      text: 'NOI DUNG GIONG NHAU.',
+      sourceKind: 'html',
+    })
+
+    await attachTab(42)
+    const first = await readCachedContext('https://example.com/bai-viet')
+    expect(first?.capturedAt).toBeDefined()
+
+    // Doi thoi diem capture → noi dung van giong → KHONG ghi lai cache
+    // (giu `capturedAt` cu → TTL khong bi reset).
+    const later = Date.now() + 60_000
+    const dateSpy = vi.spyOn(Date, 'now').mockReturnValue(later)
+
+    await attachTab(42)
+
+    dateSpy.mockRestore()
+
+    const second = await readCachedContext('https://example.com/bai-viet')
+    expect(second?.capturedAt).toBe(first?.capturedAt)
+  })
+
+  it('noi dung DOI → capturedAt duoc cap nhat', async () => {
+    const { readCachedContext } = await import('../src/lib/contextCache.js')
+
+    captureTabContextMock.mockResolvedValue({
+      url: 'https://example.com/bai-viet',
+      title: 'Bai viet',
+      tabId: 42,
+      text: 'NOI DUNG CU.',
+      sourceKind: 'html',
+    })
+
+    await attachTab(42)
+    const first = await readCachedContext('https://example.com/bai-viet')
+
+    const later = Date.now() + 60_000
+    const dateSpy = vi.spyOn(Date, 'now').mockReturnValue(later)
+
+    captureTabContextMock.mockResolvedValue({
+      url: 'https://example.com/bai-viet',
+      title: 'Bai viet',
+      tabId: 42,
+      text: 'NOI DUNG MOI.',
+      sourceKind: 'html',
+    })
+
+    await attachTab(42)
+
+    dateSpy.mockRestore()
+
+    const second = await readCachedContext('https://example.com/bai-viet')
+    expect(second?.text).toBe('NOI DUNG MOI.')
+    expect(second?.capturedAt).toBe(later)
+    expect(second?.capturedAt).not.toBe(first?.capturedAt)
   })
 })
 

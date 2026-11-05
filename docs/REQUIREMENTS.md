@@ -213,7 +213,7 @@ Quy ước ưu tiên: **M** = Must (bắt buộc cho M1) · **S** = Should (bắ
 
 | ID | Requirement | Priority | Acceptance criteria |
 |---|---|---|---|
-| FR-CONTEXT-01 | Đọc nội dung trang hiện tại bằng content script + Readability-style extraction | M | Trả về title, URL, text chính, có fallback khi extraction rỗng (dùng toàn bộ body text) |
+| FR-CONTEXT-01 | Đọc nội dung trang hiện tại bằng content script + Readability-style extraction | M | Trả về title, URL, text chính, có fallback khi extraction rỗng (dùng toàn bộ body text). **Đã implement (T-M1-06):** cache context theo URL+hash trong `chrome.storage.local` — không trích xuất lại trang đã đọc, và **fallback** về bản cache khi trang đang lỗi (PDF scan, extractor rỗng, mất mạng) |
 | FR-CONTEXT-02 | Bật/tắt context bằng 1 toggle, có trạng thái nhìn thấy rõ | M | Chip ở composer đổi trạng thái; tắt → **không gửi payload `context`** lên server; trạng thái được lưu qua `chrome.storage.local` (key `sidekick.contextEnabled`) |
 | FR-CONTEXT-03 | `@`-mention tab để đính kèm tab khác (multi-tab) | M | Hiện danh sách tab + title + favicon; hỗ trợ nhiều tab; bỏ được từng tab. **Đã implement (T-M1-05):** gõ `@` trong composer → popover liệt kê tab đang mở trong cửa sổ hiện tại (lọc trang nội bộ `chrome://`/`file://`), lọc theo title/domain/URL, chọn tab → tự đính kèm vào context (`tier: attachment`) + chèn `@tên tab` vào ô nhập; `Escape` đóng popover |
 | FR-CONTEXT-04 | Đính kèm vùng text được bôi đen (selection context) | M | Content script bắt sự kiện selection → hiện affordance → mở panel kèm đoạn text. **Đã implement (T-M1-02):** hai đường — (A) bôi đen trên trang → nút nổi "Hỏi Sidekick" (Shadow DOM) cạnh vùng chọn → click → đoạn text vào context với `kind: 'selection'`, `tier: 'selection'` (cao nhất); (B) nút "Dính đoạn đã chọn" trong panel → đọc selection của tab active qua `chrome.scripting.executeScript`. Panel đang đóng → đoạn chờ lưu `chrome.storage.local` (TTL 5 phút) → panel mở sau tự nhận |
@@ -224,7 +224,7 @@ Quy ước ưu tiên: **M** = Must (bắt buộc cho M1) · **S** = Should (bắ
 | FR-CONTEXT-09 | Lịch sử duyệt web tùy chọn (opt-in) làm context | S | Mặc định TẮT; bật thì có cảnh báo rõ; có thể xoá |
 | FR-CONTEXT-10 | Chỉ dẫn trích dẫn nguồn trong câu trả lời | M | Mỗi claim quan trọng gắn [1], [2] → hover/click xem đoạn nguồn |
 | FR-CONTEXT-11 | Chế độ "chỉ dùng trang" (không dùng lịch sử chat) | S | Toggle per-request — *hỗ trợ một phần bởi T-M1-23: `trimHistory()` đã cắt lịch sử theo ngân sách còn lại, nhưng chưa có toggle per-request* |
-| FR-CONTEXT-12 | Snapshot context để tái lập (reproducibility) | S | Lưu hash + nội dung context vào log phục vụ eval |
+| FR-CONTEXT-12 | Snapshot context để tái lập (reproducibility) | S | Lưu hash + nội dung context vào log phục vụ eval. **Đã implement (T-M1-06):** `request_logs.context_hash` luôn ghi (hash FNV-1a 32-bit của **context đã gửi**, đã cắt ngân sách — không phải hash của toàn bộ prompt); `request_logs.context_snapshot` (jsonb) ghi **theo setting `LOG_CONTEXT_SNAPSHOT`, mặc định TẮT** vì chứa nội dung trang |
 | FR-CONTEXT-13 | Chat không cần context — đính kèm là hành động chủ động | M | Tab hiện tại **không** tự vào context; không đính kèm gì (hoặc toggle TẮT) → request **không** có payload `context` → model trả lời bằng kiến thức có sẵn + lịch sử hội thoại; đính kèm (nút "Thêm trang này" / `@` / selection / file) → item vào `context.items[]` với `tier` ưu tiên; web search tự động **chưa có** ở M1 (FR-TOOLS-03, M2) |
 
 > **Mô hình context — quyết định sản phẩm (T-M1-23, 2026-11-04):**
@@ -245,6 +245,13 @@ Quy ước ưu tiên: **M** = Must (bắt buộc cho M1) · **S** = Should (bắ
 > - **FR-CONTEXT-05 (PDF):** `apps/server/src/lib/pdfExtractor.ts` parse bằng `pdfjs-dist` (build legacy) · `apps/server/src/lib/safeFetch.ts` chặn SSRF (IP private/loopback + hostname nội bộ `localhost`/`*.local`/`*.internal`) · endpoint `POST /api/extract/pdf` **luôn trả HTTP 200** kèm `error` trong body khi lỗi nghiệp vụ → UI hiện `ContextNotice` ("PDF là bản scan — hãy tải lên ảnh") mà **không** làm hỏng chat.
 > - **FR-CONTEXT-06 (YouTube):** `apps/server/src/lib/youtubeExtractor.ts` (watch page → InnerTube client `ANDROID` → `captionTracks` → `timedtext` XML → transcript `[mm:ss] text`; **2 tầng dự phòng**: InnerTube → `ytInitialPlayerResponse` trong HTML) · endpoint `POST /api/extract/youtube` · ưu tiên caption `vi` → `en` → ngôn ngữ khác · không có caption / geo-block / live → `CONTEXT_TRANSCRIPT_UNAVAILABLE` → UI hiện `ContextNotice`.
 > - Cả 2 nhánh chuẩn hoá về `context.text` giống nhánh HTML → `buildContextPrompt()` không phân biệt nguồn. Chi tiết kiến trúc: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.3.1.
+
+> **Trạng thái FR-CONTEXT-01/12 (✅ implement 2026-11-05 — T-M1-06):**
+> - **Hash context (FR-CONTEXT-12):** `packages/shared/src/contextHash.ts` cung cấp `hashString()` (FNV-1a 32-bit → hex) + `hashContextItems()` (hash **deterministic**: sắp xếp theo `CONTEXT_TIER_ORDER` rồi `id`, nối `id|kind|tier|url|title|sourceKind|text` bằng `\u0000`). Server tính hash trên **đúng danh sách context đã cắt ngân sách và đã gửi cho provider** (`resolveContextItems()` — một nguồn sự thật duy nhất) → `request_logs.context_hash` khớp với context thật. Không có context → `null`.
+> - **Snapshot (FR-CONTEXT-12):** `request_logs.context_snapshot` (jsonb) chứa `[{ id, kind, tier, url, title, sourceKind, text, excerpt, truncated }]` — **chỉ ghi khi** `LOG_CONTEXT_SNAPSHOT=true` (mặc định TẮT). Không gộp với cờ `logFullContent` để không vô tình bật lưu nội dung trang.
+> - **Cache context (FR-CONTEXT-01):** `apps/extension/src/lib/contextCache.ts` lưu bản capture theo URL chuẩn hoá (`contextHashKey()` — bỏ fragment/query, lowercase host) trong `chrome.storage.local` (key `sidekick.contextCache`), kèm `contentHash` (hash của text) + `capturedAt`. TTL 30 phút, tối đa 20 entry. `attachTab()` ghi cache khi trích xuất thành công, và **fallback** về bản cache khi trang đang lỗi. Nội dung không đổi → không ghi lại (TTL không bị reset).
+>
+> Chi tiết kiến trúc: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.3.5.
 
 ### 4.3 FR-VISION — Ảnh & thị giác
 
@@ -951,9 +958,9 @@ Chỉ bắt đầu M4 khi **đồng thời** thỏa:
 
 | FR | Priority | Task | Milestone |
 |---|---|---|---|
-| FR-CONTEXT-01 | M | T-M1-01 ✅ · T-M1-06 | M1 |
-| FR-CONTEXT-02 | M | **T-M1-04 ✅ (hấp thụ bởi T-M1-23)** · T-M1-06 | M1 |
-| FR-CONTEXT-03 | M | **T-M1-05 ✅** · T-M1-06 | M1 |
+| FR-CONTEXT-01 | M | T-M1-01 ✅ · **T-M1-06 ✅ (cache URL+hash)** | M1 |
+| FR-CONTEXT-02 | M | **T-M1-04 ✅ (hấp thụ bởi T-M1-23)** · **T-M1-06 ✅** | M1 |
+| FR-CONTEXT-03 | M | **T-M1-05 ✅** · **T-M1-06 ✅** | M1 |
 | FR-CONTEXT-04 | M | **T-M1-02 ✅** | M1 |
 | FR-CONTEXT-05 | M | **T-M1-21 ✅** | M1 |
 | FR-CONTEXT-06 | M | **T-M1-22 ✅** | M1 |
@@ -962,7 +969,7 @@ Chỉ bắt đầu M4 khi **đồng thời** thỏa:
 | FR-CONTEXT-09 | S | **T-M2-19** | M2 |
 | FR-CONTEXT-10 | M | T-M1-08 | M1 |
 | FR-CONTEXT-11 | S | **T-M2-19** | M2 |
-| FR-CONTEXT-12 | S | T-M1-14 | M1 |
+| FR-CONTEXT-12 | S | **T-M1-06 ✅** | M1 |
 | FR-CONTEXT-13 | M | **T-M1-23 ✅** | M1 |
 
 #### FR-VISION — Ảnh & thị giác

@@ -24,14 +24,38 @@
 | Hạng mục | Trạng thái |
 |---|---|
 | Docs | ✅ Đầy đủ 9 file (`docs/`) + `AGENTS.md` ở root |
-| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 + T-M1-05 + T-M1-02 + T-M1-24 + T-M1-25 xong** — 4 workspace, 648 unit test + 29 E2E |
+| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 + T-M1-05 + T-M1-02 + T-M1-24 + T-M1-25 + T-M1-06 xong** — 4 workspace, 696 unit test + 32 E2E |
 | Git | ✅ Đã init (`main`) · tag `v0.1` đánh dấu M0 |
-| Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **9/25 task**) |
-| Task tiếp theo | **T-M1-06** (truyền context) → T-M1-07 (markdown/code) |
+| Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **10/25 task**) |
+| Task tiếp theo | **T-M1-07** (markdown/code) → T-M1-08 (citation chip) |
 
 ### Đang làm dở
 
-_(Không có — T-M1-25 onboarding đã commit, task kế tiếp T-M1-06)_
+_(Không có — T-M1-06 hash context + snapshot + cache đã commit, task kế tiếp T-M1-07)_
+
+### Việc đã xong gần đây (T-M1-06 — Hash context + snapshot log + cache theo URL+hash)
+
+- **T-M1-06 (FR-CONTEXT-01 / FR-CONTEXT-12)** — đóng nốt 3 mảnh còn thiếu: (1) `request_logs.context_hash` trước đây là hash của **toàn bộ prompt** (system + history + context) → nay là hash của **context thật đã gửi**; (2) `context_snapshot` (jsonb) trước đây **chưa bao giờ** được ghi → nay ghi theo setting; (3) chưa có cache context theo URL+hash (phần còn lại của FR-CONTEXT-01 theo `IMPLEMENTATION_PLAN.md` §3.1) → nay có.
+  - **Contract** — `packages/shared/src/contextHash.ts` (mới): `hashString()` (FNV-1a 32-bit → hex, **thuần** — không `node:crypto` → dùng được cho extension + server) · `hashContextItems()` (deterministic: sort theo `CONTEXT_TIER_ORDER` rồi `id`, nối `id|kind|tier|url|title|sourceKind|text` bằng `\u0000`; `truncated`/`tokens` **không** tính) · `contextHashKey()` (bỏ fragment/query, lowercase host) · `packages/shared/src/constants.ts` thêm `CONTEXT_CACHE_TTL_MS = 30 phút` + `CONTEXT_CACHE_MAX_ENTRIES = 20`.
+  - **Server** — `apps/server/src/services/chatService.ts`: `resolveContextItems()` (**mới**) chạy `applyContextBudget()` **một lần** → nguồn sự thật duy nhất cho cả prompt builder lẫn log · `buildProviderMessages()` nhận `options.contextBudget` (giữ **nguyên chữ ký** cũ) · `context_hash = hashContextItems(contextBudget.items)` (không có context → `null`) · `context_snapshot` jsonb `[{ id, kind, tier, url, title, sourceKind, text, excerpt, truncated }]` — **chỉ khi** `LOG_CONTEXT_SNAPSHOT=true` · `ChatServiceDeps.logContextSnapshot` · env `LOG_CONTEXT_SNAPSHOT` (mặc định `false`).
+  - **Extension** — `apps/extension/src/lib/contextCache.ts` (mới): `readCachedContext()` · `writeCachedContext()` (+ prune) · `clearContextCache()` · `toCacheEntry()` · `hasContentChanged()` — lưu `chrome.storage.local` key `sidekick.contextCache`, **không** throw khi lỗi storage · `apps/extension/src/lib/contextAttach.ts` `attachTab()` ghi cache khi trích xuất thành công + **fallback** về bản cache khi trang đang lỗi (PDF scan · extractor rỗng · mất mạng) · `lib/storage.ts` thêm `CONTEXT_CACHE_STORAGE_KEY`.
+  - **Verify** — typecheck ✅ · lint ✅ (0 error, 0 warning) · test ✅ (**696 unit** = shared 140 · server 224 · extension 332) · build ✅ · db:migrate ✅ (**không** có migration mới — `context_hash` + `context_snapshot` đã có sẵn trong `0000`) · **E2E 32/32** ✅ (+3 kịch bản `e2e/contextCache.spec.ts`) · **mutation spot-check 5/5 bị bắt**.
+- Bằng chứng đầy đủ: `docs/IMPLEMENTATION_PLAN.md` §3.1i · `docs/SYSTEM_DESIGN.md` §7.3.5.
+
+### Quyết định kỹ thuật mới (T-M1-06)
+
+| Quyết định | Lý do |
+|---|---|
+| `context_hash` = hash của **context đã cắt**, **không** phải hash của prompt | Đổi câu hỏi phải **không** đổi hash (hash là khoá tái lập lượt chat trong eval); đổi nội dung context thì **phải** đổi hash |
+| `resolveContextItems()` — tính budget **một lần**, dùng chung cho prompt + log | Gọi `applyContextBudget()` 2 lần → 2 kết quả có thể khác nhau → `context_hash` lệch với context thật đã gửi |
+| Hash **luôn** ghi · snapshot **theo setting, mặc định TẮT** | Snapshot chứa **nội dung trang** → dữ liệu nhạy cảm; cờ riêng `LOG_CONTEXT_SNAPSHOT`, **không** gộp `logFullContent` (khớp retention policy `SYSTEM_DESIGN.md` §5.2) |
+| Hash FNV-1a 32-bit (thuần, không `node:crypto`) | Cần dùng ở extension **và** server → 1 hàm dùng chung; **không** phải hàm bảo mật (chỉ để so sánh) |
+| `contextHash.ts` **không** import vào content script | Content script build IIFE 1 file → giữ `dist/content.js` nhỏ; dùng subpath `@sidekick/shared/constants` như hiện tại |
+| Cache lưu ở `chrome.storage.local`, **không** ở service worker | MV3 SW bị kill ~30s → state trong SW mất |
+| Nội dung **không đổi** → **không** ghi lại cache (giữ `capturedAt`) | Không reset TTL → trang cũ vẫn hết hạn đúng hạn. (Mutation #4 ban đầu sống sót vì thiếu test này → đã bổ sung) |
+| Trang lỗi → **fallback** bản cache (nếu còn hạn) | PDF scan / extractor rỗng / mất mạng vẫn chat được |
+| Cache **không có UI mới**, không hiện badge "đang lấy từ cache" | Cache là tối ưu kỹ thuật, không phải thay đổi nguồn sự thật mà user cần biết; badge gây nhiễu (DP-2). Ghi rõ ở `DESIGN_SYSTEM_BRIEF.md` §3.5.1 |
+| Cache **không** dùng làm nguồn sự thật cho eval | Eval luôn dùng snapshot trong dataset → công bằng giữa 3 hệ thống (`EVAL_PLAN.md` §3.4.1) |
 
 ### Việc đã xong gần đây (T-M1-25 — Onboarding 3 bước lần đầu)
 

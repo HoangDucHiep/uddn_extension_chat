@@ -144,6 +144,27 @@ Cách đo riêng cho nhóm này (không dùng LLM judge — đây là hành vi h
 
 Nội dung trang có thể đổi theo thời gian → mỗi task lưu **snapshot text** tại thời điểm thu thập. Hệ thống của nhóm chạy trên snapshot đó; Edge/Gemini cũng phải chạy trên cùng trang (ghi rõ thời điểm). Nếu trang thay đổi giữa các lần chạy → ghi nhận vào `notes` của run.
 
+#### 3.4.1 `context_hash` — khoá tái lập lượt chat (T-M1-06)
+
+> Nguồn: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.3.5 · [`REQUIREMENTS.md`](REQUIREMENTS.md) FR-CONTEXT-12.
+
+Mỗi lượt chat của hệ thống ta ghi 1 dòng `request_logs` với:
+
+| Cột | Vai trò trong eval |
+|---|---|
+| `context_hash` | **Khoá tái lập**: hash deterministic của **context đã cắt ngân sách và đã gửi cho provider**. Cùng `context_hash` → cùng context → 2 lượt chat **cùng điều kiện đầu vào** |
+| `context_snapshot` | Nội dung context đầy đủ (jsonb) — **mặc định TẮT** (`LOG_CONTEXT_SNAPSHOT`), bật khi cần truy vết chi tiết |
+
+**Cách dùng trong eval harness:**
+
+1. Chạy N lần cùng 1 task → lấy `context_hash` từ `request_logs` → **phải giống nhau** ở mọi lần (cùng context đã gửi).
+2. So sánh 2 hệ thống (ta vs Edge/Gemini): dùng `context_hash` + `page_snapshot_hash` trong front-matter của transcript thủ công để **chứng minh** 2 hệ thống thực sự nhìn cùng nội dung trang → loại trừ bias "khác context".
+3. Khi một lượt cho kết quả bất thường → bật `LOG_CONTEXT_SNAPSHOT=true` để dump đúng context đã gửi, tái lập lượt đó.
+
+> **Không dùng cache extension làm nguồn sự thật cho eval.** Cache (`chrome.storage.local`, TTL 30 phút) chỉ là tối ưu trích xuất + fallback khi trang lỗi. Eval luôn dùng **snapshot trong dataset** để đảm bảo công bằng (xem §6.1: "dựng context từ snapshot (không đọc trang live)").
+
+> **Lưu ý:** `context_hash` dùng FNV-1a 32-bit → xác định *cùng hay khác context*, **không** phải khoá mã hoá. Đừng dùng để bảo mật.
+
 ---
 
 ## 4. Rubric chấm điểm

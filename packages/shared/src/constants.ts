@@ -65,6 +65,17 @@ export const CONTEXT_SAFETY_MARGIN_TOKENS = 2_000
 export const MAX_CONTEXT_ITEMS = 20
 
 /**
+ * Thoi gian cache context theo URL (ms) — T-M1-06.
+ *
+ * Cache dung de (a) khong trich xuat lai trang da doc va (b) fallback khi
+ * trang dang loi. TTL ngan de trang thay doi van duoc lay noi dung moi.
+ */
+export const CONTEXT_CACHE_TTL_MS = 30 * 60_000
+
+/** So entry toi da giu trong cache context (T-M1-06). */
+export const CONTEXT_CACHE_MAX_ENTRIES = 20
+
+/**
  * Thoi gian cho mot doan boi den cho chờ (ms) — T-M1-02.
  *
  * Doan chon nam trong `chrome.storage.local` cho panel mo sau. Qua thoi gian

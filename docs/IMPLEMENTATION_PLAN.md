@@ -81,7 +81,7 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | T-M1-03 | Service worker: mở/toggle panel, context menu, shortcut | FR-UX-01 | `apps/extension/src/background/*` | Toolbar click toggle; `Ctrl+Shift+K` mở; context menu "Ask Sidekick" | M | ⬜ |
 | T-M1-04 | Context chips + toggle bật/tắt context trang | FR-CONTEXT-02, NFR-SEC-02 | `sidepanel/components/context/ContextChips.tsx` | Chip hiển thị domain đang share; bỏ chip được; tắt → không gửi content | M | ✅ *(hấp thụ bởi T-M1-23)* |
 | T-M1-05 | `@` mention multi-tab | FR-CONTEXT-03 | `context/MentionPopover.tsx`, `hooks/useTabs.ts`, `hooks/useMention.ts`, `lib/tabList.ts` | Gõ `@` → list tab (title+favicon), chọn nhiều được | L | ✅ |
-| T-M1-06 | Truyền context sang BFF (tab list + content) | FR-CONTEXT-01/02/03, FR-CONTEXT-07 | `apps/server/src/lib/contextBuilder.ts` | Log `request_logs.context_hash` khớp với context đã gửi | M | ⬜ |
+| T-M1-06 | Truyền context sang BFF (tab list + content) | FR-CONTEXT-01/02/03, FR-CONTEXT-07, FR-CONTEXT-12 | `packages/shared/src/contextHash.ts`, `apps/server/src/services/chatService.ts`, `apps/extension/src/lib/contextCache.ts` | Log `request_logs.context_hash` khớp với context đã gửi | M | ✅ |
 | T-M1-07 | Markdown render + code block + copy + highlight | FR-CHAT-02/03/04, NFR-SEC-04, NFR-PERF-02 | `sidepanel/components/chat/MessageContent.tsx`, `CodeBlock.tsx`, `MarkdownTable.tsx` | Render table/code; copy → "Đã sao chép"; highlight đúng ngôn ngữ; sanitize HTML (chặn XSS) | L | ⬜ |
 | T-M1-08 | Citation chip + popover (đoạn nguồn) | FR-CONTEXT-10 | `context/CitationChip.tsx`, `CitationPopover.tsx` | Click chip → popover hiện đoạn nguồn + mở tab gốc | M | ⬜ |
 | T-M1-09 | Chat CRUD: tạo/đổi tên/xoá/ghim/archives | FR-CHAT-08/09/11 | `sidepanel/components/chat/ConversationList.tsx`, store | Thao tác CRUD phản ánh trong UI ngay | L | ⬜ |
@@ -122,7 +122,29 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | `pnpm build` | ✅ pass — `dist/content.js` là **IIFE 1 file, không `import`** (4.7 kB) + `dist/manifest.json` + `dist/sidepanel.html` |
 | E2E (toàn bộ) | ✅ 3/3 — extractor · side panel render · gõ prompt nhận token thật |
 
-> **Còn lại của FR-CONTEXT-01:** toggle bật/tắt context (T-M1-04) · cache theo URL+hash trong `chrome.storage.local` (T-M1-06) · context multi-tab (T-M1-05).
+> **Còn lại của FR-CONTEXT-01:** toggle bật/tắt context (T-M1-04 ✅) · cache theo URL+hash trong `chrome.storage.local` (**T-M1-06 ✅**) · context multi-tab (T-M1-05 ✅).
+
+### 3.1i Kết quả verify T-M1-06 (2026-11-05)
+
+> Chi tiết kiến trúc: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.3.5.
+
+| Hạng mục | Kết quả |
+|---|---|
+| `packages/shared/src/contextHash.ts` | ✅ `hashString()` (FNV-1a 32-bit → hex) · `hashContextItems()` (deterministic: sort theo `CONTEXT_TIER_ORDER` rồi `id`, nối `id\|kind\|tier\|url\|title\|sourceKind\|text` bằng `\u0000`) · `contextHashKey()` (bỏ fragment/query, lowercase host) |
+| `packages/shared/src/constants.ts` | ✅ `CONTEXT_CACHE_TTL_MS = 30 phút` · `CONTEXT_CACHE_MAX_ENTRIES = 20` |
+| `apps/server/src/services/chatService.ts` | ✅ `resolveContextItems()` — chạy `applyContextBudget()` **một lần**, là nguồn sự thật duy nhất cho cả prompt builder lẫn log · `context_hash` = hash context **đã cắt** (không còn là hash toàn bộ prompt) · `context_snapshot` jsonb ghi **theo setting** |
+| `apps/server/src/config/env.ts` | ✅ `LOG_CONTEXT_SNAPSHOT` (mặc định `false`) → `ChatServiceDeps.logContextSnapshot` — cờ **riêng**, không gộp `logFullContent` |
+| `apps/extension/src/lib/contextCache.ts` | ✅ `readCachedContext()` · `writeCachedContext()` (+ prune) · `clearContextCache()` · `toCacheEntry()` · `hasContentChanged()` — lưu `chrome.storage.local` key `sidekick.contextCache`, lỗi storage **không throw** |
+| `apps/extension/src/lib/contextAttach.ts` | ✅ `attachTab()` ghi cache khi trích xuất thành công · **fallback** về bản cache khi trang đang lỗi · nội dung không đổi → không reset TTL |
+| Unit test | ✅ +30 test — shared `contextHash` 17 · server `requestLogContext` 10 · extension `contextCache` 15 (+2 bổ sung trong `contextAttach`) |
+| E2E | ✅ +3 kịch bản — `e2e/contextCache.spec.ts`: đính kèm 2 lần → 1 chip · cache vào `chrome.storage.local` · trang lỗi → fallback cache |
+| `pnpm typecheck` | ✅ pass (0 error) |
+| `pnpm lint` | ✅ pass (0 error, 0 warning) |
+| `pnpm test` | ✅ pass — shared 140 · server 224 · extension 332 = **696** unit test |
+| `pnpm build` | ✅ pass — không thêm dependency, `dist/content.js` vẫn IIFE 1 file |
+| `pnpm db:migrate` | ✅ pass — **không** có migration mới (`context_hash` + `context_snapshot` đã có sẵn trong `0000`) |
+| E2E (toàn bộ) | ✅ 32/32 pass |
+| Mutation spot-check | ✅ 5/5 bị bắt (bỏ sort · hash prompt · bỏ snapshot · bỏ check `contentHash` · bỏ prune) — chi tiết [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.2.2 |
 
 ### 3.1b Kết quả verify T-M1-21 + T-M1-22 (2026-11-04)
 
@@ -438,7 +460,7 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | Nhóm | FR trong nhóm | Task phụ trách | Ghi chú |
 |---|---|---|---|
 | FR-CHAT-01..14 | 14 FR | T-M0-10 · T-M0-13 · T-M1-07/09/10/11/13/19 | FR-CHAT-04 (bảng Markdown) đã nằm trong T-M1-07 |
-| FR-CONTEXT-01..13 | 13 FR | T-M1-01/02/04/05/06/08/14 · **T-M1-21/22/23** · **T-M2-19** | FR-CONTEXT-05/06 nâng lên Must (2026-11-04) · FR-CONTEXT-13 (chat không cần context) do T-M1-23 · **FR-CONTEXT-03 (`@` multi-tab) do T-M1-05 ✅** · **FR-CONTEXT-04 (selection) do T-M1-02 ✅** |
+| FR-CONTEXT-01..13 | 13 FR | T-M1-01/02/04/05/**06 ✅**/08/14 · **T-M1-21/22/23** · **T-M2-19** | FR-CONTEXT-05/06 nâng lên Must (2026-11-04) · FR-CONTEXT-13 (chat không cần context) do T-M1-23 · **FR-CONTEXT-03 (`@` multi-tab) do T-M1-05 ✅** · **FR-CONTEXT-04 (selection) do T-M1-02 ✅** · **FR-CONTEXT-01 (cache URL+hash) + FR-CONTEXT-12 (snapshot) do T-M1-06 ✅** |
 | FR-VISION-01..05 | 5 FR | **T-M1-24 ✅** (upload) · **T-M2-22** (mở rộng) | FR-VISION-01 nâng lên M · **T-M1-24 xong 2026-11-05** (vision đầy đủ Gemini + OpenAI-compatible, lưu Postgres, multi-turn) |
 | FR-TOOLS-01..06 | 6 FR | T-M2-07/08/09/10/11/18 · **T-M2-20** | FR-TOOLS-03 (web search) tách riêng khỏi tool registry |
 | FR-SKILL-01..07 | 7 FR | T-M2-04/05/06 · **T-M2-21** | FR-SKILL-04 (skill mẫu) + FR-SKILL-06 (điều kiện) tách task |

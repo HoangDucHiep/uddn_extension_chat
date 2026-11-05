@@ -299,6 +299,7 @@ describe('createChatStream', () => {
       masterKey: undefined,
       logFullContent: false,
       logRequests: false,
+      logContextSnapshot: false,
     }
 
     const result = createChatStream(deps, request, new AbortController().signal)
@@ -323,6 +324,7 @@ describe('createChatStream', () => {
       masterKey: undefined,
       logFullContent: false,
       logRequests: false,
+      logContextSnapshot: false,
     }
 
     const result = createChatStream(deps, request, new AbortController().signal)
@@ -343,6 +345,7 @@ describe('createChatStream', () => {
       masterKey: undefined,
       logFullContent: false,
       logRequests: false,
+      logContextSnapshot: false,
     }
 
     const result = createChatStream(deps, request, new AbortController().signal)
@@ -362,6 +365,7 @@ describe('createChatStream', () => {
       masterKey: undefined,
       logFullContent: false,
       logRequests: false,
+      logContextSnapshot: false,
     }
 
     const result = createChatStream(deps, request, new AbortController().signal)
@@ -389,6 +393,7 @@ describe('createChatStream', () => {
       masterKey: undefined,
       logFullContent: false,
       logRequests: false,
+      logContextSnapshot: false,
     }
 
     const result = createChatStream(deps, request, new AbortController().signal)
@@ -417,6 +422,7 @@ describe('createChatStream', () => {
       masterKey: undefined,
       logFullContent: false,
       logRequests: false,
+      logContextSnapshot: false,
     }
 
     const result = createChatStream(
@@ -447,6 +453,7 @@ describe('createChatStream', () => {
       masterKey: undefined,
       logFullContent: false,
       logRequests: false,
+      logContextSnapshot: false,
     }
 
     const result = createChatStream(
@@ -478,6 +485,7 @@ describe('createChatStream', () => {
       masterKey: undefined,
       logFullContent: false,
       logRequests: false,
+      logContextSnapshot: false,
     }
 
     const result = createChatStream(
@@ -519,6 +527,7 @@ describe('createChatStream', () => {
       masterKey: undefined,
       logFullContent: false,
       logRequests: false,
+      logContextSnapshot: false,
     }
 
     const result = createChatStream(
@@ -560,6 +569,7 @@ describe('createChatStream', () => {
       masterKey: undefined,
       logFullContent: false,
       logRequests: false,
+      logContextSnapshot: false,
     }
 
     const result = createChatStream(deps, request, new AbortController().signal)
@@ -582,6 +592,7 @@ describe('createChatStream', () => {
       masterKey: undefined,
       logFullContent: false,
       logRequests: false,
+      logContextSnapshot: false,
     }
 
     controller.abort()
