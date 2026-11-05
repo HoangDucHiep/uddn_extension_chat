@@ -169,6 +169,63 @@ test('xoa anh khoi tray → request khong con attachments', async ({
   await panel.close()
 })
 
+test('GET /api/attachments/:id tra binary dung Content-Type', async ({
+  context,
+  extensionId,
+}) => {
+  const panel = await context.newPage()
+
+  // Cho request chat di thang toi BFF that (khong stub) → server luu anh vao
+  // DB roi tra duoc qua GET /api/attachments/:id.
+  let attachmentId: string | undefined
+  panel.on('request', (request) => {
+    if (!request.url().includes('/api/chat')) return
+    const raw = request.postData()
+    if (raw === null) return
+    const parsed = JSON.parse(raw) as {
+      messages?: Array<{ attachments?: Array<{ id: string }> }>
+    }
+    attachmentId = parsed.messages?.[parsed.messages.length - 1]?.attachments?.[0]?.id
+  })
+
+  await panel.goto(`chrome-extension://${extensionId}/sidepanel.html`)
+
+  const filePath = await writeTempFile(
+    'anh-mau-4.png',
+    Buffer.from(PNG_1X1_BASE64, 'base64'),
+  )
+
+  await panel.getByTestId('composer-file-input').setInputFiles(filePath)
+  await expect(panel.getByTestId('attachment-thumb')).toBeVisible({ timeout: 20_000 })
+
+  await panel.getByTestId('composer-input').fill('Mo ta anh nay')
+  await panel.getByTestId('composer-send').click()
+  await expect(panel.getByTestId('message-user')).toBeVisible({ timeout: 20_000 })
+
+  await expect.poll(() => attachmentId, { timeout: 20_000 }).toBeDefined()
+
+  // Poll vi server persist anh sau khi nhan request → co the chua xong
+  // tai thoi diem GET dau tien.
+  let response = await panel.request.get(
+    `http://127.0.0.1:8787/api/attachments/${attachmentId as string}`,
+  )
+  await expect
+    .poll(
+      async () => {
+        response = await panel.request.get(
+          `http://127.0.0.1:8787/api/attachments/${attachmentId as string}`,
+        )
+        return response.status()
+      },
+      { timeout: 20_000, message: 'Khong truy xuat duoc anh tu BFF' },
+    )
+    .toBe(200)
+
+  expect(response.headers()['content-type']).toBe('image/png')
+  expect((await response.body()).byteLength).toBeGreaterThan(0)
+
+  await panel.close()
+})
 test('file khong phai dinh dang anh → hien loi, khong gui anh', async ({
   context,
   extensionId,
