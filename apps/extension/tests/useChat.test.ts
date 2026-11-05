@@ -18,6 +18,7 @@ vi.mock('@/lib/pageContext', () => ({
 
 const { useChat } = await import('../src/sidepanel/hooks/useChat')
 const { useChatStore } = await import('../src/sidepanel/store/chatStore')
+const { writePreferredProvider } = await import('../src/lib/onboarding')
 
 /**
  * Unit test cho hook `useChat` — luong gui prompt va nhan stream.
@@ -70,11 +71,13 @@ const doneEvent: ChatEvent = {
   messageId: 'msg-1',
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   useChatStore.getState().reset()
   // Reset giu nguyen context da dinh kem → don de dam bao test doc lap.
   useChatStore.getState().clearAttachedItems()
   useChatStore.getState().setContextEnabled(false)
+  // Xoa provider uu tien (onboarding) → moi test doc lap.
+  await chrome.storage.local.remove('sidekick.preferredProvider')
   streamChatMock.mockReset()
   captureTabContextMock.mockReset()
   getActiveTabIdMock.mockReset()
@@ -523,5 +526,42 @@ describe('useChat', () => {
     expect(request.context?.items).toHaveLength(1)
     expect(request.context?.items?.[0]?.url).toBe('https://example.com/bai-viet')
     expect(request.context?.items?.[0]?.tier).toBe('attachment')
+  })
+
+  it('gui provider uu tien tu onboarding len BFF (T-M1-25 — FR-PROVIDER-04)', async () => {
+    streamChatMock.mockImplementation(
+      (
+        _request: unknown,
+        options: { onEvent?: (event: ChatEvent) => void },
+      ) => makeStream([metaEvent, doneEvent], options.onEvent),
+    )
+
+    // User chon Ollama trong buoc 2 cua onboarding.
+    await writePreferredProvider('ollama')
+
+    const { result } = renderHook(() => useChat())
+    await act(async () => {
+      await result.current.send('test')
+    })
+
+    const request = streamChatMock.mock.calls[0]?.[0] as { provider?: string }
+    expect(request.provider).toBe('ollama')
+  })
+
+  it('khong co provider uu tien → request khong gui field provider', async () => {
+    streamChatMock.mockImplementation(
+      (
+        _request: unknown,
+        options: { onEvent?: (event: ChatEvent) => void },
+      ) => makeStream([metaEvent, doneEvent], options.onEvent),
+    )
+
+    const { result } = renderHook(() => useChat())
+    await act(async () => {
+      await result.current.send('test')
+    })
+
+    const request = streamChatMock.mock.calls[0]?.[0] as { provider?: string }
+    expect(request.provider).toBeUndefined()
   })
 })

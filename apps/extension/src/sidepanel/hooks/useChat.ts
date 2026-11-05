@@ -15,6 +15,7 @@ import {
   captureActiveSelection as captureActiveSelectionFromLib,
 } from '@/lib/contextAttach'
 import { readContextEnabled } from '@/lib/storage'
+import { readPreferredProvider } from '@/lib/onboarding'
 import { SELECTION_EMPTY_ERROR_CODE, type PendingSelection } from '@/lib/selectionProtocol'
 import { useChatStore, type ChatImage, type ChatMessage } from '../store/chatStore'
 
@@ -228,6 +229,12 @@ export function useChat() {
       // KHONG tu capture tab active — panel hoat dong nhu LLM thuan neu
       // user khong dinh kem gi.
       const context = buildRequestContext()
+
+      // Provider user chon trong onboarding (FR-UX-02) → gui len server de
+      // server DAT DAU provider do trong chuoi fallback (FR-PROVIDER-04).
+      // Khong co → server dung fallback chain mac dinh.
+      const preferredProvider = await readPreferredProvider()
+
       const handleEvent = (event: ChatEvent): void => {
         switch (event.type) {
           case 'meta':
@@ -273,6 +280,7 @@ export function useChat() {
             messages: requestTurns,
             conversationId: useChatStore.getState().conversationId,
             ...(context === undefined ? {} : { context }),
+            ...(preferredProvider === undefined ? {} : { provider: preferredProvider }),
           },
           { signal: controller.signal, onEvent: handleEvent },
         )) {

@@ -275,7 +275,7 @@ export async function testProviderKey(
     throw new AppError(ERROR_CODES.NOT_FOUND, `Khong tim thay provider "${providerId}"`)
   }
 
-  let apiKey = ''
+  let apiKey: string
   try {
     apiKey = decrypt(
       { ciphertext: row.ciphertext, iv: row.iv, authTag: row.authTag },

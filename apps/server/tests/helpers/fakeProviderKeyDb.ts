@@ -212,7 +212,6 @@ export function createFakeProviderKeyDb(initialRows: FakeProviderKeyRow[] = []):
           returning: () =>
             new QueryBuilder(async () => {
               insertCount += 1
-              const target = _config.target
               const set = _config.set
               const providerId = values['providerId']
               const label = values['label']
