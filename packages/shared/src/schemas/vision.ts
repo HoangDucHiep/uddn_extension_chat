@@ -12,10 +12,10 @@
  */
 
 import { z } from 'zod'
-import { VISION } from '../constants.js'
+import { VISION, VISION_MIME_TYPES } from '../constants.js'
 
 /** Cac MIME type duoc phep cho anh dinh kem. */
-export const IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'] as const
+export const IMAGE_MIME_TYPES = VISION_MIME_TYPES
 export type ImageMimeType = (typeof IMAGE_MIME_TYPES)[number]
 
 /**

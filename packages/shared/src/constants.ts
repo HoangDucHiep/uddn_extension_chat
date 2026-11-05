@@ -73,6 +73,21 @@ export const MAX_CONTEXT_ITEMS = 20
 export const SELECTION_PENDING_TTL_MS = 300_000
 
 /**
+ * Cac MIME type duoc phep cho anh dinh kem (FR-VISION-01).
+ *
+ * Khai bao o day (khong phai trong `schemas/vision.ts`) de `constants.ts`
+ * khong phai import nguoc lai `vision.ts` — tranh vong lap import.
+ * `schemas/vision.ts` re-export tu day de chi co mot nguon su that.
+ */
+export const VISION_MIME_TYPES = [
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+  'image/gif',
+] as const
+export type VisionMimeType = (typeof VISION_MIME_TYPES)[number]
+
+/**
  * Gioi han cho anh dinh kem (FR-VISION-01 — T-M1-24).
  *
  * Dùng chung giữa extension (validate som khi user chon file) và server
@@ -85,6 +100,8 @@ export const VISION = {
   MAX_IMAGES_PER_MESSAGE: 4,
   /** Tong kich thuoc toi da cua tat ca anh trong mot turn (byte) — 12 MB. */
   MAX_TOTAL_IMAGE_BYTES: 12_000_000,
+  /** Cac MIME type duoc phep. */
+  ALLOWED_MIME_TYPES: VISION_MIME_TYPES,
   /**
    * Token uoc luong cho moi anh.
    *
