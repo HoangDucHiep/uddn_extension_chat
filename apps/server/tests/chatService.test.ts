@@ -57,6 +57,7 @@ function makeProvider(chunks: ProviderChunk[], overrides: Partial<ProviderAdapte
     name: 'Mock',
     requiresKey: false,
     supportsVision: () => true,
+    testKey: async () => ({ ok: true }),
     listModels: async () => ['mock-model'],
     resolveModel: (requested?: string) => requested ?? 'mock-model',
     async *stream() {
@@ -395,6 +396,68 @@ describe('createChatStream', () => {
 
     const meta = events.find((event) => event.type === 'meta')
     expect(meta).toMatchObject({ type: 'meta', provider: 'groq', keySource: 'K1' })
+  })
+
+  it('request.provider duoc dat DAU chuoi nhung fallback chain van con', async () => {
+    // FR-PROVIDER-04: provider user chon phai duoc uu tien, NHUNG fallback
+    // chain khong duoc mat (truoc day `request.provider` thay the chain →
+    // mat co che fallback).
+    const groq = makeProvider([{ kind: 'token', text: 'sai' }], {
+      id: 'groq',
+      requiresKey: true,
+    })
+    const gemini = makeProvider([{ kind: 'token', text: 'ok' }], {
+      id: 'gemini',
+      requiresKey: true,
+    })
+    const deps = {
+      db: makeDb() as never,
+      registry: makeRegistry({ groq, gemini }, ['gemini']),
+      envKeys: { gemini: 'env-key-gemini' },
+      masterKey: undefined,
+      logFullContent: false,
+      logRequests: false,
+    }
+
+    const result = createChatStream(
+      deps,
+      { ...request, provider: 'groq' },
+      new AbortController().signal,
+    )
+    const events = await collectEvents(result.events)
+
+    // `groq` khong co key → phai fallback sang `gemini` (fallback chain).
+    const meta = events.find((event) => event.type === 'meta')
+    expect(meta).toMatchObject({ type: 'meta', provider: 'gemini', keySource: 'K1' })
+  })
+
+  it('request.provider khi co key → duoc dung truoc fallback chain', async () => {
+    const groq = makeProvider([{ kind: 'token', text: 'ok' }], {
+      id: 'groq',
+      requiresKey: true,
+    })
+    const gemini = makeProvider([{ kind: 'token', text: 'sai' }], {
+      id: 'gemini',
+      requiresKey: true,
+    })
+    const deps = {
+      db: makeDb() as never,
+      registry: makeRegistry({ groq, gemini }, ['gemini']),
+      envKeys: { groq: 'env-key-groq', gemini: 'env-key-gemini' },
+      masterKey: undefined,
+      logFullContent: false,
+      logRequests: false,
+    }
+
+    const result = createChatStream(
+      deps,
+      { ...request, provider: 'groq' },
+      new AbortController().signal,
+    )
+    const events = await collectEvents(result.events)
+
+    const meta = events.find((event) => event.type === 'meta')
+    expect(meta).toMatchObject({ type: 'meta', provider: 'groq' })
   })
 
   it('request co anh → bo qua provider khong ho tro vision', async () => {

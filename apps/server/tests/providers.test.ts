@@ -82,6 +82,18 @@ describe('ProviderRegistry', () => {
     expect(registry.get('openrouter')).toBeDefined()
     expect(registry.get('gemini')).toBeDefined()
     expect(registry.get('mock')).toBeDefined()
+    expect(registry.get('ollama')).toBeDefined()
+  })
+
+  it('ollama khong can key (provider local)', () => {
+    expect(registry.require('ollama').requiresKey).toBe(false)
+  })
+
+  it('getDefaultModel tra ve model mac dinh (khong goi network)', () => {
+    expect(registry.getDefaultModel('groq')).toBe('openai/gpt-oss-120b')
+    expect(registry.getDefaultModel('gemini')).toBe('gemini-3.5-flash')
+    expect(registry.getDefaultModel('ollama')).toBe('llama3.2')
+    expect(registry.getDefaultModel('mock')).toBe('mock-model')
   })
 
   it('fallback chain bat dau bang provider mac dinh', () => {

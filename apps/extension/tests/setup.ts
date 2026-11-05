@@ -6,9 +6,9 @@ import { vi } from 'vitest'
  */
 
 interface StorageArea {
-  get: (key: string) => Promise<Record<string, unknown>>
+  get: (key: string | string[] | null) => Promise<Record<string, unknown>>
   set: (items: Record<string, unknown>) => Promise<void>
-  remove: (key: string) => Promise<void>
+  remove: (key: string | string[]) => Promise<void>
 }
 
 const storage: Record<string, unknown> = {}
@@ -38,6 +38,18 @@ function injectionResult(result: unknown): chrome.scripting.InjectionResult {
 }
 const sidePanelOpenMock = vi.fn(async (_options: chrome.sidePanel.OpenOptions): Promise<void> => undefined)
 
+/**
+ * Mock `chrome.tabs.create`.
+ *
+ * Mac dinh **reject** nhu Chrome that (chan URL `chrome://`) → test phai
+ * mock lai khi can trong truong hop thanh cong.
+ */
+const tabsCreateMock = vi.fn(
+  async (_properties: chrome.tabs.CreateProperties): Promise<chrome.tabs.Tab> => {
+    throw new Error('Khong the mo URL chrome://')
+  },
+)
+
 /** Listener cua `chrome.storage.onChanged` — test goi de mo dong storage. */
 type StorageChangedListener = (
   changes: Record<string, chrome.storage.StorageChange>,
@@ -59,9 +71,14 @@ function fireStorageChanged(
 const chromeMock = {
   storage: {
     local: {
-      get: vi.fn(async (key: string) => {
-        if (key in storage) return { [key]: storage[key] }
-        return {}
+      get: vi.fn(async (key: string | string[] | null) => {
+        if (key === null || key === undefined) return { ...storage }
+        const keys = Array.isArray(key) ? key : [key]
+        const result: Record<string, unknown> = {}
+        for (const item of keys) {
+          if (item in storage) result[item] = storage[item]
+        }
+        return result
       }),
       set: vi.fn(async (items: Record<string, unknown>) => {
         const changes: Record<string, chrome.storage.StorageChange> = {}
@@ -74,10 +91,14 @@ const chromeMock = {
         Object.assign(storage, items)
         fireStorageChanged(changes)
       }),
-      remove: vi.fn(async (key: string) => {
-        const oldValue = storage[key]
-        delete storage[key]
-        fireStorageChanged({ [key]: { oldValue, newValue: undefined } })
+      remove: vi.fn(async (key: string | string[]) => {
+        const keys = Array.isArray(key) ? key : [key]
+        const changes: Record<string, chrome.storage.StorageChange> = {}
+        for (const item of keys) {
+          changes[item] = { oldValue: storage[item], newValue: undefined }
+          delete storage[item]
+        }
+        fireStorageChanged(changes)
       }),
     } satisfies StorageArea,
     onChanged: {
@@ -92,6 +113,8 @@ const chromeMock = {
   runtime: {
     sendMessage: vi.fn(async () => undefined),
     onMessage: { addListener: vi.fn() },
+    id: 'sidekick-test-extension-id',
+    getURL: vi.fn((path: string) => `chrome-extension://sidekick-test-extension-id/${path}`),
   },
   sidePanel: {
     open: sidePanelOpenMock,
@@ -99,6 +122,7 @@ const chromeMock = {
   tabs: {
     get: tabsGetMock,
     query: tabsQueryMock,
+    create: tabsCreateMock,
   },
   scripting: {
     executeScript: executeScriptMock,
@@ -113,4 +137,5 @@ export {
   storageChangedListeners,
   executeScriptMock,
   injectionResult,
+  tabsCreateMock,
 }
