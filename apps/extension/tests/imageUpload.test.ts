@@ -1,9 +1,12 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import { ERROR_CODES, VISION } from '@sidekick/shared'
 import {
   createAttachmentId,
+  extractImagesFromClipboard,
   extractImagesFromDataTransfer,
+  extractImagesFromDrop,
   formatBytes,
+  measureImage,
   stripDataUrlPrefix,
   validateImageFile,
 } from '../src/lib/imageUpload'
@@ -146,5 +149,56 @@ describe('formatBytes', () => {
 
   it('hien thi MB', () => {
     expect(formatBytes(5 * 1024 * 1024)).toBe('5.0 MB')
+  })
+})
+
+describe('extractImagesFromClipboard / extractImagesFromDrop', () => {
+  it('cung tra ket qua voi extractImagesFromDataTransfer', () => {
+    const image = makeFile('a.png', 'image/png', 10)
+    const dataTransfer = {
+      items: [{ kind: 'file', getAsFile: () => image }],
+    } as unknown as DataTransfer
+
+    expect(extractImagesFromClipboard(dataTransfer)).toEqual([image])
+    expect(extractImagesFromDrop(dataTransfer)).toEqual([image])
+  })
+
+  it('null → mang rong', () => {
+    expect(extractImagesFromClipboard(null)).toEqual([])
+    expect(extractImagesFromDrop(null)).toEqual([])
+  })
+})
+
+describe('measureImage', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('dung createImageBitmap → tra kich thuoc pixel', async () => {
+    const close = vi.fn()
+    vi.stubGlobal(
+      'createImageBitmap',
+      vi.fn().mockResolvedValue({ width: 120, height: 80, close }),
+    )
+
+    const size = await measureImage(makeFile('a.png', 'image/png', 10))
+
+    expect(size).toEqual({ width: 120, height: 80 })
+    expect(close).toHaveBeenCalled()
+  })
+
+  it('createImageBitmap that bai → tra undefined (khong throw)', async () => {
+    vi.stubGlobal(
+      'createImageBitmap',
+      vi.fn().mockRejectedValue(new Error('decode fail')),
+    )
+
+    await expect(measureImage(makeFile('a.png', 'image/png', 10))).resolves.toBeUndefined()
+  })
+
+  it('khong co createImageBitmap → undefined (khong throw)', async () => {
+    vi.stubGlobal('createImageBitmap', undefined)
+
+    await expect(measureImage(makeFile('a.png', 'image/png', 10))).resolves.toBeUndefined()
   })
 })

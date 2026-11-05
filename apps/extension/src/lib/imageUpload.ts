@@ -101,6 +101,68 @@ export function readImageFile(file: File): Promise<ImageAttachment> {
 }
 
 /**
+ * Do kich thuoc pixel cua anh (dung cho preview).
+ *
+ * Uu tien `createImageBitmap` (nhanh, khong can DOM), fallback ve `Image`
+ * (trinh duyet cu). Neu ca hai deu that bai → tra `undefined` (anh van
+ * dinh kem duoc, chi khong co kich thuoc de hien thi).
+ *
+ * @param file - File anh.
+ */
+export async function measureImage(
+  file: File,
+): Promise<{ width: number; height: number } | undefined> {
+  try {
+    return await measureImageUnsafe(file)
+  } catch {
+    // Anh van dinh kem duoc — chi khong co kich thuoc de hien thi preview.
+    return undefined
+  }
+}
+
+/**
+ * Do kich thuoc pixel (phan loi — ham nay co the throw).
+ */
+async function measureImageUnsafe(
+  file: File,
+): Promise<{ width: number; height: number } | undefined> {
+  const bitmapApi = globalThis.createImageBitmap
+  if (typeof bitmapApi === 'function') {
+    try {
+      // Gọi trực tiếp (không `.call`) để giữ đúng overload của lib.dom.
+      const bitmap = await bitmapApi(file)
+      const size = { width: bitmap.width, height: bitmap.height }
+      bitmap.close()
+      return size
+    } catch {
+      // Tiep tuc thu fallback bang `Image`.
+    }
+  }
+
+  if (
+    typeof Image === 'undefined' ||
+    typeof URL === 'undefined' ||
+    typeof URL.createObjectURL !== 'function'
+  ) {
+    return undefined
+  }
+
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = (): void => {
+      URL.revokeObjectURL(url)
+      resolve({ width: img.naturalWidth, height: img.naturalHeight })
+    }
+    img.onerror = (): void => {
+      URL.revokeObjectURL(url)
+      resolve(undefined)
+    }
+    img.src = url
+  })
+}
+
+/**
  * Cat prefix `data:<mime>;base64,` khoi chuoi data URL.
  *
  * @param dataUrl - Chuoi data URL day du.
@@ -145,6 +207,30 @@ export function extractImagesFromDataTransfer(dataTransfer: DataTransfer | null)
   }
 
   return files
+}
+
+/**
+ * Lay cac file anh tu clipboard (su kien paste).
+ *
+ * Wrapper cua `extractImagesFromDataTransfer` — tach rieng de caller
+ * (Composer) doc ro muc dich.
+ *
+ * @param dataTransfer - DataTransfer cua su kien paste.
+ */
+export function extractImagesFromClipboard(dataTransfer: DataTransfer | null): File[] {
+  return extractImagesFromDataTransfer(dataTransfer)
+}
+
+/**
+ * Lay cac file anh tu drag & drop.
+ *
+ * Wrapper cua `extractImagesFromDataTransfer` — tach rieng de caller
+ * (Composer) doc ro muc dich.
+ *
+ * @param dataTransfer - DataTransfer cua su kien drop.
+ */
+export function extractImagesFromDrop(dataTransfer: DataTransfer | null): File[] {
+  return extractImagesFromDataTransfer(dataTransfer)
 }
 
 /**

@@ -5,6 +5,7 @@ import {
   type ImageAttachment,
 } from '@sidekick/shared'
 import {
+  measureImage,
   readImageFile,
   validateImageFile,
 } from '@/lib/imageUpload'
@@ -102,7 +103,13 @@ export function useImageAttachments(): UseImageAttachmentsResult {
 
           try {
             const attachment = await readImageFile(file)
-            accepted.push(attachment)
+            // Kich thuoc pixel chi dung cho preview → that bai khong chan
+            // viec dinh kem anh.
+            const size = await measureImage(file)
+            accepted.push({
+              ...attachment,
+              ...(size !== undefined ? { width: size.width, height: size.height } : {}),
+            })
             totalBytes += file.size
           } catch {
             setError({

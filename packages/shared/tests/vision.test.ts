@@ -7,6 +7,7 @@ import {
 import {
   imageAttachmentListSchema,
   imageAttachmentSchema,
+  IMAGE_MIME_TYPES,
   MAX_IMAGE_BASE64_CHARS,
 } from '../src/schemas/vision.js'
 import { providerStreamRequestSchema } from '../src/schemas/provider.js'
@@ -44,6 +45,25 @@ describe('imageAttachmentSchema', () => {
       makeAttachment({ mimeType: 'image/svg+xml' }),
     )
     expect(parsed.success).toBe(false)
+  })
+
+  it('chi chap nhan DUNG 4 mime type da chot (bmp/svg khong duoc phep)', () => {
+    // Khoa danh sach mime — mutation them mime moi phai bi test nay bat.
+    expect(VISION.ALLOWED_MIME_TYPES).toEqual([
+      'image/png',
+      'image/jpeg',
+      'image/webp',
+      'image/gif',
+    ])
+
+    for (const mimeType of ['image/bmp', 'image/svg+xml', 'image/avif', 'image/tiff']) {
+      const parsed = imageAttachmentSchema.safeParse(makeAttachment({ mimeType }))
+      expect(parsed.success).toBe(false)
+    }
+  })
+
+  it('VISION.ALLOWED_MIME_TYPES khop voi IMAGE_MIME_TYPES', () => {
+    expect(VISION.ALLOWED_MIME_TYPES).toEqual(IMAGE_MIME_TYPES)
   })
 
   it('reject mime type khong phai image', () => {
