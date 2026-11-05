@@ -6,6 +6,7 @@
 import { z } from 'zod'
 import { LIMITS, MAX_CONTEXT_ITEMS, PROVIDER_IDS } from '../constants.js'
 import { PAGE_KINDS } from '../pageKind.js'
+import { imageAttachmentListSchema } from './vision.js'
 
 /**
  * Loai cua mot context item — quyet dinh icon + nhan tren chip.
@@ -27,8 +28,15 @@ export type ContextItemTier = (typeof CONTEXT_ITEM_TIERS)[number]
 
 /** Mot turn trong hoi thoai gui len BFF. */
 export const chatTurnSchema = z.object({
-  role: z.enum(['user', 'assistant', 'system']),
+    role: z.enum(['user', 'assistant', 'system']),
   content: z.string().min(1).max(LIMITS.MAX_MESSAGE_CHARS),
+  /**
+   * Anh dinh kem cua turn nay (FR-VISION-01 — T-M1-24).
+   *
+   * Chi turn `user` moi co anh. Anh khong phai `ContextItem` → khong phu
+   * thuoc toggle `contextEnabled`.
+   */
+  attachments: imageAttachmentListSchema.optional(),
 })
 export type ChatTurn = z.infer<typeof chatTurnSchema>
 

@@ -13,6 +13,7 @@ import { createRequestLogger, type LogLevel } from './middleware/requestLogger.j
 import { createHealthRouter } from './routes/health.js'
 import { createChatRouter } from './routes/chat.js'
 import { createExtractRouter } from './routes/extract.js'
+import { createAttachmentsRouter } from './routes/attachments.js'
 import type { ChatServiceDeps } from './services/chatService.js'
 
 export interface AppDeps extends ChatServiceDeps {
@@ -31,17 +32,19 @@ export function createApp(deps: AppDeps): Express {
   // Chan origin la la -> 403 truoc khi vao handler.
   app.use(createOriginGuard(deps.allowedOrigins))
   app.use(createRequestLogger(deps.logLevel))
-  app.use(express.json({ limit: '2mb' }))
+  app.use(express.json({ limit: '16mb' }))
 
   const healthRouter = createHealthRouter(deps)
   const chatRouter = createChatRouter(deps)
   const extractRouter = createExtractRouter()
+  const attachmentsRouter = createAttachmentsRouter({ db: deps.db })
 
   // `/api/health` la endpoint chinh; `/health` la alias de smoke test nhanh.
   app.use(API_BASE_PATH, healthRouter)
   app.use('/', healthRouter)
   app.use(API_BASE_PATH, chatRouter)
   app.use(API_BASE_PATH, extractRouter)
+  app.use(API_BASE_PATH, attachmentsRouter)
 
   app.use(notFoundHandler)
   app.use(errorHandler)

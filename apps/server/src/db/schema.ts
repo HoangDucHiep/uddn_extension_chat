@@ -9,6 +9,7 @@
 import { relations, sql } from 'drizzle-orm'
 import {
   boolean,
+  customType,
   index,
   integer,
   jsonb,
@@ -20,6 +21,18 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core'
+
+/**
+ * Cot kieu `bytea` — dung `customType` vi drizzle-orm 0.45 khong export
+ * helper `bytea` san (chi co `text`/`jsonb`/numeric...).
+ *
+ * Driver `pg` tu map `Buffer` <-> `bytea` khi insert/select.
+ */
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType() {
+    return 'bytea'
+  },
+})
 
 /** Timestamp dung chung: luon luu UTC. */
 const createdAt = timestamp('created_at', { withTimezone: true })
@@ -110,6 +123,42 @@ export const toolCalls = pgTable(
 )
 
 /** ------------------------------------------------------------------
+ * message_attachments — anh dinh kem cua message (FR-VISION-01 — T-M1-24)
+ * ---------------------------------------------------------------- */
+export const messageAttachments = pgTable(
+  'message_attachments',
+  {
+    /** Id sinh boi client (uuid) → upsert idempotent, render ngay trong UI. */
+    id: uuid('id').primaryKey(),
+    messageId: uuid('message_id')
+      .notNull()
+      .references(() => messages.id, { onDelete: 'cascade' }),
+    conversationId: uuid('conversation_id')
+      .notNull()
+      .references(() => conversations.id, { onDelete: 'cascade' }),
+    mimeType: text('mime_type').notNull(),
+    /** Kich thuoc byte cua anh goc. */
+    byteSize: integer('byte_size').notNull().default(0),
+    /** Thu tu anh trong cung 1 message (0, 1, 2...) → sap xep deterministic. */
+    ord: integer('ord').notNull().default(0),
+    width: integer('width'),
+    height: integer('height'),
+    fileName: text('file_name'),
+    /** Du lieu anh goc (khong phai base64) — server tai len de goi provider. */
+    data: bytea('data').notNull(),
+    createdAt,
+  },
+  (table) => [
+    index('message_attachments_message_idx').on(table.messageId),
+    index('message_attachments_conversation_created_idx').on(
+      table.conversationId,
+      table.createdAt.desc(),
+    ),
+    uniqueIndex('message_attachments_message_ord_idx').on(table.messageId, table.ord),
+  ],
+)
+
+/** ------------------------------------------------------------------
  * provider_keys — BYOK ma hoa AES-256-GCM (K2)
  * ---------------------------------------------------------------- */
 export const providerKeys = pgTable(
@@ -183,6 +232,18 @@ export const messagesRelations = relations(messages, ({ one, many }) => ({
   }),
   citations: many(citations),
   toolCalls: many(toolCalls),
+  attachments: many(messageAttachments),
+}))
+
+export const messageAttachmentsRelations = relations(messageAttachments, ({ one }) => ({
+  message: one(messages, {
+    fields: [messageAttachments.messageId],
+    references: [messages.id],
+  }),
+  conversation: one(conversations, {
+    fields: [messageAttachments.conversationId],
+    references: [conversations.id],
+  }),
 }))
 
 export const citationsRelations = relations(citations, ({ one }) => ({
@@ -199,6 +260,8 @@ export type MessageRow = typeof messages.$inferSelect
 export type NewMessageRow = typeof messages.$inferInsert
 export type CitationRow = typeof citations.$inferSelect
 export type ToolCallRow = typeof toolCalls.$inferSelect
+export type MessageAttachmentRow = typeof messageAttachments.$inferSelect
+export type NewMessageAttachmentRow = typeof messageAttachments.$inferInsert
 export type ProviderKeyRow = typeof providerKeys.$inferSelect
 export type NewProviderKeyRow = typeof providerKeys.$inferInsert
 export type RequestLogRow = typeof requestLogs.$inferSelect

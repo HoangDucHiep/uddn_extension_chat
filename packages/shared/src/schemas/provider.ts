@@ -4,6 +4,7 @@
 
 import { z } from 'zod'
 import { PROVIDER_IDS } from '../constants.js'
+import { providerImageSchema } from './vision.js'
 
 /** Do dai context cua provider. */
 export const providerModelSchema = z.object({
@@ -27,17 +28,24 @@ export type ProviderDescriptor = z.infer<typeof providerDescriptorSchema>
 
 /** Yeu cau stream den provider. */
 export const providerStreamRequestSchema = z.object({
-  model: z.string().min(1),
+    model: z.string().min(1),
   messages: z.array(
     z.object({
       role: z.enum(['system', 'user', 'assistant']),
       content: z.string(),
+      /**
+       * Anh cua turn (FR-VISION-01 — T-M1-24).
+       *
+       * Server da luu anh vao DB → day la phan server tai len tu `bytea`,
+       * khong phai base64 client gui.
+       */
+      attachments: z.array(providerImageSchema).optional(),
     }),
   ),
   temperature: z.number().min(0).max(2).optional(),
   maxOutputTokens: z.number().int().positive().optional(),
   /** API key da resolve (K1/K2/K3) — truyen theo request de tránh shared mutable state. */
-  apiKey: z.string().optional(),
+    apiKey: z.string().optional(),
   signal: z.instanceof(AbortSignal).optional(),
 })
 export type ProviderStreamRequest = z.infer<typeof providerStreamRequestSchema>

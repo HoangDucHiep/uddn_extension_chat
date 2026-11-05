@@ -42,6 +42,18 @@ export const ERROR_CODES = {
   CONTEXT_PDF_UNREACHABLE: 'CONTEXT_PDF_UNREACHABLE',
   CONTEXT_TRANSCRIPT_UNAVAILABLE: 'CONTEXT_TRANSCRIPT_UNAVAILABLE',
   CONTEXT_EXTRACT_FAILED: 'CONTEXT_EXTRACT_FAILED',
+
+  // Anh dinh kem (FR-VISION-01 — T-M1-24)
+  /** Anh vuot gioi han kich thuoc. */
+  VISION_IMAGE_TOO_LARGE: 'VISION_IMAGE_TOO_LARGE',
+  /** Khong phai dinh dang anh duoc phep. */
+  VISION_UNSUPPORTED_TYPE: 'VISION_UNSUPPORTED_TYPE',
+  /** Vuot qua so anh toi da cho 1 turn. */
+  VISION_TOO_MANY_IMAGES: 'VISION_TOO_MANY_IMAGES',
+  /** Tong kich thuoc anh vuot gioi han. */
+  VISION_TOTAL_TOO_LARGE: 'VISION_TOTAL_TOO_LARGE',
+  /** Provider/model hien tai khong ho tro xu ly anh. */
+  PROVIDER_VISION_UNSUPPORTED: 'PROVIDER_VISION_UNSUPPORTED',
 } as const
 
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES]
@@ -79,6 +91,12 @@ export const ERROR_STATUS_MAP: Record<ErrorCode, number> = {
   CONTEXT_PDF_UNREACHABLE: 502,
   CONTEXT_TRANSCRIPT_UNAVAILABLE: 422,
   CONTEXT_EXTRACT_FAILED: 500,
+
+  VISION_IMAGE_TOO_LARGE: 413,
+  VISION_UNSUPPORTED_TYPE: 400,
+  VISION_TOO_MANY_IMAGES: 400,
+  VISION_TOTAL_TOO_LARGE: 413,
+  PROVIDER_VISION_UNSUPPORTED: 400,
 }
 
 /** Error chuan hoa moi dien ra ngoai server. */

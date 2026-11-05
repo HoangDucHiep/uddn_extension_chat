@@ -3,9 +3,33 @@
  * Ca hai provider deu expose API kieu OpenAI chat/completions voi SSE.
  */
 
-import type { ProviderChunk, ProviderStreamRequest } from '@sidekick/shared'
+import type { ProviderChunk, ProviderImage, ProviderStreamRequest } from '@sidekick/shared'
 import { mapStatusToCode, readSseData, safeReadText } from './sse.js'
 import { errorChunk, type ProviderAdapter } from './types.js'
+
+/**
+ * Dung `content` cho API kieu OpenAI.
+ *
+ * Khong co anh → chuoi text thuan (backward compatible voi provider chi
+ * nhan string). Co anh → mang parts `[{ type:'text' }, { type:'image_url' }]`.
+ *
+ * @param text - Noi dung text cua turn.
+ * @param attachments - Anh dinh kem (base64 thuan).
+ */
+export function buildOpenAiContent(
+  text: string,
+  attachments: readonly ProviderImage[] | undefined,
+): string | Array<Record<string, unknown>> {
+  if (attachments === undefined || attachments.length === 0) return text
+
+  return [
+    { type: 'text', text },
+    ...attachments.map((image) => ({
+      type: 'image_url',
+      image_url: { url: `data:${image.mimeType};base64,${image.data}` },
+    })),
+  ]
+}
 
 export interface OpenAiCompatibleOptions {
   id: string
@@ -19,6 +43,13 @@ export interface OpenAiCompatibleOptions {
   preferredModels: string[]
   /** Timeout cho mot request (ms). */
   timeoutMs: number
+  /**
+   * Tien to model ho tro vision (FR-VISION-01 — T-M1-24).
+   *
+   * Rong → provider khong ho tro anh → server bo qua provider nay khi
+   * request co anh.
+   */
+  visionModelPrefixes?: string[]
 }
 
 interface OpenAiStreamDelta {
@@ -72,6 +103,17 @@ export class OpenAiCompatibleProvider implements ProviderAdapter {
   /** Model mac dinh cua provider khi client khong chi dinh. */
   resolveModel(requestedModel?: string): string {
     return requestedModel ?? this.options.defaultModel
+  }
+
+  /**
+   * Model co ho tro vision khong?
+   *
+   * Kiem tra theo tien to — provider dung chung base class nen khong the
+   * goi API de hoi tung model (lat, ton tai nhung lai rat).
+   */
+  supportsVision(model: string): boolean {
+    const prefixes = this.options.visionModelPrefixes ?? []
+    return prefixes.some((prefix) => model.startsWith(prefix))
   }
 
   async *stream(request: ProviderStreamRequest): AsyncGenerator<ProviderChunk, void, undefined> {
@@ -131,7 +173,8 @@ export class OpenAiCompatibleProvider implements ProviderAdapter {
           model,
           messages: request.messages.map((message) => ({
             role: message.role,
-            content: message.content,
+            // Anh dinh kem → `content` thanh mang parts (FR-VISION-01 — T-M1-24).
+            content: buildOpenAiContent(message.content, message.attachments),
           })),
           stream: true,
           ...(request.temperature !== undefined ? { temperature: request.temperature } : {}),

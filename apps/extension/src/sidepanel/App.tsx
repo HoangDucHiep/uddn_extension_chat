@@ -6,10 +6,12 @@ import { ContextNotice } from './components/context/ContextNotice'
 import { ContextChips } from './components/context/ContextChips'
 import { ContextBudget } from './components/context/ContextBudget'
 import { MentionPopover } from './components/context/MentionPopover'
+import { AttachmentTray } from './components/composer/AttachmentTray'
 import { useChat } from './hooks/useChat'
 import { useMention } from './hooks/useMention'
 import { useSelection } from './hooks/useSelection'
 import { useTabs } from './hooks/useTabs'
+import { useImageAttachments } from './hooks/useImageAttachments'
 import type { OpenTab } from '@/lib/tabList'
 
 /**
@@ -45,6 +47,7 @@ export function App() {
 
   const mention = useMention()
   const { tabs, isLoading: isLoadingTabs } = useTabs(mention.state.open)
+  const imageAttachments = useImageAttachments()
 
   // Doan text user boi den tren trang → tu dinh kem (duong A — T-M1-02).
   useSelection({
@@ -183,6 +186,12 @@ export function App() {
 
       <ContextBudget budget={budget} />
 
+      <AttachmentTray
+        images={imageAttachments.images}
+        onRemove={imageAttachments.removeImage}
+        errorMessage={imageAttachments.error?.message}
+      />
+
       <Composer
         value={input}
         onChange={setInput}
@@ -193,6 +202,10 @@ export function App() {
         onCursorChange={mention.sync}
         onEscape={mention.close}
         inputRef={inputRef}
+        onImagesSelected={(files) => {
+          void imageAttachments.addFiles(files)
+        }}
+        isReadingImages={imageAttachments.isReading}
       />
     </div>
   )

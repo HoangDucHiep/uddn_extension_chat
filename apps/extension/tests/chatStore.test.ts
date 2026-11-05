@@ -284,3 +284,65 @@ describe('useChatStore — selection context (T-M1-02)', () => {
     expect(state.budget).toBeUndefined()
   })
 })
+
+describe('useChatStore — pendingImages (FR-VISION-01)', () => {
+  const image = {
+    id: '11111111-2222-4333-8444-555555555555',
+    mimeType: 'image/png' as const,
+    data: 'aGVsbG8=',
+    bytes: 5,
+  }
+
+  it('bat dau voi khong co anh nao', () => {
+    expect(useChatStore.getState().pendingImages).toEqual([])
+  })
+
+  it('addPendingImages them anh vao tray', () => {
+    useChatStore.getState().addPendingImages([image])
+
+    const state = useChatStore.getState()
+    expect(state.pendingImages).toHaveLength(1)
+    expect(state.pendingImages[0]?.id).toBe(image.id)
+  })
+
+  it('them anh cung id → thay the, khong nhan ban', () => {
+    useChatStore.getState().addPendingImages([image])
+    useChatStore.getState().addPendingImages([{ ...image, bytes: 99 }])
+
+    const state = useChatStore.getState()
+    expect(state.pendingImages).toHaveLength(1)
+    expect(state.pendingImages[0]?.bytes).toBe(99)
+  })
+
+  it('removePendingImage xoa dung anh theo id', () => {
+    useChatStore.getState().addPendingImages([image])
+    useChatStore.getState().removePendingImage(image.id)
+
+    expect(useChatStore.getState().pendingImages).toHaveLength(0)
+  })
+
+  it('clearPendingImages xoa tat ca anh', () => {
+    useChatStore.getState().addPendingImages([
+      image,
+      { ...image, id: '22222222-2222-4333-8444-555555555555' },
+    ])
+    useChatStore.getState().clearPendingImages()
+
+    expect(useChatStore.getState().pendingImages).toHaveLength(0)
+  })
+
+  it('anh KHONG phu thuoc toggle contextEnabled', () => {
+    useChatStore.getState().setContextEnabled(false)
+    useChatStore.getState().addPendingImages([image])
+
+    expect(useChatStore.getState().contextEnabled).toBe(false)
+    expect(useChatStore.getState().pendingImages).toHaveLength(1)
+  })
+
+  it('reset xoa anh cho san', () => {
+    useChatStore.getState().addPendingImages([image])
+    useChatStore.getState().reset()
+
+    expect(useChatStore.getState().pendingImages).toHaveLength(0)
+  })
+})

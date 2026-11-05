@@ -4,6 +4,7 @@ import {
   CONTEXT_WINDOWS,
   type ContextBudgetResult,
   type ContextItem,
+  type ImageAttachment,
   type ProviderId,
 } from '@sidekick/shared'
 import { writeContextEnabled } from '@/lib/storage'
@@ -22,6 +23,18 @@ import { writeContextEnabled } from '@/lib/storage'
  */
 const FALLBACK_PROVIDER: ProviderId = 'groq'
 
+export interface ChatImage {
+  /** Id anh (uuid) — khop voi `message_attachments.id` tren server. */
+  id: string
+  mimeType: string
+  /** Data URL day du (`data:<mime>;base64,<data>`) — dung cho `<img src>`. */
+  dataUrl: string
+  bytes: number
+  width?: number
+  height?: number
+  fileName?: string
+}
+
 export interface ChatMessage {
   id: string
   role: 'user' | 'assistant' | 'system'
@@ -35,6 +48,8 @@ export interface ChatMessage {
   errorMessage?: string
   tokensIn?: number
   tokensOut?: number
+  /** Anh dinh kem cua message (FR-VISION-01 — T-M1-24). */
+  images?: ChatImage[]
 }
 
 export interface ChatState {
@@ -57,6 +72,12 @@ export interface ChatState {
   contextEnabled: boolean
   /** Ket qua tinh ngan sach context (hien thi meter). */
   budget: ContextBudgetResult | undefined
+  /**
+   * Anh cho san, chua gui (FR-VISION-01 — T-M1-24).
+   *
+   * KHONG phai context item → khong phu thuoc toggle `contextEnabled`.
+   */
+  pendingImages: ImageAttachment[]
 
   addMessage: (message: ChatMessage) => void
   appendToMessage: (id: string, delta: string) => void
@@ -85,6 +106,12 @@ export interface ChatState {
   hydrateContextEnabled: (enabled: boolean) => void
   /** Tinh lai ngan sach context (goi sau khi items/provider doi). */
   recomputeBudget: () => void
+  /** Them anh cho san (chua gui). */
+  addPendingImages: (images: readonly ImageAttachment[]) => void
+  /** Xoa mot anh cho san theo id. */
+  removePendingImage: (id: string) => void
+  /** Xoa tat ca anh cho san. */
+  clearPendingImages: () => void
   reset: () => void
 }
 
@@ -101,6 +128,7 @@ const initialState = {
   attachedItems: [] as ContextItem[],
   contextEnabled: false,
   budget: undefined as ContextBudgetResult | undefined,
+  pendingImages: [] as ImageAttachment[],
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -194,6 +222,24 @@ export const useChatStore = create<ChatState>((set, get) => ({
     })
   },
 
+  addPendingImages: (images) =>
+    set((state) => ({
+      // Thay the anh cung id (tranh trung khi user chon lai cung file).
+      pendingImages: [
+        ...state.pendingImages.filter(
+          (existing) => !images.some((image) => image.id === existing.id),
+        ),
+        ...images,
+      ],
+    })),
+
+  removePendingImage: (id) =>
+    set((state) => ({
+      pendingImages: state.pendingImages.filter((image) => image.id !== id),
+    })),
+
+  clearPendingImages: () => set({ pendingImages: [] }),
+
   reset: () =>
     set((state) => ({
       ...initialState,
@@ -202,5 +248,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       attachedItems: state.attachedItems,
       contextEnabled: state.contextEnabled,
       budget: state.budget,
+      // Anh cho san thuoc ve luot gui hien tai → xoa khi clear.
+      pendingImages: [],
     })),
 }))

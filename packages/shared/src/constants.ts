@@ -72,6 +72,28 @@ export const MAX_CONTEXT_ITEMS = 20
  */
 export const SELECTION_PENDING_TTL_MS = 300_000
 
+/**
+ * Gioi han cho anh dinh kem (FR-VISION-01 — T-M1-24).
+ *
+ * Dùng chung giữa extension (validate som khi user chon file) và server
+ * (validate lai o bien) → mot quy tac, mot nguon su that.
+ */
+export const VISION = {
+  /** Kich thuoc toi da cua mot anh (byte) — 5 MB. */
+  MAX_IMAGE_BYTES: 5_000_000,
+  /** So toi da cua anh moi turn hoi thoai. */
+  MAX_IMAGES_PER_MESSAGE: 4,
+  /** Tong kich thuoc toi da cua tat ca anh trong mot turn (byte) — 12 MB. */
+  MAX_TOTAL_IMAGE_BYTES: 12_000_000,
+  /**
+   * Token uoc luong cho moi anh.
+   *
+   * Heuristic theo quy uoc OpenAI (~258 token / anh 512px). Chi de uoc luong
+   * ngan sach context — so token thật den tu `usage` event cua provider.
+   */
+  TOKEN_ESTIMATE_PER_IMAGE: 258,
+} as const
+
 /** Endpoint cua BFF. */
 export const API_BASE_PATH = '/api'
 
@@ -82,6 +104,8 @@ export const API_ROUTES = {
   providers: `${API_BASE_PATH}/providers`,
   extractPdf: `${API_BASE_PATH}/extract/pdf`,
   extractYoutube: `${API_BASE_PATH}/extract/youtube`,
+  /** Anh dinh kem — GET /api/attachments/:id tra ve binary. */
+  attachment: `${API_BASE_PATH}/attachments`,
 } as const
 
 /** Co loi bao gio phai dung. */

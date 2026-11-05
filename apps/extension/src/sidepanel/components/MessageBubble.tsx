@@ -25,6 +25,15 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     }
   }
 
+  // Mo anh to trong tab moi (FR-VISION-01 — T-M1-24).
+  const openImage = (dataUrl: string): void => {
+    try {
+      void chrome.tabs.create({ url: dataUrl })
+    } catch {
+      // Khong mo duoc tab → bo qua.
+    }
+  }
+
   return (
     <div
       className={isUser ? 'flex justify-end' : 'flex justify-start'}
@@ -40,6 +49,32 @@ export function MessageBubble({ message }: MessageBubbleProps) {
             : 'bg-[var(--surface-sunken)] text-[var(--text-primary)]',
         ].join(' ')}
       >
+        {message.images !== undefined && message.images.length > 0 ? (
+          <ul
+            className="mb-2 flex flex-wrap gap-2"
+            data-testid="message-images"
+            aria-label="Ảnh đính kèm"
+          >
+            {message.images.map((image) => (
+              <li key={image.id}>
+                <button
+                  type="button"
+                  onClick={() => openImage(image.dataUrl)}
+                  aria-label={`Mở ảnh ${image.fileName ?? 'đính kèm'}`}
+                  className="block overflow-hidden rounded-[var(--radius-md)] border border-[var(--border-default)] focus-visible:outline-none focus-visible:ring-[var(--focus-ring)]"
+                >
+                  <img
+                    src={image.dataUrl}
+                    alt={image.fileName ?? 'Ảnh đính kèm'}
+                    className="max-h-[160px] w-auto max-w-full object-cover"
+                    data-testid="message-image"
+                  />
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
         {message.content.length > 0 ? (
           <p className="whitespace-pre-wrap break-words">{message.content}</p>
         ) : message.status === 'streaming' ? (

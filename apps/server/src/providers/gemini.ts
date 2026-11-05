@@ -52,6 +52,11 @@ export class GeminiProvider implements ProviderAdapter {
     this.options = options
   }
 
+  /** Gemini ho tro vision tren toan bo model hien tai. */
+  supportsVision(_model: string): boolean {
+    return true
+  }
+
   async listModels(): Promise<string[]> {
     try {
       const response = await fetch(`${GEMINI_BASE_URL}/models`, {
@@ -129,7 +134,13 @@ export class GeminiProvider implements ProviderAdapter {
       .filter((message) => message.role !== 'system')
       .map((message) => ({
         role: message.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: message.content }],
+        // Anh dinh kem → them part `inline_data` (FR-VISION-01 — T-M1-24).
+        parts: [
+          { text: message.content },
+          ...(message.attachments ?? []).map((image) => ({
+            inline_data: { mime_type: image.mimeType, data: image.data },
+          })),
+        ],
       }))
 
     const body: Record<string, unknown> = {

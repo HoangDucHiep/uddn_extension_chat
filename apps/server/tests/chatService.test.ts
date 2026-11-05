@@ -4,7 +4,9 @@ import {
   buildContextPrompt,
   buildProviderMessages,
   createChatStream,
+  findLastUserIndex,
   hashText,
+  mergeImages,
 } from '../src/services/chatService.js'
 import type { ProviderAdapter } from '../src/providers/types.js'
 import type { ProviderRegistry } from '../src/providers/registry.js'
@@ -25,10 +27,13 @@ function makeDb(): {
   // await trong service moi khong treo.
   const insert = vi.fn(() => ({
     values: (_items: unknown) => {
-      const promise = Promise.resolve(undefined) as Promise<undefined> & {
-        onConflictDoNothing: () => Promise<undefined>
+      // Resolve ra mang rong (moi `returning()` tra list row).
+      const promise = Promise.resolve([]) as unknown as Promise<unknown[]> & {
+        onConflictDoNothing: () => Promise<unknown[]>
+        returning: (columns?: unknown) => Promise<unknown[]>
       }
-      promise.onConflictDoNothing = () => Promise.resolve(undefined)
+      promise.onConflictDoNothing = () => Promise.resolve([])
+      promise.returning = (_columns?: unknown) => Promise.resolve([])
       return promise
     },
   }))
@@ -38,6 +43,7 @@ function makeDb(): {
         orderBy: () => ({
           limit: async () => [],
         }),
+        limit: async () => [],
       }),
     }),
   }))
@@ -50,6 +56,7 @@ function makeProvider(chunks: ProviderChunk[], overrides: Partial<ProviderAdapte
     id: 'mock',
     name: 'Mock',
     requiresKey: false,
+    supportsVision: () => true,
     listModels: async () => ['mock-model'],
     resolveModel: (requested?: string) => requested ?? 'mock-model',
     async *stream() {
@@ -173,8 +180,98 @@ describe('buildContextPrompt', () => {
   })
 })
 
-describe('hashText', () => {
-  it('cung noi dung → cung hash', () => {
+describe('vision — buildProviderMessages (FR-VISION-01)', () => {
+  const image = { mimeType: 'image/png' as const, data: 'aGVsbG8=' }
+
+  it('gan anh vao user turn cuoi cung', () => {
+    const messages = buildProviderMessages(
+      { messages: [{ role: 'user', content: 'Mo ta anh nay' }] },
+      { images: [image] },
+    )
+
+    const lastIndex = findLastUserIndex(messages)
+    expect(lastIndex).toBeGreaterThan(0)
+    expect(messages[lastIndex]?.attachments).toEqual([image])
+  })
+
+  it('khong co anh → khong turn nao co attachments', () => {
+    const messages = buildProviderMessages({
+      messages: [{ role: 'user', content: 'Xin chao' }],
+    })
+
+    expect(messages.some((message) => message.attachments !== undefined)).toBe(false)
+  })
+
+  it('anh duoc gan vao turn user cuoi, khong phai turn system', () => {
+    const messages = buildProviderMessages(
+      {
+        messages: [
+          { role: 'user', content: 'Cau 1' },
+          { role: 'assistant', content: 'Tra loi 1' },
+          { role: 'user', content: 'Cau 2' },
+        ],
+      },
+      { images: [image] },
+    )
+
+    expect(messages[0]?.attachments).toBeUndefined()
+    const lastIndex = findLastUserIndex(messages)
+    expect(messages[lastIndex]?.content).toBe('Cau 2')
+    expect(messages[lastIndex]?.attachments).toHaveLength(1)
+  })
+
+  it('token anh bi truoc khoi ngan sach lich su', () => {
+    // mock context window = 8000, margin 2000, reserved output 2048
+    // → historyBudget ≈ 3952 token. Moi turn 400 ky tu ≈ 100 token.
+    // 50 turn ≈ 5000 token > budget → co cat; anh ton 258 token → cat them.
+    const manyTurns = Array.from({ length: 50 }, () => ({
+      role: 'user' as const,
+      content: 'x'.repeat(400),
+    }))
+
+    const withoutImage = buildProviderMessages({ messages: manyTurns })
+    const withImage = buildProviderMessages({ messages: manyTurns }, { images: [image] })
+
+    expect(withoutImage.length).toBeLessThan(manyTurns.length + 2)
+    expect(withImage.length).toBeLessThan(withoutImage.length)
+  })
+})
+
+describe('vision — mergeImages', () => {
+  const attachment = {
+    id: '11111111-2222-4333-8444-555555555555',
+    mimeType: 'image/png' as const,
+    data: 'AAAA',
+    bytes: 3,
+  }
+
+  it('anh cua request duoc uu tien truoc', () => {
+    const merged = mergeImages([{ mimeType: 'image/jpeg', data: 'BBBB' }], [attachment])
+    expect(merged[0]).toEqual({ mimeType: 'image/png', data: 'AAAA' })
+  })
+
+  it('hop nhat anh cua conversation vao sau', () => {
+    const merged = mergeImages([{ mimeType: 'image/jpeg', data: 'BBBB' }], [attachment])
+    expect(merged).toHaveLength(2)
+    expect(merged[1]).toEqual({ mimeType: 'image/jpeg', data: 'BBBB' })
+  })
+
+  it('khong trung lap khi anh da co trong DB', () => {
+    const merged = mergeImages([{ mimeType: 'image/png', data: 'AAAA' }], [attachment])
+    expect(merged).toHaveLength(1)
+  })
+
+  it('gioi han so anh toi da', () => {
+    const many = Array.from({ length: 10 }, (_, index) => ({
+      mimeType: 'image/png' as const,
+      data: `DATA${index}`,
+    }))
+    const merged = mergeImages(many, [])
+    expect(merged.length).toBeLessThanOrEqual(4)
+  })
+})
+
+describe('hashText', () => {  it('cung noi dung → cung hash', () => {
     expect(hashText('abc')).toBe(hashText('abc'))
   })
 
@@ -300,8 +397,116 @@ describe('createChatStream', () => {
     expect(meta).toMatchObject({ type: 'meta', provider: 'groq', keySource: 'K1' })
   })
 
-  it('abort signal → finishReason aborted', async () => {
-    const controller = new AbortController()
+  it('request co anh → bo qua provider khong ho tro vision', async () => {
+    const blind = makeProvider([{ kind: 'token', text: 'sai' }], {
+      id: 'groq',
+      requiresKey: false,
+      supportsVision: () => false,
+    })
+    const vision = makeProvider([{ kind: 'token', text: 'ok' }], {
+      id: 'gemini',
+      requiresKey: false,
+      supportsVision: () => true,
+    })
+    const deps = {
+      db: makeDb() as never,
+      registry: makeRegistry({ groq: blind, gemini: vision }, ['groq', 'gemini']),
+      envKeys: {},
+      masterKey: undefined,
+      logFullContent: false,
+      logRequests: false,
+    }
+
+    const result = createChatStream(
+      deps,
+      {
+        messages: [
+          {
+            role: 'user',
+            content: 'Mo ta',
+            attachments: [
+              {
+                id: '11111111-2222-4333-8444-555555555555',
+                mimeType: 'image/png',
+                data: 'aGVsbG8=',
+                bytes: 5,
+              },
+            ],
+          },
+        ],
+      },
+      new AbortController().signal,
+    )
+    const events = await collectEvents(result.events)
+
+    const meta = events.find((event) => event.type === 'meta')
+    expect(meta).toMatchObject({ type: 'meta', provider: 'gemini' })
+  })
+
+  it('request co anh + khong provider nao ho tro → PROVIDER_VISION_UNSUPPORTED', async () => {
+    const blind = makeProvider([{ kind: 'token', text: 'sai' }], {
+      id: 'groq',
+      requiresKey: false,
+      supportsVision: () => false,
+    })
+    const deps = {
+      db: makeDb() as never,
+      registry: makeRegistry({ groq: blind }, ['groq']),
+      envKeys: {},
+      masterKey: undefined,
+      logFullContent: false,
+      logRequests: false,
+    }
+
+    const result = createChatStream(
+      deps,
+      {
+        messages: [
+          {
+            role: 'user',
+            content: 'Mo ta',
+            attachments: [
+              {
+                id: '11111111-2222-4333-8444-555555555555',
+                mimeType: 'image/png',
+                data: 'aGVsbG8=',
+                bytes: 5,
+              },
+            ],
+          },
+        ],
+      },
+      new AbortController().signal,
+    )
+    const events = await collectEvents(result.events)
+
+    const error = events.find((event) => event.type === 'error')
+    expect(error).toMatchObject({ type: 'error', code: 'PROVIDER_VISION_UNSUPPORTED' })
+  })
+
+  it('request KHONG co anh → provider khong vision van duoc dung', async () => {
+    const blind = makeProvider([{ kind: 'token', text: 'ok' }], {
+      id: 'groq',
+      requiresKey: false,
+      supportsVision: () => false,
+    })
+    const deps = {
+      db: makeDb() as never,
+      registry: makeRegistry({ groq: blind }, ['groq']),
+      envKeys: {},
+      masterKey: undefined,
+      logFullContent: false,
+      logRequests: false,
+    }
+
+    const result = createChatStream(deps, request, new AbortController().signal)
+    const events = await collectEvents(result.events)
+
+    const meta = events.find((event) => event.type === 'meta')
+    expect(meta).toMatchObject({ type: 'meta', provider: 'groq' })
+  })
+
+  it('abort signal → finishReason aborted', async () => {    const controller = new AbortController()
     const provider = makeProvider([
       { kind: 'token', text: 'a' },
       { kind: 'token', text: 'b' },

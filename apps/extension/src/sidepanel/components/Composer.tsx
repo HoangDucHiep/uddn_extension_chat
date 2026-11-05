@@ -1,10 +1,13 @@
-import { Loader2, Send, Square } from 'lucide-react'
+import { ImagePlus, Loader2, Send, Square } from 'lucide-react'
 import {
   type ChangeEvent,
+  type ClipboardEvent,
+  type DragEvent,
   type KeyboardEvent,
   type ReactNode,
   type RefObject,
   type SyntheticEvent,
+  useRef,
 } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -40,6 +43,14 @@ export interface ComposerProps {
    * chuyen `@query` thanh `@ten tab`.
    */
   inputRef?: RefObject<HTMLTextAreaElement>
+  /**
+   * Callback khi user chon file anh (FR-VISION-01 — T-M1-24).
+   *
+   * Dinh huong tu file picker / drag-drop / paste → cung mot handler.
+   */
+  onImagesSelected?: (files: readonly File[]) => void
+  /** Dang doc file anh → hien spinner tren nut. */
+  isReadingImages?: boolean
 }
 
 export function Composer({
@@ -53,7 +64,11 @@ export function Composer({
   onCursorChange,
   onEscape,
   inputRef,
+  onImagesSelected,
+  isReadingImages = false,
 }: ComposerProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>): void => {
     // Escape → dong popover `@` truoc (khong chan event de panel khong bi vung).
     if (event.key === 'Escape') {
@@ -82,10 +97,60 @@ export function Composer({
     onCursorChange?.(target.value, target.selectionStart ?? target.value.length)
   }
 
+  // Paste anh tu clipboard → dinh kem (FR-VISION-01 — T-M1-24).
+  const handlePaste = (event: ClipboardEvent<HTMLTextAreaElement>): void => {
+    if (onImagesSelected === undefined) return
+    const files = event.clipboardData?.files
+    if (files === undefined || files === null || files.length === 0) return
+    const images = Array.from(files).filter((file) => file.type.startsWith('image/'))
+    if (images.length === 0) return
+    event.preventDefault()
+    onImagesSelected(images)
+  }
+
+  // Drag & drop anh vao composer (FR-VISION-01 — T-M1-24).
+  //
+  // `preventDefault()` bat buoc — neu khong, Chrome se dieu huong panel di
+  // khoi trang khi user tha file.
+  const handleDragOver = (event: DragEvent<HTMLDivElement>): void => {
+    if (onImagesSelected === undefined) return
+    event.preventDefault()
+    // `dataTransfer` co the undefined (mot so trinh duyet / test env) →
+    // chi set `dropEffect` khi co dataTransfer.
+    if (event.dataTransfer !== undefined && event.dataTransfer !== null) {
+      event.dataTransfer.dropEffect = 'copy'
+    }
+  }
+
+  const handleDrop = (event: DragEvent<HTMLDivElement>): void => {
+    if (onImagesSelected === undefined) return
+    event.preventDefault()
+    const files = event.dataTransfer?.files
+    if (files === undefined || files === null) return
+    const images = Array.from(files).filter((file) => file.type.startsWith('image/'))
+    if (images.length === 0) return
+    onImagesSelected(images)
+  }
+
+  const handleFileInput = (event: ChangeEvent<HTMLInputElement>): void => {
+    const files = event.target.files
+    if (files !== null && files.length > 0) {
+      onImagesSelected?.(Array.from(files))
+    }
+    // Reset de chon lai cung file van tao su kien `change`.
+    event.target.value = ''
+  }
+
+  const openFilePicker = (): void => {
+    fileInputRef.current?.click()
+  }
+
   return (
     <div
       className="border-t border-[var(--border-default)] bg-[var(--surface-panel)] p-[var(--space-3)]"
       data-testid="composer"
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
     >
       <div className="flex items-end gap-2">
         <div className="relative flex-1">
@@ -97,6 +162,7 @@ export function Composer({
             onKeyDown={handleKeyDown}
             onSelect={handleSelect}
             onClick={handleSelect}
+            onPaste={handlePaste}
             placeholder="Hoi Sidekick AI ve trang dang mo... (go @ de dinh kem tab)"
             disabled={disabled}
             aria-label="Nhap cau hoi"
@@ -104,6 +170,35 @@ export function Composer({
             className="max-h-[var(--composer-max-height)] min-h-[var(--composer-min-height)] w-full"
           />
         </div>
+
+        {onImagesSelected !== undefined ? (
+          <>
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              multiple
+              className="hidden"
+              onChange={handleFileInput}
+              data-testid="composer-file-input"
+              aria-label="Chon anh de dinh kem"
+            />
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={openFilePicker}
+              disabled={disabled || isReadingImages}
+              aria-label="Dinh kem anh"
+              data-testid="composer-image-button"
+            >
+              {isReadingImages ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ImagePlus className="h-4 w-4" />
+              )}
+            </Button>
+          </>
+        ) : null}
 
         {isStreaming ? (
           <Button

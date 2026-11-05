@@ -12,18 +12,23 @@ import {
   CONTEXT_TIER_ORDER,
   CONTEXT_WINDOWS,
   DEFAULT_SYSTEM_PROMPT,
+  ERROR_CODES,
   trimHistory,
+  VISION,
   type ChatEvent,
   type ChatRequest,
   type ContextBundle,
   type ContextItem,
+  type ImageAttachment,
   type ProviderId,
+  type ProviderImage,
 } from '@sidekick/shared'
 import { and, desc, eq } from 'drizzle-orm'
 import type { Database } from '../db/index.js'
 import { conversations, messages, requestLogs } from '../db/schema.js'
 import type { ProviderRegistry } from '../providers/registry.js'
 import { resolveKey, type EnvKeys } from '../providers/keyResolver.js'
+import { loadRecentAttachments, persistAttachments } from './attachmentService.js'
 
 /**
  * Max output tokens mac dinh.
@@ -69,9 +74,31 @@ export function createChatStream(
   const conversationId = request.conversationId ?? randomUUID()
 
   const events = (async function* generate(): AsyncGenerator<ChatEvent, void, undefined> {
-    // --- 1. Luu conversation + user message ---
+    // --- 1. Luu conversation + user message (+ anh dinh kem) ---
     const lastUserMessage = request.messages[request.messages.length - 1]
-    await persistUserMessage(deps.db, conversationId, lastUserMessage?.content ?? '')
+    const requestAttachments = lastUserMessage?.attachments ?? []
+    const lastUserMessageId = await persistUserMessage(
+      deps.db,
+      conversationId,
+      lastUserMessage?.content ?? '',
+    )
+
+    // Luu anh vao DB → tra lai duoc cho UI + tai len cho cac luot sau.
+    // Luu truoc khi chon provider de du co du lieu khi bao loi.
+    await persistAttachments(deps.db, {
+      conversationId,
+      messageId: lastUserMessageId,
+      attachments: requestAttachments,
+    })
+
+    // Anh cua conversation (gom ca anh cua luot truoc) → gan cho provider.
+    // Multi-turn: luot 2 chi co text van thay anh cua luot 1.
+    const conversationImages = await loadRecentAttachments(
+      deps.db,
+      conversationId,
+      VISION.MAX_IMAGES_PER_MESSAGE,
+    )
+    const imagesForProvider = mergeImages(conversationImages, requestAttachments)
 
     // --- 2. Chon provider + key ---
     const chain = request.provider
@@ -87,12 +114,20 @@ export function createChatStream(
       const provider = deps.registry.get(providerId)
       if (!provider) continue
 
+      const candidateModel = provider.resolveModel(request.model)
+
+      // Request co anh → bo qua provider/model khong ho tro vision
+      // (FR-VISION-01 — T-M1-24).
+      if (imagesForProvider.length > 0 && !provider.supportsVision(candidateModel)) {
+        continue
+      }
+
       // Provider khong can key (mock, ollama local) -> dung luon.
       if (!provider.requiresKey) {
         resolvedProvider = providerId
         resolvedKeySource = 'K1'
         apiKey = ''
-        resolvedModel = provider.resolveModel(request.model)
+        resolvedModel = candidateModel
         break
       }
 
@@ -110,16 +145,28 @@ export function createChatStream(
       resolvedProvider = providerId
       resolvedKeySource = key.source
       apiKey = key.apiKey
-      resolvedModel = provider.resolveModel(request.model)
+      resolvedModel = candidateModel
       break
     }
 
     if (!resolvedProvider) {
-      yield {
-        type: 'error',
-        code: 'MISSING_API_KEY',
-        message: 'Khong tim thay API key cho bat ky provider nao. Hay cau hinh key trong settings.',
-        retryable: false,
+      // Khong tim thay provider → phan biet "khong co key" vs "khong ho tro anh".
+      if (imagesForProvider.length > 0) {
+        yield {
+          type: 'error',
+          code: ERROR_CODES.PROVIDER_VISION_UNSUPPORTED,
+          message:
+            'Provider/model hien tai khong ho tro xu ly anh. Hay chon model khac (vi du Gemini) ' +
+            'hoac go bo anh dinh kem.',
+          retryable: false,
+        }
+      } else {
+        yield {
+          type: 'error',
+          code: 'MISSING_API_KEY',
+          message: 'Khong tim thay API key cho bat ky provider nao. Hay cau hinh key trong settings.',
+          retryable: false,
+        }
       }
       yield { type: 'done', finishReason: 'error', messageId }
       return
@@ -140,6 +187,7 @@ export function createChatStream(
     const messagesForProvider = buildProviderMessages(request, {
       provider: resolvedProvider,
       reservedOutputTokens: request.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
+      images: imagesForProvider,
     })
     const startedAt = Date.now()
     let firstTokenAt: number | undefined
@@ -247,8 +295,22 @@ export function createChatStream(
 export interface BuildProviderMessagesOptions {
   /** Provider se xu ly request — quyet dinh context window de cat budget. */
   provider?: ProviderId
-  /** Token danh rieng cho output (da bi trừ khoi ngan sach context). */
+  /** Token danh rieng cho output (da bi truoc khoi ngan sach context). */
   reservedOutputTokens?: number
+  /**
+   * Anh dinh kem gan cho provider (FR-VISION-01 — T-M1-24).
+   *
+   * Server tai tu DB (anh cua conversation) → gan vao **user turn cuoi cung**
+   * de model thay anh cung cau hoi hien tai.
+   */
+  images?: readonly ProviderImage[]
+}
+
+/** Mot turn san de gui cho provider (co the kem anh). */
+export interface ProviderMessage {
+  role: 'system' | 'user' | 'assistant'
+  content: string
+  attachments?: ProviderImage[]
 }
 
 /**
@@ -261,23 +323,26 @@ export interface BuildProviderMessagesOptions {
 export function buildProviderMessages(
   request: ChatRequest,
   options: BuildProviderMessagesOptions = {},
-): Array<{ role: 'system' | 'user' | 'assistant'; content: string }> {
+): ProviderMessage[] {
   const systemPrompt = request.systemPrompt ?? DEFAULT_SYSTEM_PROMPT
   const providerId = options.provider ?? 'mock'
   const contextWindow = CONTEXT_WINDOWS[providerId] ?? CONTEXT_WINDOWS.mock
   const reservedOutputTokens = options.reservedOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS
+  const images = options.images ?? []
 
   const budget = applyContextBudget(request.context?.items ?? [], {
     contextWindow,
     reservedOutputTokens,
   })
 
-  // Phan du ngan sach sau khi cat context → dung cho lich su hoi thoai.
-  const history = trimHistory(request.messages, budget.historyBudget)
+  // Anh ton token context nhung khong phai text → uoc luong bang quy uoc
+  // 258 token/anh va truoc khoi ngan sach lich su.
+  const imageTokens = images.length * VISION.TOKEN_ESTIMATE_PER_IMAGE
 
-  const result: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
-    { role: 'system', content: systemPrompt },
-  ]
+  // Phan du ngan sach sau khi cat context → dung cho lich su hoi thoai.
+  const history = trimHistory(request.messages, Math.max(0, budget.historyBudget - imageTokens))
+
+  const result: ProviderMessage[] = [{ role: 'system', content: systemPrompt }]
 
   for (const turn of history) {
     result.push({ role: turn.role, content: turn.content })
@@ -291,7 +356,66 @@ export function buildProviderMessages(
     })
   }
 
+  // Gan anh vao user turn cuoi cung (cau hoi dang tra loi).
+  if (images.length > 0) {
+    const lastUserIndex = findLastUserIndex(result)
+    if (lastUserIndex >= 0) {
+      const turn = result[lastUserIndex]
+      if (turn !== undefined) {
+        turn.attachments = [...images]
+      }
+    } else {
+      result.push({ role: 'user', content: '(anh dinh kem)', attachments: [...images] })
+    }
+  }
+
   return result
+}
+
+/**
+ * Tim chi so cua user turn cuoi cung trong danh sach messages.
+ *
+ * @param messages - Danh sach messages da dung context.
+ */
+export function findLastUserIndex(messages: readonly ProviderMessage[]): number {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index]
+    if (message?.role === 'user') return index
+  }
+  return -1
+}
+
+/**
+ * Hop nhat anh tu conversation (DB) voi anh cua request.
+ *
+ * Anh cua request duoc uu tien (moi hon). Dedup theo `id`.
+ * Gioi han lai so anh toi da.
+ *
+ * @param conversationImages - Anh tai tu DB (co the rong).
+ * @param requestAttachments - Anh client gui len luot nay.
+ */
+export function mergeImages(
+  conversationImages: readonly ProviderImage[],
+  requestAttachments: readonly ImageAttachment[],
+): ProviderImage[] {
+  const merged: ProviderImage[] = []
+  // Dedup theo `data` — anh trong DB khong co `id` client, chi co base64.
+  const seenData = new Set<string>()
+
+  for (const attachment of requestAttachments) {
+    if (seenData.has(attachment.data)) continue
+    seenData.add(attachment.data)
+    merged.push({ mimeType: attachment.mimeType, data: attachment.data })
+  }
+
+  for (const image of conversationImages) {
+    if (merged.length >= VISION.MAX_IMAGES_PER_MESSAGE) break
+    if (seenData.has(image.data)) continue
+    seenData.add(image.data)
+    merged.push(image)
+  }
+
+  return merged.slice(0, VISION.MAX_IMAGES_PER_MESSAGE)
 }
 
 /**
@@ -350,17 +474,21 @@ function describeContextSource(item: ContextItem): string {
   return '[Tab đính kèm]'
 }
 
-/** Luu message cua user. */
+/** Luu message cua user. Tra ve id cua message vua tao. */
 async function persistUserMessage(
   db: Database,
   conversationId: string,
   content: string,
-): Promise<void> {
+): Promise<string> {
   await db
     .insert(conversations)
     .values({ id: conversationId, title: 'Cuộc trò chuyện mới' })
     .onConflictDoNothing()
-  await db.insert(messages).values({ conversationId, role: 'user', content })
+  const inserted = await db
+    .insert(messages)
+    .values({ conversationId, role: 'user', content })
+    .returning({ id: messages.id })
+  return inserted[0]?.id ?? ''
 }
 
 /** Luu message cua assistant. */

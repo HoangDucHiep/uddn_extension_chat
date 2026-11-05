@@ -37,6 +37,11 @@ export class MockProvider implements ProviderAdapter {
     return ['mock-model']
   }
 
+  /** Mock "ho tro" vision de pipeline anh duoc kiem thu end-to-end. */
+  supportsVision(_model: string): boolean {
+    return true
+  }
+
   /** Mock khong quan tam model — luon dung ten co dinh. */
   resolveModel(requestedModel?: string): string {
     return requestedModel ?? 'mock-model'
@@ -46,7 +51,18 @@ export class MockProvider implements ProviderAdapter {
     const text = this.options.response ?? DEFAULT_RESPONSE
     const delayMs = this.options.delayMs ?? 10
 
-    const words = text.match(/\S+\s*/g) ?? [text]
+    // Echo so anh nhan duoc → E2E co bang chung anh di het pipeline toi
+    // tang provider (FR-VISION-01 — T-M1-24).
+    const imageCount = (request.messages ?? []).reduce(
+      (sum, message) => sum + (message.attachments?.length ?? 0),
+      0,
+    )
+    const imageNote =
+      imageCount > 0
+        ? ` [mock] Nhan duoc ${imageCount} anh (${describeImages(request.messages)})`
+        : ''
+
+    const words = `${text}${imageNote}`.match(/\S+\s*/g) ?? [text]
 
     for (const word of words) {
       if (request.signal?.aborted) {
@@ -73,6 +89,20 @@ export class MockProvider implements ProviderAdapter {
 /** Uoc luong so token (xa xi ~4 ky tu/token). */
 export function estimateTokens(text: string): number {
   return Math.max(1, Math.ceil(text.length / 4))
+}
+
+/**
+ * Mo ta cac anh nhan duoc — dung cho echo cua mock.
+ *
+ * @param messages - Cac turn gui len provider.
+ */
+function describeImages(
+  messages: readonly { attachments?: readonly { mimeType: string }[] | undefined }[],
+): string {
+  const types = messages.flatMap((message) =>
+    (message.attachments ?? []).map((image) => image.mimeType),
+  )
+  return [...new Set(types)].join(', ')
 }
 
 /** Sleep co the bi huy bang AbortSignal. */

@@ -113,8 +113,81 @@ describe('useChat', () => {
     expect(useChatStore.getState().isStreaming).toBe(false)
   })
 
-  it('bo qua prompt rong', async () => {
+  it('gui prompt kem anh: anh duoc gui len BFF + hien thi trong message', async () => {
+    streamChatMock.mockImplementation(
+      (
+        _request: unknown,
+        options: { onEvent?: (event: ChatEvent) => void },
+      ) => makeStream([metaEvent, tokenEvent('ok'), doneEvent], options.onEvent),
+    )
+
+    const attachment = {
+      id: '11111111-2222-4333-8444-555555555555',
+      mimeType: 'image/png' as const,
+      data: 'aGVsbG8=',
+      bytes: 5,
+    }
+    useChatStore.getState().addPendingImages([attachment])
+
     const { result } = renderHook(() => useChat())
+    await act(async () => {
+      await result.current.send('Mo ta anh nay')
+    })
+
+    const request = streamChatMock.mock.calls[0]?.[0] as {
+      messages: Array<{
+        role: string
+        content: string
+        attachments?: Array<{ id: string; data: string }>
+      }>
+    }
+    const lastTurn = request.messages[request.messages.length - 1]
+    expect(lastTurn?.attachments).toHaveLength(1)
+    expect(lastTurn?.attachments?.[0]?.id).toBe(attachment.id)
+
+    // Tray xoa sau khi gui.
+    expect(useChatStore.getState().pendingImages).toHaveLength(0)
+
+    // Message user hien thi anh.
+    const userMessage = useChatStore.getState().messages[0]
+    expect(userMessage?.images).toHaveLength(1)
+    expect(userMessage?.images?.[0]?.dataUrl).toBe(
+      'data:image/png;base64,aGVsbG8=',
+    )
+  })
+
+  it('gui chi anh (khong co text) van hop le', async () => {
+    streamChatMock.mockImplementation(
+      (
+        _request: unknown,
+        options: { onEvent?: (event: ChatEvent) => void },
+      ) => makeStream([metaEvent, doneEvent], options.onEvent),
+    )
+
+    useChatStore.getState().addPendingImages([
+      {
+        id: '11111111-2222-4333-8444-555555555555',
+        mimeType: 'image/png',
+        data: 'aGVsbG8=',
+        bytes: 5,
+      },
+    ])
+
+    const { result } = renderHook(() => useChat())
+    await act(async () => {
+      await result.current.send('')
+    })
+
+    expect(streamChatMock).toHaveBeenCalled()
+    const request = streamChatMock.mock.calls[0]?.[0] as {
+      messages: Array<{ content: string; attachments?: unknown[] }>
+    }
+    const lastTurn = request.messages[request.messages.length - 1]
+    expect(lastTurn?.attachments).toHaveLength(1)
+    expect(lastTurn?.content.length).toBeGreaterThan(0)
+  })
+
+  it('bo qua prompt rong', async () => {    const { result } = renderHook(() => useChat())
     await act(async () => {
       await result.current.send('   ')
     })

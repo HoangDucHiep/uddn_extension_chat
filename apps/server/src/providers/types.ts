@@ -17,6 +17,15 @@ export interface ProviderAdapter {
   readonly requiresKey: boolean
 
   /**
+    * Provider/model co ho tro xu ly anh (FR-VISION-01 — T-M1-24) hay khong.
+   *
+   * Server dung ham nay de **bo qua** provider/model khong ho tro vision khi
+   * request co anh → fallback sang provider khac. Neu khong con provider
+   * nao → tra loi `PROVIDER_VISION_UNSUPPORTED`.
+   */
+  supportsVision(model: string): boolean
+
+  /**
    * Tra ve danh sach model dang hoat dong.
    * Provider that se goi API `GET /models` de discover dong.
    * Neu that bai -> tra ve danh sach uu tien mac dinh.

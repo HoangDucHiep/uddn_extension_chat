@@ -4,6 +4,7 @@ import {
   CONTEXT_WINDOWS,
   type ChatEvent,
   type ContextBundle,
+  type ImageAttachment,
   type ProviderId,
 } from '@sidekick/shared'
 import { streamChat } from '@/lib/sseClient'
@@ -15,7 +16,7 @@ import {
 } from '@/lib/contextAttach'
 import { readContextEnabled } from '@/lib/storage'
 import { SELECTION_EMPTY_ERROR_CODE, type PendingSelection } from '@/lib/selectionProtocol'
-import { useChatStore, type ChatMessage } from '../store/chatStore'
+import { useChatStore, type ChatImage, type ChatMessage } from '../store/chatStore'
 
 /**
  * Hook `useChat` — dieu khien luong chat: gui prompt, nhan stream, dung.
@@ -46,6 +47,7 @@ export function useChat() {
   const attachedItems = useChatStore((state) => state.attachedItems)
   const contextEnabled = useChatStore((state) => state.contextEnabled)
   const budget = useChatStore((state) => state.budget)
+  const pendingImages = useChatStore((state) => state.pendingImages)
 
   const addMessage = useChatStore((state) => state.addMessage)
   const appendToMessage = useChatStore((state) => state.appendToMessage)
@@ -59,6 +61,7 @@ export function useChat() {
   const clearAttachedItems = useChatStore((state) => state.clearAttachedItems)
   const setContextEnabled = useChatStore((state) => state.setContextEnabled)
   const hydrateContextEnabled = useChatStore((state) => state.hydrateContextEnabled)
+  const clearPendingImages = useChatStore((state) => state.clearPendingImages)
 
   // Nap trang thai bat/tat context da luu trong `chrome.storage.local`.
   // Chi ap dung khi user chua dinh kem gi → khong ghi de lua chon cua user.
@@ -162,7 +165,25 @@ export function useChat() {
   const send = useCallback(
     async (content: string) => {
       const trimmed = content.trim()
-      if (trimmed.length === 0 || useChatStore.getState().isStreaming) return
+      const state = useChatStore.getState()
+      const images = state.pendingImages
+
+      // Cho phep gui chi anh (khong co text) — vi du user hoi "mo ta anh nay".
+      if (trimmed.length === 0 && images.length === 0) return
+      if (state.isStreaming) return
+
+      // Lich su TRUOC luot hien tai — snapshot truoc khi them user message.
+      // Phai loai message assistant "placeholder" (content rong) va noi dung
+      // rong, vi server validate `content` toi thieu 1 ky tu.
+      const history = state.messages
+        .filter(
+          (message) =>
+            message.role !== 'system' && message.content.trim().length > 0,
+        )
+        .map((message) => ({
+          role: message.role === 'assistant' ? ('assistant' as const) : ('user' as const),
+          content: message.content,
+        }))
 
       const userMessage: ChatMessage = {
         id: `user-${Date.now()}`,
@@ -170,6 +191,7 @@ export function useChat() {
         content: trimmed,
         createdAt: Date.now(),
         status: 'done',
+        ...(images.length > 0 ? { images: images.map(toChatImage) } : {}),
       }
       addMessage(userMessage)
 
@@ -187,19 +209,18 @@ export function useChat() {
       const controller = new AbortController()
       abortRef.current = controller
 
-      // Lich su gui len BFF — chi gui role/content, khong gui metadata noi bo.
-      // Phai loai message assistant "placeholder" (content rong) va noi dung rong,
-      // vi server validate `content` toi thieu 1 ky tu.
-      const history = useChatStore
-        .getState()
-        .messages.filter(
-          (message) =>
-            message.role !== 'system' && message.content.trim().length > 0,
-        )
-        .map((message) => ({
-          role: message.role === 'assistant' ? ('assistant' as const) : ('user' as const),
-          content: message.content,
-        }))
+      // Anh da gui o luot nay → xoa khoi tray.
+      clearPendingImages()
+
+      // Anh chi gui o luot hien tai (luot truoc da luu trong DB → server tu tai).
+      const requestTurns = [
+        ...history,
+        {
+          role: 'user' as const,
+          content: trimmed.length > 0 ? trimmed : '(ảnh đính kèm)',
+          ...(images.length > 0 ? { attachments: images } : {}),
+        },
+      ]
 
       let sawDone = false
 
@@ -249,7 +270,7 @@ export function useChat() {
       try {
         for await (const event of streamChat(
           {
-            messages: history,
+            messages: requestTurns,
             conversationId: useChatStore.getState().conversationId,
             ...(context === undefined ? {} : { context }),
           },
@@ -274,7 +295,15 @@ export function useChat() {
         abortRef.current = undefined
       }
     },
-    [addMessage, appendToMessage, setActive, setConversationId, setStreaming, updateMessage],
+    [
+      addMessage,
+      appendToMessage,
+      setActive,
+      setConversationId,
+      setStreaming,
+      updateMessage,
+      clearPendingImages,
+    ],
   )
 
   const stop = useCallback(() => {
@@ -297,6 +326,7 @@ export function useChat() {
     attachedItems,
     contextEnabled,
     budget,
+    pendingImages,
     attachCurrentTab,
     attachTab,
     attachSelection,
@@ -307,6 +337,23 @@ export function useChat() {
     send,
     stop,
     clear,
+  }
+}
+
+/**
+ * Chuyen `ImageAttachment` (contract) sang `ChatImage` (state UI).
+ *
+ * @param attachment - Anh tu contract shared.
+ */
+function toChatImage(attachment: ImageAttachment): ChatImage {
+  return {
+    id: attachment.id,
+    mimeType: attachment.mimeType,
+    dataUrl: `data:${attachment.mimeType};base64,${attachment.data}`,
+    bytes: attachment.bytes,
+    ...(attachment.width !== undefined ? { width: attachment.width } : {}),
+    ...(attachment.height !== undefined ? { height: attachment.height } : {}),
+    ...(attachment.fileName !== undefined ? { fileName: attachment.fileName } : {}),
   }
 }
 
