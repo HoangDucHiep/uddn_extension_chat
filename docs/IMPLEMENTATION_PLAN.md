@@ -1,4 +1,4 @@
-﻿# Implementation Plan — Sidekick AI
+# Implementation Plan — Sidekick AI
 
 **Version:** v1.0 · **Ngày:** 2026-11-03
 **Tổng thời gian ước tính:** 11 tuần (M0–M3 bắt buộc) + 2 tuần tuỳ chọn (M4)
@@ -331,7 +331,7 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 
 | Hạng mục | Kết quả |
 |---|---|
-| `apps/extension/src/lib/imageUpload.ts` | ✅ **Thuần**: `validateImageFile()` (mime allowlist + giới hạn 5 MB + file rỗng) · `readImageFile()` (FileReader → base64 thuần) · `stripDataUrlPrefix()` · `extractImagesFromDataTransfer()` (paste + drop) · `createAttachmentId()` (uuid, fallback UUID v4 tự sinh) · `formatBytes()` |
+| `apps/extension/src/lib/imageUpload.ts` | ✅ **Thuần**: `validateImageFile()` (mime allowlist + giới hạn 5 MB + file rỗng) · `readImageFile()` (FileReader → base64 thuần) · `measureImage()` (đo pixel: `createImageBitmap` → fallback `Image` → `undefined`, **không throw**) · `stripDataUrlPrefix()` · `extractImagesFromDataTransfer()` + wrapper `extractImagesFromClipboard()` / `extractImagesFromDrop()` · `createAttachmentId()` (uuid, fallback UUID v4 tự sinh) · `formatBytes()` |
 | `apps/extension/src/sidepanel/hooks/useImageAttachments.ts` | ✅ Thêm/xoá/xoá hết ảnh · chặn vượt số ảnh & tổng byte · **báo lỗi tiếng Việt** |
 | `apps/extension/src/sidepanel/components/composer/AttachmentTray.tsx` | ✅ Thumbnail + nút ✕ (`aria-label` tiếng Việt) · dòng "N ảnh · ~M token" · `role="alert"` cho lỗi · dùng design token |
 | `apps/extension/src/sidepanel/components/Composer.tsx` | ✅ Nút 📎 (`ImagePlus`) + `<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple>` ẩn · `onPaste` (chỉ ảnh) · `onDragOver`/`onDrop` với `preventDefault()` (tránh Chrome điều hướng panel rời trang) |
@@ -346,11 +346,11 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 |---|---|
 | `pnpm typecheck` | ✅ pass (shared · server · extension · eval) |
 | `pnpm lint` | ✅ pass (0 error, 0 warning) |
-| `pnpm test` | ✅ pass — shared **101** · server **166** · extension **273** (tổng **540**, trước 419 → **+121**) |
+| `pnpm test` | ✅ pass — shared **103** · server **166** · extension **278** (tổng **547**, trước 419 → **+128**) |
 | `pnpm build` | ✅ pass — `dist/content.js` vẫn là **IIFE 1 file, không `import`** (13.87 kB — ảnh không liên quan content script) |
 | `pnpm db:migrate` | ✅ pass — tạo bảng `message_attachments` + index + FK |
 | `pnpm test:e2e` | ✅ pass — **23/23** (+5 kịch bản `vision.spec.ts`, 18 test cũ **không regression**) |
-| Mutation re-check | ✅ **3/3 mutation bị bắt** — bỏ `inline_data` trong Gemini (1 test fail) · bỏ kiểm tra `supportsVision` trong fallback chain (2 test fail) · đổi dedup `mergeImages` (1 test fail) |
+| Mutation re-check | ✅ **5/5 mutation bị bắt** — bỏ `inline_data` trong Gemini (1 test fail) · bỏ kiểm tra `supportsVision` trong fallback chain (2 test fail) · đổi dedup `mergeImages` (1 test fail) · bỏ `measureImage()` trả kích thước (1 test fail) · **thêm `image/bmp` vào allowlist mime (1 test fail — sau khi bổ sung test khoá allowlist)** |
 
 > **Ghi chú về ảnh:** `dist/content.js` **không** đổi (13.87 kB) — ảnh chỉ tồn tại ở side panel, không kéo `FileReader`/`lucide-react` vào content script.
 

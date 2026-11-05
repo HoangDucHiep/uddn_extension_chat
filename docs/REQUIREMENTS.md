@@ -264,6 +264,7 @@ Quy ước ưu tiên: **M** = Must (bắt buộc cho M1) · **S** = Should (bắ
 | Định dạng cho phép | `image/png` · `image/jpeg` · `image/webp` · `image/gif` |
 | Giới hạn | 5 MB / ảnh · 4 ảnh / lượt · 12 MB tổng / lượt |
 | Preview | Thumbnail trong `AttachmentTray` ngay trên composer; **xoá từng ảnh** bằng nút ✕ |
+| Kích thước pixel | Đo tự động (`createImageBitmap` → fallback `Image`) → hiển thị trong tooltip; đo lỗi **không** chặn việc đính kèm |
 | Lỗi | Thông báo **tiếng Việt** trong tray; ảnh lỗi **không** được gửi đi |
 | Gửi | Ảnh đi kèm trong `messages[].attachments[]` (base64) — **không** phụ thuộc toggle `contextEnabled` |
 | Lưu trữ | Server lưu vào bảng `message_attachments` (`bytea`) → `GET /api/attachments/:id` trả binary |

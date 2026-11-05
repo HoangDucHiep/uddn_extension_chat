@@ -24,7 +24,7 @@
 | Hạng mục | Trạng thái |
 |---|---|
 | Docs | ✅ Đầy đủ 9 file (`docs/`) + `AGENTS.md` ở root |
-| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 + T-M1-05 + T-M1-02 + T-M1-24 xong** — 4 workspace, 540 unit test + 23 E2E |
+| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 + T-M1-05 + T-M1-02 + T-M1-24 xong** — 4 workspace, 547 unit test + 23 E2E |
 | Git | ✅ Đã init (`main`) · tag `v0.1` đánh dấu M0 |
 | Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **8/25 task**) |
 | Task tiếp theo | **T-M1-25** — onboarding 3 bước → T-M1-06 (truyền context) → T-M1-07 (markdown/code) |
@@ -40,8 +40,8 @@ _(Không có — T-M1-24 vision input đã commit, task kế tiếp T-M1-25)_
   - **Server** — bảng `message_attachments` (`data` **bytea** → Drizzle 0.45.4 không có `bytea` sẵn → `customType`) + migration `0001_puzzling_mathemanic.sql` · `attachmentService.ts` (`decodeBase64Image()` **tính lại byte thật** từ dữ liệu decode · `persistAttachments()` · `loadRecentAttachments()` → hỗ trợ hỏi tiếp bằng **text-only** ở lượt sau · `getAttachment()`) · route `GET /api/attachments/:id` trả **binary** + `Content-Type` đúng mime · `express.json({ limit: '16mb' })`.
   - **Provider** — `supportsVision()` (gemini luôn true · openai-compatible · groq `llama-4-scout`/`llama-3.2-*-vision` · openrouter theo prefix model · mock echo số ảnh) · Gemini → `parts: [{text},{inline_data:{mime_type,data}}]` · OpenAI-compatible → `content: [{type:'text'},{type:'image_url',image_url:{url:'data:<mime>;base64,<data>'}}]` · **fallback chain bỏ qua provider không hỗ trợ vision** → hết provider → `PROVIDER_VISION_UNSUPPORTED`.
   - **Token** — ảnh **luôn** gửi (kể cả khi toggle context tắt) và **trừ 258 token/ảnh** khỏi `historyBudget` **trước** khi `trimHistory()`.
-  - **Extension** — `lib/imageUpload.ts` (thuần: validate · FileReader → base64 · parse DataTransfer · `formatBytes`) · `hooks/useImageAttachments.ts` · `components/composer/AttachmentTray.tsx` (thumbnail + nút xoá + cảnh báo lỗi + ước lượng token) · `Composer.tsx` (nút `ImagePlus` · **paste** ảnh · **drag & drop** với `preventDefault()`) · `chatStore.pendingImages` · `useChat` chụp **snapshot history trước** khi `addMessage(userMessage)` (tránh lặp turn) · `MessageBubble.tsx` render ảnh (click → mở tab).
-- **Verify** — typecheck ✅ · lint ✅ · test ✅ (**540 unit** = shared 101 · server 166 · extension 273) · build ✅ · **E2E 23/23** ✅ (+5 kịch bản `e2e/vision.spec.ts`) · **mutation re-check 3/3 bị bắt**.
+  - **Extension** — `lib/imageUpload.ts` (thuần: validate · FileReader → base64 · parse DataTransfer · `measureImage()` đo pixel **không throw** · `extractImagesFromClipboard()`/`extractImagesFromDrop()` · `formatBytes`) · `hooks/useImageAttachments.ts` · `components/composer/AttachmentTray.tsx` (thumbnail + nút xoá + cảnh báo lỗi + ước lượng token) · `Composer.tsx` (nút `ImagePlus` · **paste** ảnh · **drag & drop** với `preventDefault()`) · `chatStore.pendingImages` · `useChat` chụp **snapshot history trước** khi `addMessage(userMessage)` (tránh lặp turn) · `MessageBubble.tsx` render ảnh (click → mở tab).
+- **Verify** — typecheck ✅ · lint ✅ · test ✅ (**547 unit** = shared 103 · server 166 · extension 278) · build ✅ · **E2E 23/23** ✅ (+5 kịch bản `e2e/vision.spec.ts`) · **mutation re-check 5/5 bị bắt**.
 - Bằng chứng đầy đủ: `docs/IMPLEMENTATION_PLAN.md` §3.1g · `docs/SYSTEM_DESIGN.md` §7.4.
 
 ### Quyết định kỹ thuật mới (T-M1-24)
@@ -61,6 +61,9 @@ _(Không có — T-M1-24 vision input đã commit, task kế tiếp T-M1-25)_
 | `mergeImages()` dedup theo **base64** (không theo `id`) | Cùng 1 ảnh gửi lại với id khác vẫn phải gộp |
 | `express.json({ limit: '16mb' })` | 4 ảnh × 5 MB → base64 ≈ 27 MB... chọn 16 MB là trần thực tế; `imageAttachmentListSchema` vẫn là giới hạn thật |
 | Test E2E dùng `expect.poll` cho `GET /api/attachments/:id` | Server persist ảnh **sau** khi nhận request → GET đầu tiên có thể 404 → race condition |
+| `VISION_MIME_TYPES` đặt ở `constants.ts` (không phải `schemas/vision.ts`) | `schemas/vision.ts` cần tuple này → đặt ngược lại sẽ tạo **vòng import** `constants ↔ vision` |
+| Test **khoá** danh sách mime (`VISION.ALLOWED_MIME_TYPES` phải đúng 4 giá trị) | Mutation "thêm `image/bmp` vào allowlist" lọt qua test cũ → phải assert allowlist đúng |
+| `measureImage()` bọc try/catch, lỗi → `undefined` | Đo pixel chỉ phục vụ preview → hỏng đo không được làm hỏng đính kèm ảnh |
 
 ### Việc đã xong gần đây (T-M1-02 — selection context: bôi đen → hỏi)
 
