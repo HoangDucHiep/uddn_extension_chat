@@ -24,7 +24,7 @@
 | Hạng mục | Trạng thái |
 |---|---|
 | Docs | ✅ Đầy đủ 9 file (`docs/`) + `AGENTS.md` ở root |
-| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 + T-M1-05 + T-M1-02 + T-M1-24 + T-M1-25 xong** — 4 workspace, 646 unit test + 29 E2E |
+| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 + T-M1-05 + T-M1-02 + T-M1-24 + T-M1-25 xong** — 4 workspace, 648 unit test + 29 E2E |
 | Git | ✅ Đã init (`main`) · tag `v0.1` đánh dấu M0 |
 | Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **9/25 task**) |
 | Task tiếp theo | **T-M1-06** (truyền context) → T-M1-07 (markdown/code) |
@@ -40,7 +40,7 @@ _(Không có — T-M1-25 onboarding đã commit, task kế tiếp T-M1-06)_
   - **Server** — `providers/ollama.ts` (mới: `createOllamaProvider()` `requiresKey = false` · `detectOllama()` probe `GET /api/tags` timeout 1.5 s · `OLLAMA_VISION_MODEL_PREFIXES`) · `openaiCompatible.ts` thêm option `requiresKey?` + `testKey()` · `providers/types.ts` thêm `ProviderAdapter.testKey()` · `registry.ts` đăng ký `ollama` + `defaultModel` · `services/providerService.ts` (mới: `listProviderInfo` · `saveProviderKey` AES-256-GCM upsert `(provider_id, label)` · `listProviderKeys` chỉ metadata + `maskKey` · `deleteProviderKey` · `testProviderKey`) · `routes/providers.ts` (mới: 5 endpoint) · env `OLLAMA_BASE_URL` + `OLLAMA_MODEL`.
   - **Sửa chatService** — `request.provider` giờ **đặt đầu** chuỗi provider rồi nối tiếp fallback chain (trước đó *thay* chain → mất fallback, vi phạm FR-PROVIDER-04).
   - **Extension** — `lib/onboarding.ts` (mới, thuần: `readOnboardingState` · `completeOnboarding` · `resetOnboarding` · `readPreferredProvider` · `writePreferredProvider`) · `lib/providerClient.ts` (mới) · `hooks/useOnboarding.ts` (mới, lắng nghe `storage.onChanged`) · `components/onboarding/` (mới: `Onboarding` · `StepPermissions` · `StepProvider` · `StepTry`) · `App.tsx` tách → `ChatWorkspace.tsx` (nội dung chat nguyên trạng) · `PanelHeader.tsx` thêm nút "Hướng dẫn" (`CircleHelp`).
-  - **Verify** — typecheck ✅ · lint ✅ · test ✅ (**646 unit** = shared 123 · server 214 · extension 309) · build ✅ · db:migrate ✅ (không có migration mới) · **E2E 29/29** ✅ (+6 kịch bản `e2e/onboarding.spec.ts`) · **mutation spot-check 4/4 bị bắt**.
+  - **Verify** — typecheck ✅ · lint ✅ · test ✅ (**648 unit** = shared 123 · server 214 · extension 311) · build ✅ · db:migrate ✅ (không có migration mới) · **E2E 29/29** ✅ (+6 kịch bản `e2e/onboarding.spec.ts`) · **mutation spot-check 5/5 bị bắt**.
 - Bằng chứng đầy đủ: `docs/IMPLEMENTATION_PLAN.md` §3.1h · `docs/SYSTEM_DESIGN.md` §7.6.
 
 ### Quyết định kỹ thuật mới (T-M1-25)
@@ -55,6 +55,7 @@ _(Không có — T-M1-25 onboarding đã commit, task kế tiếp T-M1-06)_
 | `GET /api/providers` **không gọi network** (metadata tĩnh từ registry) | Tránh blocking request của onboarding; chỉ Ollama mới được probe |
 | Client **không bao giờ** nhận key gốc — chỉ `masked` (`****` + 4 ký tự cuối) | FR-PROVIDER-02; `maskKey` giữ nguyên từ M0 |
 | `request.provider` **đặt đầu** chain thay vì **thay** chain | Trước đó mất fallback → vi phạm FR-PROVIDER-04; giờ provider ưu tiên nhưng vẫn fallback được |
+| Client gửi `provider` ưu tiên trong `ChatRequest` (đọc từ `sidekick.preferredProvider`) | Nếu chỉ lưu cờ mà không gửi lên → provider user chọn ở onboarding **không** được dùng cho các lượt chat sau |
 | Tách `App.tsx` → `App.tsx` (gating) + `ChatWorkspace.tsx` (nội dung chat nguyên trạng) | Rủi ro thấp: không sửa logic chat, chỉ di chuyển + bọc điều kiện |
 | Cờ onboarding nằm ở `chrome.storage.local`, **không** ở SW | MV3 SW bị kill ~30s → state trong SW mất |
 | `useOnboarding` lắng nghe `chrome.storage.onChanged` | Bấm "Bỏ qua" → panel chuyển sang chat **không cần reload** |

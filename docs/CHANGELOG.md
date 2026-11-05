@@ -26,17 +26,19 @@
   - `apps/extension/src/sidepanel/components/onboarding/` (mới) — `Onboarding.tsx` (orchestrator 3 bước) · `StepPermissions.tsx` (giải thích quyền) · `StepProvider.tsx` (chọn provider + nhập API key) · `StepTry.tsx` (thử câu hỏi qua SSE thật).
   - `apps/extension/src/sidepanel/components/PanelHeader.tsx` — nút "Hướng dẫn" (`CircleHelp`) → mở lại onboarding.
   - **Test** — `packages/shared/tests/onboarding.test.ts` (mới) · `apps/server/tests/ollamaProvider.test.ts` (mới) · `apps/server/tests/providerService.test.ts` (mới) · `apps/server/tests/providersRoute.test.ts` (mới) · `apps/server/tests/helpers/fakeProviderKeyDb.ts` (mới) · `apps/server/tests/chatService.test.ts` (+preferred-first) · `apps/extension/tests/onboarding.test.ts` (mới) · `apps/extension/tests/providerClient.test.ts` (mới) · `apps/extension/tests/onboardingUi.test.tsx` (mới) · `apps/extension/e2e/onboarding.spec.ts` (mới, 6 kịch bản) · `apps/extension/e2e/fixtures.ts` (sửa: seed `sidekick.onboarding.completed` ở context level + fixture `sidePanelFresh`).
-  - **Số test toàn repo:** 547 → **646 unit** (shared 123 · server 214 · extension 309) + 23 → **29 E2E**.
-  - **Mutation spot-check:** 4/4 mutation bị bắt — Ollama `requiresKey` → `true` (2 test fail) · `maskKey` trả 8 ký tự (7 test fail) · bỏ ghi `completed` khi bấm "Bỏ qua" (3 test fail) · bỏ `preferredProvider` khỏi chain (1 test fail).
+  - **Số test toàn repo:** 547 → **648 unit** (shared 123 · server 214 · extension 311) + 23 → **29 E2E**.
+  - **Mutation spot-check:** 5/5 mutation bị bắt — Ollama `requiresKey` → `true` (2 test fail) · `maskKey` trả 8 ký tự (7 test fail) · bỏ ghi `completed` khi bấm "Bỏ qua" (3 test fail) · bỏ `preferredProvider` khỏi chain (1 test fail) · bỏ `provider` ưu tiên khỏi request chat (1 test fail).
 
 ### Changed
 - `apps/server/src/services/chatService.ts` — `request.provider` giờ **đặt đầu** chuỗi provider rồi nối tiếp fallback chain (trước đó nó *thay* chain → mất fallback, vi phạm FR-PROVIDER-04). Không có `request.provider` → hành vi không đổi.
+- `apps/extension/src/sidepanel/hooks/useChat.ts` — gửi `provider` ưu tiên (đọc từ `sidekick.preferredProvider`) trong `ChatRequest` → provider user chọn ở onboarding thực sự được dùng cho các lượt chat sau.
 - `apps/extension/src/sidepanel/App.tsx` — tách 2 tầng: `App.tsx` chọn giữa `<Onboarding />` và `<ChatWorkspace />`; nội dung chat chuyển nguyên trạng sang `sidepanel/ChatWorkspace.tsx`.
 - `apps/server/src/providers/ollama.ts` — `supportsVision()` theo tiền tố model (`llama3.2-vision` · `llava` · `bakllava` · `qwen2-vl` · `qwen2.5-vl` · `minicpm-v` · `moondream` · `gemma3`) thay vì `false`.
 - **Docs** — `REQUIREMENTS.md` §4.9.1 (AC chi tiết FR-UX-02) · `SYSTEM_DESIGN.md` §4.1 (5 endpoint provider) · §4.4.1 (preferred-first) · §4.4.2 (Ollama) · §7.6 (hợp đồng onboarding) · `DESIGN_SYSTEM_BRIEF.md` §3.8 (component onboarding + a11y) · `IMPLEMENTATION_PLAN.md` §3.1h (kết quả T-M1-25) · `COMPARISON_MATRIX.md` §E (tick onboarding + no-login) · `EVAL_PLAN.md` §4.2.1 (onboarding nằm ngoài rubric eval) · `AGENTS.md` + `docs/README.md` (cập nhật số task/test, việc tiếp theo).
 
 ### Fixed
 - `apps/extension/src/sidepanel/components/onboarding/StepPermissions.tsx` — sửa lỗi lint `no-useless-assignment` (khởi tạo `id` trước `try`).
+- `apps/server/src/services/providerService.ts` + `apps/server/tests/helpers/fakeProviderKeyDb.ts` — sửa 2 lỗi lint (`no-useless-assignment` · `no-unused-vars`) chỉ lộ ra khi chạy `eslint` từ **thư mục gốc** repo.
 
 ### Added
 - **T-M1-24 — Upload ảnh & vision input (FR-VISION-01)**

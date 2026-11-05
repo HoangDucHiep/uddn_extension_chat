@@ -313,9 +313,9 @@ X-Request-Id: <uuid v4>            // idempotency + tracing
 | Method | Path | Request | Response | Error codes |
 |---|---|---|---|---|
 | GET | `/health` | — | `{ status, version, db, uptime }` | — |
-| GET | `/providers` | — | `ProviderInfo[]` (id, name, models, keySource `K2\|K1\|none`, requiresKey, available, note?) | — |
-| GET | `/providers/keys` | — | `ProviderKeyRecord[]` (chỉ metadata + masked, **không** trả key gốc) | — |
-| POST | `/providers/keys` | `{ providerId, apiKey, label? }` | `ProviderKeyRecord` (id, providerId, label, masked, createdAt) | `VALIDATION_ERROR`, `MASTER_KEY_NOT_CONFIGURED` |
+| GET | `/providers` | — | `{ items: ProviderInfo[] }` (id, name, models, keySource `K2\|K1\|none`, requiresKey, available, note?) | — |
+| GET | `/providers/keys` | — | `{ items: ProviderKeyRecord[] }` (chỉ metadata + masked, **không** trả key gốc) | — |
+| POST | `/providers/keys` | `{ providerId, apiKey, label? }` | `201` + `ProviderKeyRecord` (id, providerId, label, masked, createdAt) | `VALIDATION_ERROR`, `MASTER_KEY_NOT_CONFIGURED` |
 | DELETE | `/providers/keys/:id` | — | `204` | `NOT_FOUND` |
 | POST | `/providers/keys/:id/test` | — | `{ ok, latencyMs, error? }` | `NOT_FOUND`, `MASTER_KEY_NOT_CONFIGURED`, `INVALID_API_KEY` |
 | POST | `/chat` | `ChatRequest` | **SSE stream** | `VALIDATION_ERROR`, `NO_KEY_AVAILABLE`, `RATE_LIMITED`, `PROVIDER_VISION_UNSUPPORTED` |
@@ -632,7 +632,8 @@ Mỗi `ProviderAdapter` phải cài `supportsVision(model: string): boolean`. Kh
 - `MASTER_KEY`: biến môi trường 32 bytes (base64). Không commit. `.env.example` chỉ có placeholder.
 - Mỗi key lưu: `ciphertext` + `iv` (12 bytes random) + `auth_tag`.
 - `hint`: 4 ký tự cuối để user nhận ra key nào là key nào, **không** đủ để dùng.
-- Khi `MASTER_KEY` đổi → key cũ không decrypt được → API trả `PROVIDER_KEY_INVALID` kèm hướng dẫn nhập lại key.
+- Khi `MASTER_KEY` đổi → key cũ không decrypt được → `POST /providers/keys/:id/test` trả `INVALID_API_KEY` kèm hướng dẫn nhập lại key.
+- BFF **chưa có** `MASTER_KEY` → `POST /providers/keys` trả `MASTER_KEY_NOT_CONFIGURED` (500) — không lưu được key thay vì lưu plaintext rỗng.
 
 ### 6.2 Origin allowlist (BFF)
 
@@ -1138,6 +1139,26 @@ App.tsx  ──useOnboarding()──▶  sidekick.onboarding.completed
 #### 7.6.4 Mở lại onboarding
 
 `PanelHeader` có nút "Hướng dẫn" (`CircleHelp`) → gọi `resetOnboarding()` → cờ bị xoá → `useOnboarding` phát `onChanged` → panel hiện lại onboarding. Đây là entry tạm thời cho tới khi Settings (T-M1-12) có mục "Chạy lại hướng dẫn".
+
+#### 7.6.4.1 Provider ưu tiên được dùng cho các lượt chat sau
+
+`useChat` đọc `sidekick.preferredProvider` (`readPreferredProvider()`) và gửi kèm `provider` trong `ChatRequest` → server **đặt provider đó đầu** chuỗi fallback (§4.4.1).
+
+```ts
+// apps/extension/src/sidepanel/hooks/useChat.ts
+const preferredProvider = await readPreferredProvider()
+// ...
+streamChat(
+  {
+    messages: requestTurns,
+    ...(context === undefined ? {} : { context }),
+    ...(preferredProvider === undefined ? {} : { provider: preferredProvider }),
+  },
+  // ...
+)
+```
+
+Không có provider ưu tiên → **không** gửi field `provider` → server dùng fallback chain mặc định.
 
 #### 7.6.5 Ràng buộc bảo mật
 

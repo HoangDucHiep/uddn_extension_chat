@@ -391,6 +391,7 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | `apps/extension/src/lib/onboarding.ts` | ✅ **Mới** (thuần, không React/Zustand) `ONBOARDING_COMPLETED_KEY` · `PREFERRED_PROVIDER_KEY` · `readOnboardingState()` / `completeOnboarding()` / `resetOnboarding()` / `readPreferredProvider()` / `writePreferredProvider()` |
 | `apps/extension/src/lib/providerClient.ts` | ✅ **Mới** `listProviders()` · `listProviderKeys()` · `saveProviderKey()` · `testProviderKey()` · `deleteProviderKey()` — dùng `fetchJson` của `lib/apiClient.ts` (đã xử lý lỗi chuẩn) |
 | `apps/extension/src/sidepanel/hooks/useOnboarding.ts` | ✅ **Mới** đọc/ghi cờ qua `chrome.storage.local` + lắng nghe `storage.onChanged`; expose `{ isOnboardingRequired, isLoading, complete, reset, preferredProvider }` |
+| `apps/extension/src/sidepanel/hooks/useChat.ts` | ✅ Gửi `provider` ưu tiên (đọc từ `sidekick.preferredProvider`) trong `ChatRequest` → server đặt provider đó **đầu** chuỗi fallback |
 | `apps/extension/src/sidepanel/components/onboarding/Onboarding.tsx` | ✅ **Mới** orchestrator 3 bước — progress bar (`ONBOARDING_STEPS`), nút "Bỏ qua", "Về sau"/"Quay lại", `data-testid="onboarding"` |
 | `.../onboarding/StepPermissions.tsx` | ✅ Liệt kê quyền đã dùng + **vì sao** · nút "Mở cài đặt trình duyệt" (`chrome.tabs.create` bọc try/catch — Chrome chặn URL `chrome://` → fallback hiện extension id để copy) |
 | `.../onboarding/StepProvider.tsx` | ✅ Radio list provider từ `GET /api/providers` (hiện `keySource` + `available` + `note`) · provider cần key & chưa có key → `<input type="password">` + "Lưu & kiểm tra" (`POST /providers/keys` → `POST /providers/keys/:id/test`) · nút "Bỏ qua bước này" |
@@ -411,6 +412,7 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | `apps/extension/tests/onboarding.test.ts` | ✅ State machine thuần: bỏ qua → `completed=true` · `resetOnboarding()` xoá cờ · `preferredProvider` persist |
 | `apps/extension/tests/providerClient.test.ts` | ✅ Parse lỗi chuẩn từ `fetchJson` |
 | `apps/extension/tests/onboardingUi.test.tsx` | ✅ Render 3 bước · "Bỏ qua" → `completed=true` · bước 2 hiện provider + ô nhập key khi cần · bước 3 gọi `streamChat` và hiện text |
+| `apps/extension/tests/useChat.test.ts` | ✅ **+2 test**: gửi `provider` ưu tiên từ onboarding lên BFF · không có provider ưu tiên → không gửi field `provider` |
 | `apps/extension/e2e/fixtures.ts` | ✅ **Sửa** seed `sidekick.onboarding.completed = true` ở **context** level (nếu không, onboarding che chat → phá 23 test cũ) · thêm fixture `sidePanelFresh` (profile tạm, không seed) cho spec onboarding |
 | `apps/extension/e2e/onboarding.spec.ts` | ✅ **Mới** 6 kịch bản: mở lần đầu → thấy onboarding · điều hướng 3 bước · bỏ qua → panel chuyển sang chat · reload → không còn onboarding · nút "Hướng dẫn" mở lại onboarding |
 
@@ -419,12 +421,12 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | Hạng mục | Kết quả |
 |---|---|
 | `pnpm typecheck` | ✅ pass (shared · server · extension · eval) |
-| `pnpm lint` | ✅ pass (0 error, 0 warning) — sửa 1 lỗi `no-useless-assignment` tại `StepPermissions.tsx` |
-| `pnpm test` | ✅ pass — shared **123** · server **214** · extension **309** (tổng **646**, trước 547 → **+99**) |
+| `pnpm lint` | ✅ pass (0 error, 0 warning) — sửa 3 lỗi `no-useless-assignment` / `no-unused-vars` (`StepPermissions.tsx` · `providerService.ts` · `fakeProviderKeyDb.ts`) |
+| `pnpm test` | ✅ pass — shared **123** · server **214** · extension **311** (tổng **648**, trước 547 → **+101**) |
 | `pnpm build` | ✅ pass — `dist/content.js` vẫn là **IIFE 1 file, không `import`** (13.87 kB) |
 | `pnpm db:migrate` | ✅ pass — **không có migration mới** (bảng `provider_keys` đã có sẵn từ migration `0000`) |
 | `pnpm test:e2e` | ✅ pass — **29/29** (+6 kịch bản `onboarding.spec.ts`, 23 test cũ **không regression**) |
-| Mutation spot-check | ✅ **4/4 mutation bị bắt** — Ollama `requiresKey` → `true` (2 test fail) · `maskKey` trả 8 ký tự (7 test fail) · bỏ ghi `completed` khi bấm "Bỏ qua" (3 test fail) · bỏ `preferredProvider` khỏi chain (1 test fail) |
+| Mutation spot-check | ✅ **5/5 mutation bị bắt** — Ollama `requiresKey` → `true` (2 test fail) · `maskKey` trả 8 ký tự (7 test fail) · bỏ ghi `completed` khi bấm "Bỏ qua" (3 test fail) · bỏ `preferredProvider` khỏi chain (1 test fail) · **bỏ `provider` ưu tiên khỏi request chat (1 test fail)** |
 
 > **Ghi chú về Ollama:** adapter Ollama được giao cho T-M2-01 nhưng **đẩy lên M1** trong task này vì onboarding cần provider không cần key để demo được luồng 3 bước mà không bắt user nhập API key.
 
