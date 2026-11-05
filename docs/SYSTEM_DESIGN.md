@@ -535,7 +535,7 @@ resolveKey(providerId, keySource)
 
 Fallback chain: provider chính → provider dự phòng (cấu hình trong settings) → trả lỗi kèm gợi ý cấu hình.
 
-#### 4.4.1 Provider ưu tiên (preferred-first) — T-M1-25
+#### 4.4.2 Provider ưu tiên (preferred-first) — T-M1-25
 
 Khi client gửi `ChatRequest.provider` (provider user chọn ở onboarding), `chatService` **đặt provider đó ở đầu** chuỗi thay vì **thay thế** toàn bộ chain:
 
@@ -547,7 +547,7 @@ const chain = request.provider
 
 → Provider ưu tiên được dùng trước, nhưng nếu provider đó lỗi (thiếu key, 5xx, timeout) thì vẫn **fallback** được như cũ (FR-PROVIDER-04). Không có `request.provider` → hành vi không đổi.
 
-#### 4.4.2 Provider không cần API key — Ollama (T-M1-25)
+#### 4.4.3 Provider không cần API key — Ollama (T-M1-25)
 
 `OpenAiCompatibleProvider` nhận thêm option `requiresKey?: boolean` (mặc định `true`). Ollama — provider local, không cần key — được đăng ký với `requiresKey: false` → `chatService` **bỏ qua** bước resolve key, và `buildHeaders` trả `{}` (không gửi header `Authorization`).
 
@@ -1142,7 +1142,7 @@ App.tsx  ──useOnboarding()──▶  sidekick.onboarding.completed
 
 #### 7.6.4.1 Provider ưu tiên được dùng cho các lượt chat sau
 
-`useChat` đọc `sidekick.preferredProvider` (`readPreferredProvider()`) và gửi kèm `provider` trong `ChatRequest` → server **đặt provider đó đầu** chuỗi fallback (§4.4.1).
+`useChat` đọc `sidekick.preferredProvider` (`readPreferredProvider()`) và gửi kèm `provider` trong `ChatRequest` → server **đặt provider đó đầu** chuỗi fallback (§4.4.2).
 
 ```ts
 // apps/extension/src/sidepanel/hooks/useChat.ts

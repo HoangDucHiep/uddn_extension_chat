@@ -34,7 +34,7 @@
 - `apps/extension/src/sidepanel/hooks/useChat.ts` — gửi `provider` ưu tiên (đọc từ `sidekick.preferredProvider`) trong `ChatRequest` → provider user chọn ở onboarding thực sự được dùng cho các lượt chat sau.
 - `apps/extension/src/sidepanel/App.tsx` — tách 2 tầng: `App.tsx` chọn giữa `<Onboarding />` và `<ChatWorkspace />`; nội dung chat chuyển nguyên trạng sang `sidepanel/ChatWorkspace.tsx`.
 - `apps/server/src/providers/ollama.ts` — `supportsVision()` theo tiền tố model (`llama3.2-vision` · `llava` · `bakllava` · `qwen2-vl` · `qwen2.5-vl` · `minicpm-v` · `moondream` · `gemma3`) thay vì `false`.
-- **Docs** — `REQUIREMENTS.md` §4.9.1 (AC chi tiết FR-UX-02) · `SYSTEM_DESIGN.md` §4.1 (5 endpoint provider) · §4.4.1 (preferred-first) · §4.4.2 (Ollama) · §7.6 (hợp đồng onboarding) · `DESIGN_SYSTEM_BRIEF.md` §3.8 (component onboarding + a11y) · `IMPLEMENTATION_PLAN.md` §3.1h (kết quả T-M1-25) · `COMPARISON_MATRIX.md` §E (tick onboarding + no-login) · `EVAL_PLAN.md` §4.2.1 (onboarding nằm ngoài rubric eval) · `AGENTS.md` + `docs/README.md` (cập nhật số task/test, việc tiếp theo).
+  - **Docs** — `REQUIREMENTS.md` §4.9.1 (AC chi tiết FR-UX-02) · `SYSTEM_DESIGN.md` §4.1 (5 endpoint provider) · §4.4.2 (preferred-first) · §4.4.3 (Ollama) · §7.6 (hợp đồng onboarding) · `DESIGN_SYSTEM_BRIEF.md` §3.8 (component onboarding + a11y) · `IMPLEMENTATION_PLAN.md` §3.1h (kết quả T-M1-25) · `COMPARISON_MATRIX.md` §E (tick onboarding + no-login) · `EVAL_PLAN.md` §4.2.1 (onboarding nằm ngoài rubric eval) · `AGENTS.md` + `docs/README.md` (cập nhật số task/test, việc tiếp theo).
 
 ### Fixed
 - `apps/extension/src/sidepanel/components/onboarding/StepPermissions.tsx` — sửa lỗi lint `no-useless-assignment` (khởi tạo `id` trước `try`).
