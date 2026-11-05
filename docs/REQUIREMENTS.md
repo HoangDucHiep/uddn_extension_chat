@@ -256,6 +256,23 @@ Quy ước ưu tiên: **M** = Must (bắt buộc cho M1) · **S** = Should (bắ
 | FR-VISION-04 | Sinh/sửa ảnh qua image-capable provider | C | Provider không hỗ trợ → ẩn tính năng, không lỗi |
 | FR-VISION-05 | Hiển thị mô tả ảnh tự động (alt text) trong lịch sử | C | Lưu alt để tiết kiệm token khi reload |
 
+**FR-VISION-01 — chi tiết (T-M1-24, ✅ đã triển khai):**
+
+| Hạng mục | Hành vi thực tế |
+|---|---|
+| Nguồn ảnh | **Paste** từ clipboard · **drag-drop** vào composer · **file picker** (nút 📎 bên cạnh nút gửi) |
+| Định dạng cho phép | `image/png` · `image/jpeg` · `image/webp` · `image/gif` |
+| Giới hạn | 5 MB / ảnh · 4 ảnh / lượt · 12 MB tổng / lượt |
+| Preview | Thumbnail trong `AttachmentTray` ngay trên composer; **xoá từng ảnh** bằng nút ✕ |
+| Lỗi | Thông báo **tiếng Việt** trong tray; ảnh lỗi **không** được gửi đi |
+| Gửi | Ảnh đi kèm trong `messages[].attachments[]` (base64) — **không** phụ thuộc toggle `contextEnabled` |
+| Lưu trữ | Server lưu vào bảng `message_attachments` (`bytea`) → `GET /api/attachments/:id` trả binary |
+| Multi-turn | Lượt 2 (chỉ text) vẫn thấy ảnh của lượt 1 (server tự tải từ DB) |
+| Provider | Gemini (`inline_data`) · OpenAI-compatible (`image_url` data URL). Provider/model không hỗ trợ → **tự fallback** provider khác; không còn provider nào → lỗi `PROVIDER_VISION_UNSUPPORTED` (không crash) |
+
+> **Không cần permission mới**: paste / drag-drop / file picker đều không yêu cầu quyền Chrome.
+> Chi tiết kỹ thuật: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.4.
+
 ### 4.4 FR-TOOLS — Tooling & agentic
 
 | ID | Requirement | Priority | Acceptance criteria |
@@ -930,7 +947,7 @@ Chỉ bắt đầu M4 khi **đồng thời** thỏa:
 
 | FR | Priority | Task | Milestone |
 |---|---|---|---|
-| FR-VISION-01 | M | **T-M1-24** | M1 |
+| FR-VISION-01 | M | **T-M1-24 ✅** | M1 |
 | FR-VISION-02 | S | **T-M2-22** | M2 |
 | FR-VISION-03 | C | **T-M2-22** | M2 |
 | FR-VISION-04 | C | **T-M2-22** | M2 |

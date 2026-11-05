@@ -102,14 +102,14 @@ pnpm eval:run                # chạy eval harness
 | Milestone | Trạng thái | Ghi chú |
 |---|---|---|
 | **M0 — Foundation** | ✅ Hoàn thành | 15/15 task · 91 unit test + 2 E2E · tag `v0.1` |
-| **M1 — Parity** | 🚧 Đang làm | 7/25 task (T-M1-01, T-M1-04 ✅ hấp thụ, T-M1-05, T-M1-21, T-M1-22, T-M1-23, T-M1-02 ✅) · 419 unit test + 18 E2E |
+| **M1 — Parity** | 🚧 Đang làm | 8/25 task (T-M1-01, T-M1-04 ✅ hấp thụ, T-M1-05, T-M1-21, T-M1-22, T-M1-23, T-M1-02, T-M1-24 ✅) · 540 unit test + 23 E2E |
 | **M2 — Advanced & Eval** | ⬜ Chưa bắt đầu | `EVAL_REPORT.md` là deliverable bắt buộc |
 | **M3 — Polish & Deliverable** | ⬜ Chưa bắt đầu | |
 | **M4 — Workflow** | ⬜ Tuỳ chọn | Chỉ sau M3 + đã có eval report |
 
 **Trạng thái docs:** ✅ Requirements · ✅ Design System Brief · ✅ System Design · ✅ Implementation Plan · ✅ Comparison Matrix · ✅ Eval Plan · ✅ Handoff · ✅ Changelog
 
-**Việc tiếp theo:** **T-M1-24** — upload file (paste / drag-drop / file picker) → T-M1-25 (onboarding).
+**Việc tiếp theo:** **T-M1-25** — onboarding 3 bước → T-M1-06 (truyền context) → T-M1-07 (markdown/code).
 
 > **Mô hình context (T-M1-23):** context **chỉ** được gửi khi user **chủ động đính kèm** (nút "Thêm trang này" · `@` · bôi đen · upload file). Không đính kèm gì → chat thuần LLM (FR-CONTEXT-13). Chi tiết: [`SYSTEM_DESIGN.md`](docs/SYSTEM_DESIGN.md) §7.3.2.
 >

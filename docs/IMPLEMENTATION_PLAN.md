@@ -99,7 +99,7 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | T-M1-21 | Trích xuất PDF (text-based) | FR-CONTEXT-05 | `apps/server/src/routes/extract.ts`, `apps/server/src/lib/pdfExtractor.ts`, `apps/server/src/lib/safeFetch.ts`, `apps/extension/src/lib/pageContext.ts` | Detect URL PDF → BFF fetch bytes + parse → `context.text`; PDF scan → báo "không đọc được, hãy upload ảnh"; `file://`/PDF nội bộ → báo rõ | L | ✅ |
 | T-M1-22 | Transcript YouTube | FR-CONTEXT-06 | `apps/server/src/routes/extract.ts`, `apps/server/src/lib/youtubeExtractor.ts` | Lấy `captionTracks` → `timedtext` → `context.text`; không có caption / geo-block / consent → báo rõ; không crash chat | M | ✅ |
 | T-M1-23 | Ngân sách context & cắt bớt thông minh | FR-CONTEXT-07, FR-CONTEXT-13 | `packages/shared/src/contextBudget.ts`, `apps/extension/src/lib/contextAttach.ts`, `sidepanel/components/context/{ContextChips,ContextBudget}.tsx` | Cắt theo thứ tự selection > tab đính kèm > tab hiện tại > lịch sử chat; UI hiện "đã dùng X/Y token"; không đính kèm gì → chat thuần LLM | M | ✅ |
-| T-M1-24 | Upload ảnh (paste / drag-drop / file picker) | FR-VISION-01 | `sidepanel/components/composer/ImageAttachment.tsx`, `lib/imageUpload.ts` | Preview trước khi gửi; xoá được; gửi kèm văn bản; giới hạn kích thước | M | ⬜ |
+| T-M1-24 | Upload ảnh (paste / drag-drop / file picker) | FR-VISION-01 | `packages/shared/src/schemas/vision.ts`, `apps/extension/src/lib/imageUpload.ts`, `sidepanel/components/composer/AttachmentTray.tsx`, `sidepanel/hooks/useImageAttachments.ts`, `apps/server/src/services/attachmentService.ts`, `apps/server/src/routes/attachments.ts` | Preview trước khi gửi; xoá được; gửi kèm văn bản; giới hạn kích thước (5 MB/ảnh, 4 ảnh/lượt); lưu Postgres (`message_attachments`) + multi-turn; provider vision (`inline_data` / `image_url`) + fallback chain | M | ✅ *(2026-11-05)* |
 | T-M1-25 | Onboarding lần đầu (3 bước) | FR-UX-02 | `sidepanel/components/onboarding/*` | Quyền → chọn provider → thử câu hỏi; skippable; cần nhập key hoặc bật Ollama | M | ⬜ |
 
 **Định mức M1:** 3 tuần · 25 task · ~41 ngày công
@@ -294,6 +294,66 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 
 > **Ghi chú về bundle:** `dist/content.js` tăng 4.81 kB → 13.9 kB do thêm watcher + nút nổi + CSS shadow root. Vẫn là IIFE 1 file, **không** có `import` → Chrome load được (đã kiểm tra sau build).
 
+### 3.1g Kết quả T-M1-24 — upload ảnh & vision input (FR-VISION-01) (2026-11-05)
+
+> **Quyết định kiến trúc (chốt với user):** (a) **lưu ảnh trong Postgres** (bảng `message_attachments`) để reload panel / lịch sử conversation vẫn có ảnh và multi-turn vision hoạt động; (b) **vision đầy đủ** trên Gemini (`inline_data`) + Groq/OpenRouter (`image_url`).
+>
+> **Quyết định quan trọng:** ảnh **KHÔNG phải** `ContextItem` — nó là **đầu vào trực tiếp** của câu hỏi. Vì vậy không phụ thuộc toggle `contextEnabled` và không bị `applyContextBudget()` cắt theo số ký tự.
+
+#### Phần A — Contract shared
+
+| Hạng mục | Kết quả |
+|---|---|
+| `packages/shared/src/schemas/vision.ts` | ✅ `IMAGE_MIME_TYPES` (png/jpeg/webp/gif) · `imageAttachmentSchema` (id uuid, mimeType, base64 thuần, bytes, width/height/fileName tuỳ chọn) · `imageAttachmentListSchema` (max 4 ảnh + tổng byte ≤ 12 MB) · `MAX_IMAGE_BASE64_CHARS` · `providerImageSchema` |
+| `packages/shared/src/constants.ts` | ✅ Hằng `VISION` (`MAX_IMAGE_BYTES` 5 MB · `MAX_IMAGES_PER_MESSAGE` 4 · `MAX_TOTAL_IMAGE_BYTES` 12 MB · `TOKEN_ESTIMATE_PER_IMAGE` 258) · `API_ROUTES.attachment` |
+| `packages/shared/src/schemas/chat.ts` | ✅ `chatTurnSchema.attachments` (optional) |
+| `packages/shared/src/schemas/provider.ts` | ✅ `providerStreamRequestSchema.messages[].attachments` (`ProviderImage[]`) |
+| `packages/shared/src/errors.ts` | ✅ 5 error code: `VISION_IMAGE_TOO_LARGE` · `VISION_UNSUPPORTED_TYPE` · `VISION_TOO_MANY_IMAGES` · `VISION_TOTAL_TOO_LARGE` · `PROVIDER_VISION_UNSUPPORTED` |
+
+#### Phần B — Server
+
+| Hạng mục | Kết quả |
+|---|---|
+| `apps/server/src/db/schema.ts` | ✅ Bảng `message_attachments` (id uuid do client sinh · message_id fk · conversation_id fk · mime_type · byte_size · **ord** · width/height · file_name · **data bytea** · created_at) + unique `(message_id, ord)` · `bytea` dùng `customType` (drizzle 0.45 **không** export helper `bytea`) |
+| `apps/server/drizzle/0001_puzzling_mathemanic.sql` | ✅ Migration tạo bảng + 2 index + unique index + 2 FK (cascade) |
+| `apps/server/src/services/attachmentService.ts` | ✅ `persistAttachments()` (giải mã base64 → `bytea`, `ON CONFLICT DO NOTHING`, **không tin** `bytes` của client — lưu kích thước thực) · `loadRecentAttachments()` (ảnh gần nhất của conversation → multi-turn) · `getAttachment()` · `countAttachments()` |
+| `apps/server/src/routes/attachments.ts` | ✅ `GET /api/attachments/:id` → **binary** (`Content-Type` = mime, `Cache-Control: private, max-age=3600`) · 404 `NOT_FOUND` · 500 `INTERNAL_ERROR` |
+| `apps/server/src/providers/types.ts` | ✅ `ProviderAdapter.supportsVision(model: string): boolean` (bắt buộc mọi adapter) |
+| `apps/server/src/providers/gemini.ts` | ✅ `supportsVision() → true` · payload `parts: [{ text }, { inline_data: { mime_type, data } }]` |
+| `apps/server/src/providers/openaiCompatible.ts` | ✅ `buildOpenAiContent()` → `content: [{ type:'text' }, { type:'image_url', image_url: { url: 'data:<mime>;base64,<data>' } }]` · `supportsVision()` theo `visionModelPrefixes` |
+| `apps/server/src/providers/groq.ts` | ✅ `GROQ_VISION_MODEL_PREFIXES` (`llama-4-scout`, `llama-4-maverick`, `llama-3.2-11b/90b-vision`) — model mặc định `openai/gpt-oss-120b` **không** hỗ trợ |
+| `apps/server/src/providers/openrouter.ts` | ✅ `OPENROUTER_VISION_MODEL_PREFIXES` (`google/gemini`, `openai/gpt-4o`, `anthropic/claude-3/4`, `meta-llama/llama-3.2`, `qwen/qwen2-vl`, `google/gemma`) |
+| `apps/server/src/providers/mock.ts` | ✅ `supportsVision() → true` · echo số ảnh: `[mock] Nhan duoc 1 anh (image/png)` → E2E assert được |
+| `apps/server/src/services/chatService.ts` | ✅ `persistUserMessage()` trả về id · `persistAttachments()` · `loadRecentAttachments()` · `mergeImages()` (dedup theo base64, ưu tiên ảnh lượt này) · fallback chain **bỏ qua** provider không hỗ trợ vision · hết chain → `PROVIDER_VISION_UNSUPPORTED` · `buildProviderMessages({ images })` gắn ảnh vào **user turn cuối** + trừ `TOKEN_ESTIMATE_PER_IMAGE` khỏi `historyBudget` |
+| `apps/server/src/app.ts` | ✅ `express.json({ limit: '16mb' })` (payload base64 12 MB vượt mặc định 2 MB) · đăng ký `attachmentsRouter` |
+
+#### Phần C — Extension
+
+| Hạng mục | Kết quả |
+|---|---|
+| `apps/extension/src/lib/imageUpload.ts` | ✅ **Thuần**: `validateImageFile()` (mime allowlist + giới hạn 5 MB + file rỗng) · `readImageFile()` (FileReader → base64 thuần) · `stripDataUrlPrefix()` · `extractImagesFromDataTransfer()` (paste + drop) · `createAttachmentId()` (uuid, fallback UUID v4 tự sinh) · `formatBytes()` |
+| `apps/extension/src/sidepanel/hooks/useImageAttachments.ts` | ✅ Thêm/xoá/xoá hết ảnh · chặn vượt số ảnh & tổng byte · **báo lỗi tiếng Việt** |
+| `apps/extension/src/sidepanel/components/composer/AttachmentTray.tsx` | ✅ Thumbnail + nút ✕ (`aria-label` tiếng Việt) · dòng "N ảnh · ~M token" · `role="alert"` cho lỗi · dùng design token |
+| `apps/extension/src/sidepanel/components/Composer.tsx` | ✅ Nút 📎 (`ImagePlus`) + `<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple>` ẩn · `onPaste` (chỉ ảnh) · `onDragOver`/`onDrop` với `preventDefault()` (tránh Chrome điều hướng panel rời trang) |
+| `apps/extension/src/sidepanel/store/chatStore.ts` | ✅ `pendingImages` + `addPendingImages` (thay ảnh cùng id) · `removePendingImage` · `clearPendingImages` · `reset()` xoá ảnh chờ gửi |
+| `apps/extension/src/sidepanel/hooks/useChat.ts` | ✅ `send()` gắn `attachments` vào turn cuối · **snapshot lịch sử trước** khi thêm user message (tránh gửi trùng) · xoá `pendingImages` sau khi gửi · cho phép gửi **chỉ ảnh** (content = "(ảnh đính kèm)") |
+| `apps/extension/src/sidepanel/components/MessageBubble.tsx` | ✅ Render ảnh của user message · bấm → mở tab mới (data URL) |
+| `apps/extension/src/sidepanel/App.tsx` | ✅ Mount `AttachmentTray` + truyền `onImagesSelected` xuống `Composer` |
+
+#### Verify
+
+| Hạng mục | Kết quả |
+|---|---|
+| `pnpm typecheck` | ✅ pass (shared · server · extension · eval) |
+| `pnpm lint` | ✅ pass (0 error, 0 warning) |
+| `pnpm test` | ✅ pass — shared **101** · server **166** · extension **273** (tổng **540**, trước 419 → **+121**) |
+| `pnpm build` | ✅ pass — `dist/content.js` vẫn là **IIFE 1 file, không `import`** (13.87 kB — ảnh không liên quan content script) |
+| `pnpm db:migrate` | ✅ pass — tạo bảng `message_attachments` + index + FK |
+| `pnpm test:e2e` | ✅ pass — **23/23** (+5 kịch bản `vision.spec.ts`, 18 test cũ **không regression**) |
+| Mutation re-check | ✅ **3/3 mutation bị bắt** — bỏ `inline_data` trong Gemini (1 test fail) · bỏ kiểm tra `supportsVision` trong fallback chain (2 test fail) · đổi dedup `mergeImages` (1 test fail) |
+
+> **Ghi chú về ảnh:** `dist/content.js` **không** đổi (13.87 kB) — ảnh chỉ tồn tại ở side panel, không kéo `FileReader`/`lucide-react` vào content script.
+
 ### 3.2 Traceability FR → Task
 
 > Bảng đầy đủ FR → Task (kèm milestone) nằm ở [`REQUIREMENTS.md`](REQUIREMENTS.md) §11.1 — nơi duy nhất cần cập nhật khi thêm/bớt task.
@@ -303,7 +363,7 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 |---|---|---|---|
 | FR-CHAT-01..14 | 14 FR | T-M0-10 · T-M0-13 · T-M1-07/09/10/11/13/19 | FR-CHAT-04 (bảng Markdown) đã nằm trong T-M1-07 |
 | FR-CONTEXT-01..13 | 13 FR | T-M1-01/02/04/05/06/08/14 · **T-M1-21/22/23** · **T-M2-19** | FR-CONTEXT-05/06 nâng lên Must (2026-11-04) · FR-CONTEXT-13 (chat không cần context) do T-M1-23 · **FR-CONTEXT-03 (`@` multi-tab) do T-M1-05 ✅** · **FR-CONTEXT-04 (selection) do T-M1-02 ✅** |
-| FR-VISION-01..05 | 5 FR | **T-M1-24** (upload) · **T-M2-22** (mở rộng) | FR-VISION-01 nâng lên M |
+| FR-VISION-01..05 | 5 FR | **T-M1-24 ✅** (upload) · **T-M2-22** (mở rộng) | FR-VISION-01 nâng lên M · **T-M1-24 xong 2026-11-05** (vision đầy đủ Gemini + OpenAI-compatible, lưu Postgres, multi-turn) |
 | FR-TOOLS-01..06 | 6 FR | T-M2-07/08/09/10/11/18 · **T-M2-20** | FR-TOOLS-03 (web search) tách riêng khỏi tool registry |
 | FR-SKILL-01..07 | 7 FR | T-M2-04/05/06 · **T-M2-21** | FR-SKILL-04 (skill mẫu) + FR-SKILL-06 (điều kiện) tách task |
 | FR-PROVIDER-01..09 | 9 FR | T-M0-07/08 · T-M1-15/16 · T-M2-01/02/03 | FR-PROVIDER-04 (fallback) nằm trong T-M2-02 |

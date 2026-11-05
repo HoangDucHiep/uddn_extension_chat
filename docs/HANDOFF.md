@@ -24,14 +24,43 @@
 | Hạng mục | Trạng thái |
 |---|---|
 | Docs | ✅ Đầy đủ 9 file (`docs/`) + `AGENTS.md` ở root |
-| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 + T-M1-05 + T-M1-02 xong** — 4 workspace, 419 unit test + 18 E2E |
+| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 + T-M1-05 + T-M1-02 + T-M1-24 xong** — 4 workspace, 540 unit test + 23 E2E |
 | Git | ✅ Đã init (`main`) · tag `v0.1` đánh dấu M0 |
-| Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **7/25 task**) |
-| Task tiếp theo | **T-M1-24** — upload file (paste / drag-drop / file picker) → T-M1-25 (onboarding) |
+| Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **8/25 task**) |
+| Task tiếp theo | **T-M1-25** — onboarding 3 bước → T-M1-06 (truyền context) → T-M1-07 (markdown/code) |
 
 ### Đang làm dở
 
-_(Không có — T-M1-02 selection context đã commit, task kế tiếp T-M1-24)_
+_(Không có — T-M1-24 vision input đã commit, task kế tiếp T-M1-25)_
+
+### Việc đã xong gần đây (T-M1-24 — Upload ảnh & vision input)
+
+- **T-M1-24 (FR-VISION-01)** — ảnh là **đầu vào trực tiếp** của câu hỏi (`messages[].attachments[]`), **không** phải `ContextItem` → không phụ thuộc toggle `contextEnabled` (khác hẳn `@` / bôi đen / "Thêm trang này").
+  - **Contract** — `packages/shared/src/schemas/vision.ts` (`IMAGE_MIME_TYPES` png/jpeg/webp/gif · `imageAttachmentSchema` · `imageAttachmentListSchema` ≤ 4 ảnh & tổng ≤ 12 MB) · `constants.ts` (`VISION` — 5 MB/ảnh, 4 ảnh, 12 MB tổng, 258 token/ảnh) · `chatTurnSchema.attachments` · `providerStreamRequestSchema.messages[].attachments` · 5 error code `VISION_*` + `PROVIDER_VISION_UNSUPPORTED`.
+  - **Server** — bảng `message_attachments` (`data` **bytea** → Drizzle 0.45.4 không có `bytea` sẵn → `customType`) + migration `0001_puzzling_mathemanic.sql` · `attachmentService.ts` (`decodeBase64Image()` **tính lại byte thật** từ dữ liệu decode · `persistAttachments()` · `loadRecentAttachments()` → hỗ trợ hỏi tiếp bằng **text-only** ở lượt sau · `getAttachment()`) · route `GET /api/attachments/:id` trả **binary** + `Content-Type` đúng mime · `express.json({ limit: '16mb' })`.
+  - **Provider** — `supportsVision()` (gemini luôn true · openai-compatible · groq `llama-4-scout`/`llama-3.2-*-vision` · openrouter theo prefix model · mock echo số ảnh) · Gemini → `parts: [{text},{inline_data:{mime_type,data}}]` · OpenAI-compatible → `content: [{type:'text'},{type:'image_url',image_url:{url:'data:<mime>;base64,<data>'}}]` · **fallback chain bỏ qua provider không hỗ trợ vision** → hết provider → `PROVIDER_VISION_UNSUPPORTED`.
+  - **Token** — ảnh **luôn** gửi (kể cả khi toggle context tắt) và **trừ 258 token/ảnh** khỏi `historyBudget` **trước** khi `trimHistory()`.
+  - **Extension** — `lib/imageUpload.ts` (thuần: validate · FileReader → base64 · parse DataTransfer · `formatBytes`) · `hooks/useImageAttachments.ts` · `components/composer/AttachmentTray.tsx` (thumbnail + nút xoá + cảnh báo lỗi + ước lượng token) · `Composer.tsx` (nút `ImagePlus` · **paste** ảnh · **drag & drop** với `preventDefault()`) · `chatStore.pendingImages` · `useChat` chụp **snapshot history trước** khi `addMessage(userMessage)` (tránh lặp turn) · `MessageBubble.tsx` render ảnh (click → mở tab).
+- **Verify** — typecheck ✅ · lint ✅ · test ✅ (**540 unit** = shared 101 · server 166 · extension 273) · build ✅ · **E2E 23/23** ✅ (+5 kịch bản `e2e/vision.spec.ts`) · **mutation re-check 3/3 bị bắt**.
+- Bằng chứng đầy đủ: `docs/IMPLEMENTATION_PLAN.md` §3.1g · `docs/SYSTEM_DESIGN.md` §7.4.
+
+### Quyết định kỹ thuật mới (T-M1-24)
+
+| Quyết định | Lý do |
+|---|---|
+| Ảnh là **`messages[].attachments[]`**, **không** phải `ContextItem` | Ảnh là **đầu vào trực tiếp** của câu hỏi; nếu để trong `context` thì toggle context tắt sẽ làm mất ảnh → không đúng trực giác người dùng |
+| `data` base64 **thuan** (không prefix `data:`) trong contract | Provider adapter tự quyết định định dạng (`inline_data` vs `image_url.url`) → 1 contract phục vụ nhiều provider |
+| Lưu **bytea** trong Postgres thay vì file trên đĩa | Self-host, không cần object storage; ảnh đã gửi vẫn tra lại được sau khi reload panel → multi-turn |
+| Server **tính lại** byte size từ dữ liệu decode, không tin `bytes` của client | Client có thể khai sai → vượt giới hạn 5 MB/12 MB mà không bị chặn |
+| `ord` (int) để sắp xếp ảnh **tất định** | `created_at` trùng nhau khi lưu cùng lúc → thứ tự ảnh trong prompt không ổn định |
+| `id` do **client sinh** (uuid) | Server upsert idempotent → retry không nhân bản |
+| `loadRecentAttachments()` nạp ảnh lượt trước | Cho phép lượt sau hỏi tiếp về ảnh mà **không** phải upload lại (multi-turn) |
+| Fallback chain **lọc provider không hỗ trợ vision** khi lượt có ảnh | Provider không hỗ trợ sẽ trả lỗi 400 → fallback vô nghĩa; hết provider → `PROVIDER_VISION_UNSUPPORTED` (error code rõ ràng thay vì lỗi 400 mơ hồ) |
+| Ước lượng **258 token/ảnh** (heuristic, không kéo tokenizer) | Giống cách `estimateTokens` của context budget — nhất quán + không phình bundle; số thật từ `usage` event |
+| `useChat` chụp **snapshot history trước** khi `addMessage(userMessage)` | Lấy history sau khi thêm → **lặp turn** (đã gặp thật, đã fix) |
+| `mergeImages()` dedup theo **base64** (không theo `id`) | Cùng 1 ảnh gửi lại với id khác vẫn phải gộp |
+| `express.json({ limit: '16mb' })` | 4 ảnh × 5 MB → base64 ≈ 27 MB... chọn 16 MB là trần thực tế; `imageAttachmentListSchema` vẫn là giới hạn thật |
+| Test E2E dùng `expect.poll` cho `GET /api/attachments/:id` | Server persist ảnh **sau** khi nhận request → GET đầu tiên có thể 404 → race condition |
 
 ### Việc đã xong gần đây (T-M1-02 — selection context: bôi đen → hỏi)
 

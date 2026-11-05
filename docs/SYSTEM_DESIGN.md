@@ -161,7 +161,7 @@ flowchart TB
 > ├─ e2e/{fixtures.ts,sidepanel.spec.ts,extractor.spec.ts,extract.spec.ts,context.spec.ts}
 > ├─ tests/{apiClient,chatStore,sseClient,useChat,extractor,pageContext,contextAttach,sharedAlias}.test.ts
 > ├─ vite.config.ts                  # side panel + service worker (ESM)
-> ├─ vite.content.config.ts          # content script (IIFE, 1 file — §7.4)
+> ├─ vite.content.config.ts          # content script (IIFE, 1 file — §7.5)
 > ├─ vitest.config.ts                # alias @sidekick/shared → packages/shared/src (§7.1.1)
 > ├─ playwright.config.ts
 > ```
@@ -318,7 +318,8 @@ X-Request-Id: <uuid v4>            // idempotency + tracing
 | POST | `/providers/keys` | `{ providerId, apiKey, label? }` | `{ id, masked, createdAt }` | `VALIDATION_ERROR`, `PROVIDER_KEY_INVALID` |
 | DELETE | `/providers/keys/:id` | — | `204` | `NOT_FOUND` |
 | POST | `/providers/keys/:id/test` | — | `{ ok, latencyMs, error? }` | `PROVIDER_ERROR` |
-| POST | `/chat` | `ChatRequest` | **SSE stream** | `VALIDATION_ERROR`, `NO_KEY_AVAILABLE`, `RATE_LIMITED` |
+| POST | `/chat` | `ChatRequest` | **SSE stream** | `VALIDATION_ERROR`, `NO_KEY_AVAILABLE`, `RATE_LIMITED`, `PROVIDER_VISION_UNSUPPORTED` |
+| GET | `/attachments/:id` | — | **binary** (`Content-Type` = mime của ảnh) | `NOT_FOUND` |
 | POST | `/extract/pdf` | `{ url }` | `{ text, title?, excerpt?, truncated, error? }` | `VALIDATION_ERROR`, `CONTEXT_PDF_NOT_READABLE`, `CONTEXT_PDF_UNREACHABLE` |
 | POST | `/extract/youtube` | `{ url }` | `{ text, title?, excerpt?, truncated, error? }` | `VALIDATION_ERROR`, `CONTEXT_TRANSCRIPT_UNAVAILABLE` |
 | GET | `/conversations` | `?q=&limit=&cursor=` | `{ items, nextCursor }` | — |
@@ -356,11 +357,15 @@ X-Request-Id: <uuid v4>            // idempotency + tracing
 
 ### 4.2 Shape của `ChatRequest`
 
-> **Shape đang chạy thật (M0 + T-M1-01 + T-M1-23)** — nguồn sự thật là `packages/shared/src/schemas/chat.ts`:
+> **Shape đang chạy thật (M0 + T-M1-01 + T-M1-23 + T-M1-24)** — nguồn sự thật là `packages/shared/src/schemas/chat.ts`:
 >
 > ```ts
 > interface ChatRequest {
->   messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>
+>   messages: Array<{
+>     role: 'user' | 'assistant' | 'system'
+>     content: string
+>     attachments?: ImageAttachment[]   // FR-VISION-01 — xem §4.2.2
+>   }>
 >   conversationId?: string
 >   provider?: 'mock' | 'groq' | 'openrouter' | 'gemini' | 'ollama'
 >   model?: string
@@ -444,8 +449,49 @@ Cả 2 tầng dùng **cùng một hàm** `applyContextBudget()` trong `packages/
 > }
 > ```
 
-### 4.3 Giao thức SSE
+#### 4.2.2 Hợp đồng `attachments` — ảnh đính kèm (FR-VISION-01, T-M1-24)
 
+> **Ảnh KHÔNG phải `ContextItem`.** Ảnh là **đầu vào trực tiếp** của câu hỏi, không phải context thứ cấp. Vì vậy nó **không** phụ thuộc toggle `contextEnabled` và **không** bị `applyContextBudget()` cắt theo số ký tự.
+
+```ts
+/** Một ảnh đính kèm trong một turn hội thoại. */
+interface ImageAttachment {
+  id: string                    // uuid do client sinh → upsert idempotent, render ngay trong UI
+  mimeType: 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif'
+  data: string                  // base64 THUẦN (không prefix `data:<mime>;base64,`)
+  bytes: number                 // kích thước byte ảnh gốc
+  width?: number
+  height?: number
+  fileName?: string
+}
+```
+
+**Giới hạn (`VISION` trong `packages/shared/src/constants.ts`):**
+
+| Hằng | Giá trị | Ý nghĩa |
+|---|---|---|
+| `MAX_IMAGE_BYTES` | 5 000 000 | 5 MB / ảnh |
+| `MAX_IMAGES_PER_MESSAGE` | 4 | 4 ảnh / lượt |
+| `MAX_TOTAL_IMAGE_BYTES` | 12 000 000 | 12 MB tổng / lượt |
+| `TOKEN_ESTIMATE_PER_IMAGE` | 258 | ước lượng token để cắt ngân sách context |
+
+**Luồng server (`apps/server`):**
+
+```
+POST /api/chat { messages[].attachments[] }
+  → validate ở biên (Zod: imageAttachmentListSchema)
+  → persistAttachments() giải mã base64 → bảng message_attachments (bytea)
+  → loadRecentAttachments() lấy ảnh gần nhất của conversation
+  → mergeImages() hợp nhất ảnh lượt này + ảnh lượt trước (dedup theo base64)
+  → buildProviderMessages() gắn ảnh vào USER TURN CUỐI CÙNG
+  → provider adapter map sang payload đúng chuẩn (xem §4.4)
+```
+
+**Multi-turn:** lượt 2 chỉ gửi text → server tự tải ảnh của lượt 1 từ DB → model vẫn "thấy" ảnh. Extension **không** phải upload lại base64.
+
+**Token budget:** `buildProviderMessages` trừ `images.length * TOKEN_ESTIMATE_PER_IMAGE` khỏi `historyBudget` trước khi `trimHistory` → ảnh không làm tràn context window.
+
+### 4.3 Giao thức SSE
 **Event union (dùng chung, `packages/shared/src/events.ts`):**
 
 ```ts
@@ -489,6 +535,20 @@ resolveKey(providerId, keySource)
 
 Fallback chain: provider chính → provider dự phòng (cấu hình trong settings) → trả lỗi kèm gợi ý cấu hình.
 
+#### 4.4.1 Hỗ trợ vision của provider (FR-VISION-01, T-M1-24)
+
+Mỗi `ProviderAdapter` phải cài `supportsVision(model: string): boolean`. Khi request có ảnh, `createChatStream` **bỏ qua** provider/model không hỗ trợ vision và chuyển sang provider tiếp theo trong chain. Nếu hết chain → trả lỗi `PROVIDER_VISION_UNSUPPORTED` (không crash, không mất tiến trình).
+
+| Provider | `supportsVision()` | Payload ảnh |
+|---|---|---|
+| `gemini` | **luôn `true`** | `parts: [{ text }, { inline_data: { mime_type, data } }]` |
+| `openrouter` | theo tiền tố model (`google/gemini`, `openai/gpt-4o`, `anthropic/claude-3`, `anthropic/claude-4`, `meta-llama/llama-3.2`, `qwen/qwen2-vl`, `google/gemma`) | `content: [{ type:'text' }, { type:'image_url', image_url: { url: 'data:<mime>;base64,<data>' } }]` |
+| `groq` | theo tiền tố model (`meta-llama/llama-4-scout`, `meta-llama/llama-4-maverick`, `meta-llama/llama-3.2-11b-vision`, `meta-llama/llama-3.2-90b-vision`) | như OpenAI-compatible |
+| `mock` | `true` (để test end-to-end) | echo số ảnh trong text: `[mock] Nhan duoc 1 anh (image/png)` |
+| `ollama` | `false` (chưa hỗ trợ) | — |
+
+> **Lưu ý:** model mặc định của Groq (`openai/gpt-oss-120b`) **không** hỗ trợ ảnh → khi user đính kèm ảnh, server tự fallback sang `openrouter` hoặc `gemini`. Người dùng không cần chỉnh tay.
+
 ---
 
 ## 5. Data model (Drizzle / PostgreSQL 16)
@@ -501,6 +561,7 @@ Fallback chain: provider chính → provider dự phòng (cấu hình trong sett
 |---|---|---|
 | `conversations` | id uuid pk, title text, created_at, updated_at, pinned bool, archived bool, meta jsonb | `(archived, updated_at desc)`, `(pinned, updated_at desc)` |
 | `messages` | id uuid pk, conversation_id fk, role text, content text, meta jsonb, created_at | `(conversation_id, created_at)` |
+| `message_attachments` | id uuid pk (client sinh), message_id fk, conversation_id fk, mime_type text, byte_size int, ord int, width int, height int, file_name text, **data bytea**, created_at | `(message_id)`, `(conversation_id, created_at desc)`, unique `(message_id, ord)` |
 | `citations` | id uuid pk, message_id fk, idx int, url text, title text, snippet text, tab_id int, score real | `(message_id)` |
 | `tool_calls` | id uuid pk, message_id fk, name text, args jsonb, output text, status text, approval_required bool, approved_by_user bool, started_at, finished_at | `(message_id)` |
 | `skills` | id uuid pk, name text unique, description text, prompt_template text, scope text, enabled bool, tags text[], created_at, updated_at | `(scope, enabled)` |
@@ -634,12 +695,12 @@ Hệ quả nếu để nguyên:
 
 Các kịch bản E2E còn lại (offline, BFF down, stop, edit-resend, context toggle) thuộc M1.
 
-### 7.2.1 Trạng thái test hiện tại (2026-11-04)
+### 7.2.1 Trạng thái test hiện tại (2026-11-05)
 
 | Tầng | Số test | Vị trí |
 |---|---|---|
-| Unit | **419** — shared 75 · server 126 · extension 218 | `packages/shared/tests/` · `apps/server/tests/` · `apps/extension/tests/` |
-| E2E | **18** | `apps/extension/e2e/` |
+| Unit | **540** — shared 101 · server 166 · extension 273 | `packages/shared/tests/` · `apps/server/tests/` · `apps/extension/tests/` |
+| E2E | **23** | `apps/extension/e2e/` |
 
 ### 7.2.2 Audit chất lượng test bằng mutation testing (2026-11-04)
 
@@ -945,7 +1006,51 @@ flowchart LR
 | Id item = hash nội dung (`selection-<hash>`) | Bôi đen lại cùng đoạn → **thay** item cũ, không nhân bản |
 | Chỉ đính kèm khi user **chủ động** bấm nút | FR-CONTEXT-13 — không tự ý gửi nội dung trang |
 
-### 7.4 Build: content script phải là classic script
+### 7.4 Ảnh đính kèm & vision input (T-M1-24)
+
+> Nguồn sự thật cho hợp đồng: [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.3 (FR-VISION-01) · shape: §4.2.2.
+
+**Ba đường vào ảnh — cùng quy về `File` → validate → base64:**
+
+| Đường | Sự kiện | Ghi chú |
+|---|---|---|
+| Paste | `onPaste` trên `<textarea>` | Chỉ nhận item `kind === 'file'` có MIME `image/*`; text thường bị `preventDefault` → không ảnh |
+| Drag-drop | `onDragOver` + `onDrop` trên wrapper composer | `preventDefault()` ở **cả hai** — nếu thiếu, Chrome điều hướng panel rời trang |
+| File picker | `<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple>` ẩn + nút 📎 | `accept` lọc ở tầng OS/browser |
+
+**Các file liên quan:**
+
+| File | Vai trò |
+|---|---|
+| `packages/shared/src/schemas/vision.ts` | `imageAttachmentSchema` · `imageAttachmentListSchema` (kiểm số ảnh + tổng byte) · `IMAGE_MIME_TYPES` · `MAX_IMAGE_BASE64_CHARS` |
+| `packages/shared/src/constants.ts` | Hằng `VISION` (giới hạn 5 MB / 4 ảnh / 12 MB / 258 token) |
+| `apps/extension/src/lib/imageUpload.ts` | **Thuần**: `validateImageFile()` · `readImageFile()` (FileReader → base64 thuần) · `stripDataUrlPrefix()` · `extractImagesFromDataTransfer()` · `createAttachmentId()` · `formatBytes()` |
+| `apps/extension/src/sidepanel/hooks/useImageAttachments.ts` | Hook quản lý `pendingImages` (thêm/xoá/giới hạn/báo lỗi tiếng Việt) |
+| `apps/extension/src/sidepanel/components/composer/AttachmentTray.tsx` | Thumbnail + nút ✕ + thông báo lỗi (token màu, không hardcode) |
+| `apps/extension/src/sidepanel/store/chatStore.ts` | `pendingImages` + `addPendingImages` / `removePendingImage` / `clearPendingImages` |
+| `apps/server/src/services/attachmentService.ts` | `persistAttachments()` · `loadRecentAttachments()` · `getAttachment()` · `decodeBase64Image()` |
+| `apps/server/src/routes/attachments.ts` | `GET /api/attachments/:id` → binary (`Content-Type` = mime) |
+
+**Quy tắc hành vi:**
+
+| Quy tắc | Lý do |
+|---|---|
+| Ảnh **không** phụ thuộc toggle `contextEnabled` | Ảnh là đầu vào trực tiếp của câu hỏi, không phải context thứ cấp (FR-CONTEXT-13) |
+| Ảnh **không** bị `applyContextBudget()` cắt | Hàm cắt theo **số ký tự**; ảnh không có ký tự → phải cắt riêng bằng `TOKEN_ESTIMATE_PER_IMAGE` |
+| Client gửi base64, server tự lưu `bytea` | Lượt sau chỉ gửi text → server tải ảnh từ DB → không upload lại base64 |
+| `id` do client sinh (uuid) → `ON CONFLICT DO NOTHING` | Retry cùng request không tạo dòng trùng |
+| Server **không tin** `bytes` của client | Lưu `byteSize` = kích thước **thực** sau khi giải mã base64; ảnh vượt giới hạn → bỏ qua |
+| Provider không hỗ trợ vision → **fallback**, không lỗi ngay | Model mặc định Groq không đọc ảnh → tự chuyển sang OpenRouter/Gemini |
+| Hết provider hỗ trợ → `PROVIDER_VISION_UNSUPPORTED` | Lỗi rõ ràng tiếng Việt thay vì crash |
+| `express.json({ limit: '16mb' })` | Payload base64 của 12 MB ảnh vượt mặc định 2 MB |
+
+**Ràng buộc MV3 liên quan:**
+
+- **Không cần permission mới** — paste / drag-drop / file picker không yêu cầu quyền Chrome.
+- Ảnh **không** đi qua service worker (base64 payload nặng) → gửi trực tiếp Side Panel → BFF.
+- `dist/content.js` **không** bị ảnh hưởng (ảnh chỉ ở side panel).
+
+### 7.5 Build: content script phải là classic script
 
 Chrome **không** load được content script dạng ES module. Nếu bundle chứa `import ... from "./assets/x.js"`, Chrome báo *"It isn't a module"* và content script **không chạy**.
 
@@ -982,6 +1087,8 @@ Vẫn là **IIFE 1 file, không `import`** → Chrome load được (kiểm tra 
 | Content extraction (YouTube) | ≤ 2s | Fetch `timedtext` ở BFF (T-M1-22 ✅). Cache theo video id + language — **cache chưa implement** |
 | Panel mở | ≤ 300ms | Không fetch nặng khi mount; lazy-load settings |
 | Scroll khi streaming | ≥ 50fps | Batch token bằng `requestAnimationFrame`, không render mỗi token |
+| Upload ảnh | ≤ 1s / ảnh | `FileReader` đọc base64 ở main thread (5 MB) · giới hạn 4 ảnh / 12 MB tổng · **TODO(T-M2-22)**: chuyển sang `OffscreenCanvas`/`createImageBitmap` + `Web Worker` nếu cần |
+| Token ảnh | ≤ 258 token / ảnh | Ước lượng theo quy ước OpenAI (ảnh 512 px) — trừ khỏi `historyBudget` trước khi cắt lịch sử |
 
 ---
 

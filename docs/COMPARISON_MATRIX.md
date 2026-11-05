@@ -164,7 +164,7 @@ Dùng làm acceptance checklist cho M1.
 - [ ] Lấy transcript video YouTube — ✅ T-M1-22
 - [ ] Ngân sách context + cắt bớt thông minh ("đã dùng X/Y token") — ✅ T-M1-23
 - [ ] Chat được mà không cần đính kèm trang/tài liệu nào (chat thuần LLM) — ✅ T-M1-23 (FR-CONTEXT-13) · *giới hạn: web search bật ở M2 — FR-TOOLS-03*
-- [ ] Upload ảnh kèm câu hỏi — ⬜ T-M1-24
+- [ ] Upload ảnh kèm câu hỏi — ✅ T-M1-24 (paste · drag-drop · file picker · preview + xoá từng ảnh · giới hạn 5 MB/4 ảnh · lưu Postgres → multi-turn · Gemini `inline_data` + Groq/OpenRouter `image_url` · provider không hỗ trợ → tự fallback) — *đối chiếu B17*
 - [ ] `@` đính kèm tab (nhiều tab), hiện chip trạng thái — ✅ T-M1-05 (popover favicon + title + domain · dấu ✓ tab đã đính kèm · gạch tab đang active · lọc theo query)
 - [ ] Bôi đen → hỏi (selection context) — ✅ T-M1-02 (nút nổi "Hỏi Sidekick" cạnh vùng chọn + nút "Dính đoạn đã chọn" trong panel · tier `selection` cao nhất · panel đóng thì đoạn chờ lưu storage, mở sau tự nhận)
 - [ ] Nút tóm tắt 1-click — ⬜ T-M1-11

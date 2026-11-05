@@ -194,7 +194,32 @@ Nguồn sự thật: `design/tokens.json` → generate ra `design/tokens.css` (C
 - **A11y:** `role="status"` + `aria-live="polite"`; trạng thái có **icon + chữ** (không chỉ màu — WCAG 2.2 §5.1.3).
 - **Lưu ý:** số token là **ước lượng** (`ceil(chars/4)`) → UI ghi "Đã dùng", không ghi "chính xác". Số token thật hiển thị ở `UsageBadge` (T-M2-03).
 
-**`ContextNotice` (đã implement T-M1-21/T-M1-22)** — vị trí: giữa thread và Composer. Token dùng: `--warning-subtle` (nền) · `--warning` (icon) · `--text-secondary` (nội dung) · `--border-default` (đường kẻ) · `--font-size-sm`. Icon `lucide-react`: `FileWarning` (lỗi PDF) · `AlertTriangle` (lỗi chung) · `X` (đóng). A11y: `role="status"` + `aria-live="polite"` · nút đóng có `aria-label` (tiếng Việt) · focus ring theo `--focus-ring`. Không tự động ẩn (người dùng tự đóng).
+#### `AttachmentTray` (đã implement T-M1-24)
+
+- **Vị trí:** ngay trên `Composer`, dưới `ContextBudget`. Render trong wrapper của Composer (nằm trong vùng drag-drop của Composer → thả file vào đâu cũng được).
+- **Nội dung:** mỗi ảnh chờ gửi → 1 thumbnail 56×56 (`object-cover`, `rounded-[--radius-md]`) · nút ✕ ở góc trên phải để xoá từng ảnh · dòng phụ "N ảnh · ~M token" (ước lượng 258 token/ảnh).
+- **Lỗi:** dòng `role="alert"` màu `--danger` phía trên danh sách thumbnail — thông báo tiếng Việt (sai định dạng / quá 5 MB / quá 4 ảnh / tổng quá 12 MB).
+- **Token:** `--surface-panel` (nền hàng) · `--surface-raised` (nền thumbnail) · `--border-default` (viền) · `--surface-overlay` (nền nút ✕) · `--text-tertiary` (icon ✕) · `--danger` (lỗi) · `--font-size-xs` (dòng phụ) · `--radius-md` · `--radius-sm`.
+- **A11y:** nút ✕ có `aria-label` tiếng Việt (`"Xoá ảnh đính kèm {tên file}"`) · thumbnail có `title` (tên file + kích thước) · focus ring `--focus-ring` · lỗi dùng `role="alert"`.
+- **Không render** khi không có ảnh và không có lỗi → panel giữ gọn.
+
+#### `AttachmentTray` — ảnh trong message (đã implement T-M1-24)
+
+- Ảnh đã gửi hiển thị trong `MessageBubble` (message của user) → `<img>` với `max-h-[160px]`, `object-cover`, viền `--border-default`.
+- Bấm ảnh → mở tab mới (`chrome.tabs.create`) với data URL → xem ảnh kích thước đầy đủ.
+- `aria-label` tiếng Việt (`"Mở ảnh {tên file}"`) trên nút bọc ảnh.
+
+#### `Composer` — nút đính kèm ảnh (đã implement T-M1-24)
+
+- Nút icon `ImagePlus` (biểu tượng `lucide-react`) đặt **bên trái** nút gửi, cạnh textarea.
+- Đi kèm `<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple>` **ẩn** (`.hidden`) — nhấn nút → `ref.current.click()`.
+- Trạng thái đang đọc file → icon `Loader2` xoay, nút disabled.
+- `aria-label="Đính kèm ảnh"` (tiếng Việt).
+- Nút **không** render khi không có handler ảnh (giữ component tái sử dụng được cho context khác).
+
+#### `ContextNotice` (đã implement T-M1-21/T-M1-22)
+
+- Vị trí: giữa thread và Composer. Token dùng: `--warning-subtle` (nền) · `--warning` (icon) · `--text-secondary` (nội dung) · `--border-default` (đường kẻ) · `--font-size-sm`. Icon `lucide-react`: `FileWarning` (lỗi PDF) · `AlertTriangle` (lỗi chung) · `X` (đóng). A11y: `role="status"` + `aria-live="polite"` · nút đóng có `aria-label` (tiếng Việt) · focus ring theo `--focus-ring`. Không tự động ẩn (người dùng tự đóng).
 
 #### `MentionPopover` (đã implement T-M1-05)
 
@@ -303,7 +328,7 @@ Nút tương ứng trong panel: `ContextChips` → nút "Dính đoạn đã ch�
 | `ErrorMessage` | FR-CHAT-14 | Độ ổn định, khó đo |
 | `ThemeSettings` | FR-SETTINGS-01/02 | WCAG |
 | `Onboarding` | FR-UX-02 | Parity 3 bước lần đầu |
-| `AttachmentTray`, `AttachmentChip` | FR-VISION-01 | Đối chiếu B17 (Gemini upload ảnh) |
+| `AttachmentTray`, ảnh trong `MessageBubble` | FR-VISION-01 | Đối chiếu B17 (Gemini upload ảnh) |
 | `UsageBadge`, `ProviderBadge` | FR-PROVIDER-05/09 | Bảng 3 "năng lực hệ thống" |
 
 ---

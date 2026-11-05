@@ -95,13 +95,18 @@ flowchart LR
 | **Summarize** | `summarize` | Tóm tắt, trích xuất danh sách, làm study guide/quiz | 10 |
 | **Cross-tab compare** | `cross_tab` | So sánh/tổng hợp từ 2–3 tab | 10 |
 | **Writing & analysis** | `writing` | Viết lại, dịch, so sánh phong cách, phân tích văn bản | 8 |
-| *(bổ sung)* | `vision` | Hỏi về ảnh trên trang / upload ảnh | 4 |
+| *(bổ sung)* | `vision` | Hỏi về ảnh trên trang / **upload ảnh kèm câu hỏi** (T-M1-24: paste · drag-drop · file picker) | 4 |
 | *(bổ sung)* | `doc_extract` | Đọc file PDF (text-based) — đối chiếu khả năng tương đương Edge Copilot (A20) | 2 |
 | *(bổ sung)* | `video_transcript` | Tóm tắt video YouTube từ transcript — đối chiếu Chrome Gemini (B10) | 2 |
 | *(bổ sung)* | `general_qa` | **Chat không cần trang/tài liệu** — hỏi đáp kiến thức chung, viết code, giải thích khái niệm (đo đường "chat thuần LLM" — FR-CONTEXT-13) | 4 |
 
 **Tổng ≥ 52 task.** Mỗi nhóm có cả task tiếng Việt và tiếng Anh (≥ 40% tiếng Việt).
 
+> **Nhóm `vision` cập nhật 2026-11-05 (T-M1-24):** giờ nhóm này đo **2 đường** khác nhau và phải tách số liệu khi tổng hợp:
+> - **Đường A — upload ảnh (user chủ động đính kèm):** Sidekick AI hỗ trợ đầy đủ từ T-M1-24 (paste / drag-drop / file picker → Gemini `inline_data` hoặc OpenAI-compatible `image_url`). Edge Copilot (B17) và Chrome Gemini (A12) đều làm được → so sánh trực tiếp, công bằng.
+> - **Đường B — ảnh nằm trong trang đang mở (không upload):** Sidekick AI **chưa** tự động lấy ảnh từ DOM (`<img>`) vào request → ở M1 chỉ làm được nếu user tải ảnh về rồi upload. Ghi rõ điều này vào `notes` của run để không bị bias khi đối chiếu A12.
+> - **Ràng buộc provider:** task `vision` chỉ chạy được khi provider đang chọn hỗ trợ vision (Gemini / Groq / OpenRouter với model vision). Nếu provider không hỗ trợ → hệ thống trả `PROVIDER_VISION_UNSUPPORTED` → **không tính là điểm 0 của hệ thống**, mà ghi là "provider limitation" (ghi `provider` vào `notes` của task).
+>
 > **Nhóm `doc_extract` + `video_transcript` thêm 2026-11-04** do `FR-CONTEXT-05` (PDF) và `FR-CONTEXT-06` (YouTube) được nâng lên **Must** (T-M1-21/22) → cần số liệu đối chiếu trong `EVAL_REPORT.md`. 2 task mỗi nhóm (≥ 1 tiếng Việt) là mức tối thiểu để có số liệu; tăng nếu còn thời gian.
 >
 > **Nhóm `general_qa` thêm 2026-11-04 (T-M1-23):** trước T-M1-23, panel **tự** gửi nội dung tab active ở mọi lượt → không đo được đường "chat không cần context". Sau T-M1-23, Sidekick AI hỗ trợ đúng đường này (toggle context TẮT mặc định → request không có payload `context`). Nhóm này đo đường đó cho cả 3 hệ thống.
@@ -421,6 +426,7 @@ Trước khi judge, mapping thật → nhãn giả được lưu ở `apps/eval/
 |---|---|---|---|
 | Voice chat | N/A (cần M365) | ✅ | ➖ (chưa triển khai) |
 | Screen sharing / Vision | N/A (cần M365) | ➖ | ⚠️ (screenshot vùng) |
+| Upload ảnh (vision input) | ✅ (B17) | ✅ (A12) | ✅ (T-M1-24 — Gemini + Groq/OpenRouter · ⚠️ provider không hỗ trợ vision → fallback hoặc `PROVIDER_VISION_UNSUPPORTED`) |
 | Agentic browse | ✅ Actions | N/A (cần AI Pro/Ultra) | ⚠️ (cần xác nhận) |
 | Skills | ➖ | ✅ (cần Chrome ≥ 147, en-US, không managed account) | ✅ (không ràng buộc) |
 | Image generation | ✅ | ✅ | ➖ (M2, tùy provider) |
@@ -524,6 +530,8 @@ Trước khi judge, mapping thật → nhãn giả được lưu ở `apps/eval/
 - [ ] ≥ 40% task tiếng Việt
 - [ ] Có nhóm `doc_extract` (PDF) và `video_transcript` (YouTube) — để đối chiếu A20 / B10
 - [ ] Có nhóm `general_qa` (chat không cần context) — đo FR-CONTEXT-13 · task chỉ dùng kiến thức pretrained (không cần web search)
+- [ ] Nhóm `vision` tách được **đường upload** (Sidekick ✅ T-M1-24) và **đường ảnh trong DOM** (Sidekick ⬜) — không gộp số liệu
+- [ ] Mọi task `vision` chạy với provider hỗ trợ vision — ghi `provider` vào `notes`
 - [ ] Snapshot cho 100% task
 - [ ] Harness chạy được 1 lệnh, log đủ TTFT/latency/token/cost
 - [ ] Transcript Edge/Gemini đúng template, có `notes` về điều kiện phụ thuộc gói
