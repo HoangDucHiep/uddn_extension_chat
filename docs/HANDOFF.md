@@ -24,14 +24,39 @@
 | Hạng mục | Trạng thái |
 |---|---|
 | Docs | ✅ Đầy đủ 9 file (`docs/`) + `AGENTS.md` ở root |
-| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 + T-M1-05 xong** — 4 workspace, 332 unit test + 13 E2E |
+| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 + T-M1-05 + T-M1-02 xong** — 4 workspace, 419 unit test + 18 E2E |
 | Git | ✅ Đã init (`main`) · tag `v0.1` đánh dấu M0 |
-| Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **6/25 task**) |
-| Task tiếp theo | **T-M1-02** — selection (bôi đen, tier cao nhất) → T-M1-24 (upload file) → T-M1-25 (onboarding) |
+| Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **7/25 task**) |
+| Task tiếp theo | **T-M1-24** — upload file (paste / drag-drop / file picker) → T-M1-25 (onboarding) |
 
 ### Đang làm dở
 
-_(Không có — T-M1-05 + remediation 8 blind spot đã commit, task kế tiếp T-M1-02)_
+_(Không có — T-M1-02 selection context đã commit, task kế tiếp T-M1-24)_
+
+### Việc đã xong gần đây (T-M1-02 — selection context: bôi đen → hỏi)
+
+- **T-M1-02 (FR-CONTEXT-04)** — 2 đường tương tác: **(A)** bôi đen trên trang → nút nổi "Hỏi Sidekick" (Shadow DOM) cạnh vùng chọn → click → đoạn text vào context với `kind: 'selection'`, `tier: 'selection'` (cao nhất); **(B)** nút "Dính đoạn đã chọn" trong panel → đọc selection của tab active qua `chrome.scripting.executeScript`.
+  - **Lõi thuần** — `content/selection.ts` (`readSelectionFromDocument()` · `normalizeSelectionText()` · `isMeaningfulSelection()` · `selectionAnchorRect()`) · `lib/contextAttach.ts` (`attachSelection()` · `captureActiveSelection()`) · `packages/shared/src/constants.ts` (`MAX_SELECTION_CHARS` 10 000 · `MIN_SELECTION_CHARS` 10 · `SELECTION_PENDING_TTL_MS` 300 000).
+  - **Content script** — `content/selectionWatcher.ts` (mouseup/keyup → debounce 120 ms → hiện nút) · `content/selectionButton.ts` (Shadow DOM `mode: 'open'`) · `content/selectionStyles.ts` (CSS sinh từ `design/tokens.json`).
+  - **Cầu nối** — `lib/selectionProtocol.ts` (`SELECTION_ACTION` · type guard thuần · `selectionItemId()` hash FNV-1a) · `lib/selectionBridge.ts` (**open-with-fallback**) · `lib/storage.ts` (`sidekick.pendingSelection`) · `background/serviceWorker.ts`.
+  - **Panel** — `hooks/useSelection.ts` (consume khi mount + `storage.onChanged`) · `hooks/useChat.ts` (`attachSelection()` + `attachActiveSelection()`) · `ContextChips.tsx` (nút "Dính đoạn đã chọn") · `App.tsx` · `ContextNotice.tsx` (case `CONTEXT_SELECTION_EMPTY`).
+- **Verify** — typecheck ✅ · lint ✅ · test ✅ (**419 unit** = shared 75 · server 126 · extension 218) · build ✅ (`dist/content.js` 13.9 kB, **vẫn IIFE 1 file, không `import`**) · **E2E 18/18** ✅ (+5 kịch bản `e2e/selection.spec.ts`) · **mutation re-check 5/5 bị bắt**.
+- Bằng chứng đầy đủ: `docs/IMPLEMENTATION_PLAN.md` §3.1f · `docs/SYSTEM_DESIGN.md` §7.3.4.
+
+### Quyết định kỹ thuật mới (T-M1-02)
+
+| Quyết định | Lý do |
+|---|---|
+| Cơ chế **open-with-fallback** (ghi storage → thử `sidePanel.open()` → lỗi thì im lặng) | `chrome.sidePanel.open()` chỉ chạy trong user gesture; message content script → SW **không** giữ được gesture → không phụ thuộc cứng vào việc mở được panel |
+| Đoạn chờ nằm ở `chrome.storage.local`, **không** nằm trong SW | MV3 SW bị kill sau ~30s → state trong SW mất → mất đoạn chọn |
+| TTL 5 phút cho đoạn chờ | User đã chuyển sang task khác → tránh đính kèm nhầm |
+| `selectionProtocol.ts` dùng **type guard thuần**, không `zod` | Content script build IIFE 1 file → kéo `zod` làm bundle phình to |
+| Nút nổi trong **Shadow DOM** (`mode: 'open'`) | CSS trang host không ghi đè được; `open` để Playwright locator xuyên vào để assert |
+| Icon SVG **viết tay**, không `lucide-react` | Content script không được kéo thư viện UI → giữ `dist/content.js` nhỏ |
+| Id item = **hash nội dung** (`selection-<hash>`) | Bôi đen lại cùng đoạn → `attachItem` **thay** item cũ, không nhân bản |
+| Chỉ hiện nút khi selection ≥ 10 ký tự | Click chuột / kéo 1–2 ký tự không phải ý định "hỏi về đoạn này" |
+| Ẩn nút khi `selectionchange` rỗng hoặc scroll | Toạ độ neo không còn đúng → nút "trôi" theo layout |
+| `useSelection` giữ `onAttach` trong `ref` | Callback inline trong `App` tạo mới mỗi render → nếu không, effect chạy lại vô hạn |
 
 ### Việc đã xong gần nhất (T-M1-05 `@` multi-tab + đóng 8 blind spot test)
 

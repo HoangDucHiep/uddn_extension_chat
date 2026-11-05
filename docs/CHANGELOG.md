@@ -8,6 +8,48 @@
 
 ## [Unreleased]
 ### Added
+- **T-M1-02 — Selection context: bôi đen → hỏi (FR-CONTEXT-04)**
+  - `packages/shared/src/constants.ts` — thêm `LIMITS.MAX_SELECTION_CHARS` (10 000) · `LIMITS.MIN_SELECTION_CHARS` (10) · `SELECTION_PENDING_TTL_MS` (300 000).
+  - `apps/extension/src/content/selection.ts` (mới) — **thuần** (không `chrome.*`, test được trong jsdom): `readSelectionFromDocument()` · `normalizeSelectionText()` (gộp whitespace, bỏ ký tự điều khiển, cắt tại ranh giới từ, **không** cắt giữa surrogate pair) · `isMeaningfulSelection()` · `selectionAnchorRect()` (neo dưới vùng chọn → chuyển lên trên khi tràn viewport, clamp toạ độ).
+  - `apps/extension/src/content/selectionWatcher.ts` (mới) — nghe `mouseup` + `keyup` (Shift/⌘A) → debounce 120 ms → hiện nút nổi; `selectionchange` rỗng hoặc `scroll` → ẩn nút; không hiện khi selection < 10 ký tự.
+  - `apps/extension/src/content/selectionButton.ts` (mới) — nút nổi "Hỏi Sidekick" trong `attachShadow({ mode: 'open' })` (CSS trang host không ghi đè được) · `position: fixed` · `z-index: 2147483647` · `data-testid="selection-affordance"` · icon SVG viết tay (không kéo `lucide-react` vào content script).
+  - `apps/extension/src/content/selectionStyles.ts` (mới) — CSS shadow root **sinh từ `design/tokens.json`** + biến thể `prefers-color-scheme: dark` → **không** hardcode màu.
+  - `apps/extension/src/lib/selectionProtocol.ts` (mới) — `SELECTION_ACTION` (`sidekick:selection`) · `PendingSelection` · `isSelectionMessage()` (type guard thuần, **không** kéo `zod` vào content script) · `selectionItemId()` (hash FNV-1a) · `SELECTION_EMPTY_ERROR_CODE`.
+  - `apps/extension/src/lib/selectionBridge.ts` (mới) — `handleSelectionMessage()`: ghi `chrome.storage.local` **trước**, rồi **thử** `chrome.sidePanel.open({ windowId })` bọc `try/catch` (Chrome từ chối vì mất user gesture → im lặng) → cơ chế **open-with-fallback**.
+  - `apps/extension/src/lib/storage.ts` — thêm `PENDING_SELECTION_STORAGE_KEY` (`sidekick.pendingSelection`) · `writePendingSelection()` · `readPendingSelection()` (bỏ qua + xoá nếu quá TTL) · `consumePendingSelection()` · `clearPendingSelection()`.
+  - `apps/extension/src/lib/contextAttach.ts` — thêm `attachSelection()` → `ContextItem { kind: 'selection', tier: 'selection', id: 'selection-<hash>' }` (bôi đen lại cùng đoạn → **thay** item cũ, không nhân bản) + `captureActiveSelection()` → `chrome.scripting.executeScript` (lỗi / trang nội bộ → `undefined`, không throw).
+  - `apps/extension/src/background/serviceWorker.ts` — `chrome.runtime.onMessage` → `handleRuntimeMessage()`; không giữ state lâu dài, không proxy streaming.
+  - `apps/extension/src/content/contentScript.ts` — khởi động watcher · click nút nổi → `chrome.runtime.sendMessage({ action: 'sidekick:selection' })` · expose `window.__sidekickGetSelection()` cho đường B; **giữ nguyên** `EXTRACT_CONTENT_ACTION` + `__sidekickExtractContent` (không regression T-M1-01).
+  - `apps/extension/src/sidepanel/hooks/useSelection.ts` (mới) — consume pending selection khi **mount** + khi `chrome.storage.onChanged` bắn · bỏ qua payload quá TTL · `onAttach` giữ trong `ref` (không chạy lại effect mỗi render).
+  - `apps/extension/src/sidepanel/hooks/useChat.ts` — thêm `attachSelection()` (đường A) + `attachActiveSelection()` (đường B) → `attachItem()` + `setContextError()` khi rỗng.
+  - `apps/extension/src/sidepanel/components/context/ContextChips.tsx` — thêm nút "Dính đoạn đã chọn" (icon `MousePointer2`, `data-testid="context-add-selection"`), disabled khi `isAttaching`.
+  - `apps/extension/src/sidepanel/App.tsx` — dùng `useSelection()` + truyền `onAttachSelection` xuống `ContextChips`.
+  - `apps/extension/src/sidepanel/components/context/ContextNotice.tsx` — thêm case `CONTEXT_SELECTION_EMPTY`.
+  - `apps/extension/src/types/globals.d.ts` — khai báo `__sidekickGetSelection`.
+  - **Test** — `apps/extension/tests/selection.test.ts` (mới, 23 test) · `apps/extension/tests/selectionProtocol.test.ts` (mới, 13 test) · `apps/extension/tests/selectionWatcher.test.ts` (mới, 8 test) · `apps/extension/tests/selectionBridge.test.ts` (mới, 11 test) · `apps/extension/tests/useSelection.test.ts` (mới, 8 test) · `apps/extension/tests/contextAttach.test.ts` (+12 test) · `apps/extension/tests/storage.test.ts` (+11 test) · `apps/extension/tests/setup.ts` (bổ sung mock `chrome.storage.onChanged` / `chrome.sidePanel.open` / `chrome.scripting.executeScript`).
+  - **E2E** — `apps/extension/e2e/selection.spec.ts` (mới, 5 kịch bản): (1) bôi đen trên trang thật → nút nổi xuất hiện → click → SW lưu `sidekick.pendingSelection`; (2) panel đang mở → click nút nổi → chip `data-tier="selection"`; (3) đường B → nút "Dính đoạn đã chọn" → chip; (4) gửi câu hỏi → `context.items[0].tier === 'selection'`; (5) thứ tự ưu tiên — selection đứng trước tab (`CONTEXT_TIER_ORDER`).
+  - **Số test toàn repo:** 332 → **419 unit** (shared 75 · server 126 · extension 218) + 13 → **18 E2E**.
+  - **Mutation re-check:** 5/5 mutation bị bắt — bỏ guard `MIN_SELECTION_CHARS` (7 test fail) · bỏ lọc TTL (2 test fail) · đổi `tier: 'selection'` → `'attachment'` (2 test fail) · bỏ guard độ dài trong `captureActiveSelection` (1 test fail) · đảo thuật toán neo nút nổi (1 test fail).
+
+### Changed
+- `docs/REQUIREMENTS.md` — FR-CONTEXT-04 ghi rõ 2 đường tương tác + cơ chế fallback.
+- `docs/SYSTEM_DESIGN.md` — thêm §7.3.4 "Selection context (T-M1-02)".
+- `docs/DESIGN_SYSTEM_BRIEF.md` — thêm §3.5 "Selection affordance"; các mục sau đổi số thứ tự (§3.6 Overlays, §3.7 Settings).
+- `docs/IMPLEMENTATION_PLAN.md` — T-M1-02 ✅ · thêm §3.1f kết quả verify.
+- `docs/COMPARISON_MATRIX.md` — tick dòng "Bôi đen → hỏi (selection context)" (T-M1-02) + ghi chú T-M1-02 ở bảng so sánh.
+- `AGENTS.md` — M1: 7/25 task · 419 unit test + 18 E2E · việc tiếp theo → T-M1-24.
+
+### Fixed
+- `apps/server/vitest.config.ts` — thêm `testTimeout: 30_000`: `pdfExtractor.test.ts` timeout giả khi 12 worker Vitest chạy song song (đây là tải máy, không phải lỗi logic — test pass khi chạy riêng).
+
+### Docs
+- `docs/REQUIREMENTS.md` §4.2 — FR-CONTEXT-04 ghi rõ hành vi đã implement · §11.1 — T-M1-02 ✅.
+- `docs/SYSTEM_DESIGN.md` §7.3.4 (mới) — thiết kế selection context (mermaid + cơ chế open-with-fallback + bảng file liên quan + ràng buộc MV3 + bảng quy tắc hành vi) · §7.4 — ghi rõ `dist/content.js` 13.9 kB vẫn IIFE 1 file.
+- `docs/DESIGN_SYSTEM_BRIEF.md` §3.5 (mới) — spec `SelectionAffordance` (vị trí · cô lập Shadow DOM · token sinh từ `tokens.json` · a11y · điều kiện hiện).
+- `docs/IMPLEMENTATION_PLAN.md` §3 — T-M1-02 ✅ · §3.1f (mới) — bảng verify Phần A–D + verify + mutation · §3.2 traceability FR-CONTEXT-04.
+- `docs/COMPARISON_MATRIX.md` §E — tick dòng "Bôi đen → hỏi (selection context)" (T-M1-02) · bảng §D — cột Sidekick ghi `(T-M1-02)`.
+- `docs/HANDOFF.md` — cập nhật trạng thái T-M1-02 + quyết định kỹ thuật mới.
+
 - **T-M1-05 — `@`-mention multi-tab (FR-CONTEXT-03)**
   - `apps/extension/src/lib/tabList.ts` (mới) — `listOpenTabs(limit = 20)` liệt kê tab đang mở qua `chrome.tabs.query({ currentWindow: true })` (chỉ cửa sổ hiện tại → không lộ tab cửa sổ khác), lọc trang nội bộ (`detectPageKind() === 'unknown'` → `chrome://` / `file://` / Web Store), `domainOf()` bỏ `www.`; **không bao giờ throw** (lỗi → `[]`).
   - `apps/extension/src/sidepanel/hooks/useTabs.ts` (mới) — `useTabs(enabled)` nạp danh sách tab **lazy** (chỉ khi popover mở) + `reload()`.

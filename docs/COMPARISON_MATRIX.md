@@ -123,7 +123,7 @@ Cột ưu tiên: **M** = Must (M1) · **S** = Should (M2) · **C** = Could (M2/M
 | Context trang | ✅ | ✅ (mặc định bật) | ✅ (**đính kèm chủ động** — T-M1-23) | — |
 | Context PDF / video (transcript) | ✅ (A20) | ✅ (B10) | ✅ (T-M1-21/22) | — |
 | Multi-tab | ✅ không giới hạn | ✅ tối đa 10 | ✅ không giới hạn | — |
-| Selection → hỏi | ✅ | ✅ | ✅ | — |
+| Selection → hỏi | ✅ | ✅ | ✅ (T-M1-02) | — |
 | Summarize 1-click | ✅ | ✅ | ✅ | — |
 | Prompt gợi ý theo trang | ✅ | ✅ | ✅ | — |
 | Lịch sử / nhiều conversation | ✅ | ✅ | ✅ | — |
@@ -166,7 +166,7 @@ Dùng làm acceptance checklist cho M1.
 - [ ] Chat được mà không cần đính kèm trang/tài liệu nào (chat thuần LLM) — ✅ T-M1-23 (FR-CONTEXT-13) · *giới hạn: web search bật ở M2 — FR-TOOLS-03*
 - [ ] Upload ảnh kèm câu hỏi — ⬜ T-M1-24
 - [ ] `@` đính kèm tab (nhiều tab), hiện chip trạng thái — ✅ T-M1-05 (popover favicon + title + domain · dấu ✓ tab đã đính kèm · gạch tab đang active · lọc theo query)
-- [ ] Bôi đen → hỏi (selection context) — ⬜ T-M1-02
+- [ ] Bôi đen → hỏi (selection context) — ✅ T-M1-02 (nút nổi "Hỏi Sidekick" cạnh vùng chọn + nút "Dính đoạn đã chọn" trong panel · tier `selection` cao nhất · panel đóng thì đoạn chờ lưu storage, mở sau tự nhận)
 - [ ] Nút tóm tắt 1-click — ⬜ T-M1-11
 - [ ] Prompt gợi ý theo loại trang — ⬜ T-M1-11
 - [ ] Nhiều conversation: tạo / đổi tên / xoá / ghim — ⬜ T-M1-09

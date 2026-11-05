@@ -206,7 +206,20 @@ Nguồn sự thật: `design/tokens.json` → generate ra `design/tokens.css` (C
 - **A11y:** `role="listbox"` + `aria-label="Chọn tab để đính kèm"` · mỗi dòng `role="option"` + `aria-selected` (true khi đã đính kèm) · icon trạng thái có `aria-label` tiếng Việt · focus ring `--focus-ring`.
 - **Không hardcode màu** — toàn bộ dùng design token như các chip khác.
 
-### 3.5 Overlays & feedback
+### 3.5 Selection affordance (đã implement T-M1-02)
+
+Component `SelectionAffordance` — nút nổi "Hỏi Sidekick" xuất hiện cạnh vùng text user bôi đen **trong trang web** (không phải trong panel).
+
+- **Vị trí:** **overlay nổi** trong trang — `position: fixed`, neo theo bounding box của vùng chọn (ưu tiên **dưới** vùng chọn; tran cạnh dưới viewport → **trên**; toạ độ luôn clamp trong viewport).
+- **Cô lập CSS:** nút nằm trong `attachShadow({ mode: 'open' })` → CSS của trang host **không** ghi đè được style của nút (và ngược lại).
+- **Token:** CSS cho shadow root được **sinh tự động** từ `design/tokens.json` (`apps/extension/src/content/selectionStyles.ts`) → `--color-accent` · `--color-accent-fg` · `--surface-overlay` · `--border-strong` · `--text-primary` · `--text-secondary` · `--shadow-2` · `--radius-md` · `--font-size-sm` · `--font-sans`. Có biến thể `prefers-color-scheme: dark` để khớp theme hệ điều hành. **Không hardcode màu.**
+- **A11y:** `<button type="button">` với `aria-label="Hỏi Sidekick về đoạn văn bản đã bôi đen"` (tiếng Việt) · icon SVG `aria-hidden="true"` · focus ring `--focus-ring` rõ ràng · `prefers-reduced-motion` không có animation nào để vi phạm.
+- **Điều kiện hiện:** chỉ hiện khi vùng chọn ≥ `LIMITS.MIN_SELECTION_CHARS` (10 ký tự) → không gây phiền khi user chỉ click chuột. Ẩn ngay khi selection bị thu hồi hoặc trang scroll.
+- **Đóng góp bundle:** content script build IIFE 1 file → **không** dùng `lucide-react` ở đây (kéo theo cả thư viện UI) → icon SVG viết tay.
+
+Nút tương ứng trong panel: `ContextChips` → nút "Dính đoạn đã chọn" (icon `MousePointer2`, `data-testid="context-add-selection"`).
+
+### 3.6 Overlays & feedback
 
 | Component | Mô tả |
 |---|---|
@@ -218,7 +231,7 @@ Nguồn sự thật: `design/tokens.json` → generate ra `design/tokens.css` (C
 | `KeySourceSelector` | Chọn K1 / K2 / K3 |
 | `WorkflowEditor` | Editor workflow (M4) |
 
-### 3.6 Settings
+### 3.7 Settings
 
 | Component | FR liên quan |
 |---|---|

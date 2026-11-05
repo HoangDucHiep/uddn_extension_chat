@@ -638,8 +638,8 @@ Các kịch bản E2E còn lại (offline, BFF down, stop, edit-resend, context 
 
 | Tầng | Số test | Vị trí |
 |---|---|---|
-| Unit | **332** — shared 75 · server 126 · extension 131 | `packages/shared/tests/` · `apps/server/tests/` · `apps/extension/tests/` |
-| E2E | **13** | `apps/extension/e2e/` |
+| Unit | **419** — shared 75 · server 126 · extension 218 | `packages/shared/tests/` · `apps/server/tests/` · `apps/extension/tests/` |
+| E2E | **18** | `apps/extension/e2e/` |
 
 ### 7.2.2 Audit chất lượng test bằng mutation testing (2026-11-04)
 
@@ -877,6 +877,74 @@ flowchart LR
 - `listOpenTabs()` **không bao giờ throw** → lỗi trả `[]` (popover rỗng, panel vẫn chat được).
 - Không gọi `chrome.sidePanel.open()` ở đây — popover nằm trong panel đang mở.
 
+### 7.3.4 Selection context — bôi đen → hỏi (T-M1-02)
+
+> **FR-CONTEXT-04.** Bôi đen một đoạn văn bản trên trang → đoạn đó trở thành `ContextItem { kind: 'selection', tier: 'selection' }` (tier **cao nhất** trong `CONTEXT_TIER_ORDER`) → được gửi lên BFF kèm nhãn `[Đã bôi đen]`.
+
+Có **hai đường tương tác** (user đã chốt "cả hai"):
+
+- **Đường A (parity Edge Copilot A8):** content script bắt selection → hiện nút nổi "Hỏi Sidekick" cạnh vùng chọn → click → panel nhận đoạn text.
+- **Đường B:** nút "Dính đoạn đã chọn" trong panel → đọc selection của tab active qua `chrome.scripting.executeScript`.
+
+```mermaid
+flowchart LR
+  sel["User bôi đen trên trang"] --> cs["contentScript.ts<br/>selectionWatcher"]
+  cs --> btn["selectionButton.ts<br/>nút nổi Shadow DOM"]
+  btn -->|"Đường A: click"| msg["runtime.sendMessage<br/>sidekick:selection"]
+  msg --> sw["serviceWorker.ts<br/>selectionBridge"]
+  sw --> store["chrome.storage.local<br/>sidekick.pendingSelection"]
+  sw -.->|"thử mở"| panel["Side Panel"]
+  panel --> hook["useSelection.ts<br/>consume khi mount / onChanged"]
+  hook --> item["attachItem(selection item)"]
+  sel2["User bôi đen"] -->|"Đường B: nút trong panel"| exec["captureActiveSelection()<br/>chrome.scripting.executeScript"]
+  exec --> item
+  item --> chip["ContextChips<br/>chip icon MousePointer"]
+```
+
+**Cơ chế "open-with-fallback" (panel đang đóng):**
+
+`chrome.sidePanel.open()` chỉ chạy được trong **user gesture**. Message từ content script sang service worker có thể **không** giữ được gesture → ta **thử** mở panel, nếu Chrome từ chối (`try/catch`) thì **im lặng**: đoạn chọn đã nằm trong `chrome.storage.local` → panel mở sau tự nhận (TTL 5 phút).
+
+| Bước | Nơi thực hiện |
+|---|---|
+| 1. Ghi `sidekick.pendingSelection` vào storage | `serviceWorker.ts` → `selectionBridge.handleSelectionMessage()` |
+| 2. Thử `chrome.sidePanel.open({ windowId })` (bọc `try/catch`) | `selectionBridge.tryOpenSidePanel()` |
+| 3. Panel mount → `consumePendingSelection()` | `sidepanel/hooks/useSelection.ts` |
+| 4. Panel đang mở → `chrome.storage.onChanged` → consume | `useSelection.ts` |
+
+**Các file liên quan:**
+
+| File | Vai trò |
+|---|---|
+| `packages/shared/src/constants.ts` | `LIMITS.MAX_SELECTION_CHARS` (10 000) · `LIMITS.MIN_SELECTION_CHARS` (10) · `SELECTION_PENDING_TTL_MS` (300 000) |
+| `apps/extension/src/content/selection.ts` | **Thuần**: `readSelectionFromDocument()` · `normalizeSelectionText()` · `isMeaningfulSelection()` · `selectionAnchorRect()` |
+| `apps/extension/src/content/selectionWatcher.ts` | Nghe `mouseup`/`keyup` (debounce 120 ms) → hiện/ẩn nút nổi; `selectionchange`/`scroll` → ẩn nút |
+| `apps/extension/src/content/selectionButton.ts` | Nút nổi trong `attachShadow({ mode: 'open' })` — `position: fixed`, `z-index: 2147483647` |
+| `apps/extension/src/content/selectionStyles.ts` | Sinh CSS cho shadow root từ `design/tokens.json` (có biến thể `prefers-color-scheme: dark`) — **không** hardcode màu |
+| `apps/extension/src/lib/selectionProtocol.ts` | `SELECTION_ACTION` · `PendingSelection` · `isSelectionMessage()` (type guard, không kéo `zod` vào content script) · `selectionItemId()` (hash FNV-1a) |
+| `apps/extension/src/lib/selectionBridge.ts` | Cầu nối content script → SW → panel (lưu storage + thử mở panel) |
+| `apps/extension/src/lib/storage.ts` | `writePendingSelection()` · `readPendingSelection()` · `consumePendingSelection()` · `clearPendingSelection()` |
+| `apps/extension/src/lib/contextAttach.ts` | `attachSelection()` → `ContextItem` · `captureActiveSelection()` → `chrome.scripting.executeScript` (đường B) |
+| `apps/extension/src/sidepanel/hooks/useSelection.ts` | Hook consume pending selection (mount + `storage.onChanged`) |
+| `apps/extension/src/sidepanel/components/context/ContextChips.tsx` | Nút "Dính đoạn đã chọn" (`MousePointer2`) |
+
+**Ràng buộc MV3 liên quan:**
+
+- Content script build **IIFE 1 file** (`vite.content.config.ts`) → `selectionProtocol.ts` **không** import `zod`, chỉ dùng type guard thuần. `dist/content.js` ≈ 13.9 kB (không có `import`).
+- Không kéo `lucide-react` vào content script (bundle phình) → icon SVG viết tay.
+- Service worker **không** giữ state lâu dài → đoạn chờ nằm trong `chrome.storage.local`.
+- `dist/content.js` **không** chứa `import` → Chrome load được (kiểm tra sau mỗi lần build).
+
+**Quy tắc hành vi:**
+
+| Quy tắc | Lý do |
+|---|---|
+| Chỉ hiện nút nổi khi selection ≥ `MIN_SELECTION_CHARS` (10) | Tránh nút nổi khi user chỉ click chuột / kéo 1–2 ký tự |
+| Ẩn nút khi `selectionchange` rỗng hoặc trang scroll | Vùng chọn đã đổi → toạ độ neo không còn đúng |
+| Đoạn chờ quá TTL (5 phút) → bỏ | User đã chuyển sang task khác → tránh đính kèm nhầm |
+| Id item = hash nội dung (`selection-<hash>`) | Bôi đen lại cùng đoạn → **thay** item cũ, không nhân bản |
+| Chỉ đính kèm khi user **chủ động** bấm nút | FR-CONTEXT-13 — không tự ý gửi nội dung trang |
+
 ### 7.4 Build: content script phải là classic script
 
 Chrome **không** load được content script dạng ES module. Nếu bundle chứa `import ... from "./assets/x.js"`, Chrome báo *"It isn't a module"* và content script **không chạy**.
@@ -889,7 +957,17 @@ Chrome **không** load được content script dạng ES module. Nếu bundle ch
 
 Lệnh build: `vite build && vite build --config vite.content.config.ts` (đã gộp trong `pnpm build`).
 
-Để content script không kéo theo cả bundle `zod` của `@sidekick/shared`, package expose thêm subpath `@sidekick/shared/constants` — extractor chỉ import hằng số từ đó (`dist/content.js` ≈ 4.7 kB thay vì 101 kB).
+Để content script không kéo theo cả bundle `zod` của `@sidekick/shared`, package expose thêm subpath `@sidekick/shared/constants` — extractor chỉ import hằng số từ đó. Cùng nguyên tắc đó, `lib/selectionProtocol.ts` (T-M1-02) dùng **type guard thuần** thay vì `zod` → content script không kéo schema vào bundle.
+
+Kích thước `dist/content.js`:
+
+| Mốc | Kích thước | Ghi chú |
+|---|---|---|
+| M0 (chỉ metadata) | ≈ 4.7 kB | — |
+| T-M1-01 (extractor) | 4.81 kB | Readability-lite + tokens |
+| **T-M1-02 (selection)** | **13.9 kB** | + watcher · + nút nổi Shadow DOM · + CSS shadow root sinh từ `tokens.json` |
+
+Vẫn là **IIFE 1 file, không `import`** → Chrome load được (kiểm tra sau mỗi lần build).
 
 ---
 

@@ -77,7 +77,7 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | ID | Task | FR | Output files | AC | Est | Status |
 |---|---|---|---|---|---|---|
 | T-M1-01 | Content script: extractor Readability-lite | FR-CONTEXT-01, NFR-PERF-04 | `apps/extension/src/content/extractor.ts` | Trích được title + nội dung chính trên bài blog/docs; ≤ 800ms cho DOM ≤ 2MB | L | ✅ |
-| T-M1-02 | Content script: selection context | FR-CONTEXT-04 | `content/selection.ts` | Bôi đen → panel nhận đúng đoạn text | M | ⬜ |
+| T-M1-02 | Content script: selection context | FR-CONTEXT-04 | `content/selection.ts` | Bôi đen → panel nhận đúng đoạn text | M | ✅ |
 | T-M1-03 | Service worker: mở/toggle panel, context menu, shortcut | FR-UX-01 | `apps/extension/src/background/*` | Toolbar click toggle; `Ctrl+Shift+K` mở; context menu "Ask Sidekick" | M | ⬜ |
 | T-M1-04 | Context chips + toggle bật/tắt context trang | FR-CONTEXT-02, NFR-SEC-02 | `sidepanel/components/context/ContextChips.tsx` | Chip hiển thị domain đang share; bỏ chip được; tắt → không gửi content | M | ✅ *(hấp thụ bởi T-M1-23)* |
 | T-M1-05 | `@` mention multi-tab | FR-CONTEXT-03 | `context/MentionPopover.tsx`, `hooks/useTabs.ts`, `hooks/useMention.ts`, `lib/tabList.ts` | Gõ `@` → list tab (title+favicon), chọn nhiều được | L | ✅ |
@@ -240,6 +240,60 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 
 > **Đã sửa thêm:** `apps/server/vitest.config.ts` thêm `testTimeout: 30_000` — `pdfExtractor.test.ts` timeout giả khi 12 worker chạy song song (không phải lỗi logic).
 
+### 3.1f Kết quả T-M1-02 — selection context (FR-CONTEXT-04) (2026-11-04)
+
+> **Động lực:** implement FR-CONTEXT-04 — bôi đen vùng text trên trang web → đoạn đó trở thành `ContextItem { kind: 'selection', tier: 'selection' }` (tier **cao nhất** theo `CONTEXT_TIER_ORDER`).
+
+#### Phần A — Lõi thuần (test được, không phụ thuộc Chrome API)
+
+| Hạng mục | Kết quả |
+|---|---|
+| `packages/shared/src/constants.ts` | ✅ `LIMITS.MAX_SELECTION_CHARS` (10 000) · `LIMITS.MIN_SELECTION_CHARS` (10) · `SELECTION_PENDING_TTL_MS` (300 000) |
+| `apps/extension/src/content/selection.ts` | ✅ **Thuần**: `readSelectionFromDocument()` · `normalizeSelectionText()` (gộp whitespace, bỏ ký tự điều khiển, cắt tại ranh giới từ, **không** cắt giữa surrogate pair) · `isMeaningfulSelection()` · `selectionAnchorRect()` (neo dưới vùng chọn, chuyển lên trên khi tràn, clamp viewport) |
+| `apps/extension/src/lib/contextAttach.ts` | ✅ `attachSelection()` → `ContextItem` (id = hash nội dung `selection-<hash>` → bôi đen lại cùng đoạn **thay** item cũ) · `captureActiveSelection()` → `chrome.scripting.executeScript` (lỗi/trang nội bộ → `undefined`, không throw) |
+
+#### Phần B — Content script: bắt selection + nút nổi
+
+| Hạng mục | Kết quả |
+|---|---|
+| `apps/extension/src/content/selectionWatcher.ts` | ✅ Nghe `mouseup` + `keyup` (Shift/⌘A) → debounce 120 ms → hiện nút · `selectionchange` rỗng / `scroll` → ẩn nút · không hiện khi selection < 10 ký tự |
+| `apps/extension/src/content/selectionButton.ts` | ✅ Nút "Hỏi Sidekick" trong `attachShadow({ mode: 'open' })` · `position: fixed` · `z-index: 2147483647` · `data-testid="selection-affordance"` · icon SVG viết tay (không kéo `lucide-react` vào content script) |
+| `apps/extension/src/content/selectionStyles.ts` | ✅ CSS shadow root **sinh từ `design/tokens.json`** + biến thể `prefers-color-scheme: dark` — không hardcode màu |
+| `apps/extension/src/content/contentScript.ts` | ✅ Khởi động watcher · click nút nổi → `chrome.runtime.sendMessage({ action: 'sidekick:selection' })` · expose `window.__sidekickGetSelection()` cho đường B · **giữ nguyên** `EXTRACT_CONTENT_ACTION` + `__sidekickExtractContent` (không regression T-M1-01) |
+| `apps/extension/src/types/globals.d.ts` | ✅ Khai báo `__sidekickGetSelection` |
+
+#### Phần C — Service worker relay (open-with-fallback)
+
+| Hạng mục | Kết quả |
+|---|---|
+| `apps/extension/src/lib/selectionProtocol.ts` | ✅ `SELECTION_ACTION` · `PendingSelection` · `isSelectionMessage()` (type guard thuần — **không** kéo `zod` vào content script) · `selectionItemId()` (hash FNV-1a) · `SELECTION_EMPTY_ERROR_CODE` |
+| `apps/extension/src/lib/storage.ts` | ✅ `PENDING_SELECTION_STORAGE_KEY` = `sidekick.pendingSelection` · `writePendingSelection()` · `readPendingSelection()` (bỏ qua + xoá nếu quá TTL) · `consumePendingSelection()` · `clearPendingSelection()` |
+| `apps/extension/src/lib/selectionBridge.ts` | ✅ `handleSelectionMessage()` — ghi storage **trước**, rồi **thử** `chrome.sidePanel.open({ windowId })` bọc `try/catch` (Chrome từ chối vì mất user gesture → im lặng, panel mở sau tự nhận) |
+| `apps/extension/src/background/serviceWorker.ts` | ✅ `chrome.runtime.onMessage` → `handleRuntimeMessage()` — không giữ state lâu dài, không proxy streaming |
+
+#### Phần D — Side panel nhận & đính kèm
+
+| Hạng mục | Kết quả |
+|---|---|
+| `apps/extension/src/sidepanel/hooks/useSelection.ts` | ✅ Consume khi **mount** + khi `chrome.storage.onChanged` bắn · bỏ qua payload quá TTL · `onAttach` giữ trong `ref` (không chạy lại effect mỗi render) |
+| `apps/extension/src/sidepanel/hooks/useChat.ts` | ✅ `attachSelection()` (đường A) + `attachActiveSelection()` (đường B) → `attachItem()` + `setContextError()` khi rỗng |
+| `apps/extension/src/sidepanel/components/context/ContextChips.tsx` | ✅ Nút "Dính đoạn đã chọn" (icon `MousePointer2`, `data-testid="context-add-selection"`), disabled khi `isAttaching` |
+| `apps/extension/src/sidepanel/App.tsx` | ✅ `useSelection()` + truyền `onAttachSelection` xuống `ContextChips` |
+| `apps/extension/src/sidepanel/components/context/ContextNotice.tsx` | ✅ Case `CONTEXT_SELECTION_EMPTY` → "Chưa có đoạn văn bản nào được bôi đen — hãy bôi đen một đoạn trên trang trước." |
+
+#### Verify
+
+| Hạng mục | Kết quả |
+|---|---|
+| `pnpm typecheck` | ✅ pass (shared · server · extension · eval) |
+| `pnpm lint` | ✅ pass (0 error, 0 warning) |
+| `pnpm test` | ✅ pass — shared **75** · server **126** · extension **218** (tổng **419**, trước 332 → **+87**) |
+| `pnpm build` | ✅ pass — `dist/content.js` vẫn là **IIFE 1 file, không `import`** (13.9 kB, trước 4.81 kB — tăng do thêm watcher + nút nổi) |
+| `pnpm test:e2e` | ✅ pass — **18/18** (+5 kịch bản `selection.spec.ts`, 13 test cũ **không regression**) |
+| Mutation re-check | ✅ **5/5 mutation bị bắt** — bỏ guard `MIN_SELECTION_CHARS` (7 test fail) · bỏ lọc TTL (2 test fail) · đổi `tier: 'selection'` → `'attachment'` (2 test fail) · bỏ guard độ dài trong `captureActiveSelection` (1 test fail) · đảo thuật toán neo nút nổi (1 test fail) |
+
+> **Ghi chú về bundle:** `dist/content.js` tăng 4.81 kB → 13.9 kB do thêm watcher + nút nổi + CSS shadow root. Vẫn là IIFE 1 file, **không** có `import` → Chrome load được (đã kiểm tra sau build).
+
 ### 3.2 Traceability FR → Task
 
 > Bảng đầy đủ FR → Task (kèm milestone) nằm ở [`REQUIREMENTS.md`](REQUIREMENTS.md) §11.1 — nơi duy nhất cần cập nhật khi thêm/bớt task.
@@ -248,7 +302,7 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | Nhóm | FR trong nhóm | Task phụ trách | Ghi chú |
 |---|---|---|---|
 | FR-CHAT-01..14 | 14 FR | T-M0-10 · T-M0-13 · T-M1-07/09/10/11/13/19 | FR-CHAT-04 (bảng Markdown) đã nằm trong T-M1-07 |
-| FR-CONTEXT-01..13 | 13 FR | T-M1-01/02/04/05/06/08/14 · **T-M1-21/22/23** · **T-M2-19** | FR-CONTEXT-05/06 nâng lên Must (2026-11-04) · FR-CONTEXT-13 (chat không cần context) do T-M1-23 · **FR-CONTEXT-03 (`@` multi-tab) do T-M1-05 ✅** |
+| FR-CONTEXT-01..13 | 13 FR | T-M1-01/02/04/05/06/08/14 · **T-M1-21/22/23** · **T-M2-19** | FR-CONTEXT-05/06 nâng lên Must (2026-11-04) · FR-CONTEXT-13 (chat không cần context) do T-M1-23 · **FR-CONTEXT-03 (`@` multi-tab) do T-M1-05 ✅** · **FR-CONTEXT-04 (selection) do T-M1-02 ✅** |
 | FR-VISION-01..05 | 5 FR | **T-M1-24** (upload) · **T-M2-22** (mở rộng) | FR-VISION-01 nâng lên M |
 | FR-TOOLS-01..06 | 6 FR | T-M2-07/08/09/10/11/18 · **T-M2-20** | FR-TOOLS-03 (web search) tách riêng khỏi tool registry |
 | FR-SKILL-01..07 | 7 FR | T-M2-04/05/06 · **T-M2-21** | FR-SKILL-04 (skill mẫu) + FR-SKILL-06 (điều kiện) tách task |
