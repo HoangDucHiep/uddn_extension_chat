@@ -100,7 +100,7 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | T-M1-22 | Transcript YouTube | FR-CONTEXT-06 | `apps/server/src/routes/extract.ts`, `apps/server/src/lib/youtubeExtractor.ts` | Lấy `captionTracks` → `timedtext` → `context.text`; không có caption / geo-block / consent → báo rõ; không crash chat | M | ✅ |
 | T-M1-23 | Ngân sách context & cắt bớt thông minh | FR-CONTEXT-07, FR-CONTEXT-13 | `packages/shared/src/contextBudget.ts`, `apps/extension/src/lib/contextAttach.ts`, `sidepanel/components/context/{ContextChips,ContextBudget}.tsx` | Cắt theo thứ tự selection > tab đính kèm > tab hiện tại > lịch sử chat; UI hiện "đã dùng X/Y token"; không đính kèm gì → chat thuần LLM | M | ✅ |
 | T-M1-24 | Upload ảnh (paste / drag-drop / file picker) | FR-VISION-01 | `packages/shared/src/schemas/vision.ts`, `apps/extension/src/lib/imageUpload.ts`, `sidepanel/components/composer/AttachmentTray.tsx`, `sidepanel/hooks/useImageAttachments.ts`, `apps/server/src/services/attachmentService.ts`, `apps/server/src/routes/attachments.ts` | Preview trước khi gửi; xoá được; gửi kèm văn bản; giới hạn kích thước (5 MB/ảnh, 4 ảnh/lượt); lưu Postgres (`message_attachments`) + multi-turn; provider vision (`inline_data` / `image_url`) + fallback chain | M | ✅ *(2026-11-05)* |
-| T-M1-25 | Onboarding lần đầu (3 bước) | FR-UX-02 | `sidepanel/components/onboarding/*` | Quyền → chọn provider → thử câu hỏi; skippable; cần nhập key hoặc bật Ollama | M | ⬜ |
+| T-M1-25 | Onboarding lần đầu (3 bước) | FR-UX-02 | `sidepanel/components/onboarding/*`, `sidepanel/hooks/useOnboarding.ts`, `sidepanel/lib/onboarding.ts`, `apps/server/src/routes/providers.ts`, `apps/server/src/services/providerService.ts`, `apps/server/src/providers/ollama.ts` | Quyền → chọn provider → thử câu hỏi; skippable; cần nhập key hoặc bật Ollama | M | ✅ *(2026-11-05)* |
 
 **Định mức M1:** 3 tuần · 25 task · ~41 ngày công
 
@@ -354,6 +354,80 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 
 > **Ghi chú về ảnh:** `dist/content.js` **không** đổi (13.87 kB) — ảnh chỉ tồn tại ở side panel, không kéo `FileReader`/`lucide-react` vào content script.
 
+### 3.1h Kết quả T-M1-25 — onboarding 3 bước lần đầu (FR-UX-02) (2026-11-05)
+
+> **Quyết định scope (chốt với user):** (a) **BYOK đầy đủ** — onboarding có ô nhập API key, lưu **K2** qua BFF → cần `POST /api/providers/keys` + `GET /api/providers`; (b) **quyền = chỉ giải thích** — không đổi `manifest.json`, không dùng `optional_permissions`; (c) **có Ollama** trong onboarding → cần adapter Ollama + probe tự động (giao T-M2-01, đẩy lên M1).
+>
+> **Không phá parity:** onboarding chỉ là lớp UI mới; luồng chat giữ nguyên. Panel vẫn là 1 màn hình chính (DP-2) — onboarding hiển thị **thay** chat khi chưa hoàn tất, mở lại được từ header.
+
+#### Phần A — Contract shared
+
+| Hạng mục | Kết quả |
+|---|---|
+| `packages/shared/src/types/entities.ts` | ✅ `providerInfoSchema`: `keySource` thêm `'none'` (provider không cần key) · thêm `note?: string` (vd "Ollama chưa chạy") |
+| `packages/shared/src/schemas/provider.ts` | ✅ `providerKeyRecordSchema` (id, providerId, label, masked, createdAt) · `providerKeyTestResultSchema` (ok, latencyMs, error?) · `providersResponseSchema` (ProviderInfo[]) · `providerKeyListResponseSchema` · `saveProviderKeyResponseSchema` |
+| `packages/shared/src/constants.ts` | ✅ `ONBOARDING_STEPS = ['permissions','provider','try']` · `API_ROUTES.providerKeys = '/api/providers/keys'` |
+| `packages/shared/src/errors.ts` | ✅ `PROVIDER_KEY_INVALID` (400) · `MASTER_KEY_NOT_CONFIGURED` (500) — dùng `PROVIDER_UNAVAILABLE` (503) cho Ollama chưa chạy |
+
+#### Phần B — Server
+
+| Hạng mục | Kết quả |
+|---|---|
+| `apps/server/src/providers/ollama.ts` | ✅ **Mới** `createOllamaProvider()` (OpenAI-compatible `http://127.0.0.1:11434/v1`, `requiresKey = false`) · `detectOllama()` probe `GET /api/tags` timeout 1.5 s → `{ available, models, error }` · `OLLAMA_VISION_MODEL_PREFIXES` (`llama3.2-vision`, `llava`, `bakllava`, `qwen2-vl`, `qwen2.5-vl`, `minicpm-v`, `moondream`, `gemma3`) |
+| `apps/server/src/providers/openaiCompatible.ts` | ✅ Thêm option `requiresKey?: boolean` (mặc định `true`) · `testKey(apiKey)` → `{ ok, error? }` (provider không cần key → `ok: true`) |
+| `apps/server/src/providers/registry.ts` | ✅ Đăng ký `ollama` · lưu `defaultModel` từng provider → `GET /api/providers` **không gọi network** (trừ probe Ollama) |
+| `apps/server/src/providers/types.ts` | ✅ `ProviderAdapter.testKey(apiKey): Promise<ProviderKeyCheck>` (bắt buộc mọi adapter) — implement ở `gemini.ts` · `mock.ts` · `openaiCompatible.ts` |
+| `apps/server/src/services/providerService.ts` | ✅ **Mới** `listProviderInfo()` (keySource K2 > K1 > none; `available` = có key hoặc Ollama probe OK) · `saveProviderKey()` (encrypt AES-256-GCM, upsert theo unique `(provider_id, label)`) · `listProviderKeys()` (chỉ metadata + `maskKey`) · `deleteProviderKey()` · `testProviderKey()` (gọi adapter thật, trả `{ok, latencyMs}`) |
+| `apps/server/src/routes/providers.ts` | ✅ **Mới** `GET /providers` · `GET /providers/keys` · `POST /providers/keys` · `DELETE /providers/keys/:id` · `POST /providers/keys/:id/test` — validate Zod ở biên, **không bao giờ trả key gốc** |
+| `apps/server/src/app.ts` · `src/index.ts` · `src/config/env.ts` | ✅ Mount `providersRouter` tại `/api` · env `OLLAMA_BASE_URL` (default `http://127.0.0.1:11434/v1`) · `OLLAMA_MODEL` (default `llama3.2`) · truyền `masterKey` + `ollamaBaseUrl` vào service |
+| `apps/server/src/services/chatService.ts` | ✅ **Sửa nhỏ:** `request.provider` **đặt đầu** chuỗi provider rồi nối tiếp fallback chain (trước đó nó *thay* chain → mất fallback, vi phạm FR-PROVIDER-04). Không có `request.provider` → hành vi không đổi |
+
+> `provider_keys` table đã có sẵn trong `db/schema.ts` + migration `0000` → **không cần migration mới**.
+
+#### Phần C — Extension
+
+| Hạng mục | Kết quả |
+|---|---|
+| `apps/extension/src/lib/onboarding.ts` | ✅ **Mới** (thuần, không React/Zustand) `ONBOARDING_COMPLETED_KEY` · `PREFERRED_PROVIDER_KEY` · `readOnboardingState()` / `completeOnboarding()` / `resetOnboarding()` / `readPreferredProvider()` / `writePreferredProvider()` |
+| `apps/extension/src/lib/providerClient.ts` | ✅ **Mới** `listProviders()` · `listProviderKeys()` · `saveProviderKey()` · `testProviderKey()` · `deleteProviderKey()` — dùng `fetchJson` của `lib/apiClient.ts` (đã xử lý lỗi chuẩn) |
+| `apps/extension/src/sidepanel/hooks/useOnboarding.ts` | ✅ **Mới** đọc/ghi cờ qua `chrome.storage.local` + lắng nghe `storage.onChanged`; expose `{ isOnboardingRequired, isLoading, complete, reset, preferredProvider }` |
+| `apps/extension/src/sidepanel/components/onboarding/Onboarding.tsx` | ✅ **Mới** orchestrator 3 bước — progress bar (`ONBOARDING_STEPS`), nút "Bỏ qua", "Về sau"/"Quay lại", `data-testid="onboarding"` |
+| `.../onboarding/StepPermissions.tsx` | ✅ Liệt kê quyền đã dùng + **vì sao** · nút "Mở cài đặt trình duyệt" (`chrome.tabs.create` bọc try/catch — Chrome chặn URL `chrome://` → fallback hiện extension id để copy) |
+| `.../onboarding/StepProvider.tsx` | ✅ Radio list provider từ `GET /api/providers` (hiện `keySource` + `available` + `note`) · provider cần key & chưa có key → `<input type="password">` + "Lưu & kiểm tra" (`POST /providers/keys` → `POST /providers/keys/:id/test`) · nút "Bỏ qua bước này" |
+| `.../onboarding/StepTry.tsx` | ✅ Ô nhập + nút "Thử" → dùng lại `streamChat()` của `lib/sseClient.ts` (**SSE thật**, không mock) → hiện câu trả lời stream + trạng thái lỗi + "Bỏ qua" |
+| `apps/extension/src/sidepanel/App.tsx` → `ChatWorkspace.tsx` | ✅ Tách 2 tầng: `App.tsx` quyết định onboarding hay chat; `ChatWorkspace.tsx` = **toàn bộ nội dung chat hiện tại, di chuyển nguyên trạng** |
+| `apps/extension/src/sidepanel/components/PanelHeader.tsx` | ✅ Thêm nút "Hướng dẫn" (icon `CircleHelp`, `aria-label` tiếng Việt) → mở lại onboarding (thay thế tạm cho entry trong Settings T-M1-12) |
+
+#### Phần D — Test
+
+| Hạng mục | Kết quả |
+|---|---|
+| `packages/shared/tests/onboarding.test.ts` | ✅ Schema provider mới + hằng onboarding + error code mới |
+| `apps/server/tests/ollamaProvider.test.ts` | ✅ `requiresKey=false` · parse `/api/tags` · `detectOllama()` true/false · `supportsVision()` theo prefix |
+| `apps/server/tests/providerService.test.ts` | ✅ encrypt→decrypt round-trip · upsert không tạo bản ghi trùng · `maskKey` chỉ 4 ký tự cuối |
+| `apps/server/tests/providersRoute.test.ts` | ✅ Express thật: `GET /api/providers` (K2 ưu tiên K1) · `POST /keys` không trả key gốc · `POST .../test` trả `ok` · `DELETE` → 204 · thiếu `MASTER_KEY` → `MASTER_KEY_NOT_CONFIGURED` · body sai → `VALIDATION_ERROR` |
+| `apps/server/tests/chatService.test.ts` | ✅ Bổ sung: `request.provider` đặt đầu **nhưng fallback chain vẫn còn** |
+| `apps/server/tests/helpers/fakeProviderKeyDb.ts` | ✅ Harness Drizzle giả cho bảng `provider_keys` (không cần DB thật) |
+| `apps/extension/tests/onboarding.test.ts` | ✅ State machine thuần: bỏ qua → `completed=true` · `resetOnboarding()` xoá cờ · `preferredProvider` persist |
+| `apps/extension/tests/providerClient.test.ts` | ✅ Parse lỗi chuẩn từ `fetchJson` |
+| `apps/extension/tests/onboardingUi.test.tsx` | ✅ Render 3 bước · "Bỏ qua" → `completed=true` · bước 2 hiện provider + ô nhập key khi cần · bước 3 gọi `streamChat` và hiện text |
+| `apps/extension/e2e/fixtures.ts` | ✅ **Sửa** seed `sidekick.onboarding.completed = true` ở **context** level (nếu không, onboarding che chat → phá 23 test cũ) · thêm fixture `sidePanelFresh` (profile tạm, không seed) cho spec onboarding |
+| `apps/extension/e2e/onboarding.spec.ts` | ✅ **Mới** 6 kịch bản: mở lần đầu → thấy onboarding · điều hướng 3 bước · bỏ qua → panel chuyển sang chat · reload → không còn onboarding · nút "Hướng dẫn" mở lại onboarding |
+
+#### Verify
+
+| Hạng mục | Kết quả |
+|---|---|
+| `pnpm typecheck` | ✅ pass (shared · server · extension · eval) |
+| `pnpm lint` | ✅ pass (0 error, 0 warning) — sửa 1 lỗi `no-useless-assignment` tại `StepPermissions.tsx` |
+| `pnpm test` | ✅ pass — shared **123** · server **214** · extension **309** (tổng **646**, trước 547 → **+99**) |
+| `pnpm build` | ✅ pass — `dist/content.js` vẫn là **IIFE 1 file, không `import`** (13.87 kB) |
+| `pnpm db:migrate` | ✅ pass — **không có migration mới** (bảng `provider_keys` đã có sẵn từ migration `0000`) |
+| `pnpm test:e2e` | ✅ pass — **29/29** (+6 kịch bản `onboarding.spec.ts`, 23 test cũ **không regression**) |
+| Mutation spot-check | ✅ **4/4 mutation bị bắt** — Ollama `requiresKey` → `true` (2 test fail) · `maskKey` trả 8 ký tự (7 test fail) · bỏ ghi `completed` khi bấm "Bỏ qua" (3 test fail) · bỏ `preferredProvider` khỏi chain (1 test fail) |
+
+> **Ghi chú về Ollama:** adapter Ollama được giao cho T-M2-01 nhưng **đẩy lên M1** trong task này vì onboarding cần provider không cần key để demo được luồng 3 bước mà không bắt user nhập API key.
+
 ### 3.2 Traceability FR → Task
 
 > Bảng đầy đủ FR → Task (kèm milestone) nằm ở [`REQUIREMENTS.md`](REQUIREMENTS.md) §11.1 — nơi duy nhất cần cập nhật khi thêm/bớt task.
@@ -369,7 +443,7 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | FR-PROVIDER-01..09 | 9 FR | T-M0-07/08 · T-M1-15/16 · T-M2-01/02/03 | FR-PROVIDER-04 (fallback) nằm trong T-M2-02 |
 | FR-WORKFLOW-01..13 | 13 FR | T-M4-01..08 · `FR-WORKFLOW-04` → **M5** | FR-WORKFLOW-04 deferred (rủi ro MV3 `tabs.onUpdated`) |
 | FR-SETTINGS-01..07 | 7 FR | T-M0-14 · T-M1-12/17 · **T-M2-19** (FR-SETTINGS-04) | FR-SETTINGS-03/04/05/07 trước đó không có task → gộp vào T-M1-12 |
-| FR-UX-01..10 | 10 FR | T-M1-03/10/11/12/18/19/20 · **T-M1-25** | FR-UX-02 (onboarding) tách task riêng T-M1-25 |
+| FR-UX-01..10 | 10 FR | T-M1-03/10/11/12/18/19/20 · **T-M1-25 ✅** | FR-UX-02 (onboarding) tách task riêng T-M1-25 — **xong 2026-11-05** (3 bước, BYOK K2, Ollama, skippable) |
 | NFR-PERF-01..06 | 6 NFR | T-M0-11 · T-M1-01/07/14/20 · T-M2-13 · T-M3-02/04/09 | NFR là yêu cầu xuyên suốt |
 | NFR-SEC-01..08 | 8 NFR | T-M0-02/06/09/12 · T-M1-04/07/15/16 · **T-M2-19** | NFR-SEC-06 (domain nhạy cảm) → T-M2-19 |
 | NFR-REL-01..05 | 5 NFR | T-M1-10/14/15/19 · **T-M3-10** | NFR-REL-05 (backup DB) tách task M3 |

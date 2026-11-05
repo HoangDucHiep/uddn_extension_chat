@@ -173,8 +173,8 @@ Dùng làm acceptance checklist cho M1.
 - [ ] Stop / Regenerate / Edit-resend — ⬜ T-M1-10
 - [ ] Export conversation (Markdown / JSON) — ⬜ T-M1-13
 - [ ] Skills `/` + tạo/sửa/xoá skill + library có sẵn + trang duyệt skill library — ⬜ T-M2-04/06/21
-- [ ] Onboarding lần đầu 3 bước — ⬜ T-M1-25
-- [ ] Không bắt buộc đăng nhập tài khoản Microsoft/Google (BYOK hoặc local model)
+- [ ] Onboarding lần đầu 3 bước — ✅ T-M1-25 (bước 1 giải thích quyền · bước 2 chọn provider + nhập API key (BYOK K2) hoặc dùng Ollama không cần key · bước 3 thử câu hỏi bằng SSE thật · skippable ở mọi bước · mở lại được từ nút "Hướng dẫn" trong header)
+- [ ] Không bắt buộc đăng nhập tài khoản Microsoft/Google (BYOK hoặc local model) — ✅ T-M1-25 (BYOK K2 qua onboarding + Ollama local không cần key)
 - [ ] Settings: theme, cỡ chữ, chiều rộng, provider/key, quản lý dữ liệu, i18n VI/EN — ⬜ T-M1-12/16/17
 - [ ] Token/cost hiển thị — ⬜ T-M2-03
 - [ ] Keyboard shortcuts cấu hình được — ⬜ T-M1-18

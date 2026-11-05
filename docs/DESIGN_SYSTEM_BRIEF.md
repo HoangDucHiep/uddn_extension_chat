@@ -251,7 +251,7 @@ Nút tương ứng trong panel: `ContextChips` → nút "Dính đoạn đã ch�
 | `Toast` (sonner) | Thông báo không chặn nội dung |
 | `ConfirmDialog` | Xoá / hành động phá huỷ |
 | `PromptGallery` | Prompt gợi ý theo ngữ cảnh trang |
-| `Onboarding` | 3 bước lần đầu: quyền → chọn provider → thử câu hỏi |
+| `Onboarding` (đã implement T-M1-25) | 3 bước lần đầu: quyền → chọn provider → thử câu hỏi — chi tiết §3.8 |
 | `ModelPicker` | Dropdown model + provider |
 | `KeySourceSelector` | Chọn K1 / K2 / K3 |
 | `WorkflowEditor` | Editor workflow (M4) |
@@ -270,6 +270,36 @@ Nút tương ứng trong panel: `ContextChips` → nút "Dính đoạn đã ch�
 | `ShortcutsSettings` | FR-UX-01 |
 | `LanguageSettings` | FR-SETTINGS-06 |
 | `WorkflowSettings` | FR-WORKFLOW-08 (M4) |
+
+### 3.8 Onboarding (đã implement T-M1-25)
+
+Component `Onboarding` — màn hình **thay** nội dung chat trong side panel khi mở lần đầu.
+
+| Sub-component | Nội dung |
+|---|---|
+| `Onboarding` | Orchestrator: progress bar 3 bước, điều hướng "Tiếp tục" / "Quay lại", nút "Bỏ qua" |
+| `StepPermissions` | Liệt kê quyền extension + lý do cần; nút "Mở cài đặt trình duyệt" |
+| `StepProvider` | Radio list provider + ô nhập API key (chỉ khi provider cần key) |
+| `StepTry` | Ô nhập câu hỏi + nút "Thử" → hiện câu trả lời stream |
+
+**Token dùng** (không hardcode màu): `bg-surface` · `text-primary` · `text-secondary` · `border-subtle` · `bg-accent` · `text-accent-fg` · `bg-accent-subtle` · `var(--space-*)` · `var(--radius-*)`.
+
+**A11y**:
+
+| Điểm | Cách làm |
+|---|---|
+| Radio group provider | `<input type="radio">` native + `<label htmlFor>` — điều hướng bằng bàn phím mặc định đúng, không cần thêm component UI |
+| Ô nhập API key | `<input type="password">` + `<label>` liên kết bằng `htmlFor`/`id`; không log giá trị ra console |
+| Nút icon | `aria-label` tiếng Việt (vd "Hướng dẫn", "Mở cài đặt trình duyệt") · icon `aria-hidden="true"` |
+| Tiến trình | `aria-current="step"` trên bước đang làm; progress bar có `aria-label` |
+| Focus | Mọi interactive element có focus ring rõ (không `outline: none`); khi chuyển bước, focus về tiêu đề bước |
+| Motion | Không có animation riêng → `prefers-reduced-motion` không bị vi phạm |
+
+**Phân cách bước 2**: phần "chọn provider" và phần "nhập key" là 2 khối riêng — provider không cần key (Ollama, mock) thì **không** hiện ô nhập key, tránh gây hiểu nhầm.
+
+**Entry mở lại**: nút "Hướng dẫn" (icon `CircleHelp`) trong `PanelHeader` → `resetOnboarding()` → panel hiện lại onboarding.
+
+> `data-testid` cho E2E: `onboarding` · `onboarding-step-permissions` · `onboarding-step-provider` · `onboarding-step-try` · `onboarding-step-counter` · `onboarding-skip` · `onboarding-next` · `onboarding-back` · `onboarding-complete` · `onboarding-api-key` · `onboarding-save-key` · `onboarding-key-error` · `onboarding-key-success` · `onboarding-saved-key-id` · `onboarding-try-input` · `onboarding-try-send` · `onboarding-try-stop` · `onboarding-try-answer` · `onboarding-try-error` · `onboarding-providers-loading` · `onboarding-providers-error` · `onboarding-open-settings` · `onboarding-extension-id`.
 
 ---
 

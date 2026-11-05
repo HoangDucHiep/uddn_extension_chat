@@ -173,6 +173,26 @@ Nội dung trang có thể đổi theo thời gian → mỗi task lưu **snapsho
 | `writing` | R2, R4, R6 |
 | `vision` | R1, R2 |
 
+### 4.2.1 Ngoài phạm vi đo — onboarding (FR-UX-02, T-M1-25)
+
+> **Onboarding KHÔNG nằm trong rubric eval.**
+
+| Lý do | Giải thích |
+|---|---|
+| Đồ án đo **chất lượng chat**, không đo **setup** | Rubric R1–R8 chấm *câu trả lời* (groundedness, correctness, citation, instruction following…). Onboarding là màn hình thiết lập 1 lần, không sinh ra câu trả lời nào để chấm. |
+| Không công bằng | Edge Copilot / Chrome Gemini không có onboarding 3 bước kiểu này → đưa vào rubric sẽ so sánh "màn hình setup" với "không có màn hình setup" → lệch tiêu chí đo. |
+| Không chấm được bằng số | Trạng thái onboarding là biến boolean trong `chrome.storage.local` — không có metric định lượng tự nhiên (không TTFT, không cost, không citation). |
+
+Cách đối chiếu onboarding **không tính điểm số** → dùng **ảnh chụp màn hình** trong phần Tầng B (live manual test) như một dòng mô tả tính năng ở bảng "Tính năng mở cho mọi người" (§8.1 Bảng 1), **không** đưa vào điểm trung bình.
+
+| Mục | Giá trị |
+|---|---|
+| Edge Copilot | Không có onboarding kiểu này (mở panel là vào thẳng chat) |
+| Chrome Gemini | Không có onboarding kiểu này (mở panel là vào thẳng chat) |
+| Sidekick AI | ✅ 3 bước lần đầu (T-M1-25) — quyền → chọn provider/BYOK → thử câu hỏi · skippable |
+
+> Việc cấu hình provider trước khi chat là **tiền đề** của mọi task eval — eval harness luôn dùng sẵn key (K1 env hoặc K2 đã lưu từ onboarding) và **không** tính thời gian setup vào `latency_total_ms`.
+
 ### 4.3 Judge prompt (bản dùng thật)
 
 System prompt:

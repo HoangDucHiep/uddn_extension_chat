@@ -8,6 +8,37 @@
 
 ## [Unreleased]
 ### Added
+- **T-M1-25 — Onboarding 3 bước lần đầu (FR-UX-02)**
+  - `packages/shared/src/types/entities.ts` — `providerInfoSchema`: `keySource` thêm `'none'` (provider không cần key) · thêm `note?: string` (vd "Ollama chưa chạy").
+  - `packages/shared/src/schemas/provider.ts` — `providerKeyRecordSchema` (id · providerId · label · masked · createdAt) · `providerKeyTestResultSchema` (ok · latencyMs · error?) · `providersResponseSchema` · `providerKeyListResponseSchema` · `saveProviderKeyResponseSchema`.
+  - `packages/shared/src/constants.ts` — `ONBOARDING_STEPS = ['permissions','provider','try']` · `API_ROUTES.providerKeys = '/api/providers/keys'`.
+  - `packages/shared/src/errors.ts` — thêm `PROVIDER_KEY_INVALID` (400) · `MASTER_KEY_NOT_CONFIGURED` (500).
+  - `apps/server/src/providers/ollama.ts` (mới) — `createOllamaProvider()` (OpenAI-compatible `http://127.0.0.1:11434/v1`, `requiresKey = false`) · `detectOllama()` probe `GET /api/tags` timeout 1.5 s → `{ available, models, error }` · `OLLAMA_VISION_MODEL_PREFIXES`.
+  - `apps/server/src/providers/openaiCompatible.ts` — thêm option `requiresKey?: boolean` (mặc định `true`) · `testKey(apiKey)` → `{ ok, error? }`.
+  - `apps/server/src/providers/types.ts` — `ProviderAdapter.testKey(apiKey): Promise<ProviderKeyCheck>` (implement ở `gemini.ts` · `mock.ts` · `openaiCompatible.ts`).
+  - `apps/server/src/providers/registry.ts` — đăng ký `ollama` + lưu `defaultModel` từng provider → `GET /api/providers` không gọi network (trừ probe Ollama).
+  - `apps/server/src/services/providerService.ts` (mới) — `listProviderInfo()` (keySource K2 > K1 > none) · `saveProviderKey()` (AES-256-GCM, upsert theo `(provider_id, label)`) · `listProviderKeys()` (chỉ metadata + `maskKey`) · `deleteProviderKey()` · `testProviderKey()` (gọi adapter thật).
+  - `apps/server/src/routes/providers.ts` (mới) — `GET /providers` · `GET /providers/keys` · `POST /providers/keys` · `DELETE /providers/keys/:id` · `POST /providers/keys/:id/test` — **không bao giờ trả key gốc**.
+  - `apps/server/src/app.ts` · `src/index.ts` · `src/config/env.ts` — mount `providersRouter` tại `/api` · env `OLLAMA_BASE_URL` · `OLLAMA_MODEL`.
+  - `apps/extension/src/lib/onboarding.ts` (mới, thuần) — `ONBOARDING_COMPLETED_KEY` · `PREFERRED_PROVIDER_KEY` · `readOnboardingState()` · `completeOnboarding()` · `resetOnboarding()` · `readPreferredProvider()` · `writePreferredProvider()`.
+  - `apps/extension/src/lib/providerClient.ts` (mới) — `listProviders()` · `listProviderKeys()` · `saveProviderKey()` · `testProviderKey()` · `deleteProviderKey()`.
+  - `apps/extension/src/sidepanel/hooks/useOnboarding.ts` (mới) — đọc/ghi cờ qua `chrome.storage.local` + lắng nghe `storage.onChanged`.
+  - `apps/extension/src/sidepanel/components/onboarding/` (mới) — `Onboarding.tsx` (orchestrator 3 bước) · `StepPermissions.tsx` (giải thích quyền) · `StepProvider.tsx` (chọn provider + nhập API key) · `StepTry.tsx` (thử câu hỏi qua SSE thật).
+  - `apps/extension/src/sidepanel/components/PanelHeader.tsx` — nút "Hướng dẫn" (`CircleHelp`) → mở lại onboarding.
+  - **Test** — `packages/shared/tests/onboarding.test.ts` (mới) · `apps/server/tests/ollamaProvider.test.ts` (mới) · `apps/server/tests/providerService.test.ts` (mới) · `apps/server/tests/providersRoute.test.ts` (mới) · `apps/server/tests/helpers/fakeProviderKeyDb.ts` (mới) · `apps/server/tests/chatService.test.ts` (+preferred-first) · `apps/extension/tests/onboarding.test.ts` (mới) · `apps/extension/tests/providerClient.test.ts` (mới) · `apps/extension/tests/onboardingUi.test.tsx` (mới) · `apps/extension/e2e/onboarding.spec.ts` (mới, 6 kịch bản) · `apps/extension/e2e/fixtures.ts` (sửa: seed `sidekick.onboarding.completed` ở context level + fixture `sidePanelFresh`).
+  - **Số test toàn repo:** 547 → **646 unit** (shared 123 · server 214 · extension 309) + 23 → **29 E2E**.
+  - **Mutation spot-check:** 4/4 mutation bị bắt — Ollama `requiresKey` → `true` (2 test fail) · `maskKey` trả 8 ký tự (7 test fail) · bỏ ghi `completed` khi bấm "Bỏ qua" (3 test fail) · bỏ `preferredProvider` khỏi chain (1 test fail).
+
+### Changed
+- `apps/server/src/services/chatService.ts` — `request.provider` giờ **đặt đầu** chuỗi provider rồi nối tiếp fallback chain (trước đó nó *thay* chain → mất fallback, vi phạm FR-PROVIDER-04). Không có `request.provider` → hành vi không đổi.
+- `apps/extension/src/sidepanel/App.tsx` — tách 2 tầng: `App.tsx` chọn giữa `<Onboarding />` và `<ChatWorkspace />`; nội dung chat chuyển nguyên trạng sang `sidepanel/ChatWorkspace.tsx`.
+- `apps/server/src/providers/ollama.ts` — `supportsVision()` theo tiền tố model (`llama3.2-vision` · `llava` · `bakllava` · `qwen2-vl` · `qwen2.5-vl` · `minicpm-v` · `moondream` · `gemma3`) thay vì `false`.
+- **Docs** — `REQUIREMENTS.md` §4.9.1 (AC chi tiết FR-UX-02) · `SYSTEM_DESIGN.md` §4.1 (5 endpoint provider) · §4.4.1 (preferred-first) · §4.4.2 (Ollama) · §7.6 (hợp đồng onboarding) · `DESIGN_SYSTEM_BRIEF.md` §3.8 (component onboarding + a11y) · `IMPLEMENTATION_PLAN.md` §3.1h (kết quả T-M1-25) · `COMPARISON_MATRIX.md` §E (tick onboarding + no-login) · `EVAL_PLAN.md` §4.2.1 (onboarding nằm ngoài rubric eval) · `AGENTS.md` + `docs/README.md` (cập nhật số task/test, việc tiếp theo).
+
+### Fixed
+- `apps/extension/src/sidepanel/components/onboarding/StepPermissions.tsx` — sửa lỗi lint `no-useless-assignment` (khởi tạo `id` trước `try`).
+
+### Added
 - **T-M1-24 — Upload ảnh & vision input (FR-VISION-01)**
   - `packages/shared/src/schemas/vision.ts` (mới) — `IMAGE_MIME_TYPES` (`image/png` · `jpeg` · `webp` · `gif`) · `MAX_IMAGE_BASE64_CHARS` · `imageAttachmentSchema` (id uuid · mimeType · data base64 thuan · bytes · width/height · fileName) · `providerImageSchema` · `imageAttachmentListSchema` (≤ 4 ảnh + tổng ≤ 12 MB).
   - `packages/shared/src/constants.ts` — `VISION` (MAX_IMAGE_BYTES 5 MB · MAX_IMAGES_PER_MESSAGE 4 · MAX_TOTAL_IMAGE_BYTES 12 MB · **ALLOWED_MIME_TYPES** · TOKEN_ESTIMATE_PER_IMAGE 258) + `VISION_MIME_TYPES` (tuple nguồn sự thật, tránh vòng import với `schemas/vision.ts`) · `API_ROUTES.attachment = '/api/attachments'`.

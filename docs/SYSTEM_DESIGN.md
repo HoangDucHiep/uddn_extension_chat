@@ -313,11 +313,11 @@ X-Request-Id: <uuid v4>            // idempotency + tracing
 | Method | Path | Request | Response | Error codes |
 |---|---|---|---|---|
 | GET | `/health` | — | `{ status, version, db, uptime }` | — |
-| GET | `/providers` | — | `ProviderInfo[]` (id, name, models, keySource, requiresKey) | — |
-| GET | `/providers/keys` | — | `KeyRecord[]` (chỉ metadata + masked, **không** trả key gốc) | `UNAUTHENTICATED` |
-| POST | `/providers/keys` | `{ providerId, apiKey, label? }` | `{ id, masked, createdAt }` | `VALIDATION_ERROR`, `PROVIDER_KEY_INVALID` |
+| GET | `/providers` | — | `ProviderInfo[]` (id, name, models, keySource `K2\|K1\|none`, requiresKey, available, note?) | — |
+| GET | `/providers/keys` | — | `ProviderKeyRecord[]` (chỉ metadata + masked, **không** trả key gốc) | — |
+| POST | `/providers/keys` | `{ providerId, apiKey, label? }` | `ProviderKeyRecord` (id, providerId, label, masked, createdAt) | `VALIDATION_ERROR`, `MASTER_KEY_NOT_CONFIGURED` |
 | DELETE | `/providers/keys/:id` | — | `204` | `NOT_FOUND` |
-| POST | `/providers/keys/:id/test` | — | `{ ok, latencyMs, error? }` | `PROVIDER_ERROR` |
+| POST | `/providers/keys/:id/test` | — | `{ ok, latencyMs, error? }` | `NOT_FOUND`, `MASTER_KEY_NOT_CONFIGURED`, `INVALID_API_KEY` |
 | POST | `/chat` | `ChatRequest` | **SSE stream** | `VALIDATION_ERROR`, `NO_KEY_AVAILABLE`, `RATE_LIMITED`, `PROVIDER_VISION_UNSUPPORTED` |
 | GET | `/attachments/:id` | — | **binary** (`Content-Type` = mime của ảnh) | `NOT_FOUND` |
 | POST | `/extract/pdf` | `{ url }` | `{ text, title?, excerpt?, truncated, error? }` | `VALIDATION_ERROR`, `CONTEXT_PDF_NOT_READABLE`, `CONTEXT_PDF_UNREACHABLE` |
@@ -535,6 +535,32 @@ resolveKey(providerId, keySource)
 
 Fallback chain: provider chính → provider dự phòng (cấu hình trong settings) → trả lỗi kèm gợi ý cấu hình.
 
+#### 4.4.1 Provider ưu tiên (preferred-first) — T-M1-25
+
+Khi client gửi `ChatRequest.provider` (provider user chọn ở onboarding), `chatService` **đặt provider đó ở đầu** chuỗi thay vì **thay thế** toàn bộ chain:
+
+```ts
+const chain = request.provider
+  ? [...new Set([request.provider, ...registry.getFallbackChain()])]
+  : registry.getFallbackChain()
+```
+
+→ Provider ưu tiên được dùng trước, nhưng nếu provider đó lỗi (thiếu key, 5xx, timeout) thì vẫn **fallback** được như cũ (FR-PROVIDER-04). Không có `request.provider` → hành vi không đổi.
+
+#### 4.4.2 Provider không cần API key — Ollama (T-M1-25)
+
+`OpenAiCompatibleProvider` nhận thêm option `requiresKey?: boolean` (mặc định `true`). Ollama — provider local, không cần key — được đăng ký với `requiresKey: false` → `chatService` **bỏ qua** bước resolve key, và `buildHeaders` trả `{}` (không gửi header `Authorization`).
+
+| Provider | `requiresKey` | `keySource` khi không có key |
+|---|---|---|
+| `mock` | `false` | `none` |
+| `ollama` | `false` | `none` |
+| `groq` / `openrouter` / `gemini` | `true` | `K2` (DB) → `K1` (env) → `none` |
+
+**Probe Ollama**: `detectOllama(baseUrl, timeoutMs = 1500)` gọi `GET /api/tags` (endpoint native, trả `{ models: [{ name }] }`) → `{ available, models, error }`. Timeout ngắn để onboarding không bị treo khi user chưa bật Ollama. Kết quả dùng cho `ProviderInfo.available` + `ProviderInfo.note` (tiếng Việt) hiển thị ở bước 2 của onboarding.
+
+> Env: `OLLAMA_BASE_URL` (mặc định `http://127.0.0.1:11434/v1`) · `OLLAMA_MODEL` (mặc định `llama3.2`).
+
 #### 4.4.1 Hỗ trợ vision của provider (FR-VISION-01, T-M1-24)
 
 Mỗi `ProviderAdapter` phải cài `supportsVision(model: string): boolean`. Khi request có ảnh, `createChatStream` **bỏ qua** provider/model không hỗ trợ vision và chuyển sang provider tiếp theo trong chain. Nếu hết chain → trả lỗi `PROVIDER_VISION_UNSUPPORTED` (không crash, không mất tiến trình).
@@ -545,7 +571,7 @@ Mỗi `ProviderAdapter` phải cài `supportsVision(model: string): boolean`. Kh
 | `openrouter` | theo tiền tố model (`google/gemini`, `openai/gpt-4o`, `anthropic/claude-3`, `anthropic/claude-4`, `meta-llama/llama-3.2`, `qwen/qwen2-vl`, `google/gemma`) | `content: [{ type:'text' }, { type:'image_url', image_url: { url: 'data:<mime>;base64,<data>' } }]` |
 | `groq` | theo tiền tố model (`meta-llama/llama-4-scout`, `meta-llama/llama-4-maverick`, `meta-llama/llama-3.2-11b-vision`, `meta-llama/llama-3.2-90b-vision`) | như OpenAI-compatible |
 | `mock` | `true` (để test end-to-end) | echo số ảnh trong text: `[mock] Nhan duoc 1 anh (image/png)` |
-| `ollama` | `false` (chưa hỗ trợ) | — |
+| `ollama` | theo tiền tố model (`llama3.2-vision`, `llava`, `bakllava`, `qwen2-vl`, `qwen2.5-vl`, `minicpm-v`, `moondream`, `gemma3`) | như OpenAI-compatible |
 
 > **Lưu ý:** model mặc định của Groq (`openai/gpt-oss-120b`) **không** hỗ trợ ảnh → khi user đính kèm ảnh, server tự fallback sang `openrouter` hoặc `gemini`. Người dùng không cần chỉnh tay.
 
@@ -1075,6 +1101,49 @@ Kích thước `dist/content.js`:
 | **T-M1-02 (selection)** | **13.9 kB** | + watcher · + nút nổi Shadow DOM · + CSS shadow root sinh từ `tokens.json` |
 
 Vẫn là **IIFE 1 file, không `import`** → Chrome load được (kiểm tra sau mỗi lần build).
+
+### 7.6 Hợp đồng onboarding (FR-UX-02, T-M1-25)
+
+#### 7.6.1 Cờ trạng thái (client-side)
+
+| Khoá `chrome.storage.local` | Kiểu | Ý nghĩa |
+|---|---|---|
+| `sidekick.onboarding.completed` | `boolean` | Onboarding đã chạy xong (kể cả khi user bấm "Bỏ qua") |
+| `sidekick.preferredProvider` | `ProviderId` | Provider user chọn ở bước 2 → gửi kèm `ChatRequest.provider` |
+
+Nguồn sự thật: `apps/extension/src/lib/onboarding.ts` (`readOnboardingState` / `completeOnboarding` / `resetOnboarding` / `readPreferredProvider` / `writePreferredProvider`) — file **thuần**, không phụ thuộc React/Zustand → test được trực tiếp.
+
+#### 7.6.2 Luồng render
+
+```
+App.tsx  ──useOnboarding()──▶  sidekick.onboarding.completed
+   │
+   ├─ false → <Onboarding />          (3 bước, xem REQUIREMENTS.md §4.9.1)
+   └─ true  → <ChatWorkspace />       (nội dung chat, tách từ App.tsx nguyên trạng)
+```
+
+`useOnboarding` (`apps/extension/src/sidepanel/hooks/useOnboarding.ts`) đọc cờ qua `chrome.storage.local` và **lắng nghe** `chrome.storage.onChanged` → khi cờ đổi (bấm "Bỏ qua" hoặc "Hoàn tất") panel chuyển màn hình **không cần reload**.
+
+#### 7.6.3 Component
+
+| File | Trách nhiệm |
+|---|---|
+| `components/onboarding/Onboarding.tsx` | Orchestrator: progress bar (`ONBOARDING_STEPS` = `['permissions','provider','try']`), điều hướng "Tiếp tục" / "Quay lại", nút "Bỏ qua" |
+| `components/onboarding/StepPermissions.tsx` | Liệt kê quyền + lý do; nút "Mở cài đặt trình duyệt" (`chrome.tabs.create` bọc try/catch — Chrome chặn URL `chrome://` → fallback hiện extension id để copy) |
+| `components/onboarding/StepProvider.tsx` | Radio list provider từ `GET /api/providers`; ô nhập key (chỉ khi provider `requiresKey` và chưa có key) → `POST /providers/keys` → `POST /providers/keys/:id/test` |
+| `components/onboarding/StepTry.tsx` | Ô nhập + nút "Thử" → `streamChat()` (SSE thật) → hiện câu trả lời stream |
+
+> Bước 2 dùng **radio native** (`<input type="radio">` + `<label>`) → a11y tốt, không cần thêm component UI mới.
+
+#### 7.6.4 Mở lại onboarding
+
+`PanelHeader` có nút "Hướng dẫn" (`CircleHelp`) → gọi `resetOnboarding()` → cờ bị xoá → `useOnboarding` phát `onChanged` → panel hiện lại onboarding. Đây là entry tạm thời cho tới khi Settings (T-M1-12) có mục "Chạy lại hướng dẫn".
+
+#### 7.6.5 Ràng buộc bảo mật
+
+- API key nhập ở bước 2 gửi lên BFF qua HTTPS → BFF mã hoá **AES-256-GCM** (`MASTER_KEY`) → lưu `provider_keys`. Client **không bao giờ** nhận lại key gốc, chỉ `masked` (`****` + 4 ký tự cuối).
+- BFF thiếu `MASTER_KEY` → `MASTER_KEY_NOT_CONFIGURED` (500) — thông báo rõ ràng cho user, không crash.
+- Bước 3 gọi `POST /api/chat` qua **cùng** đường SSE như chat thường → không có đường tắt riêng cho onboarding.
 
 ---
 

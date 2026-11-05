@@ -396,7 +396,7 @@ BYOK trả lời câu *"key của ai?"*, không trả lời *"key nằm ở đâ
 | ID | Requirement | Priority | Acceptance criteria |
 |---|---|---|---|
 | FR-UX-01 | Mở/toggle panel bằng icon toolbar + phím tắt tự cấu hình | M | `chrome.sidePanel.open()` chỉ trong user gesture |
-| FR-UX-02 | Onboarding lần đầu (3 bước: quyền, chọn provider, thử câu hỏi) | M | Skippable; cần nhập key hoặc bật Ollama |
+| FR-UX-02 | Onboarding lần đầu (3 bước: quyền, chọn provider, thử câu hỏi) | M | ✅ T-M1-25 — xem AC chi tiết §4.9.1 |
 | FR-UX-03 | Empty state với prompt gợi ý theo ngữ cảnh trang | M | ≥ 3 gợi ý; refresh theo loại trang |
 | FR-UX-04 | Empty state khi chưa có context: gợi ý câu hỏi chung | M | |
 | FR-UX-05 | Scroll: tự cuộn theo stream; dừng auto-scroll khi user cuộn lên | M | Có nút "Cuộn xuống" khi đang lệch |
@@ -405,6 +405,27 @@ BYOK trả lời câu *"key của ai?"*, không trả lời *"key nằm ở đâ
 | FR-UX-08 | Toast / banner thông báo lỗi & trạng thái, không che nội dung | M | Auto-dismiss 5s, có dismiss thủ công |
 | FR-UX-09 | Responsive: hỗ trợ zoom 200%, font nhỏ không vỡ | M | |
 | FR-UX-10 | Hoạt ảnh tối giản, tôn trọng `prefers-reduced-motion` | M | |
+
+#### 4.9.1 FR-UX-02 — Onboarding 3 bước (AC chi tiết — T-M1-25 ✅)
+
+Onboarding hiển thị **thay** nội dung chat trong side panel khi lần đầu mở (`sidekick.onboarding.completed` chưa được set trong `chrome.storage.local`).
+
+| # | Bước | Nội dung | Acceptance criteria |
+|---|---|---|---|
+| 1 | `permissions` | Giải thích các quyền extension đang dùng (`sidePanel`, `scripting`, `tabs`, `storage`, `contextMenus`, `<all_urls>`) và **vì sao** cần | Chỉ **giải thích**, **không** đổi `manifest.json`; có nút "Mở cài đặt trình duyệt" (mở `chrome://extensions/?id=<id>`, fallback hiện extension id để copy) |
+| 2 | `provider` | Radio list provider lấy từ `GET /api/providers` — hiện `keySource` (`K2`/`K1`/`none`), `available`, `note` | Provider **cần key** và chưa có key → hiện ô `<input type="password">` + nút "Lưu & kiểm tra" (`POST /api/providers/keys` → `POST /api/providers/keys/:id/test`); provider **không cần key** (Ollama/mock) → không hiện ô nhập key; có nút "Bỏ qua bước này" |
+| 3 | `try` | Ô nhập câu hỏi + nút "Thử" | Dùng **SSE thật** qua `POST /api/chat` (không mock) → hiện câu trả lời stream trong panel; hiện trạng thái lỗi nếu provider lỗi |
+
+Quy tắc chung:
+
+- **Skippable**: nút "Bỏ qua" ở mỗi bước → set `sidekick.onboarding.completed = true` → panel chuyển sang chat.
+- **Mở lại được**: nút "Hướng dẫn" (`CircleHelp`) trong header panel → reset cờ → hiện lại onboarding (thay thế tạm cho entry trong Settings T-M1-12).
+- **BYOK K2**: API key nhập ở bước 2 được mã hoá **AES-256-GCM** bởi BFF (`MASTER_KEY`) rồi lưu vào bảng `provider_keys`; client **không bao giờ** nhận lại key gốc — chỉ `masked` (`****abcd`).
+- **Ollama**: provider local, `requiresKey = false`; BFF probe `GET /api/tags` (timeout 1.5 s) để đánh dấu `available`; khi không chạy → `note` tiếng Việt cho user.
+- **Provider ưu tiên**: provider user chọn ở bước 2 được lưu (`sidekick.preferredProvider`) và **đặt đầu** chuỗi provider khi chat, nhưng chuỗi fallback vẫn được giữ phía sau (FR-PROVIDER-04).
+- **Không phá parity**: onboarding chỉ là lớp UI; luồng chat hiện tại giữ nguyên (panel vẫn là 1 màn hình chính, DP-2).
+
+> Không nằm trong scope T-M1-25: Settings đầy đủ (T-M1-12) · Anthropic/OpenAI-native adapter (T-M2-01) · model picker (FR-PROVIDER-03) · K3 direct mode (T-M1-15).
 
 ---
 
@@ -1026,7 +1047,7 @@ Chỉ bắt đầu M4 khi **đồng thời** thỏa:
 | FR | Priority | Task | Milestone |
 |---|---|---|---|
 | FR-UX-01 | M | T-M1-03 · T-M1-18 | M1 |
-| FR-UX-02 | M | **T-M1-25** | M1 |
+| FR-UX-02 | M | **T-M1-25 ✅** | M1 |
 | FR-UX-03 | M | T-M1-11 · T-M1-19 | M1 |
 | FR-UX-04 | M | T-M1-11 · T-M1-19 | M1 |
 | FR-UX-05 | M | T-M1-10 | M1 |
