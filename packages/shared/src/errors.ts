@@ -29,6 +29,10 @@ export const ERROR_CODES = {
   // Key / config
   MISSING_API_KEY: 'MISSING_API_KEY',
   INVALID_API_KEY: 'INVALID_API_KEY',
+  /** Key BYOK sai dinh dang / provider tu choi. */
+  PROVIDER_KEY_INVALID: 'PROVIDER_KEY_INVALID',
+  /** BFF chua co MASTER_KEY → khong ma hoa duoc BYOK key. */
+  MASTER_KEY_NOT_CONFIGURED: 'MASTER_KEY_NOT_CONFIGURED',
 
   // Database
   DB_ERROR: 'DB_ERROR',
@@ -81,6 +85,8 @@ export const ERROR_STATUS_MAP: Record<ErrorCode, number> = {
 
   MISSING_API_KEY: 500,
   INVALID_API_KEY: 401,
+  PROVIDER_KEY_INVALID: 400,
+  MASTER_KEY_NOT_CONFIGURED: 500,
 
   DB_ERROR: 500,
 

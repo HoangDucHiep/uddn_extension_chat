@@ -4,6 +4,7 @@
 
 import { z } from 'zod'
 import { PROVIDER_IDS } from '../constants.js'
+import { providerInfoSchema } from '../types/entities.js'
 import { providerImageSchema } from './vision.js'
 
 /** Do dai context cua provider. */
@@ -70,3 +71,50 @@ export const resolvedKeySchema = z.object({
   keyId: z.string().optional(),
 })
 export type ResolvedKey = z.infer<typeof resolvedKeySchema>
+
+/**
+ * Metadata cua mot API key da luu (K2).
+ *
+ * **KHONG** bao gio chua key goc — chi co `masked` (4 ky tu cuoi) de user
+ * nhan ra key nao la key nao.
+ */
+export const providerKeyRecordSchema = z.object({
+  id: z.string().uuid(),
+  providerId: z.enum(PROVIDER_IDS),
+  label: z.string(),
+  /** Key da che — vi du `****abcd`. */
+  masked: z.string(),
+  createdAt: z.string(),
+})
+export type ProviderKeyRecord = z.infer<typeof providerKeyRecordSchema>
+
+/** Ket qua kiem tra mot API key co hoat dong khong. */
+export const providerKeyTestResultSchema = z.object({
+  ok: z.boolean(),
+  latencyMs: z.number().nonnegative(),
+  /** Thong diep loi khi `ok === false`. */
+  error: z.string().max(500).optional(),
+})
+export type ProviderKeyTestResult = z.infer<typeof providerKeyTestResultSchema>
+
+/** Response cua `GET /api/providers`. */
+export const providersResponseSchema = z.object({
+  items: z.array(providerInfoSchema),
+})
+export type ProvidersResponse = z.infer<typeof providersResponseSchema>
+
+/** Response cua `GET /api/providers/keys`. */
+export const providerKeyListResponseSchema = z.object({
+  items: z.array(providerKeyRecordSchema),
+})
+export type ProviderKeyListResponse = z.infer<typeof providerKeyListResponseSchema>
+
+/** Response cua `POST /api/providers/keys`. */
+export const saveProviderKeyResponseSchema = z.object({
+  id: z.string().uuid(),
+  providerId: z.enum(PROVIDER_IDS),
+  label: z.string(),
+  masked: z.string(),
+  createdAt: z.string(),
+})
+export type SaveProviderKeyResponse = z.infer<typeof saveProviderKeyResponseSchema>

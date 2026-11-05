@@ -14,9 +14,11 @@ import { createHealthRouter } from './routes/health.js'
 import { createChatRouter } from './routes/chat.js'
 import { createExtractRouter } from './routes/extract.js'
 import { createAttachmentsRouter } from './routes/attachments.js'
+import { createProvidersRouter } from './routes/providers.js'
 import type { ChatServiceDeps } from './services/chatService.js'
+import type { ProviderServiceDeps } from './services/providerService.js'
 
-export interface AppDeps extends ChatServiceDeps {
+export interface AppDeps extends ChatServiceDeps, ProviderServiceDeps {
   pool: Pool
   version: string
   allowedOrigins: string[]
@@ -38,6 +40,7 @@ export function createApp(deps: AppDeps): Express {
   const chatRouter = createChatRouter(deps)
   const extractRouter = createExtractRouter()
   const attachmentsRouter = createAttachmentsRouter({ db: deps.db })
+  const providersRouter = createProvidersRouter(deps)
 
   // `/api/health` la endpoint chinh; `/health` la alias de smoke test nhanh.
   app.use(API_BASE_PATH, healthRouter)
@@ -45,6 +48,7 @@ export function createApp(deps: AppDeps): Express {
   app.use(API_BASE_PATH, chatRouter)
   app.use(API_BASE_PATH, extractRouter)
   app.use(API_BASE_PATH, attachmentsRouter)
+  app.use(API_BASE_PATH, providersRouter)
 
   app.use(notFoundHandler)
   app.use(errorHandler)

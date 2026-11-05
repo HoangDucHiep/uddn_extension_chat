@@ -23,6 +23,8 @@ async function main(): Promise<void> {
     openRouterModel: env.OPENROUTER_MODEL,
     geminiModel: env.GEMINI_MODEL,
     geminiFallbackModels: getGeminiFallbackModels(env),
+    ollamaModel: env.OLLAMA_MODEL,
+    ollamaBaseUrl: env.OLLAMA_BASE_URL,
   })
 
   const app = createApp({
@@ -35,6 +37,7 @@ async function main(): Promise<void> {
       gemini: env.GEMINI_API_KEY,
     },
     masterKey: env.MASTER_KEY,
+    ollamaBaseUrl: env.OLLAMA_BASE_URL,
     logFullContent: false,
     logRequests: env.LOG_REQUESTS,
     version: VERSION,

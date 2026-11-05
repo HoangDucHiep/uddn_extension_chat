@@ -119,11 +119,21 @@ export const API_ROUTES = {
   chat: `${API_BASE_PATH}/chat`,
   conversations: `${API_BASE_PATH}/conversations`,
   providers: `${API_BASE_PATH}/providers`,
+  /** API key BYOK (K2) — GET/POST/DELETE + test. */
+  providerKeys: `${API_BASE_PATH}/providers/keys`,
   extractPdf: `${API_BASE_PATH}/extract/pdf`,
   extractYoutube: `${API_BASE_PATH}/extract/youtube`,
   /** Anh dinh kem — GET /api/attachments/:id tra ve binary. */
   attachment: `${API_BASE_PATH}/attachments`,
 } as const
+
+/**
+ * Cac buoc cua onboarding lan dau (FR-UX-02 — T-M1-25).
+ *
+ * Thu tu: giai thich quyen → chon provider (nhap key) → thu cau hoi.
+ */
+export const ONBOARDING_STEPS = ['permissions', 'provider', 'try'] as const
+export type OnboardingStep = (typeof ONBOARDING_STEPS)[number]
 
 /** Co loi bao gio phai dung. */
 export const DEFAULT_SYSTEM_PROMPT =

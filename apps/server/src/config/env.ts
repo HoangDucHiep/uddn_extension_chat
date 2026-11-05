@@ -31,6 +31,11 @@ const envSchema = z.object({
   GEMINI_MODEL: z.string().default('gemini-3.6-flash'),
   GEMINI_FALLBACK_MODELS: z.string().default('gemini-flash-lite-latest'),
 
+  /** Base URL cua Ollama (API tuong thich OpenAI). FR-PROVIDER-07. */
+  OLLAMA_BASE_URL: z.string().default('http://127.0.0.1:11434/v1'),
+  /** Model mac dinh cua Ollama. */
+  OLLAMA_MODEL: z.string().default('llama3.2'),
+
   LOG_REQUESTS: z
     .enum(['true', 'false'])
     .default('false')

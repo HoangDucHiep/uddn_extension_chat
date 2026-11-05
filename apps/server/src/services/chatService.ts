@@ -101,8 +101,13 @@ export function createChatStream(
     const imagesForProvider = mergeImages(conversationImages, requestAttachments)
 
     // --- 2. Chon provider + key ---
+    // Provider user chon duoc dat DAU chuoi, nhung fallback chain van duoc
+    // giu nguyen phia sau → ton tai co che fallback (FR-PROVIDER-04).
+    // Khong co `request.provider` → dung fallback chain mac dinh.
     const chain = request.provider
-      ? ([request.provider] as ProviderId[])
+      ? ([
+          ...new Set<ProviderId>([request.provider, ...deps.registry.getFallbackChain()]),
+        ] as ProviderId[])
       : deps.registry.getFallbackChain()
 
     let resolvedProvider: ProviderId | undefined

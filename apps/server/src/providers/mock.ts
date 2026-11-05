@@ -6,7 +6,7 @@
  */
 
 import type { ProviderChunk, ProviderStreamRequest } from '@sidekick/shared'
-import { type ProviderAdapter } from './types.js'
+import { type ProviderAdapter, type ProviderKeyCheck } from './types.js'
 
 export interface MockProviderOptions {
   /** Text se duoc stream ra. */
@@ -40,6 +40,11 @@ export class MockProvider implements ProviderAdapter {
   /** Mock "ho tro" vision de pipeline anh duoc kiem thu end-to-end. */
   supportsVision(_model: string): boolean {
     return true
+  }
+
+  /** Mock khong can key → luon hop le. */
+  async testKey(_apiKey: string): Promise<ProviderKeyCheck> {
+    return { ok: true }
   }
 
   /** Mock khong quan tam model — luon dung ten co dinh. */

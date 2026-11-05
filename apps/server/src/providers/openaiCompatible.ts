@@ -5,7 +5,7 @@
 
 import type { ProviderChunk, ProviderImage, ProviderStreamRequest } from '@sidekick/shared'
 import { mapStatusToCode, readSseData, safeReadText } from './sse.js'
-import { errorChunk, type ProviderAdapter } from './types.js'
+import { errorChunk, type ProviderAdapter, type ProviderKeyCheck } from './types.js'
 
 /**
  * Dung `content` cho API kieu OpenAI.
@@ -37,12 +37,20 @@ export interface OpenAiCompatibleOptions {
   baseUrl: string
   /** Headers them vao moi request (vd Authorization). */
   buildHeaders: (apiKey: string) => Record<string, string>
-  /** Model mac dinh khi client khong chi dinh. */
+  /**
+   * Model mac dinh khi client khong chi dinh.
+   */
   defaultModel: string
   /** Danh sach model uu tien (fallback khi model bi 404/503). */
   preferredModels: string[]
   /** Timeout cho mot request (ms). */
   timeoutMs: number
+  /**
+   * Provider co can API key hay khong.
+   *
+   * Mac dinh `true`. Ollama (local) khong can key → set `false`.
+   */
+  requiresKey?: boolean
   /**
    * Tien to model ho tro vision (FR-VISION-01 — T-M1-24).
    *
@@ -64,7 +72,7 @@ interface OpenAiStreamDelta {
 export class OpenAiCompatibleProvider implements ProviderAdapter {
   readonly id: string
   readonly name: string
-  readonly requiresKey = true
+  readonly requiresKey: boolean
 
   private readonly options: OpenAiCompatibleOptions
 
@@ -72,6 +80,7 @@ export class OpenAiCompatibleProvider implements ProviderAdapter {
     this.options = options
     this.id = options.id
     this.name = options.name
+    this.requiresKey = options.requiresKey ?? true
   }
 
   async listModels(): Promise<string[]> {
@@ -103,6 +112,46 @@ export class OpenAiCompatibleProvider implements ProviderAdapter {
   /** Model mac dinh cua provider khi client khong chi dinh. */
   resolveModel(requestedModel?: string): string {
     return requestedModel ?? this.options.defaultModel
+  }
+
+  /**
+   * Kiem tra API key co hop le hay khong.
+   *
+   * Provider khong can key → luon `ok: true`.
+   */
+  async testKey(apiKey: string): Promise<ProviderKeyCheck> {
+    // Provider local (Ollama) khong can key → coi nhu hop le.
+    if (!this.requiresKey) {
+      return { ok: true }
+    }
+
+    try {
+      const response = await fetch(`${this.options.baseUrl}/models`, {
+        headers: {
+          Accept: 'application/json',
+          ...this.options.buildHeaders(apiKey),
+        },
+        signal: AbortSignal.timeout(10_000),
+      })
+
+      if (response.ok) {
+        return { ok: true }
+      }
+
+      const detail = (await safeReadText(response)).slice(0, 200)
+      return {
+        ok: false,
+        error:
+          response.status === 401 || response.status === 403
+            ? `Key bi tu choi (${response.status}). Kiem tra lai key cua ban.`
+            : `Provider tra loi ${response.status}${detail.length > 0 ? `: ${detail}` : ''}`,
+      }
+    } catch (error) {
+      return {
+        ok: false,
+        error: `Khong ket noi duoc provider: ${error instanceof Error ? error.message : String(error)}`,
+      }
+    }
   }
 
   /**

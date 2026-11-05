@@ -8,6 +8,14 @@
 
 import type { ProviderChunk, ProviderStreamRequest } from '@sidekick/shared'
 
+/** Ket qua kiem tra API key cua provider. */
+export interface ProviderKeyCheck {
+  /** Key hop le (provider chap nhan) hay khong. */
+  ok: boolean
+  /** Thong diep loi tieng Viet khi `ok === false`. */
+  error?: string
+}
+
 export interface ProviderAdapter {
   /** Id cua provider (khop voi PROVIDER_IDS). */
   readonly id: string
@@ -15,6 +23,16 @@ export interface ProviderAdapter {
   readonly name: string
   /** Provider co can API key hay khong. */
   readonly requiresKey: boolean
+
+  /**
+   * Kiem tra API key co hop le hay khong.
+   *
+   * Dung cho `POST /api/providers/keys/:id/test` (FR-UX-02 — T-M1-25) →
+   * onboarding "Luu & kiem tra" xac nhan key thuc su hoat dong.
+   *
+   * Provider khong can key (mock, ollama) → tra `ok: true`.
+   */
+  testKey(apiKey: string): Promise<ProviderKeyCheck>
 
   /**
     * Provider/model co ho tro xu ly anh (FR-VISION-01 — T-M1-24) hay khong.

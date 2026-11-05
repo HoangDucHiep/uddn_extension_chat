@@ -66,14 +66,29 @@ export const toolCallSchema = z.object({
 })
 export type ToolCall = z.infer<typeof toolCallSchema>
 
-/** Provider info (public metadata, khong bao gio lo key). */
+/**
+ * Provider info (public metadata, khong bao gio lo key).
+ *
+ * `keySource` = nguon key dang dung cho provider do:
+ *  - `K1` — team key trong `.env` cua BFF
+ *  - `K2` — BYOK cua user, ma hoa trong Postgres
+ *  - `K3` — BYOK gui thang tu client (fallback khi BFF down)
+ *  - `none` — provider khong can key (mock, ollama local)
+ */
 export const providerInfoSchema = z.object({
   id: z.enum(PROVIDER_IDS),
   name: z.string(),
   models: z.array(z.string()),
-  keySource: z.enum(['K1', 'K2', 'K3']),
+  keySource: z.enum(['K1', 'K2', 'K3', 'none']),
   requiresKey: z.boolean(),
   available: z.boolean(),
+  /**
+   * Ghi chu ngan cho UI (tieng Viet).
+   *
+   * Dung khi provider chua san dung duoc — vd "Ollama chua chay tai
+   * localhost:11434" → onboarding hien thi huong dan thay vi loi chung chung.
+   */
+  note: z.string().max(200).optional(),
 })
 export type ProviderInfo = z.infer<typeof providerInfoSchema>
 

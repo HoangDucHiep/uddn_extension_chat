@@ -10,7 +10,7 @@
  */
 
 import type { ProviderChunk, ProviderStreamRequest } from '@sidekick/shared'
-import { errorChunk, type ProviderAdapter } from './types.js'
+import { errorChunk, type ProviderAdapter, type ProviderKeyCheck } from './types.js'
 import { mapStatusToCode, readSseData, safeReadText } from './sse.js'
 
 export const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta'
@@ -55,6 +55,41 @@ export class GeminiProvider implements ProviderAdapter {
   /** Gemini ho tro vision tren toan bo model hien tai. */
   supportsVision(_model: string): boolean {
     return true
+  }
+
+  /**
+   * Kiem tra API key co hop le hay khong.
+   *
+   * Gemini trai key trong header `x-goog-api-key` → goi `GET /models` voi
+   * header do. Key sai → 400/403.
+   */
+  async testKey(apiKey: string): Promise<ProviderKeyCheck> {
+    try {
+      const response = await fetch(`${GEMINI_BASE_URL}/models`, {
+        headers: {
+          Accept: 'application/json',
+          'x-goog-api-key': apiKey,
+        },
+        signal: AbortSignal.timeout(10_000),
+      })
+
+      if (response.ok) {
+        return { ok: true }
+      }
+
+      return {
+        ok: false,
+        error:
+          response.status === 400 || response.status === 401 || response.status === 403
+            ? `Key bi tu choi (${response.status}). Kiem tra lai key cua ban.`
+            : `Gemini tra loi ${response.status}`,
+      }
+    } catch (error) {
+      return {
+        ok: false,
+        error: `Khong ket noi duoc Gemini: ${error instanceof Error ? error.message : String(error)}`,
+      }
+    }
   }
 
   async listModels(): Promise<string[]> {

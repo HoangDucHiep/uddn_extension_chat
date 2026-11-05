@@ -10,6 +10,7 @@ import { createGroqProvider } from './groq.js'
 import { createOpenRouterProvider } from './openrouter.js'
 import { GeminiProvider } from './gemini.js'
 import { MockProvider } from './mock.js'
+import { createOllamaProvider } from './ollama.js'
 import type { ProviderAdapter } from './types.js'
 
 export interface RegistryConfig {
@@ -21,12 +22,23 @@ export interface RegistryConfig {
   openRouterFallbackModels?: string[]
   geminiModel: string
   geminiFallbackModels?: string[]
+  /** Model mac dinh cua Ollama (FR-PROVIDER-07 — T-M1-25). */
+  ollamaModel?: string
+  /** Base URL cua Ollama (mac dinh `http://127.0.0.1:11434/v1`). */
+  ollamaBaseUrl?: string
   timeoutMs?: number
 }
 
 export class ProviderRegistry {
   private readonly providers = new Map<ProviderId, ProviderAdapter>()
   private readonly fallbackChain: ProviderId[]
+  /**
+   * Model mac dinh cua tung provider.
+   *
+   * Luu lai de `GET /api/providers` **khong can goi network** de biet danh
+   * sach model (FR-UX-02 — T-M1-25).
+   */
+  private readonly defaultModels = new Map<ProviderId, string>()
 
   constructor(config: RegistryConfig) {
     const timeoutMs = config.timeoutMs ?? 120_000
@@ -56,6 +68,20 @@ export class ProviderRegistry {
         timeoutMs,
       }),
     )
+    this.providers.set(
+      'ollama',
+      createOllamaProvider({
+        defaultModel: config.ollamaModel ?? 'llama3.2',
+        timeoutMs,
+        ...(config.ollamaBaseUrl !== undefined ? { baseUrl: config.ollamaBaseUrl } : {}),
+      }),
+    )
+
+    this.defaultModels.set('mock', 'mock-model')
+    this.defaultModels.set('groq', config.groqModel)
+    this.defaultModels.set('openrouter', config.openRouterModel)
+    this.defaultModels.set('gemini', config.geminiModel)
+    this.defaultModels.set('ollama', config.ollamaModel ?? 'llama3.2')
 
     // Fallback chain = provider mac dinh + danh sach fallback, bo trung lap.
     this.fallbackChain = [
@@ -91,5 +117,15 @@ export class ProviderRegistry {
   /** Chuoi fallback bo provider mac dinh. */
   getFallbacks(): ProviderId[] {
     return this.fallbackChain.slice(1)
+  }
+
+  /**
+   * Model mac dinh cua provider (khong goi network).
+   *
+   * Dung cho `GET /api/providers` — onboarding can danh sach model de hien
+   * thi nhung khong duoc block vi request den provider ngoai.
+   */
+  getDefaultModel(providerId: ProviderId): string {
+    return this.defaultModels.get(providerId) ?? ''
   }
 }
