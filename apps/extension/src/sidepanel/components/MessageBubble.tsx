@@ -1,6 +1,7 @@
 import { AlertCircle, Copy, Check } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { MessageContent } from './chat/MessageContent'
 import type { ChatMessage } from '../store/chatStore'
 
 export interface MessageBubbleProps {
@@ -9,7 +10,9 @@ export interface MessageBubbleProps {
 
 /**
  * Bong tin nhan — dung chung cho user va assistant.
- * Text hien thi tho (M0 chua dung markdown renderer).
+ *
+ * User message → text thuan (khong parse Markdown: an toan + nhanh).
+ * Assistant message → render Markdown (FR-CHAT-02 — T-M1-07).
  */
 export function MessageBubble({ message }: MessageBubbleProps) {
   const [copied, setCopied] = useState(false)
@@ -76,7 +79,14 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         ) : null}
 
         {message.content.length > 0 ? (
-          <p className="whitespace-pre-wrap break-words">{message.content}</p>
+          isUser ? (
+            <p className="whitespace-pre-wrap break-words">{message.content}</p>
+          ) : (
+            <MessageContent
+              content={message.content}
+              isStreaming={message.status === 'streaming'}
+            />
+          )
         ) : message.status === 'streaming' ? (
           <span className="text-[var(--text-tertiary)]">Dang tao cau tra loi...</span>
         ) : null}

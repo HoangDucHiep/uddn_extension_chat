@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Toaster } from 'sonner'
 import { ChatWorkspace } from './ChatWorkspace'
 import { Onboarding } from './components/onboarding/Onboarding'
 import { useOnboarding } from './hooks/useOnboarding'
@@ -30,25 +31,31 @@ export function App() {
 
   if (showOnboarding) {
     return (
-      <Onboarding
-        preferredProvider={preferredProvider}
-        onSelectProvider={(provider) => {
-          void setPreferredProvider(provider)
-        }}
-        onComplete={(provider) => {
-          setIsOnboardingForced(false)
-          void complete(provider)
-        }}
-      />
+      <>
+        <Onboarding
+          preferredProvider={preferredProvider}
+          onSelectProvider={(provider) => {
+            void setPreferredProvider(provider)
+          }}
+          onComplete={(provider) => {
+            setIsOnboardingForced(false)
+            void complete(provider)
+          }}
+        />
+        <Toaster position="bottom-center" />
+      </>
     )
   }
 
   return (
-    <ChatWorkspace
-      onOpenOnboarding={() => {
-        setIsOnboardingForced(true)
-        void reset()
-      }}
-    />
+    <>
+      <ChatWorkspace
+        onOpenOnboarding={() => {
+          setIsOnboardingForced(true)
+          void reset()
+        }}
+      />
+      <Toaster position="bottom-center" />
+    </>
   )
 }

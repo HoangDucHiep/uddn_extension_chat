@@ -158,7 +158,7 @@ Dùng làm acceptance checklist cho M1.
 - [ ] Side panel mở được từ toolbar icon (không `default_popup`) — ✅ M0
 - [ ] Panel giữ nguyên khi chuyển tab
 - [ ] Stream token-by-token, hiện dần — ✅ M0
-- [ ] Markdown + bảng + code block + copy + syntax highlight — ⬜ T-M1-07
+- [ ] Markdown + bảng + code block + copy + syntax highlight — ✅ T-M1-07 (`react-markdown` + `remark-gfm` → bảng/strikethrough/task list · `rehype-highlight` (highlight.js đồng bộ, 37 ngôn ngữ) · code block có nhãn ngôn ngữ + nút 1-click copy → toast "Đã sao chép" · bảng rộng scroll ngang · `rehype-sanitize` allowlist thẩm chặn XSS · link `target="_blank" rel="noopener noreferrer"`)
 - [ ] Đọc nội dung trang hiện tại, bật/tắt được — đọc: ✅ T-M1-01 · bật/tắt: ✅ T-M1-04 (hấp thụ bởi T-M1-23)
 - [ ] Đọc nội dung file PDF (text-based) — ✅ T-M1-21
 - [ ] Lấy transcript video YouTube — ✅ T-M1-22

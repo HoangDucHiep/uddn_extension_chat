@@ -55,3 +55,201 @@ body {
 ::-webkit-scrollbar-track {
   background-color: transparent;
 }
+
+/* ------------------------------------------------------------------
+ * Markdown (FR-CHAT-02/03/04 — T-M1-07)
+ *
+ * Style bang CSS thuan (khong phai Tailwind class) de khong phai viet
+ * long class arbitrary trong JSX. Mau sac deu lay tu design token.
+ * ------------------------------------------------------------------ */
+
+.markdown-body > :first-child {
+  margin-top: 0;
+}
+
+.markdown-body > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown-body p {
+  margin: var(--space-2) 0;
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4,
+.markdown-body h5,
+.markdown-body h6 {
+  margin: var(--space-3) 0 var(--space-2);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-tight);
+  color: var(--text-primary);
+}
+
+.markdown-body h1 {
+  font-size: var(--font-size-xl);
+}
+
+.markdown-body h2 {
+  font-size: var(--font-size-lg);
+}
+
+.markdown-body h3,
+.markdown-body h4,
+.markdown-body h5,
+.markdown-body h6 {
+  font-size: var(--font-size-md);
+}
+
+.markdown-body ul,
+.markdown-body ol {
+  margin: var(--space-2) 0;
+  padding-left: var(--space-5);
+}
+
+.markdown-body ul {
+  list-style: disc;
+}
+
+.markdown-body ol {
+  list-style: decimal;
+}
+
+.markdown-body li {
+  margin: var(--space-1) 0;
+}
+
+.markdown-body li > ul,
+.markdown-body li > ol {
+  margin: var(--space-1) 0;
+}
+
+.markdown-body blockquote {
+  margin: var(--space-2) 0;
+  padding-left: var(--space-3);
+  border-left: 2px solid var(--border-strong);
+  color: var(--text-secondary);
+}
+
+.markdown-body hr {
+  margin: var(--space-3) 0;
+  border: 0;
+  border-top: 1px solid var(--border-default);
+}
+
+.markdown-body a {
+  color: var(--info);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.markdown-body strong {
+  font-weight: var(--font-weight-semibold);
+}
+
+.markdown-body del {
+  color: var(--text-tertiary);
+}
+
+.markdown-body img {
+  max-width: 100%;
+  border-radius: var(--radius-md);
+}
+
+/* Bang GFM — wrapper scroll ngang do `MarkdownTable` render. */
+.markdown-body table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.markdown-body th,
+.markdown-body td {
+  padding: var(--space-2);
+  border: 1px solid var(--border-default);
+  text-align: left;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.markdown-body th {
+  background-color: var(--surface-sunken);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+/* Task list (GFM) — an checkbox mac dinh, dung list-style goc. */
+.markdown-body li input[type='checkbox'] {
+  margin-right: var(--space-1);
+}
+
+/* ------------------------------------------------------------------
+ * Syntax highlight (rehype-highlight → lowlight/highlight.js)
+ *
+ * Class `hljs-*` cua highlight.js map sang design token `--code-token-*`
+ * (khong hardcode mau). Token doi khi theme `.dark` → tu doi theo token.
+ * ------------------------------------------------------------------ */
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-section,
+.hljs-doctag,
+.hljs-type,
+.hljs-name,
+.hljs-strong {
+  color: var(--code-token-keyword);
+}
+
+.hljs-string,
+.hljs-regexp,
+.hljs-addition,
+.hljs-attribute,
+.hljs-meta .hljs-string {
+  color: var(--code-token-string);
+}
+
+.hljs-number,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag .hljs-attr {
+  color: var(--code-token-number);
+}
+
+.hljs-comment,
+.hljs-quote,
+.hljs-deletion,
+.hljs-meta {
+  color: var(--code-token-comment);
+}
+
+.hljs-title,
+.hljs-title.function_,
+.hljs-title.class_,
+.hljs-built_in,
+.hljs-selector-id,
+.hljs-selector-class {
+  color: var(--code-token-function);
+}
+
+.hljs-punctuation,
+.hljs-operator,
+.hljs-subst,
+.hljs-params {
+  color: var(--code-token-punctuation);
+}
+
+.hljs-symbol,
+.hljs-bullet,
+.hljs-link {
+  color: var(--code-token-number);
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: var(--font-weight-semibold);
+}

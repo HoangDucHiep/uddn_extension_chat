@@ -82,7 +82,7 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | T-M1-04 | Context chips + toggle bật/tắt context trang | FR-CONTEXT-02, NFR-SEC-02 | `sidepanel/components/context/ContextChips.tsx` | Chip hiển thị domain đang share; bỏ chip được; tắt → không gửi content | M | ✅ *(hấp thụ bởi T-M1-23)* |
 | T-M1-05 | `@` mention multi-tab | FR-CONTEXT-03 | `context/MentionPopover.tsx`, `hooks/useTabs.ts`, `hooks/useMention.ts`, `lib/tabList.ts` | Gõ `@` → list tab (title+favicon), chọn nhiều được | L | ✅ |
 | T-M1-06 | Truyền context sang BFF (tab list + content) | FR-CONTEXT-01/02/03, FR-CONTEXT-07, FR-CONTEXT-12 | `packages/shared/src/contextHash.ts`, `apps/server/src/services/chatService.ts`, `apps/extension/src/lib/contextCache.ts` | Log `request_logs.context_hash` khớp với context đã gửi | M | ✅ |
-| T-M1-07 | Markdown render + code block + copy + highlight | FR-CHAT-02/03/04, NFR-SEC-04, NFR-PERF-02 | `sidepanel/components/chat/MessageContent.tsx`, `CodeBlock.tsx`, `MarkdownTable.tsx` | Render table/code; copy → "Đã sao chép"; highlight đúng ngôn ngữ; sanitize HTML (chặn XSS) | L | ⬜ |
+| T-M1-07 | Markdown render + code block + copy + highlight | FR-CHAT-02/03/04, NFR-SEC-04, NFR-PERF-02 | `sidepanel/components/chat/MessageContent.tsx`, `CodeBlock.tsx`, `MarkdownTable.tsx` | Render table/code; copy → "Đã sao chép"; highlight đúng ngôn ngữ; sanitize HTML (chặn XSS) | L | ✅ *(2026-11-06)* |
 | T-M1-08 | Citation chip + popover (đoạn nguồn) | FR-CONTEXT-10 | `context/CitationChip.tsx`, `CitationPopover.tsx` | Click chip → popover hiện đoạn nguồn + mở tab gốc | M | ⬜ |
 | T-M1-09 | Chat CRUD: tạo/đổi tên/xoá/ghim/archives | FR-CHAT-08/09/11 | `sidepanel/components/chat/ConversationList.tsx`, store | Thao tác CRUD phản ánh trong UI ngay | L | ⬜ |
 | T-M1-10 | Regenerate / Edit-resend / Stop / Continue | FR-CHAT-05/06/07/12/13, FR-UX-05 | `hooks/useChat.ts`, `chat/MessageActions.tsx` | 4 hành vi đúng AC trong §3.1; Esc dừng; Enter gửi / Shift+Enter xuống dòng | L | ⬜ |
@@ -452,6 +452,52 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 
 > **Ghi chú về Ollama:** adapter Ollama được giao cho T-M2-01 nhưng **đẩy lên M1** trong task này vì onboarding cần provider không cần key để demo được luồng 3 bước mà không bắt user nhập API key.
 
+### 3.1i-bis Kết quả T-M1-07 — Markdown render + code block + copy + syntax highlight (2026-11-06)
+
+> Chi tiết kiến trúc: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.8.
+
+#### Phần A — Dependency + schema thuần
+
+| Hạng mục | Kết quả |
+|---|---|
+| `apps/extension/package.json` | ✅ +`react-markdown@^10.1.0` · `remark-gfm@^4.0.1` · `rehype-sanitize@^6.0.0` · `rehype-highlight@^7.0.2` (`sonner` đã có sẵn) |
+| `apps/extension/src/sidepanel/components/chat/markdownSchema.ts` | ✅ **Mới** `markdownSchema` (clone `defaultSchema` + `span: [['className', /^hljs-/]]` + `code: [['className', /^language-./, 'hljs']]` + `protocols.href: ['http','https','mailto']`) · `LANGUAGE_ALIASES` · `SUPPORTED_LANGUAGES` · `toMarkdownNode` / `languageFromNode` / `extractCodeText` |
+
+#### Phần B — Component
+
+| Hạng mục | Kết quả |
+|---|---|
+| `.../chat/CodeBlock.tsx` | ✅ **Mới** header (nhãn ngôn ngữ + nút copy) · copy **source thô** qua `navigator.clipboard.writeText` · icon `Copy`→`Check` 1500 ms · `toast.success('Đã sao chép')` / `toast.error('Không sao chép được')` · `CodeBlockContext` để phân biệt code block vs inline code |
+| `.../chat/MarkdownTable.tsx` | ✅ **Mới** bọc `<table>` trong `div.overflow-x-auto` (`data-testid="markdown-table-wrapper"`) → bảng rộng scroll ngang, không vỡ layout 320 px |
+| `.../chat/MessageContent.tsx` | ✅ **Mới** orchestrator: `useDeferredValue(content)` · `remarkPlugins=[remarkGfm]` · `rehypePlugins` = `REHYPE_PLUGINS_STREAMING` (`[rehypeSanitize]`) khi streaming vs `REHYPE_PLUGINS_DONE` (`[rehypeHighlight, rehypeSanitize]`) khi xong (hằng module-level) · override `a` / `pre` / `code` / `table` · `skipHtml` |
+| `apps/extension/src/sidepanel/components/MessageBubble.tsx` | ✅ **Sửa** assistant → `<MessageContent content={message.content} isStreaming={message.status === 'streaming'} />`; user giữ text thuần |
+| `apps/extension/src/sidepanel/App.tsx` | ✅ Mount `<Toaster position="bottom-center" />` (dùng chung cho onboarding + chat) |
+| `apps/extension/public/manifest.json` | ✅ +permission `clipboardWrite` (dùng thật cho copy code) |
+| `apps/extension/src/sidepanel/index.css` | ✅ +`.markdown-body` (typography) · +mapping `.hljs-*` → `--code-token-*` (token có sẵn trong `design/tokens.css`) |
+
+#### Phần C — Test
+
+| Hạng mục | Kết quả |
+|---|---|
+| `apps/extension/tests/markdownSchema.test.ts` | ✅ **Mới 17 test** — allowlist `table/thead/td` · `span.hljs-*` · chặn `script` · chặn `javascript:`/`irc:` · `defaultSchema` **không bị mutate** |
+| `apps/extension/tests/messageContent.test.tsx` | ✅ **Mới 25 test** — GFM (h1/h2/ul/ol/blockquote/bold/italic/inline code/link/bảng) · XSS (`<script>`, `onerror`, `javascript:`) · link `target="_blank"` + `rel="noopener noreferrer"` · code block (testid, nhãn ngôn ngữ, `span.hljs-keyword`) · copy (clipboard gọi với raw code, icon đổi, toast "Đã sao chép") · bảng (wrapper `overflow-x-auto`) · **streaming defer** (chưa có `span.hljs-*` → có) |
+| `apps/extension/tests/messageContentDefer.test.tsx` | ✅ **Mới 2 test** — `useDeferredValue` được gọi với nội dung hiện tại (file riêng vì mock `react` áp dụng cho cả file) |
+| `apps/extension/e2e/markdown.spec.ts` | ✅ **Mới 4 kịch bản** — render đủ (heading + bảng + code block) · copy → toast "Đã sao chép" · `<script>` không vào DOM · **0 lỗi console** |
+
+#### Verify
+
+| Hạng mục | Kết quả |
+|---|---|
+| `pnpm typecheck` | ✅ pass (shared · server · extension · eval) |
+| `pnpm lint` | ✅ pass (0 error, 0 warning) |
+| `pnpm test` | ✅ pass — shared **140** · server **224** · extension **376** (tổng **740**, trước 696 → **+40**) |
+| `pnpm build` | ✅ pass — `dist/content.js` vẫn là **IIFE 1 file, không `import`** (không bị ảnh hưởng bởi `rehype-highlight`) |
+| `pnpm db:migrate` | ✅ pass — **không có migration mới** (thay đổi chỉ ở tầng extension) |
+| `pnpm test:e2e` | ✅ pass — **36/36** (+4 kịch bản `markdown.spec.ts`, 32 test cũ **không regression**) |
+| Mutation spot-check | ✅ **6/6 mutation bị bắt** — bỏ `rehype-sanitize` (2 test fail) · bỏ `rel="noopener noreferrer"` (1 test fail) · đổi allowlist `href` (2 test fail) · bỏ defer-highlight khi streaming (1 test fail) · bỏ `useDeferredValue` (2 test fail) · bỏ `overflow-x-auto` ở bảng (1 test fail) |
+
+> **Quyết định kỹ thuật:** dùng `rehype-highlight` (highlight.js đồng bộ) thay `shiki` — shiki cần wasm → cần `'wasm-unsafe-eval'` trong CSP, MV3 `script-src 'self'` không cho. Highlight **đồng bộ** + **defer khi streaming** → tránh O(n²) và tránh code block nhấp nháy unhighlighted.
+
 ### 3.2 Traceability FR → Task
 
 > Bảng đầy đủ FR → Task (kèm milestone) nằm ở [`REQUIREMENTS.md`](REQUIREMENTS.md) §11.1 — nơi duy nhất cần cập nhật khi thêm/bớt task.
@@ -459,7 +505,7 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 
 | Nhóm | FR trong nhóm | Task phụ trách | Ghi chú |
 |---|---|---|---|
-| FR-CHAT-01..14 | 14 FR | T-M0-10 · T-M0-13 · T-M1-07/09/10/11/13/19 | FR-CHAT-04 (bảng Markdown) đã nằm trong T-M1-07 |
+| FR-CHAT-01..14 | 14 FR | T-M0-10 · T-M0-13 · **T-M1-07 ✅**/09/10/11/13/19 | FR-CHAT-02/03/04 (Markdown, code block + copy, bảng) do T-M1-07 ✅ |
 | FR-CONTEXT-01..13 | 13 FR | T-M1-01/02/04/05/**06 ✅**/08/14 · **T-M1-21/22/23** · **T-M2-19** | FR-CONTEXT-05/06 nâng lên Must (2026-11-04) · FR-CONTEXT-13 (chat không cần context) do T-M1-23 · **FR-CONTEXT-03 (`@` multi-tab) do T-M1-05 ✅** · **FR-CONTEXT-04 (selection) do T-M1-02 ✅** · **FR-CONTEXT-01 (cache URL+hash) + FR-CONTEXT-12 (snapshot) do T-M1-06 ✅** |
 | FR-VISION-01..05 | 5 FR | **T-M1-24 ✅** (upload) · **T-M2-22** (mở rộng) | FR-VISION-01 nâng lên M · **T-M1-24 xong 2026-11-05** (vision đầy đủ Gemini + OpenAI-compatible, lưu Postgres, multi-turn) |
 | FR-TOOLS-01..06 | 6 FR | T-M2-07/08/09/10/11/18 · **T-M2-20** | FR-TOOLS-03 (web search) tách riêng khỏi tool registry |

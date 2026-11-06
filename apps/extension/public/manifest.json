@@ -5,7 +5,7 @@
   "description": "Tro ly AI trong side panel — tro loi ve trang web, nhung context cua ban.",
   "minimum_chrome_version": "114",
 
-  "permissions": ["sidePanel", "scripting", "storage", "tabs", "contextMenus"],
+  "permissions": ["sidePanel", "scripting", "storage", "tabs", "contextMenus", "clipboardWrite"],
   "host_permissions": ["<all_urls>"],
 
   "background": {

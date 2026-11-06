@@ -649,7 +649,7 @@ BFF chỉ nhận request từ extension. Kiểm tra header `Origin` / `X-Sidekic
   - `host_permissions`: `["<all_urls>"]` — **bắt buộc** vì `activeTab` không được cấp khi user tương tác trong side panel.
   - `content_security_policy.extension_pages`: `"script-src 'self'; object-src 'self'"` — không cho `unsafe-eval`, không remote script.
 - Không `eval`, không remote code, không `innerHTML` với dữ liệu người dùng.
-- Markdown render: `react-markdown` + `remark-gfm` + `rehype-sanitize` (allowlist thẩm).
+- Markdown render: `react-markdown` + `remark-gfm` + `rehype-highlight` + `rehype-sanitize` (allowlist thẩm — xem §7.8).
 - Link trong nội dung: `rel="noopener noreferrer"` + `target="_blank"`.
 - Secret KHÔNG đặt trong `manifest.json`; không đưa vào bundle Vite (dùng biến môi trường build-time chỉ cho endpoint mặc định).
 
@@ -722,12 +722,14 @@ Hệ quả nếu để nguyên:
 
 Các kịch bản E2E còn lại (offline, BFF down, stop, edit-resend, context toggle) thuộc M1.
 
-### 7.2.1 Trạng thái test hiện tại (2026-11-05)
+### 7.2.1 Trạng thái test hiện tại (2026-11-06)
 
 | Tầng | Số test | Vị trí |
 |---|---|---|
-| Unit | **696** — shared 140 · server 224 · extension 332 | `packages/shared/tests/` · `apps/server/tests/` · `apps/extension/tests/` |
-| E2E | **32** | `apps/extension/e2e/` |
+| Unit | **740** — shared 140 · server 224 · extension 376 | `packages/shared/tests/` · `apps/server/tests/` · `apps/extension/tests/` |
+| E2E | **36** | `apps/extension/e2e/` |
+
+> **T-M1-07 bổ sung:** `apps/extension/tests/messageContent.test.tsx` (25) · `tests/messageContentDefer.test.tsx` (2) · `tests/markdownSchema.test.ts` (17) · `e2e/markdown.spec.ts` (4 kịch bản).
 
 ### 7.2.2 Audit chất lượng test bằng mutation testing (2026-11-04)
 
@@ -797,6 +799,17 @@ Các kịch bản E2E còn lại (offline, BFF down, stop, edit-resend, context 
 | 5 | Bỏ `prune()` khi vượt giới hạn entry | `apps/extension/tests/contextCache.test.ts` — "vuot gioi han → giu entry moi nhat" |
 
 > Mutation #4 ban đầu **sống sót** (test chỉ kiểm text cuối cùng → ghi đè hay không cho kết quả giống nhau) → đã bổ sung test khẳng định `capturedAt` **không** bị reset khi nội dung không đổi → mutation bị bắt.
+
+**Vòng 4 — T-M1-07 (2026-11-06):** 6 mutation spot-check cho pipeline Markdown — **tất cả đều bị bắt**:
+
+| # | Mutation | Test bắt được |
+|---|---|---|
+| 1 | Bỏ `rehype-sanitize` khỏi plugin list | `apps/extension/tests/messageContent.test.tsx` — "sanitize loại class không được phép" + "sanitize giới hạn protocol href (chặn `irc:`)" |
+| 2 | Bỏ `rel="noopener noreferrer"` | `apps/extension/tests/messageContent.test.tsx` — "link mở tab mới + chặn opener" |
+| 3 | Đổi allowlist `href` (`http/https/mailto` → `http/https/irc/xmpp`) | `apps/extension/tests/markdownSchema.test.ts` — "giới hạn protocol href" + `messageContent.test.tsx` — "chặn `irc:`" |
+| 4 | Bỏ nhánh defer-highlight khi streaming | `apps/extension/tests/messageContent.test.tsx` — "đang stream → CHƯA có token highlight" |
+| 5 | Bỏ `useDeferredValue(content)` | `apps/extension/tests/messageContentDefer.test.tsx` — "gọi `useDeferredValue` với nội dung hiện tại" (file riêng vì mock `react` áp dụng cho cả file) |
+| 6 | Bỏ `overflow-x-auto` ở wrapper bảng | `apps/extension/tests/messageContent.test.tsx` — "render table có wrapper overflow-x-auto" |
 
 ### 7.3 Trích xuất nội dung trang (T-M1-01)
 
@@ -1288,6 +1301,122 @@ Không có provider ưu tiên → **không** gửi field `provider` → server d
 - BFF thiếu `MASTER_KEY` → `MASTER_KEY_NOT_CONFIGURED` (500) — thông báo rõ ràng cho user, không crash.
 - Bước 3 gọi `POST /api/chat` qua **cùng** đường SSE như chat thường → không có đường tắt riêng cho onboarding.
 
+### 7.8 Pipeline render Markdown (FR-CHAT-02/03/04 — T-M1-07)
+
+#### 7.8.1 Stack đã chốt
+
+| Thành phần | Phiên bản | Vai trò |
+|---|---|---|
+| `react-markdown` | `^10.1.0` | Render Markdown → React |
+| `remark-gfm` | `^4.0.1` | Bảng GFM · strikethrough · task list · autolink |
+| `rehype-highlight` | `^7.0.2` | Syntax highlight (kéo `lowlight@^3.3.0` → `highlight.js@~11.11`) |
+| `rehype-sanitize` | `^6.0.0` | Allowlist thẻ/attribute/protocol (XSS) |
+| `sonner` | `^2.0.8` | Toast phản hồi copy (đã có sẵn trong deps, nay dùng) |
+
+> **Vì sao KHÔNG dùng `shiki`:** `shiki` cần WebAssembly → MV3 CSP (`script-src 'self'`) không cho `'wasm-unsafe-eval'`; tokenize **async** → code block nhấp nháy unhighlighted khi streaming → vi phạm NFR-PERF-02.
+
+#### 7.8.2 Thứ tự plugin (quan trọng)
+
+```
+remark-parse → remark-gfm → remark-rehype → rehype-highlight → rehype-sanitize → render
+```
+
+- `rehype-highlight` **trước** `rehype-sanitize` → highlight sinh `span.hljs-*` rồi mới được allowlist giữ lại.
+- `rehype-sanitize` **nhận schema trực tiếp** (không phải `{ schema }`) — `rehype-sanitize` v6 đã đổi API.
+
+#### 7.8.3 Schema sanitize custom
+
+`apps/extension/src/sidepanel/components/chat/markdownSchema.ts` — clone `defaultSchema` của `hast-util-sanitize`:
+
+| Thay đổi | Giá trị | Lý do |
+|---|---|---|
+| `attributes.code` | `[['className', /^language-./, 'hljs']]` | Giữ class `language-*` + `hljs` để highlight hoạt động |
+| `attributes.span` | `[['className', /^hljs-/]]` | Giữ token màu `hljs-keyword`, `hljs-string`, … |
+| `protocols.href` | `['http', 'https', 'mailto']` | Bỏ `irc` / `xmpp` của `defaultSchema` |
+
+> `defaultSchema` là **module singleton** → **không mutate**; phải spread ra object mới.
+
+Ngoài ra `react-markdown` được set `skipHtml` → **raw HTML trong markdown bị loại bỏ hoàn toàn** (không thể thực thi script trong nội dung LLM).
+
+#### 7.8.4 Chiến lược hiệu năng khi streaming (NFR-PERF-02)
+
+| Kỹ thuật | Tác dụng |
+|---|---|
+| `useDeferredValue(content)` | Parse markdown chạy **sau** frame hiện tại → input + nhận token không bị block |
+| Highlight **defer** khi streaming | `isStreaming === true` → chỉ `rehype-sanitize` (code block dạng plain mono). Stream xong → `rehype-highlight` chạy **1 lần duy nhất**. Highlight mỗi token là O(n²) |
+| Plugin list là **module-level constant** | `react-markdown` không tạo processor mới ở mỗi render |
+
+#### 7.8.5 Component & override
+
+| File | Trách nhiệm |
+|---|---|
+| `chat/MessageContent.tsx` | Orchestrator: `useDeferredValue` · chọn plugin list theo `isStreaming` · map `components` override |
+| `chat/CodeBlock.tsx` | Header (nhãn ngôn ngữ + nút copy) · `toast.success('Đã sao chép')` · icon `Copy` → `Check` 1500 ms · copy **source code thô** |
+| `chat/MarkdownTable.tsx` | Bọc `<table>` trong `<div class="overflow-x-auto">` → bảng rộng scroll ngang, không vỡ layout ở panel 320 px |
+| `chat/markdownSchema.ts` | Schema + `LANGUAGE_ALIASES` + `SUPPORTED_LANGUAGES` + helper đọc `node` hast (`languageFromNode` / `extractCodeText`) |
+
+Override `components` của `react-markdown`:
+
+| Tag | Override | Hành vi |
+|---|---|---|
+| `pre` | `CodeBlock` | Lấy `language` + source code từ **node hast** (không phụ thuộc children React) |
+| `code` | inline chip | Nền `--surface-sunken`, font `--font-mono`; code trong `pre` giữ nguyên markup highlight |
+| `a` | `AnchorOverride` | `target="_blank"` + `rel="noopener noreferrer"` |
+| `table` | `MarkdownTable` | Scroll ngang |
+
+> `CodeBlockContext` giải quyết việc `code` component không biết mình nằm trong `pre` hay là inline code.
+
+#### 7.8.6 Ngôn ngữ hỗ trợ
+
+`lowlight.common` = **37 grammar** (≥ 15 yêu cầu của FR-CHAT-03). Alias bổ sung qua option `aliases` của `rehype-highlight`:
+
+| Ngôn ngữ | Alias |
+|---|---|
+| `javascript` | `js`, `jsx`, `mjs`, `cjs` |
+| `typescript` | `ts`, `tsx`, `mts`, `cts` |
+| `python` | `py`, `ipython` |
+| `bash` | `sh`, `zsh` |
+| `yaml` | `yml` |
+| `xml` | `html`, `xhtml`, `svg`, `vue` |
+| `csharp` | `cs`, `c#` |
+| `cpp` | `c++`, `cc`, `hpp`, `hxx` |
+| `go` | `golang` |
+| `rust` | `rs` |
+| `kotlin` | `kt`, `kts` |
+| `plaintext` | `txt`, `text`, `dockerfile`, `http` |
+
+Ngôn ngữ **không** đăng ký → `rehype-highlight` ghi cảnh báo non-fatal (`file.message`) → **không crash**, code block hiển thị dạng plain.
+
+#### 7.8.7 Mapping màu highlight → design token
+
+`apps/extension/src/sidepanel/index.css` — class `hljs-*` map sang token có sẵn trong `design/tokens.css` (không hardcode hex):
+
+| Class | Token |
+|---|---|
+| `hljs-keyword`, `hljs-selector-tag`, `hljs-literal`, `hljs-type`, `hljs-name` | `--code-token-keyword` |
+| `hljs-string`, `hljs-regexp`, `hljs-attribute` | `--code-token-string` |
+| `hljs-number`, `hljs-variable`, `hljs-tag .hljs-attr` | `--code-token-number` |
+| `hljs-comment`, `hljs-quote`, `hljs-meta` | `--code-token-comment` |
+| `hljs-title`, `hljs-built_in`, `hljs-selector-id/class` | `--code-token-function` |
+| `hljs-punctuation`, `hljs-operator`, `hljs-subst`, `hljs-params` | `--code-token-punctuation` |
+
+Token đổi theo theme `.dark` → highlight tự đổi màu, không cần code.
+
+#### 7.8.8 Phạm vi render
+
+- **Chỉ message assistant** render Markdown. Message **user** giữ text thuần (`whitespace-pre-wrap`) → giảm rủi ro XSS từ nội dung người dùng + nhanh hơn.
+- Nút copy **cả message** (copy raw markdown) vẫn giữ nguyên ở `MessageBubble`.
+- Permission mới: `clipboardWrite` (dùng thật cho copy code — rule "chỉ xin quyền khi thực sự dùng").
+
+#### 7.8.9 Kích thước bundle
+
+| Mốc | `dist/sidepanel.js` | `dist/content.js` |
+|---|---|---|
+| Trước T-M1-07 | ≈ 340 kB | 13.87 kB |
+| **Sau T-M1-07** | **712.80 kB** (gzip 218 kB) | **13.87 kB** (không đổi) |
+
+`rehype-highlight` chỉ vào bundle side panel → content script (build IIFE riêng) **không bị ảnh hưởng**.
+
 ---
 
 ## 8. Hiệu năng
@@ -1300,7 +1429,7 @@ Không có provider ưu tiên → **không** gửi field `provider` → server d
 | Content extraction (PDF) | ≤ 3s | Fetch bytes + parse ở BFF (T-M1-21 ✅). Giới hạn 20 MB; cache kết quả theo URL+hash — **cache chưa implement** |
 | Content extraction (YouTube) | ≤ 2s | Fetch `timedtext` ở BFF (T-M1-22 ✅). Cache theo video id + language — **cache chưa implement** |
 | Panel mở | ≤ 300ms | Không fetch nặng khi mount; lazy-load settings |
-| Scroll khi streaming | ≥ 50fps | Batch token bằng `requestAnimationFrame`, không render mỗi token |
+| Scroll khi streaming | ≥ 50fps | Batch token bằng `requestAnimationFrame`, không render mỗi token · **T-M1-07 ✅:** `useDeferredValue` + defer highlight khi streaming (§7.8.4) |
 | Upload ảnh | ≤ 1s / ảnh | `FileReader` đọc base64 ở main thread (5 MB) · giới hạn 4 ảnh / 12 MB tổng · **TODO(T-M2-22)**: chuyển sang `OffscreenCanvas`/`createImageBitmap` + `Web Worker` nếu cần |
 | Token ảnh | ≤ 258 token / ảnh | Ước lượng theo quy ước OpenAI (ảnh 512 px) — trừ khỏi `historyBudget` trước khi cắt lịch sử |
 

@@ -195,9 +195,9 @@ Quy ước ưu tiên: **M** = Must (bắt buộc cho M1) · **S** = Should (bắ
 | ID | Requirement | Priority | Acceptance criteria |
 |---|---|---|---|
 | FR-CHAT-01 | Gửi prompt và nhận phản hồi streaming qua SSE từ BFF | M | Token hiển thị dần; mất kết nối → hiện "Ngắt kết nối" + nút Thử lại |
-| FR-CHAT-02 | Render Markdown (heading, list, table, blockquote, link, inline code) | M | Không lỗi với markdown lồng nhau; sanitize HTML (không render script) |
-| FR-CHAT-03 | Render code block với syntax highlighting + nút copy + ngôn ngữ hiển thị | M | Copy 1 click → toast "Đã sao chép"; hỗ trợ ≥ 15 ngôn ngữ phổ biến |
-| FR-CHAT-04 | Render bảng Markdown khi có | S | Bảng scroll ngang được trên panel hẹp; không vỡ layout |
+| FR-CHAT-02 | Render Markdown (heading, list, table, blockquote, link, inline code) | M | Không lỗi với markdown lồng nhau; sanitize HTML (không render script). **Đã implement (T-M1-07):** pipeline `react-markdown` → `remark-gfm` → `rehype-highlight` → `rehype-sanitize` (schema custom), raw HTML bị loại bỏ (`skipHtml`), link `target="_blank"` + `rel="noopener noreferrer"`; **chỉ message assistant** render Markdown, message user giữ text thuần |
+| FR-CHAT-03 | Render code block với syntax highlighting + nút copy + ngôn ngữ hiển thị | M | Copy 1 click → toast "Đã sao chép"; hỗ trợ ≥ 15 ngôn ngữ phổ biến. **Đã implement (T-M1-07):** `lowlight.common` = 37 grammar (≥ 15 yêu cầu) + alias (`ts`, `py`, `sh`, `yml`, `rb`, …); header code block có nhãn ngôn ngữ + nút copy (icon `Copy` → `Check` 1500 ms + toast `sonner`); copy **source code thô** (không phải HTML). Highlight **được defer khi streaming** (chỉ highlight 1 lần khi stream xong) → giữ ≥ 30 fps (NFR-PERF-02) |
+| FR-CHAT-04 | Render bảng Markdown khi có | S | Bảng scroll ngang được trên panel hẹp; không vỡ layout. **Đã implement (T-M1-07):** `MarkdownTable` bọc `<table>` trong `<div class="overflow-x-auto">` → bảng rộng scroll ngang, không vỡ layout ở panel 320 px |
 | FR-CHAT-05 | Nút "Tạo lại" (regenerate) với biến thể nhiều lần | M | Lưu các biến thể, chuyển qua lại được |
 | FR-CHAT-06 | Sửa & gửi lại (edit & resend) tin nhắn user | M | Tin nhắn sau bị replace; lịch sử cũ giữ dạng branch |
 | FR-CHAT-07 | Dừng generation (Stop) | M | Dừng ≤ 300ms; giữ nội dung dở; có nút "Tiếp tục" |
@@ -443,7 +443,7 @@ Quy tắc chung:
 | ID | Requirement | Target |
 |---|---|---|
 | NFR-PERF-01 | Time-to-first-token (TTFT) — chưa gồm độ trễ mạng tới provider | p50 ≤ 1.5s, p95 ≤ 3.5s (BFF local) |
-| NFR-PERF-02 | Render streaming ≥ 30 fps, không jank khi response dài (>3000 token) | không frame nào > 100ms |
+| NFR-PERF-02 | Render streaming ≥ 30 fps, không jank khi response dài (>3000 token) | không frame nào > 100 ms. **Đã implement (T-M1-07):** `useDeferredValue(content)` cho parse Markdown + highlight **defer khi streaming** (chỉ chạy 1 lần khi stream xong) |
 | NFR-PERF-03 | Mở side panel từ cold start → nội dung khung đầu tiên hiện | ≤ 1.2s |
 | NFR-PERF-04 | Trích xuất nội dung trang (đọc + parse) | ≤ 800ms cho trang ≤ 2MB DOM |
 | NFR-PERF-05 | Memory khi stream response rất dài | không rò rỉ > 50MB sau 50 lượt |
@@ -456,7 +456,7 @@ Quy tắc chung:
 | NFR-SEC-01 | API key chỉ tồn tại phía server, mã hoá at-rest; không ghi vào log, không trả về client sau khi lưu. **Ngoại lệ duy nhất:** chế độ K3 (direct mode) lưu key trong `chrome.storage.local` của máy user — phải có cảnh báo hiển thị và tắt được bằng 1 thao tác |
 | NFR-SEC-02 | Không gửi nội dung trang lên provider khi context bị tắt hoặc domain bị chặn (kiểm chứng được bằng test tự động) |
 | NFR-SEC-03 | Không dùng `eval`, không remote code; tuân thủ MV3 CSP (`script-src 'self'`) |
-| NFR-SEC-04 | Sanitize HTML/Markdown render — chặn XSS, chặn `javascript:` URL |
+| NFR-SEC-04 | Sanitize HTML/Markdown render — chặn XSS, chặn `javascript:` URL. **Đã implement (T-M1-07):** `rehype-sanitize` với schema custom (chỉ `http`/`https`/`mailto` cho `href`), raw HTML bị loại bỏ hoàn toàn (`skipHtml`) → không thể thực thi script trong nội dung LLM |
 | NFR-SEC-05 | BFF xác thực origin của extension (allowlist) để chống CSRF/abuse từ website khác |
 | NFR-SEC-06 | Không đọc nội dung trang trên domain nhạy cảm mặc định (ví dụ: ngân hàng, bệnh viện, email) — cần opt-in |
 | NFR-SEC-07 | Cho phép xoá toàn bộ dữ liệu local (chat + index + log) bằng 1 thao tác |
@@ -940,9 +940,9 @@ Chỉ bắt đầu M4 khi **đồng thời** thỏa:
 | FR | Priority | Task | Milestone |
 |---|---|---|---|
 | FR-CHAT-01 | M | T-M0-10 ✅ · T-M0-13 ✅ | M0 |
-| FR-CHAT-02 | M | T-M1-07 | M1 |
-| FR-CHAT-03 | M | T-M1-07 | M1 |
-| FR-CHAT-04 | S | T-M1-07 | M1 |
+| FR-CHAT-02 | M | T-M1-07 ✅ | M1 |
+| FR-CHAT-03 | M | T-M1-07 ✅ | M1 |
+| FR-CHAT-04 | S | T-M1-07 ✅ | M1 |
 | FR-CHAT-05 | M | T-M1-10 | M1 |
 | FR-CHAT-06 | M | T-M1-10 | M1 |
 | FR-CHAT-07 | M | T-M1-10 | M1 |
@@ -1069,7 +1069,7 @@ Chỉ bắt đầu M4 khi **đồng thời** thỏa:
 | NFR | Task | Milestone |
 |---|---|---|
 | NFR-PERF-01 (TTFT) | T-M1-14 · T-M2-13 | M1→M2 |
-| NFR-PERF-02 (≥30 fps) | T-M1-07 · T-M3-04 | M1→M3 |
+| NFR-PERF-02 (≥30 fps) | T-M1-07 ✅ · T-M3-04 | M1→M3 |
 | NFR-PERF-03 (cold start ≤1.2s) | T-M1-20 | M1 |
 | NFR-PERF-04 (extract ≤800ms) | T-M1-01 ✅ | M1 |
 | NFR-PERF-05 (memory) | T-M3-02 | M3 |
@@ -1077,7 +1077,7 @@ Chỉ bắt đầu M4 khi **đồng thời** thỏa:
 | NFR-SEC-01 (key at-rest) | T-M0-09 ✅ · T-M1-15 · T-M1-16 | M0→M1 |
 | NFR-SEC-02 (không gửi khi context off) | T-M1-04 · **T-M2-19** | M1→M2 |
 | NFR-SEC-03 (không eval/remote code) | T-M0-12 ✅ | M0 |
-| NFR-SEC-04 (sanitize markdown) | T-M1-07 | M1 |
+| NFR-SEC-04 (sanitize markdown) | T-M1-07 ✅ | M1 |
 | NFR-SEC-05 (origin allowlist) | T-M0-06 ✅ | M0 |
 | NFR-SEC-06 (domain nhạy cảm opt-in) | **T-M2-19** | M2 |
 | NFR-SEC-07 (xoá toàn bộ dữ liệu) | T-M1-12 | M1 |

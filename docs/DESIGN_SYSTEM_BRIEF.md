@@ -154,6 +154,7 @@ Nguồn sự thật: `design/tokens.json` → generate ra `design/tokens.css` (C
 | `MessageActions` | Copy, regenerate, thumbs up/down | FR-CHAT-05 | |
 | `CodeBlock` | Highlight, copy, ngôn ngữ, expand | FR-CHAT-03 | Ảnh hưởng rubric R6 |
 | `MarkdownTable` | Bảng, scroll ngang | FR-CHAT-04 | Vỡ layout ở panel hẹp |
+| `MessageContent` | Orchestrator render Markdown của message assistant (defer khi streaming) | FR-CHAT-02 | Jank khi stream dài (NFR-PERF-02) |
 | `CitationChip` | `[1]` chip → popover xem đoạn nguồn | FR-CONTEXT-10 | **Ảnh hưởng trực tiếp metric `citation_precision` trong eval** |
 | `CitationPopover` | Preview đoạn nguồn + mở tab gốc | FR-CONTEXT-10 | |
 | `ToolCallBlock` | Collapsible: tên tool, args, kết quả | FR-TOOLS-02, FR-TOOLS-06 | Ảnh hưởng `tool_success_rate` |
@@ -231,8 +232,44 @@ Nguồn sự thật: `design/tokens.json` → generate ra `design/tokens.css` (C
 - **A11y:** `role="listbox"` + `aria-label="Chọn tab để đính kèm"` · mỗi dòng `role="option"` + `aria-selected` (true khi đã đính kèm) · icon trạng thái có `aria-label` tiếng Việt · focus ring `--focus-ring`.
 - **Không hardcode màu** — toàn bộ dùng design token như các chip khác.
 
-### 3.5 Selection affordance (đã implement T-M1-02)
+#### `MessageContent` (đã implement T-M1-07)
 
+- **Vị trí:** thay thế `<p class="whitespace-pre-wrap">` trong `MessageBubble` — **chỉ message assistant**; message user giữ text thuần.
+- **Vai trò:** orchestrator của pipeline `react-markdown` → `remark-gfm` → `rehype-highlight` → `rehype-sanitize` (chi tiết kỹ thuật: `SYSTEM_DESIGN.md` §7.8).
+- **Hiệu năng:** `useDeferredValue(content)` + **highlight defer khi streaming** (code block dạng plain mono khi `status === 'streaming'`, highlight 1 lần khi stream xong) → không nhấp nháy unhighlighted, không jank (NFR-PERF-02).
+- **Style:** class `.markdown-body` trong `src/sidepanel/index.css` (CSS thuan, không phải Tailwind arbitrary trong JSX) — margin theo `--space-*`, heading theo `--font-size-*` + `--font-weight-semibold`, link `--info` + underline.
+
+#### `CodeBlock` (đã implement T-M1-07)
+
+- **Cấu trúc:** `<div data-testid="code-block">` = header (nhãn ngôn ngữ + nút copy) + `<pre>` (nội dung code).
+- **Header:** nhãn ngôn ngữ (`typescript`, `python`, …; không có → `text`) — font mono, **uppercase**, `--text-tertiary`, `--font-size-xs`. Nút copy 24×24 px, icon `Copy` (`lucide-react`) → đổi sang `Check` trong 1500 ms sau khi copy.
+- **Phản hồi copy:** `navigator.clipboard.writeText(source code thô)` → toast `sonner` `toast.success('Đã sao chép')`; lỗi → `toast.error('Không sao chép được')`. Copy **source thô**, không phải HTML.
+- **Token:** `--code-bg` (nền) · `--code-border` (viền + đường kẻ header) · `--code-fg` (màu chữ) · `--text-tertiary` (nhãn + icon) · `--surface-sunken` (hover nút) · `--font-mono` · `--font-size-xs` · `--font-size-sm` · `--radius-md` · `--radius-sm` · `--duration-fast`.
+- **A11y:** nút copy có `aria-label="Sao chep code"` (tiếng Việt) · focus ring `--focus-ring` · `<pre>` có `overflow-x-auto` (code dài scroll ngang, không vỡ layout).
+
+#### `MarkdownTable` (đã implement T-M1-07)
+
+- **Cấu trúc:** `<div data-testid="markdown-table-wrapper" class="overflow-x-auto">` bọc `<table>`.
+- **Hành vi:** bảng GFM rộng hơn panel (320 px) → **scroll ngang**, không vỡ layout (FR-CHAT-04).
+- **Token:** `--border-default` (viền bảng + ô) · `--surface-sunken` (nền header `th`) · `--text-primary` (header) · `--font-size-sm` · `--space-2` (padding ô).
+- **Chi tiết:** `white-space: nowrap` trên ô → nội dung không bị vỡ dòng vô nghĩa.
+
+#### Mapping màu syntax highlight → design token (T-M1-07)
+
+`rehype-highlight` sinh class `hljs-*`; mapping trong `src/sidepanel/index.css` → **dùng token có sẵn trong `design/tokens.css`, không hardcode hex**:
+
+| Class highlight.js | Token |
+|---|---|
+| `hljs-keyword` · `hljs-selector-tag` · `hljs-literal` · `hljs-type` · `hljs-name` | `--code-token-keyword` |
+| `hljs-string` · `hljs-regexp` · `hljs-attribute` | `--code-token-string` |
+| `hljs-number` · `hljs-variable` · `hljs-tag .hljs-attr` | `--code-token-number` |
+| `hljs-comment` · `hljs-quote` · `hljs-meta` | `--code-token-comment` |
+| `hljs-title` · `hljs-built_in` · `hljs-selector-id` / `-class` | `--code-token-function` |
+| `hljs-punctuation` · `hljs-operator` · `hljs-subst` · `hljs-params` | `--code-token-punctuation` |
+
+Token đổi theo theme `.dark` → highlight tự đổi màu, không cần code.
+
+### 3.5 Selection affordance (đã implement T-M1-02)
 Component `SelectionAffordance` — nút nổi "Hỏi Sidekick" xuất hiện cạnh vùng text user bôi đen **trong trang web** (không phải trong panel).
 
 - **Vị trí:** **overlay nổi** trong trang — `position: fixed`, neo theo bounding box của vùng chọn (ưu tiên **dưới** vùng chọn; tran cạnh dưới viewport → **trên**; toạ độ luôn clamp trong viewport).

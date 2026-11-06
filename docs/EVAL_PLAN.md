@@ -184,6 +184,11 @@ Mỗi lượt chat của hệ thống ta ghi 1 dòng `request_logs` với:
 
 **Điểm tổng:** trung bình trọng số (R1–R5 weight 2; R6–R8 weight 1) → quy đổi thang 100.
 
+> **R6 (UX & Latency) — hỗ trợ bởi T-M1-07 (2026-11-06).** Tiêu chí R6 chấm **"định dạng đẹp / dễ đọc"** và **"phản hồi tức thì"** — T-M1-07 cung cấp nền tảng cho cả hai vế:
+> - *Định dạng đẹp:* Markdown (GFM: heading, list, bảng, strikethrough, task list), code block có **nhãn ngôn ngữ + syntax highlight + copy 1-click**, bảng scroll ngang → format rõ ràng ở panel 320 px.
+> - *Phản hồi tức thì:* `useDeferredValue` + **highlight defer khi streaming** → không jank, không nhấp nháy unhighlighted (NFR-PERF-02). TTFT đo ở Tầng A (metrics máy) — xem §7 (FC-9).
+> - **Lưu ý:** R6 được chấm **bởi con người** ở Tầng B (xem ghi chú §4.4) → cần chụp **screenshot** panel sau khi có câu trả lời có code block + bảng để chấm "định dạng đẹp".
+
 ### 4.2 Trọng số theo nhóm tác vụ
 
 | Nhóm | Trọng số rubric |

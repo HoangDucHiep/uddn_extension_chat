@@ -7,6 +7,31 @@
 ---
 
 ## [Unreleased]
+
+### Added
+- **T-M1-07 — Markdown render + code block + copy + syntax highlight (FR-CHAT-02 / FR-CHAT-03 / FR-CHAT-04, NFR-SEC-04, NFR-PERF-02)**
+  - `apps/extension/package.json` — +`react-markdown@^10.1.0` · `remark-gfm@^4.0.1` · `rehype-sanitize@^6.0.0` · `rehype-highlight@^7.0.2` (`sonner` đã có sẵn từ trước).
+  - `apps/extension/src/sidepanel/components/chat/markdownSchema.ts` (mới) — `markdownSchema` (clone `defaultSchema` của `rehype-sanitize` + `span: [['className', /^hljs-/]]` + `code: [['className', /^language-./, 'hljs']]` + `protocols.href: ['http','https','mailto']`) · `LANGUAGE_ALIASES` · `SUPPORTED_LANGUAGES` · `toMarkdownNode()` / `languageFromNode()` / `extractCodeText()`.
+  - `apps/extension/src/sidepanel/components/chat/CodeBlock.tsx` (mới) — header (nhãn ngôn ngữ + nút copy) · copy **source thô** qua `navigator.clipboard.writeText` · icon `Copy` → `Check` 1500 ms · `toast.success('Đã sao chép')` / `toast.error('Không sao chép được')` · `CodeBlockContext` phân biệt code block vs inline code.
+  - `apps/extension/src/sidepanel/components/chat/MarkdownTable.tsx` (mới) — bọc `<table>` trong `div.overflow-x-auto` (`data-testid="markdown-table-wrapper"`) → bảng rộng scroll ngang, không vỡ layout ở panel 320 px.
+  - `apps/extension/src/sidepanel/components/chat/MessageContent.tsx` (mới) — orchestrator pipeline `remark-parse` → `remark-gfm` → `remark-rehype` → `rehype-highlight` → `rehype-sanitize` → React components · `useDeferredValue(content)` · mảng plugin **hằng module-level** (`REHYPE_PLUGINS_STREAMING` / `REHYPE_PLUGINS_DONE`) · override `a` / `pre` / `code` / `table` · `skipHtml`.
+  - `apps/extension/src/sidepanel/index.css` — +`.markdown-body` (typography theo token) · +mapping `.hljs-*` → `--code-token-*` (token có sẵn trong `design/tokens.css`, không hardcode hex).
+  - **Test** — `apps/extension/tests/markdownSchema.test.ts` (mới, 17 test) · `apps/extension/tests/messageContent.test.tsx` (mới, 25 test) · `apps/extension/tests/messageContentDefer.test.tsx` (mới, 2 test) · `apps/extension/e2e/markdown.spec.ts` (mới, 4 kịch bản).
+  - **Số test toàn repo:** 696 → **740 unit** (shared 140 · server 224 · extension 376) + 32 → **36 E2E**.
+  - **Mutation spot-check:** 6/6 mutation bị bắt — bỏ `rehype-sanitize` (2 test fail) · bỏ `rel="noopener noreferrer"` (1 test fail) · đổi allowlist `href` (2 test fail) · bỏ defer-highlight khi streaming (1 test fail) · bỏ `useDeferredValue` (2 test fail) · bỏ `overflow-x-auto` ở bảng (1 test fail).
+
+### Changed
+- `apps/extension/src/sidepanel/components/MessageBubble.tsx` — message **assistant** nay dùng `<MessageContent content={message.content} isStreaming={message.status === 'streaming'} />` thay `<p className="whitespace-pre-wrap">`; message **user** giữ nguyên text thuần (không parse → giảm bề mặt XSS từ nội dung người dùng).
+- `apps/extension/src/sidepanel/App.tsx` — mount `<Toaster position="bottom-center" />` (dùng chung cho onboarding + chat workspace).
+- `apps/extension/public/manifest.json` — +permission `clipboardWrite` (dùng thật cho copy code).
+- `docs/SYSTEM_DESIGN.md` §7.2 — Markdown pipeline nay là `react-markdown` + `remark-gfm` + `rehype-highlight` + `rehype-sanitize` (trước ghi `shiki`).
+
+### Fixed
+- `docs/SYSTEM_DESIGN.md` §7.2 — ghi "shiki" làm engine highlight → **sai**: shiki cần wasm → cần `'wasm-unsafe-eval'` trong CSP, MV3 `script-src 'self'` không cho phép. Đổi sang `rehype-highlight` (highlight.js đồng bộ, 37 ngôn ngữ `common`).
+
+### Docs
+- `REQUIREMENTS.md` §4.3 (FR-CHAT-02/03/04) + §4.6 (NFR-SEC-04) + §4.5 (NFR-PERF-02) + §11.1 · `SYSTEM_DESIGN.md` §7.8 (mới) + §7.2 + §7.2.1 + §7.2.2 (mutation vòng 4) · `DESIGN_SYSTEM_BRIEF.md` §3.3 + §3.4 (spec `MessageContent` · `CodeBlock` · `MarkdownTable` + mapping `.hljs-*`) · `IMPLEMENTATION_PLAN.md` task card T-M1-07 ✅ + §3.1i-bis + §3.2 · `COMPARISON_MATRIX.md` §E · `EVAL_PLAN.md` §4.1 (R6) · `HANDOFF.md` §2 · `AGENTS.md` §6 + `docs/README.md`.
+
 ### Added
 - **T-M1-06 — Hash context + snapshot log + cache theo URL+hash (FR-CONTEXT-01 / FR-CONTEXT-12)**
   - `packages/shared/src/contextHash.ts` (mới) — `hashString(text)` (FNV-1a 32-bit → hex, **thuần** — không `node:crypto` → dùng được cho extension + server) · `hashContextItems(items)` (hash **deterministic**: sort theo `CONTEXT_TIER_ORDER` rồi `id`, nối `id|kind|tier|url|title|sourceKind|text` bằng `\u0000`; `truncated`/`droppedChars`/`tokens` là thuộc tính ngân sách nên **không** tính; rỗng → `''`) · `contextHashKey(url)` (bỏ fragment + query, lowercase host).

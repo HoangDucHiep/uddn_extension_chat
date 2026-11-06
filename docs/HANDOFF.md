@@ -24,14 +24,41 @@
 | Hạng mục | Trạng thái |
 |---|---|
 | Docs | ✅ Đầy đủ 9 file (`docs/`) + `AGENTS.md` ở root |
-| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 + T-M1-05 + T-M1-02 + T-M1-24 + T-M1-25 + T-M1-06 xong** — 4 workspace, 696 unit test + 32 E2E |
+| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 + T-M1-05 + T-M1-02 + T-M1-24 + T-M1-25 + T-M1-06 + T-M1-07 xong** — 4 workspace, 740 unit test + 36 E2E |
 | Git | ✅ Đã init (`main`) · tag `v0.1` đánh dấu M0 |
-| Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **10/25 task**) |
-| Task tiếp theo | **T-M1-07** (markdown/code) → T-M1-08 (citation chip) |
+| Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **11/25 task**) |
+| Task tiếp theo | **T-M1-08** (citation chip + popover) |
 
 ### Đang làm dở
 
-_(Không có — T-M1-06 hash context + snapshot + cache đã commit, task kế tiếp T-M1-07)_
+_(Không có — T-M1-07 markdown/code đã commit, task kế tiếp T-M1-08)_
+
+### Việc đã xong gần đây (T-M1-07 — Markdown render + code block + copy + syntax highlight)
+
+- **T-M1-07 (FR-CHAT-02 / FR-CHAT-03 / FR-CHAT-04, NFR-SEC-04, NFR-PERF-02)** — nội dung assistant nay render Markdown đầy đủ trong side panel: GFM (heading · list · bảng · strikethrough · task list), code block có **nhãn ngôn ngữ + syntax highlight + copy 1-click**, bảng rộng scroll ngang.
+  - **Deps** — `react-markdown@^10.1.0` · `remark-gfm@^4.0.1` · `rehype-sanitize@^6.0.0` · `rehype-highlight@^7.0.2` (`sonner` đã có sẵn từ trước).
+  - **Schema** — `sidepanel/components/chat/markdownSchema.ts` (mới): `markdownSchema` (clone `defaultSchema` + `span: [['className', /^hljs-/]]` + `code: [['className', /^language-./, 'hljs']]` + `protocols.href: ['http','https','mailto']`) · `LANGUAGE_ALIASES` · `SUPPORTED_LANGUAGES` · `toMarkdownNode()` / `languageFromNode()` / `extractCodeText()`.
+  - **Component** — `chat/CodeBlock.tsx` (mới: header nhãn ngôn ngữ + nút copy, copy **source thô**, icon `Copy`→`Check` 1500 ms, `toast.success('Đã sao chép')`, `CodeBlockContext` phân biệt code block vs inline code) · `chat/MarkdownTable.tsx` (mới: `div.overflow-x-auto` bọc bảng) · `chat/MessageContent.tsx` (mới: orchestrator pipeline + `useDeferredValue` + mảng plugin hằng module-level).
+  - **Tích hợp** — `MessageBubble.tsx` (assistant → `MessageContent`, user giữ text thuần) · `App.tsx` (mount `<Toaster>`) · `manifest.json` (+`clipboardWrite`) · `index.css` (+`.markdown-body` + mapping `.hljs-*` → `--code-token-*`).
+  - **Verify** — typecheck ✅ · lint ✅ · test ✅ (**740 unit** = shared 140 · server 224 · extension 376) · build ✅ (`dist/content.js` vẫn IIFE 1 file) · db:migrate ✅ (không có migration mới) · **E2E 36/36** ✅ (+4 kịch bản `e2e/markdown.spec.ts`) · **mutation spot-check 6/6 bị bắt**.
+- Bằng chứng đầy đủ: `docs/IMPLEMENTATION_PLAN.md` §3.1i-bis · `docs/SYSTEM_DESIGN.md` §7.8.
+
+### Quyết định kỹ thuật mới (T-M1-07)
+
+| Quyết định | Lý do |
+|---|---|
+| `rehype-highlight` (highlight.js đồng bộ) thay `shiki` | Shiki cần wasm → cần `'wasm-unsafe-eval'` trong CSP, MV3 `script-src 'self'` không cho; highlight.js `common` = 37 ngôn ngữ ≥ 15 yêu cầu của FR-CHAT-03 |
+| Highlight **defer khi streaming** (`isStreaming` → chỉ `[rehypeSanitize]`) | `rehype-highlight` chạy lại toàn bộ cây mỗi token → O(n²); highlight 1 lần khi stream xong → không nhấp nháy unhighlighted, không jank |
+| `useDeferredValue(content)` | React 18 ưu tiên render markdown (parse chậm) sau frame hiện tại → giữ fps khi streaming (NFR-PERF-02) |
+| Mảng plugin **hằng module-level** (`REHYPE_PLUGINS_STREAMING` / `REHYPE_PLUGINS_DONE`) | Tạo inline mỗi render → `react-markdown` re-parse oan |
+| `rehype-sanitize` truyền schema dạng **tuple** `[rehypeSanitize, markdownSchema]` | `rehype-sanitize` trong unified nhận schema là tham số thứ 2 của tuple; truyền `{ schema }` → rơi về `defaultSchema` → mất hết class `hljs-*` |
+| `protocols.href` giới hạn `['http','https','mailto']` (bỏ `irc`/`xmpp` mặc định) | Chặn `javascript:` + giảm bề mặt tấn công (NFR-SEC-04) |
+| `skipHtml` trên `ReactMarkdown` | Bỏ raw HTML node → chặn XSS + chặn attribute injection |
+| Chỉ **assistant** render Markdown; user giữ text thuần | User nhập text thô → không cần parse; giảm bề mặt XSS từ nội dung người dùng |
+| Copy **source thô** (trích từ AST) chứ không copy HTML | Copy HTML → paste vào editor ra markup; `extractCodeText()` gom text node đệ quy nên vẫn đúng sau khi `rehype-highlight` chèn span |
+| `CodeBlockContext` thay vì dò DOM / parent traversal | Phân biệt code block vs inline code ổn định, không phụ thuộc cấu trúc DOM |
+| Toast `sonner` + icon inline đổi `Copy`→`Check` | Toast khớp AC "Đã sao chép"; icon cho phản hồi **tại đúng block** (parity Edge Copilot) |
+| `rehype-highlight` **không** vào content script | Content script build riêng (IIFE) → `dist/content.js` giữ nguyên ~13.9 kB |
 
 ### Việc đã xong gần đây (T-M1-06 — Hash context + snapshot log + cache theo URL+hash)
 
