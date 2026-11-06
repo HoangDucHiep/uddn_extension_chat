@@ -71,6 +71,15 @@ const doneEvent: ChatEvent = {
   messageId: 'msg-1',
 }
 
+/** Event trich dan (FR-CONTEXT-10 — T-M1-08). */
+const citationEvent: ChatEvent = {
+  type: 'citation',
+  index: 1,
+  url: 'https://example.com/bai-viet',
+  title: 'Bai viet',
+  snippet: 'Doan trich dan ngan.',
+}
+
 beforeEach(async () => {
   useChatStore.getState().reset()
   // Reset giu nguyen context da dinh kem → don de dam bao test doc lap.
@@ -114,6 +123,62 @@ describe('useChat', () => {
     expect(useChatStore.getState().conversationId).toBe('conv-1')
     expect(useChatStore.getState().activeProvider).toBe('groq')
     expect(useChatStore.getState().isStreaming).toBe(false)
+  })
+
+  it('nhan event citation → gan nguon trich dan vao message assistant', async () => {
+    streamChatMock.mockImplementation(
+      (
+        _request: unknown,
+        options: { onEvent?: (event: ChatEvent) => void },
+      ) =>
+        makeStream(
+          [metaEvent, tokenEvent('Gia do la 30% [1]'), citationEvent, usageEvent, doneEvent],
+          options.onEvent,
+        ),
+    )
+
+    const { result } = renderHook(() => useChat())
+
+    await act(async () => {
+      await result.current.send('Hoi ve trang')
+    })
+
+    const assistant = useChatStore.getState().messages[1]
+    expect(assistant?.citations).toHaveLength(1)
+    expect(assistant?.citations?.[0]).toMatchObject({
+      index: 1,
+      url: 'https://example.com/bai-viet',
+      title: 'Bai viet',
+      snippet: 'Doan trich dan ngan.',
+    })
+  })
+
+  it('nhieu event citation → gom vao message assistant', async () => {
+    streamChatMock.mockImplementation(
+      (
+        _request: unknown,
+        options: { onEvent?: (event: ChatEvent) => void },
+      ) =>
+        makeStream(
+          [
+            metaEvent,
+            tokenEvent('a [1] b [2]'),
+            citationEvent,
+            { ...citationEvent, index: 2, url: 'https://example.org/b', title: 'B' },
+            doneEvent,
+          ],
+          options.onEvent,
+        ),
+    )
+
+    const { result } = renderHook(() => useChat())
+
+    await act(async () => {
+      await result.current.send('Hoi ve trang')
+    })
+
+    const assistant = useChatStore.getState().messages[1]
+    expect(assistant?.citations?.map((c) => c.index)).toEqual([1, 2])
   })
 
   it('gui prompt kem anh: anh duoc gui len BFF + hien thi trong message', async () => {

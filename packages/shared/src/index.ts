@@ -4,6 +4,7 @@
  */
 
 export * from './constants.js'
+export * from './citation.js'
 export * from './contextBudget.js'
 export * from './contextHash.js'
 export * from './errors.js'

@@ -24,14 +24,38 @@
 | Hạng mục | Trạng thái |
 |---|---|
 | Docs | ✅ Đầy đủ 9 file (`docs/`) + `AGENTS.md` ở root |
-| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 + T-M1-05 + T-M1-02 + T-M1-24 + T-M1-25 + T-M1-06 + T-M1-07 xong** — 4 workspace, 740 unit test + 36 E2E |
+| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 + T-M1-05 + T-M1-02 + T-M1-24 + T-M1-25 + T-M1-06 + T-M1-07 + T-M1-08 xong** — 4 workspace, 813 unit test + 40 E2E |
 | Git | ✅ Đã init (`main`) · tag `v0.1` đánh dấu M0 |
-| Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **11/25 task**) |
-| Task tiếp theo | **T-M1-08** (citation chip + popover) |
+| Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **12/25 task**) |
+| Task tiếp theo | **T-M1-09** (chat CRUD: tạo / đổi tên / xoá / ghim / archives) — theo thứ tự ưu tiên M1; **T-M1-03** (service worker: mở/toggle panel · context menu · shortcut) là ứng viên song song |
 
 ### Đang làm dở
 
-_(Không có — T-M1-07 markdown/code đã commit, task kế tiếp T-M1-08)_
+_(Không có — T-M1-08 citation chip + popover đã commit, task kế tiếp T-M1-09)_
+
+### Việc đã xong gần đây (T-M1-08 — Citation chip + popover)
+
+- **T-M1-08 (FR-CONTEXT-10)** — câu trả lời có context nay hiện **chip `[N]`** inline → bấm vào mở **popover đoạn nguồn** (tiêu đề · domain · đoạn trích) + nút "Mở trang gốc"; dưới bubble assistant có **dòng tóm tắt nguồn** (`CitationList`).
+  - **Contract** — `packages/shared/src/citation.ts` (mới): `CITATION_MARKER_PATTERN` (`/\[(\d{1,2})\]/g`) · `CITATION_INSTRUCTION` (chỉ chèn vào system prompt **khi có context**) · `parseCitationMarkers()` (số phân biệt · sort tăng dần · **không** mutate `lastIndex` của regex global).
+  - **Server** — `apps/server/src/services/citationService.ts` (mới): `extractCitations()` (parse marker `[N]` → **loại số vượt phạm vi**) · `buildSnippet()` (`excerpt ?? text.slice(0, 320)`) · `persistCitations()` (bảng `citations`: `messageId`, `idx`, `url`, `title`, `snippet`, `tabId`) · `chatService.ts`: `numberedContextItems()` (đánh số **1-based** theo tier `selection` > `attachment` > `currentTab`) · `buildContextPrompt()` render `--- Nguồn [1] ([Đã bôi đen]) ---` · `buildProviderMessages()` chèn `CITATION_INSTRUCTION` · `createChatStream()` **emit SSE `citation` trước `done`**.
+  - **Extension** — `components/ui/popover.tsx` (mới, shadcn trên `@radix-ui/react-popover`) · `chat/citationPlugin.ts` (mới, remark plugin thuần mdast: tách text node chứa `[N]` → `<span dataCitationIndex={N}>`, **không** đụng code block / inline code) · `chat/markdownSchema.ts` (+`dataCitationIndex` vào allowlist `span`, **không** dùng wildcard `data*`) · `chat/MessageContent.tsx` (+plugin + `CitationContext` + override `span`: có `dataCitationIndex` → `CitationChip`, còn lại → pass-through token `.hljs-*`) · `chat/CitationChip.tsx` · `chat/CitationPopover.tsx` · `chat/CitationList.tsx` · `store/chatStore.ts` (+`ChatCitation` · `addCitation`) · `hooks/useChat.ts` (SSE `case 'citation'`) · `MessageBubble.tsx` · `index.css` (+`.citation-chip` dùng token `--citation-*`).
+  - **Verify** — typecheck ✅ · lint ✅ · test ✅ (**813 unit** = shared 152 · server 250 · extension 411) · build ✅ (`dist/content.js` vẫn IIFE 1 file) · db:migrate ✅ (**không** có migration mới — bảng `citations` đã có sẵn trong `0000`) · **E2E 40/40** ✅ (+4 kịch bản `e2e/citation.spec.ts`) · **mutation spot-check 6/6 bị bắt**.
+- Bằng chứng đầy đủ: `docs/IMPLEMENTATION_PLAN.md` §3.1j · `docs/SYSTEM_DESIGN.md` §7.9.
+
+### Quyết định kỹ thuật mới (T-M1-08)
+
+| Quyết định | Lý do |
+|---|---|
+| **Marker `[N]` do LLM sinh**, không suy đoán vị trí câu | Heuristic "câu nào dựa trên nguồn nào" không chính xác; marker rõ ràng + server **loại số vượt phạm vi** (LLM bịa `[9]` khi chỉ có 3 nguồn) → chính xác hơn |
+| `CITATION_INSTRUCTION` chỉ chèn **khi có context** | Chat thuần LLM (FR-CONTEXT-13) không bị ảnh hưởng; không tốn token thừa |
+| Đánh số nguồn ở **server** (`numberedContextItems`) theo tier | Client không được tự quyết định số → server là nguồn chân lý (giống `applyContextBudget`); extension chỉ render |
+| Marker parse ở `packages/shared` | Cả server (parse output) và extension (render) cùng hiểu 1 định dạng → 1 nguồn sự thật |
+| Persist `snippet` vào bảng `citations` | Cho phép **verify trích dẫn bằng máy** → metric `citation_precision` (đo được "đúng **đoạn**", không chỉ "có trích dẫn") — xem `EVAL_PLAN.md` §5.1.1 |
+| Remark plugin thay vì regex trên chuỗi HTML | Regex sau render → dễ vỡ với HTML escape; AST cho chính xác + **không** đụng code block / inline code |
+| `dataCitationIndex` được allowlist **tường minh**, không dùng wildcard `data*` | `rehype-sanitize` — wildcard sẽ mở cửa cho mọi attribute `data-*` → tăng bề mặt XSS |
+| Chip **chưa** có metadata → render `<span>`, không phải button | Đang stream thì chưa có event `citation` → không tạo "chip chết" không bấm được |
+| Popover dùng Radix qua **Portal** | Thread chat có `overflow` → popover bị cắt nếu render inline |
+| Không dùng wildcard `data*` trong sanitize | Giữ allowlist thẩm (NFR-SEC-04) |
 
 ### Việc đã xong gần đây (T-M1-07 — Markdown render + code block + copy + syntax highlight)
 

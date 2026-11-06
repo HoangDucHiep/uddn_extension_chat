@@ -35,6 +35,23 @@ export interface ChatImage {
   fileName?: string
 }
 
+/**
+ * Mot nguon trich dan cua message (FR-CONTEXT-10 — T-M1-08).
+ *
+ * `index` khop voi marker `[N]` trong noi dung message → chip inline tra
+ * ve dung nguon nay.
+ */
+export interface ChatCitation {
+  /** So thu tu nguon (1-based). */
+  index: number
+  url: string
+  title: string
+  /** Doan trich ngan cua nguon. */
+  snippet: string
+  /** Tab ID neu nguon den tu tab da dinh kem. */
+  tabId?: number
+}
+
 export interface ChatMessage {
   id: string
   role: 'user' | 'assistant' | 'system'
@@ -50,6 +67,8 @@ export interface ChatMessage {
   tokensOut?: number
   /** Anh dinh kem cua message (FR-VISION-01 — T-M1-24). */
   images?: ChatImage[]
+  /** Nguon trich dan cua message (FR-CONTEXT-10 — T-M1-08). */
+  citations?: ChatCitation[]
 }
 
 export interface ChatState {
@@ -82,6 +101,12 @@ export interface ChatState {
   addMessage: (message: ChatMessage) => void
   appendToMessage: (id: string, delta: string) => void
   updateMessage: (id: string, patch: Partial<ChatMessage>) => void
+  /**
+   * Them 1 nguon trich dan vao message (FR-CONTEXT-10 — T-M1-08).
+   *
+   * Trung `index` → ghi de (SSE co the lap marker o cac doan khac nhau).
+   */
+  addCitation: (id: string, citation: ChatCitation) => void
   setConversationId: (conversationId: string | undefined) => void
   setStreaming: (isStreaming: boolean) => void
   setActive: (info: {
@@ -149,6 +174,19 @@ export const useChatStore = create<ChatState>((set, get) => ({
       messages: state.messages.map((message) =>
         message.id === id ? { ...message, ...patch } : message,
       ),
+    })),
+
+  addCitation: (id, citation) =>
+    set((state) => ({
+      messages: state.messages.map((message) => {
+        if (message.id !== id) return message
+        const existing = message.citations ?? []
+        // Trung theo `index` → citation moi ghi de citation cu cung chi so.
+        const merged = existing.filter((item) => item.index !== citation.index)
+        merged.push(citation)
+        merged.sort((a, b) => a.index - b.index)
+        return { ...message, citations: merged }
+      }),
     })),
 
   setConversationId: (conversationId) => set({ conversationId }),

@@ -222,7 +222,7 @@ Quy ước ưu tiên: **M** = Must (bắt buộc cho M1) · **S** = Should (bắ
 | FR-CONTEXT-07 | Ngân sách context & cắt bớt thông minh | M | Giới hạn token theo provider (`CONTEXT_WINDOWS`); cắt theo thứ tự ưu tiên (selection > tab đính kèm > tab hiện tại > lịch sử chat); UI hiện "đã dùng X/Y token"; server cắt lại lần nữa (nguồn chân lý) |
 | FR-CONTEXT-08 | Chính sách bật/tắt context theo domain (allow/deny list) | S | Domain bị chặn → không đọc content, hiện badge |
 | FR-CONTEXT-09 | Lịch sử duyệt web tùy chọn (opt-in) làm context | S | Mặc định TẮT; bật thì có cảnh báo rõ; có thể xoá |
-| FR-CONTEXT-10 | Chỉ dẫn trích dẫn nguồn trong câu trả lời | M | Mỗi claim quan trọng gắn [1], [2] → hover/click xem đoạn nguồn |
+| FR-CONTEXT-10 | Chỉ dẫn trích dẫn nguồn trong câu trả lời | M | Mỗi claim quan trọng gắn [1], [2] → hover/click xem đoạn nguồn. **Đã implement (T-M1-08):** LLM tự sinh marker `[N]` trong câu trả lời (server chèn chỉ dẫn vào system prompt khi **có** context) → server đánh số nguồn context `[1]`, `[2]` theo thứ tự ưu tiên tier, parse marker → phát SSE event `citation` + ghi bảng `citations` → extension render **chip inline** thay `[N]` trong Markdown; bấm chip → popover hiện tiêu đề · domain · đoạn nguồn + nút "Mở trang gốc"; dưới bubble có **dòng tóm tắt nguồn**. Marker vượt số nguồn → bỏ qua (không tạo chip tre); code block / inline code **không** bị biến đổi |
 | FR-CONTEXT-11 | Chế độ "chỉ dùng trang" (không dùng lịch sử chat) | S | Toggle per-request — *hỗ trợ một phần bởi T-M1-23: `trimHistory()` đã cắt lịch sử theo ngân sách còn lại, nhưng chưa có toggle per-request* |
 | FR-CONTEXT-12 | Snapshot context để tái lập (reproducibility) | S | Lưu hash + nội dung context vào log phục vụ eval. **Đã implement (T-M1-06):** `request_logs.context_hash` luôn ghi (hash FNV-1a 32-bit của **context đã gửi**, đã cắt ngân sách — không phải hash của toàn bộ prompt); `request_logs.context_snapshot` (jsonb) ghi **theo setting `LOG_CONTEXT_SNAPSHOT`, mặc định TẮT** vì chứa nội dung trang |
 | FR-CONTEXT-13 | Chat không cần context — đính kèm là hành động chủ động | M | Tab hiện tại **không** tự vào context; không đính kèm gì (hoặc toggle TẮT) → request **không** có payload `context` → model trả lời bằng kiến thức có sẵn + lịch sử hội thoại; đính kèm (nút "Thêm trang này" / `@` / selection / file) → item vào `context.items[]` với `tier` ưu tiên; web search tự động **chưa có** ở M1 (FR-TOOLS-03, M2) |
@@ -252,6 +252,14 @@ Quy ước ưu tiên: **M** = Must (bắt buộc cho M1) · **S** = Should (bắ
 > - **Cache context (FR-CONTEXT-01):** `apps/extension/src/lib/contextCache.ts` lưu bản capture theo URL chuẩn hoá (`contextHashKey()` — bỏ fragment/query, lowercase host) trong `chrome.storage.local` (key `sidekick.contextCache`), kèm `contentHash` (hash của text) + `capturedAt`. TTL 30 phút, tối đa 20 entry. `attachTab()` ghi cache khi trích xuất thành công, và **fallback** về bản cache khi trang đang lỗi. Nội dung không đổi → không ghi lại (TTL không bị reset).
 >
 > Chi tiết kiến trúc: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.3.5.
+
+> **Trạng thái FR-CONTEXT-10 (✅ implement 2026-11-06 — T-M1-08):** citation chip + popover.
+> - **Contract:** `packages/shared/src/citation.ts` — `CITATION_MARKER_PATTERN` (`/\[(\d{1,2})\]/g`) · `CITATION_INSTRUCTION` · `parseCitationMarkers()` (distinct + tăng dần, thuần).
+> - **Server:** `buildContextPrompt()` gán nhãn `--- Nguồn [1] ([Đã bôi đen]) ---` theo thứ tự ưu tiên tier (`numberedContextItems()` — cùng thứ tự cho prompt lẫn citation event) · `buildProviderMessages()` chèn `CITATION_INSTRUCTION` vào system prompt **chỉ khi có context** · `citationService.ts` (`extractCitations()` thuần · `persistCitations()` ghi bảng `citations`) · `createChatStream()` phát SSE `citation` **sau** `token*`, **trước** `done`.
+> - **Extension:** `citationPlugin.ts` (remark plugin thuần — chỉ đụng node `text`, **không** đụng `code`/`inlineCode`) · `markdownSchema.ts` cho phép `dataCitationIndex` trên `span` (không dùng `data*` allow-all) · `CitationChip` · `CitationPopover` (Radix Popover — tieu đề · domain · snippet · nút "Mở trang gốc") · `CitationList` (dòng tóm tắt nguồn dưới bubble) · `chatStore.addCitation()` · `useChat` xử lý `case 'citation'`.
+> - **Ngoài phạm vi:** RAG/vector search sinh citation tự động (T-M2-*); citation cho câu trả lời **không** có context (không có nguồn để trích); export citation ra file (T-M1-13).
+>
+> Chi tiết kiến trúc: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.9.
 
 ### 4.3 FR-VISION — Ảnh & thị giác
 
@@ -967,7 +975,7 @@ Chỉ bắt đầu M4 khi **đồng thời** thỏa:
 | FR-CONTEXT-07 | M | T-M1-06 · **T-M1-23 ✅** | M1 |
 | FR-CONTEXT-08 | S | **T-M2-19** | M2 |
 | FR-CONTEXT-09 | S | **T-M2-19** | M2 |
-| FR-CONTEXT-10 | M | T-M1-08 | M1 |
+| FR-CONTEXT-10 | M | **T-M1-08 ✅** | M1 |
 | FR-CONTEXT-11 | S | **T-M2-19** | M2 |
 | FR-CONTEXT-12 | S | **T-M1-06 ✅** | M1 |
 | FR-CONTEXT-13 | M | **T-M1-23 ✅** | M1 |

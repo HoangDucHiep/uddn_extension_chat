@@ -53,6 +53,7 @@ export function useChat() {
   const addMessage = useChatStore((state) => state.addMessage)
   const appendToMessage = useChatStore((state) => state.appendToMessage)
   const updateMessage = useChatStore((state) => state.updateMessage)
+  const addCitation = useChatStore((state) => state.addCitation)
   const setConversationId = useChatStore((state) => state.setConversationId)
   const setStreaming = useChatStore((state) => state.setStreaming)
   const setActive = useChatStore((state) => state.setActive)
@@ -251,6 +252,18 @@ export function useChat() {
             appendToMessage(assistantId, event.delta)
             break
 
+          case 'citation':
+            // Nguon trich dan (FR-CONTEXT-10 — T-M1-08) → gan vao message
+            // de chip inline tra ve dung nguon.
+            addCitation(assistantId, {
+              index: event.index,
+              url: event.url,
+              title: event.title,
+              snippet: event.snippet,
+              ...(event.tabId !== undefined ? { tabId: event.tabId } : {}),
+            })
+            break
+
           case 'usage':
             updateMessage(assistantId, { tokensIn: event.tokensIn, tokensOut: event.tokensOut })
             break
@@ -306,6 +319,7 @@ export function useChat() {
     [
       addMessage,
       appendToMessage,
+      addCitation,
       setActive,
       setConversationId,
       setStreaming,

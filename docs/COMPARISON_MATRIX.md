@@ -54,6 +54,7 @@ Cột ưu tiên: **M** = Must (M1) · **S** = Should (M2) · **C** = Could (M2/M
 | A26 | Yêu cầu đăng nhập | Bắt buộc đăng nhập tài khoản Microsoft; một số tính năng cần **M365 subscription** | 🟢 FR-PROVIDER-02 (không cần tài khoản hãng) |
 | A27 | Copilot Actions (Edge) | Tác vụ web **một lần** có giám sát (đặt nhà hàng, sửa trang, huỷ newsletter). Có bước xác nhận cho hành động rủi ro (mua hàng, gửi email). **Preview, trong Copilot Mode** | C |
 | A28 | Lịch chạy tự động | **Không có trong Edge.** Chỉ ở **M365 Copilot Tasks** (chạy ngay hoặc theo lịch, giới hạn 10 scheduled prompts) — cần **Copilot license**, sản phẩm khác, không nằm trong sidebar | 🟢 FR-WORKFLOW-03 (M4) |
+| A29 | Trích dẫn nguồn (citations) | Câu trả lời dựa trên nội dung trang hiện tại hiện **số nguồn** kèm trích dẫn → bấm vào xem đoạn nguồn | M (chi tiết hơn: chip + popover đoạn nguồn) |
 
 ---
 
@@ -89,6 +90,7 @@ Cột ưu tiên: **M** = Must (M1) · **S** = Should (M2) · **C** = Could (M2/M
 | B26 | Skill library browser (`chrome://skills/browse`) | Trang xem sẵn skill mẫu, lọc theo loại/tên | S |
 | B27 | Yêu cầu đăng nhập | Bắt buộc đăng nhập Google Account; Skills cần **Chrome ≥ 147**, ngôn ngữ **en-US**, ChromeOS/Mac/Windows; không dùng được trên managed/Enterprise account (trừ khi admin bật) | 🟢 Không cần tài khoản hãng; chạy offline được |
 | B28 | Tasks / Schedules (chạy nền theo lịch) | **Không có trong sidebar.** Nằm ở **Gemini Apps** (`gemini.google.com`) — không phải Gemini in Chrome. Hỗ trợ time-based (once/hourly/daily/weekly/monthly/yearly), Gmail monitor, topic monitor. Skill = cách làm, Schedule = khi nào chạy | 🟢 FR-WORKFLOW-03/04 (M4) |
+| B29 | Trích dẫn nguồn (citations) | Câu trả lời từ nội dung tab được share hiện **số tham chiếu** → bấm xem nguồn | M (chi tiết hơn: chip + popover đoạn nguồn) |
 
 ---
 
@@ -124,6 +126,7 @@ Cột ưu tiên: **M** = Must (M1) · **S** = Should (M2) · **C** = Could (M2/M
 | Context PDF / video (transcript) | ✅ (A20) | ✅ (B10) | ✅ (T-M1-21/22) | — |
 | Multi-tab | ✅ không giới hạn | ✅ tối đa 10 | ✅ không giới hạn | — |
 | Selection → hỏi | ✅ | ✅ | ✅ (T-M1-02) | — |
+| Trích dẫn nguồn (chip + popover) | ✅ | ✅ | ✅ (T-M1-08 — chi tiết hơn: popover xem **đoạn nguồn**) | — |
 | Summarize 1-click | ✅ | ✅ | ✅ | — |
 | Prompt gợi ý theo trang | ✅ | ✅ | ✅ | — |
 | Lịch sử / nhiều conversation | ✅ | ✅ | ✅ | — |
@@ -167,6 +170,7 @@ Dùng làm acceptance checklist cho M1.
 - [ ] Upload ảnh kèm câu hỏi — ✅ T-M1-24 (paste · drag-drop · file picker · preview + xoá từng ảnh · giới hạn 5 MB/4 ảnh · lưu Postgres → multi-turn · Gemini `inline_data` + Groq/OpenRouter `image_url` · provider không hỗ trợ → tự fallback) — *đối chiếu B17*
 - [ ] `@` đính kèm tab (nhiều tab), hiện chip trạng thái — ✅ T-M1-05 (popover favicon + title + domain · dấu ✓ tab đã đính kèm · gạch tab đang active · lọc theo query)
 - [ ] Bôi đen → hỏi (selection context) — ✅ T-M1-02 (nút nổi "Hỏi Sidekick" cạnh vùng chọn + nút "Dính đoạn đã chọn" trong panel · tier `selection` cao nhất · panel đóng thì đoạn chờ lưu storage, mở sau tự nhận)
+- [ ] Trích dẫn nguồn: chip `[N]` trong câu trả lời → popover hiện **đoạn nguồn** + mở tab gốc — ✅ T-M1-08 (server đánh số nguồn theo tier `selection` > `attachment` > `currentTab` · LLM trả marker `[N]` → server parse, **loại số vượt phạm vi** · SSE `citation` trước `done` + lưu bảng `citations` · extension: remark plugin `citationPlugin` gắn `dataCitationIndex` → `CitationChip` + `CitationPopover` (Radix) + `CitationList` tóm tắt nguồn)
 - [ ] Context tái lập lượt chat (log `context_hash` khớp context đã gửi + snapshot theo setting) — ✅ T-M1-06 (hash deterministic của context **đã cắt ngân sách** · `context_snapshot` jsonb **mặc định TẮT** qua `LOG_CONTEXT_SNAPSHOT` · không gộp với cờ lưu prompt đầy đủ)
 - [ ] Không trích xuất lại trang đã đọc + fallback khi trang lỗi — ✅ T-M1-06 (cache theo URL+hash trong `chrome.storage.local` · TTL 30 phút · tối đa 20 entry · **không có UI mới**)
 - [ ] Nút tóm tắt 1-click — ⬜ T-M1-11

@@ -26,7 +26,7 @@ export const markdownSchema: Options = {
     // `rehype-highlight` them `hljs` vao `code` + `language-*` tu fence info.
     code: [['className', /^language-./, 'hljs']],
     // Token mau cua highlight.js deu co tien to `hljs-`.
-    span: [['className', /^hljs-/]],
+    span: [['className', /^hljs-/], 'dataCitationIndex'],
   },
   protocols: {
     ...(defaultSchema.protocols ?? {}),

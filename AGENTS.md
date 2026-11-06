@@ -102,14 +102,14 @@ pnpm eval:run                # chạy eval harness
 | Milestone | Trạng thái | Ghi chú |
 |---|---|---|
 | **M0 — Foundation** | ✅ Hoàn thành | 15/15 task · 91 unit test + 2 E2E · tag `v0.1` |
-| **M1 — Parity** | 🚧 Đang làm | 11/25 task (T-M1-01, T-M1-04 ✅ hấp thụ, T-M1-05, T-M1-21, T-M1-22, T-M1-23, T-M1-02, T-M1-24, T-M1-25, T-M1-06 ✅, T-M1-07 ✅) · 740 unit test + 36 E2E |
+| **M1 — Parity** | 🚧 Đang làm | 12/25 task (T-M1-01, T-M1-04 ✅ hấp thụ, T-M1-05, T-M1-21, T-M1-22, T-M1-23, T-M1-02, T-M1-24, T-M1-25, T-M1-06 ✅, T-M1-07 ✅, T-M1-08 ✅) · 813 unit test + 40 E2E |
 | **M2 — Advanced & Eval** | ⬜ Chưa bắt đầu | `EVAL_REPORT.md` là deliverable bắt buộc |
 | **M3 — Polish & Deliverable** | ⬜ Chưa bắt đầu | |
 | **M4 — Workflow** | ⬜ Tuỳ chọn | Chỉ sau M3 + đã có eval report |
 
 **Trạng thái docs:** ✅ Requirements · ✅ Design System Brief · ✅ System Design · ✅ Implementation Plan · ✅ Comparison Matrix · ✅ Eval Plan · ✅ Handoff · ✅ Changelog
 
-**Việc tiếp theo:** **T-M1-08** (citation chip + popover).
+**Việc tiếp theo:** **T-M1-09** (chat CRUD: tạo / đổi tên / xoá / ghim / archives) — theo thứ tự ưu tiên M1; **T-M1-03** (service worker: mở/toggle panel · context menu · keyboard shortcut) là ứng viên song song.
 
 > **Markdown render (T-M1-07):** nội dung assistant render qua `react-markdown` + `remark-gfm` → `rehype-highlight` → `rehype-sanitize` (allowlist thẩm: `span.hljs-*`, `code.language-*`, `href` chỉ `http/https/mailto`). Code block có **nhãn ngôn ngữ + copy 1-click** (toast "Đã sao chép", copy **source thô**); bảng GFM scroll ngang. Highlight **defer khi streaming** + `useDeferredValue` → không jank, không nhấp nháy. Chi tiết: [`SYSTEM_DESIGN.md`](docs/SYSTEM_DESIGN.md) §7.8.
 
@@ -120,6 +120,8 @@ pnpm eval:run                # chạy eval harness
 > **Selection context (T-M1-02):** bôi đen trên trang → nút nổi "Hỏi Sidekick" (đường A) hoặc nút "Dính đoạn đã chọn" trong panel (đường B) → đoạn text vào context với `tier: 'selection'` (**cao nhất**). Panel đang đóng → đoạn chờ lưu `chrome.storage.local` (TTL 5 phút) → panel mở sau tự nhận. Chi tiết: [`SYSTEM_DESIGN.md`](docs/SYSTEM_DESIGN.md) §7.3.4.
 >
 > **Hash context + snapshot + cache (T-M1-06):** `request_logs.context_hash` = hash của **context thật đã gửi** (đã cắt ngân sách) — đổi câu hỏi không đổi hash. `context_snapshot` (jsonb) chỉ ghi khi bật `LOG_CONTEXT_SNAPSHOT` (mặc định **TẮT** vì chứa nội dung trang). Extension cache context theo URL+hash trong `chrome.storage.local` (TTL 30 phút) → không trích xuất lại trang đã đọc, fallback về bản cache khi trang lỗi. Chi tiết: [`SYSTEM_DESIGN.md`](docs/SYSTEM_DESIGN.md) §7.3.5.
+
+> **Citation chip + popover (T-M1-08):** server đánh số nguồn **1-based** theo tier (`selection` > `attachment` > `currentTab`) → prompt render `--- Nguồn [1] (...) ---` + chèn `CITATION_INSTRUCTION` **chỉ khi có context**. LLM trả marker `[N]` → server parse, **loại số vượt phạm vi**, emit SSE `citation` (trước `done`) + lưu bảng `citations` (`idx`, `url`, `title`, `snippet`, `tabId`). Extension: remark plugin `citationPlugin` gắn `dataCitationIndex` (allowlist **tường minh**, không wildcard `data*`) → `CitationChip` inline + `CitationPopover` (Radix, xem **đoạn nguồn** + "Mở trang gốc") + `CitationList` tóm tắt nguồn dưới bubble. Chi tiết: [`SYSTEM_DESIGN.md`](docs/SYSTEM_DESIGN.md) §7.9.
 
 ---
 

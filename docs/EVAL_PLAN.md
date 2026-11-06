@@ -189,6 +189,9 @@ Mỗi lượt chat của hệ thống ta ghi 1 dòng `request_logs` với:
 > - *Phản hồi tức thì:* `useDeferredValue` + **highlight defer khi streaming** → không jank, không nhấp nháy unhighlighted (NFR-PERF-02). TTFT đo ở Tầng A (metrics máy) — xem §7 (FC-9).
 > - **Lưu ý:** R6 được chấm **bởi con người** ở Tầng B (xem ghi chú §4.4) → cần chụp **screenshot** panel sau khi có câu trả lời có code block + bảng để chấm "định dạng đẹp".
 
+> **R5 (Citation quality) — hỗ trợ bởi T-M1-08 (2026-11-06).** T-M1-08 cho phép **verify trích dẫn bằng máy**: server lưu `snippet` của từng nguồn được trích dẫn vào bảng `citations` → judge LLM đối chiếu `snippet` với claim → chấm được mức "trỏ **đúng đoạn**" thay vì chỉ "có trích dẫn". Định nghĩa đo chi tiết ở §5.1.1.
+> - **Khi chấm thủ công (Tầng B):** ảnh chụp panel phải **bấm vào chip `[N]`** để mở popover → có ảnh popover đoạn nguồn làm bằng chứng cho R5 của Sidekick.
+
 ### 4.2 Trọng số theo nhóm tác vụ
 
 | Nhóm | Trọng số rubric |
@@ -277,6 +280,21 @@ Output schema:
 | `citation_recall` | % số trích dẫn kỳ vọng (`expected_citations`) được cung cấp |
 | `hallucination_rate` | Số claim không có trong nguồn / tổng claim kiểm chứng được |
 | `task_success_rate` | % task đạt ≥ 4.0 ở R1, R2, R3 |
+
+#### 5.1.1 Đo `citation_precision` / `citation_recall` với cơ chế T-M1-08 (2026-11-06)
+
+Cơ chế đã implement: LLM trả marker `[N]` trong câu trả lời → server parse (`packages/shared/src/citation.ts`) → **loại số vượt phạm vi** → SSE `citation` (kèm `idx`, `url`, `title`, `snippet`, `tabId`) → extension render chip `[N]` + popover đoạn nguồn.
+
+| Metric | Cách đo trên output Sidekick | Ánh xạ metric của Edge/Gemini |
+|---|---|---|
+| `citation_recall` | Số marker `[N]` **hợp lệ** trong câu trả lời ÷ `expected_citations` | Edge: đếm số nguồn được trích dẫn trong câu trả lời (dạng số đoạn) · Gemini: đếm số tham chiếu hiển thị |
+| `citation_precision` | Trong các citation nhận được, % mà `snippet` **thực sự chứa** nội dung hỗ trợ claim được trích dẫn (judge LLM đối chiếu `snippet` với claim) | Cùng cách — nhưng Edge/Gemini **không** công bộ đoạn nguồn → chỉ chấm được mức "có trỏ đúng nguồn hay không", ta chấm được mức chặt hơn (đúng **đoạn**) |
+| `hallucination_rate` | Claim **không** có marker `[N]` nào bám theo → tính vào claim không được hỗ trợ | Tương đương |
+
+> **Lưu ý công bằng khi so sánh:** Edge Copilot / Chrome Gemini hiển thị trích dẫn ở dạng **số đoạn/số nguồn** (không mở được đoạn nguồn để đối chiếu). Vì vậy trong [`EVAL_REPORT.md`](EVAL_REPORT.md) phải ghi rõ:
+> 1. `citation_precision` của ta đo **chặt hơn** (đúng đoạn nguồn) → **không** so sánh thẳng điểm tuyệt đối với Edge/Gemini nếu hệ thống đối chiếu không mở được đoạn.
+> 2. Metric **cùng định nghĩa** cho cả 3 hệ thống phải là `citation_recall` (số trích dẫn kỳ vọng có mặt) → đây mới là phép so sánh công bằng.
+> 3. Marker `[N]` **không** phải thứ Edge/Gemini dùng → khi chấm thủ công, **bỏ qua** phần hiển thị của ta (chip) để chấm nội dung câu trả lời như nhau.
 
 ### 5.2 Hiệu năng
 
@@ -523,6 +541,7 @@ Trước khi judge, mapping thật → nhãn giả được lưu ở `apps/eval/
 | FC-10 | Công khai giới hạn | Mục 1.2 + §8.3 | `EVAL_REPORT.md` |
 | FC-11 | Tính năng bị gate theo gói tính **đánh dấu N/A, không tính 0** | VD: Copilot Voice (chỉ M365), Auto Browse (chỉ AI Pro/Ultra), Skills (chỉ Chrome ≥ 147 + en-US) → ghi "N/A (cần M365)" thay vì 0 điểm | `notes`, bảng kết quả |
 | FC-12 | **Trạng thái context giống nhau** (thêm 2026-11-04 — T-M1-23) | Ghi rõ từng lượt: lượt nào **có** đính kèm trang/tài liệu, lượt nào **không**. Với Sidekick: toggle context **TẮT** + không đính kèm → request không có payload `context`. Với Edge/Gemini: tắt context / bắt đầu chat mới trước khi hỏi. Không so sánh "Edge/Gemini share tab mặc định" với "Sidekick đính kèm chủ động" như cùng một hành vi | `notes` (mỗi task), `dataset_meta.json` |
+| FC-13 | **Cách hiển thị trích dẫn khác nhau** (thêm 2026-11-06 — T-M1-08) | Sidekick hiển thị chip `[N]` + popover đoạn nguồn; Edge/Gemini hiển thị **số nguồn/đoạn**. Khi chấm, **đếm số trích dẫn** (`citation_recall`) chứ **không** chấm khác biệt về hình thức hiển thị; `citation_precision` chỉ so sánh được nếu cả 3 hệ thống đều mở được đoạn nguồn — nếu không → đánh dấu **N/A (không mở được đoạn)** thay vì tính 0 | `notes` (mỗi task), `EVAL_REPORT.md` §5 |
 
 > **Lưu ý về tính công bằng:** điểm 0 cho một tính năng bị khóa theo gói thuê bao sẽ làm kết quả thiên lệch về phía hệ thống ta (hệ thống ta cho mọi tính năng với user free). Cách xử lý đúng: tách bảng kết quả thành **"tính năng mở cho mọi người"** và **"tính năng bị gate"**, chấm riêng từng bảng, và nêu rõ trong kết luận.
 

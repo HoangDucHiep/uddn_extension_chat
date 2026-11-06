@@ -83,7 +83,7 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | T-M1-05 | `@` mention multi-tab | FR-CONTEXT-03 | `context/MentionPopover.tsx`, `hooks/useTabs.ts`, `hooks/useMention.ts`, `lib/tabList.ts` | Gõ `@` → list tab (title+favicon), chọn nhiều được | L | ✅ |
 | T-M1-06 | Truyền context sang BFF (tab list + content) | FR-CONTEXT-01/02/03, FR-CONTEXT-07, FR-CONTEXT-12 | `packages/shared/src/contextHash.ts`, `apps/server/src/services/chatService.ts`, `apps/extension/src/lib/contextCache.ts` | Log `request_logs.context_hash` khớp với context đã gửi | M | ✅ |
 | T-M1-07 | Markdown render + code block + copy + highlight | FR-CHAT-02/03/04, NFR-SEC-04, NFR-PERF-02 | `sidepanel/components/chat/MessageContent.tsx`, `CodeBlock.tsx`, `MarkdownTable.tsx` | Render table/code; copy → "Đã sao chép"; highlight đúng ngôn ngữ; sanitize HTML (chặn XSS) | L | ✅ *(2026-11-06)* |
-| T-M1-08 | Citation chip + popover (đoạn nguồn) | FR-CONTEXT-10 | `context/CitationChip.tsx`, `CitationPopover.tsx` | Click chip → popover hiện đoạn nguồn + mở tab gốc | M | ⬜ |
+| T-M1-08 | Citation chip + popover (đoạn nguồn) | FR-CONTEXT-10 | `sidepanel/components/chat/CitationChip.tsx`, `CitationPopover.tsx`, `CitationList.tsx`, `chat/citationPlugin.ts` | Click chip → popover hiện đoạn nguồn + mở tab gốc | M | ✅ *(2026-11-06)* |
 | T-M1-09 | Chat CRUD: tạo/đổi tên/xoá/ghim/archives | FR-CHAT-08/09/11 | `sidepanel/components/chat/ConversationList.tsx`, store | Thao tác CRUD phản ánh trong UI ngay | L | ⬜ |
 | T-M1-10 | Regenerate / Edit-resend / Stop / Continue | FR-CHAT-05/06/07/12/13, FR-UX-05 | `hooks/useChat.ts`, `chat/MessageActions.tsx` | 4 hành vi đúng AC trong §3.1; Esc dừng; Enter gửi / Shift+Enter xuống dòng | L | ⬜ |
 | T-M1-11 | Prompt gợi ý theo trang + Summarize 1-click | FR-UX-03/04 | `sidepanel/components/chat/PromptGallery.tsx` | Gợi ý đổi theo loại trang (docs/bài báo/forum) | M | ⬜ |
@@ -498,6 +498,64 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 
 > **Quyết định kỹ thuật:** dùng `rehype-highlight` (highlight.js đồng bộ) thay `shiki` — shiki cần wasm → cần `'wasm-unsafe-eval'` trong CSP, MV3 `script-src 'self'` không cho. Highlight **đồng bộ** + **defer khi streaming** → tránh O(n²) và tránh code block nhấp nháy unhighlighted.
 
+### 3.1j Kết quả T-M1-08 — Citation chip + popover (FR-CONTEXT-10) (2026-11-06)
+
+> Chi tiết kiến trúc: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.9.
+
+#### Phần A — Contract shared + server
+
+| Hạng mục | Kết quả |
+|---|---|
+| `packages/shared/src/citation.ts` | ✅ **Mới** `CITATION_MARKER_PATTERN` (`/\[(\d{1,2})\]/g`) · `CITATION_INSTRUCTION` (chỉ chèn vào system prompt **khi có context**) · `parseCitationMarkers()` (số phân biệt, sort tăng dần, **không** mutate `lastIndex` của regex global) |
+| `apps/server/src/services/chatService.ts` | ✅ `numberedContextItems()` đánh số **1-based** theo thứ tự tier (`selection` > `attachment` > `currentTab`) → prompt render `--- Nguồn [1] ([Đã bôi đen]) ---` · `buildProviderMessages()` chèn `CITATION_INSTRUCTION` · `createChatStream()` **emit SSE `citation` trước `done`** |
+| `apps/server/src/services/citationService.ts` | ✅ **Mới** `extractCitations(text, sources)` — bỏ số vượt phạm vi, format snippet (`excerpt ?? text.slice(0, 320)`) · `persistCitations()` insert vào bảng `citations` (`messageId`, `idx`, `url`, `title`, `snippet`, `tabId`) |
+| `packages/shared/src/index.ts` | ✅ Export `./citation.js` |
+
+#### Phần B — Extension
+
+| Hạng mục | Kết quả |
+|---|---|
+| `.../chat/citationPlugin.ts` | ✅ **Mới** remark plugin (thuần mdast) — tách text node chứa `[N]` → `<span dataCitationIndex={N}>`; **không** đụng code block / inline code |
+| `.../chat/markdownSchema.ts` | ✅ +`dataCitationIndex` vào allowlist `span` (`[['className', /^hljs-/], 'dataCitationIndex']`) — **không** dùng wildcard `data*` |
+| `.../chat/MessageContent.tsx` | ✅ +`citationPlugin` vào `remarkPlugins` · `CitationContext` · override `span`: có `dataCitationIndex` → render `CitationChip`, còn lại → pass-through (token `.hljs-*`) |
+| `.../chat/CitationChip.tsx` | ✅ Chip inline `<button class="citation-chip" data-testid="citation-chip-{N}">` · **có** metadata → button mở popover; **chưa** có metadata (đang stream) → `<span>` |
+| `.../chat/CitationPopover.tsx` | ✅ Radix Popover qua Portal: tiêu đề · domain · đoạn trích · nút "Mở trang gốc" (`chrome.tabs.create`) |
+| `.../chat/CitationList.tsx` | ✅ Dòng tóm tắt nguồn dưới bubble assistant (`data-testid="citation-list"`) |
+| `apps/extension/src/components/ui/popover.tsx` | ✅ **Mới** wrapper shadcn/ui trên `@radix-ui/react-popover` |
+| `.../store/chatStore.ts` | ✅ +`ChatCitation` · `ChatMessage.citations` · action `addCitation` |
+| `.../hooks/useChat.ts` | ✅ Xử lý SSE `case 'citation'` → `addCitation` |
+| `.../components/MessageBubble.tsx` | ✅ Truyền `message.citations` xuống `MessageContent` + render `CitationList` |
+| `.../sidepanel/index.css` | ✅ +`.citation-chip` dùng token `--citation-bg/-border/-link/-hover` (không hardcode màu) |
+
+#### Phần C — Test
+
+| Hạng mục | Kết quả |
+|---|---|
+| `packages/shared/tests/citation.test.ts` | ✅ **Mới 12 test** — parse marker · số trùng lặp/sort · regex `lastIndex` không bị mutate · instruction |
+| `apps/server/tests/citationService.test.ts` | ✅ **Mới 12 test** — bỏ số vượt phạm vi · snippet fallback · persist |
+| `apps/server/tests/citationStream.test.ts` | ✅ **Mới 5 test** — SSE `citation` phát **trước** `done` · đủ metadata |
+| `apps/server/tests/contextPrompt.test.ts` | ✅ +7 test — đánh số theo tier · prompt render `[N]` |
+| `apps/extension/tests/citationPlugin.test.ts` | ✅ **Mới 11 test** — tách text node · **không** đụng code/inline code |
+| `apps/extension/tests/citationChip.test.tsx` | ✅ **Mới 9 test** — button vs span · aria-label · mở popover |
+| `apps/extension/tests/messageContentCitation.test.tsx` | ✅ **Mới 9 test** — chip render trong markdown · override `span` không phá highlight.js |
+| `apps/extension/tests/chatStore.test.ts` | ✅ +4 test — `addCitation` |
+| `apps/extension/tests/useChat.test.ts` | ✅ +2 test — SSE `citation` |
+| `apps/extension/e2e/citation.spec.ts` | ✅ **Mới 4 kịch bản** — chip hiện trong câu trả lời · click → popover · "Mở trang gốc" mở tab mới |
+
+#### Verify
+
+| Hạng mục | Kết quả |
+|---|---|
+| `pnpm typecheck` | ✅ pass (shared · server · extension · eval) |
+| `pnpm lint` | ✅ pass (0 error, 0 warning) |
+| `pnpm test` | ✅ pass — shared **152** · server **250** · extension **411** (tổng **813**, trước 740 → **+73**) |
+| `pnpm build` | ✅ pass — `dist/content.js` vẫn là **IIFE 1 file, không `import`** |
+| `pnpm db:migrate` | ✅ pass — **không có migration mới** (bảng `citations` đã có sẵn trong `0000`) |
+| `pnpm test:e2e` | ✅ pass — **40/40** (+4 kịch bản `citation.spec.ts`, 36 test cũ **không regression**) |
+| Mutation spot-check | ✅ **6/6 mutation bị bắt** — bỏ `CITATION_INSTRUCTION` (2 test fail) · đảo thứ tự tier (3 test fail) · cho phép số vượt phạm vi (2 test fail) · bỏ `dataCitationIndex` khỏi allowlist (5 test fail) · bỏ `case 'citation'` trong `useChat` (2 unit + 3 E2E fail) · ép mọi `span` thành chip (4 test fail) |
+
+> **Quyết định kỹ thuật:** dùng **marker `[N]` do LLM sinh** (không phải suy đoán vị trí câu) — server parse marker, **loại số vượt phạm vi** (LLM bịa `[9]` khi chỉ có 3 nguồn → bỏ) → chính xác hơn heuristic, và prompt chỉ thêm `CITATION_INSTRUCTION` khi thực sự có context → không ảnh hưởng chat thuần LLM (FR-CONTEXT-13).
+
 ### 3.2 Traceability FR → Task
 
 > Bảng đầy đủ FR → Task (kèm milestone) nằm ở [`REQUIREMENTS.md`](REQUIREMENTS.md) §11.1 — nơi duy nhất cần cập nhật khi thêm/bớt task.
@@ -506,7 +564,7 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | Nhóm | FR trong nhóm | Task phụ trách | Ghi chú |
 |---|---|---|---|
 | FR-CHAT-01..14 | 14 FR | T-M0-10 · T-M0-13 · **T-M1-07 ✅**/09/10/11/13/19 | FR-CHAT-02/03/04 (Markdown, code block + copy, bảng) do T-M1-07 ✅ |
-| FR-CONTEXT-01..13 | 13 FR | T-M1-01/02/04/05/**06 ✅**/08/14 · **T-M1-21/22/23** · **T-M2-19** | FR-CONTEXT-05/06 nâng lên Must (2026-11-04) · FR-CONTEXT-13 (chat không cần context) do T-M1-23 · **FR-CONTEXT-03 (`@` multi-tab) do T-M1-05 ✅** · **FR-CONTEXT-04 (selection) do T-M1-02 ✅** · **FR-CONTEXT-01 (cache URL+hash) + FR-CONTEXT-12 (snapshot) do T-M1-06 ✅** |
+| FR-CONTEXT-01..13 | 13 FR | T-M1-01/02/04/05/**06 ✅**/**08 ✅**/14 · **T-M1-21/22/23** · **T-M2-19** | FR-CONTEXT-05/06 nâng lên Must (2026-11-04) · FR-CONTEXT-13 (chat không cần context) do T-M1-23 · **FR-CONTEXT-03 (`@` multi-tab) do T-M1-05 ✅** · **FR-CONTEXT-04 (selection) do T-M1-02 ✅** · **FR-CONTEXT-01 (cache URL+hash) + FR-CONTEXT-12 (snapshot) do T-M1-06 ✅** · **FR-CONTEXT-10 (citation chip + popover) do T-M1-08 ✅ (2026-11-06)** |
 | FR-VISION-01..05 | 5 FR | **T-M1-24 ✅** (upload) · **T-M2-22** (mở rộng) | FR-VISION-01 nâng lên M · **T-M1-24 xong 2026-11-05** (vision đầy đủ Gemini + OpenAI-compatible, lưu Postgres, multi-turn) |
 | FR-TOOLS-01..06 | 6 FR | T-M2-07/08/09/10/11/18 · **T-M2-20** | FR-TOOLS-03 (web search) tách riêng khỏi tool registry |
 | FR-SKILL-01..07 | 7 FR | T-M2-04/05/06 · **T-M2-21** | FR-SKILL-04 (skill mẫu) + FR-SKILL-06 (điều kiện) tách task |

@@ -185,6 +185,45 @@ body {
 }
 
 /* ------------------------------------------------------------------
+ * Citation chip (FR-CONTEXT-10 — T-M1-08)
+ *
+ * Chip so `[N]` inline trong cau tra loi → bam ra popover xem doan nguon.
+ * Mau lay tu token `--citation-*` (nhan dien duoc ngay so voi code).
+ * ------------------------------------------------------------------ */
+
+.citation-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  margin: 0 2px;
+  border: 1px solid var(--citation-border);
+  border-radius: var(--radius-sm);
+  background-color: var(--citation-bg);
+  color: var(--citation-link);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
+  vertical-align: super;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
+}
+
+.citation-chip:hover {
+  background-color: var(--citation-hover);
+}
+
+.citation-chip:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* ------------------------------------------------------------------
  * Syntax highlight (rehype-highlight → lowlight/highlight.js)
  *
  * Class `hljs-*` cua highlight.js map sang design token `--code-token-*`

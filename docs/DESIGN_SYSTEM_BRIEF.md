@@ -119,7 +119,7 @@ Nguồn sự thật: `design/tokens.json` → generate ra `design/tokens.css` (C
 | Skeleton | `shadcn/ui/skeleton` | — |
 | ScrollArea | `shadcn/ui/scroll-area` (Radix) | — |
 | Markdown render | — | `MessageContent` (react-markdown + remark-gfm + rehype-sanitize) |
-| Code block + highlight | — | `CodeBlock` (shiki, highlight tĩnh) |
+| Code block + highlight | — | `CodeBlock` (`rehype-highlight` + `lowlight`, highlight tĩnh) |
 | Bảng markdown | — | `MarkdownTable` |
 | Citation chip + popover | — | `CitationChip`, `CitationPopover` |
 | Mention popover (`@`) | — | `MentionPopover` |
@@ -157,6 +157,7 @@ Nguồn sự thật: `design/tokens.json` → generate ra `design/tokens.css` (C
 | `MessageContent` | Orchestrator render Markdown của message assistant (defer khi streaming) | FR-CHAT-02 | Jank khi stream dài (NFR-PERF-02) |
 | `CitationChip` | `[1]` chip → popover xem đoạn nguồn | FR-CONTEXT-10 | **Ảnh hưởng trực tiếp metric `citation_precision` trong eval** |
 | `CitationPopover` | Preview đoạn nguồn + mở tab gốc | FR-CONTEXT-10 | |
+| `CitationList` | Dòng tóm tắt nguồn dưới bubble assistant | FR-CONTEXT-10 | Thiếu → user không biết tổng cộng có bao nhiêu nguồn |
 | `ToolCallBlock` | Collapsible: tên tool, args, kết quả | FR-TOOLS-02, FR-TOOLS-06 | Ảnh hưởng `tool_success_rate` |
 | `StreamingIndicator` | Con trỏ, shimmer, "Đang suy nghĩ" | FR-CHAT-01 | |
 | `ErrorMessage` | Lỗi + hành động khôi phục | FR-CHAT-14 | Ảnh hưởng độ ổn định đo được |
@@ -268,6 +269,17 @@ Nguồn sự thật: `design/tokens.json` → generate ra `design/tokens.css` (C
 | `hljs-punctuation` · `hljs-operator` · `hljs-subst` · `hljs-params` | `--code-token-punctuation` |
 
 Token đổi theo theme `.dark` → highlight tự đổi màu, không cần code.
+
+#### `CitationChip` / `CitationPopover` / `CitationList` (đã implement T-M1-08)
+
+- **Cấu trúc chip:** `<button class="citation-chip" data-testid="citation-chip-{N}" aria-label="Xem nguồn {N}: {title}">[N]</button>` — inline trong câu trả lời, `vertical-align: super`.
+  - **Có** metadata (đã nhận SSE event `citation`) → chip là **button** mở popover.
+  - **Chưa** có metadata (đang stream) → chip là `<span>` — không popover, không "chip chết".
+- **Popover:** Radix Popover (`shadcn/ui/popover`) render qua **Portal** → không bị `overflow` của thread chat cắt. Nội dung: tiêu đề · domain (bỏ `www.`) · đoạn trích (`max-h-[160px]`, scroll) · nút "Mở trang gốc" (`chrome.tabs.create`).
+- **`CitationList`:** `<ul data-testid="citation-list">` dưới bubble assistant — mỗi nguồn 1 item: badge số + domain (fallback tiêu đề), `truncate` + `max-w-[180px]`.
+- **Token:** `--citation-bg` (nền chip) · `--citation-border` (viền) · `--citation-link` (chữ số) · `--citation-hover` (hover) · `--surface-overlay` + `--shadow-2` + `--radius-md` + `--border-default` (popover) · `--font-size-xs` · `--radius-sm`. **Không hardcode màu.**
+- **A11y:** chip là button có `aria-label` tiếng Việt; focus ring dùng `--border-focus` + `--focus-ring-offset`; popover đóng bằng `Escape`/blur (Radix lo).
+- **Chi tiết:** [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.9.
 
 ### 3.5 Selection affordance (đã implement T-M1-02)
 Component `SelectionAffordance` — nút nổi "Hỏi Sidekick" xuất hiện cạnh vùng text user bôi đen **trong trang web** (không phải trong panel).

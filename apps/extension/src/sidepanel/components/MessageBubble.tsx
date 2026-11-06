@@ -1,6 +1,7 @@
 import { AlertCircle, Copy, Check } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { CitationList } from './chat/CitationList'
 import { MessageContent } from './chat/MessageContent'
 import type { ChatMessage } from '../store/chatStore'
 
@@ -85,6 +86,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
             <MessageContent
               content={message.content}
               isStreaming={message.status === 'streaming'}
+              citations={message.citations ?? []}
             />
           )
         ) : message.status === 'streaming' ? (
@@ -126,6 +128,11 @@ export function MessageBubble({ message }: MessageBubbleProps) {
               </span>
             ) : null}
           </div>
+        ) : null}
+
+        {/* Dong tom tat nguon trich dan (FR-CONTEXT-10 — T-M1-08). */}
+        {!isUser && message.citations !== undefined && message.citations.length > 0 ? (
+          <CitationList citations={message.citations} />
         ) : null}
       </div>
     </div>

@@ -523,6 +523,7 @@ data: {"type":"done","finishReason":"stop","messageId":"..."}
 5. Client **phải** xử lý `done` cả khi stream bị cắt đột ngột (network drop) → coi như `finishReason:'aborted'`, hiện nút "Tiếp tục"/"Tạo lại".
 6. Reconnect: client không tự reconnect giữa luồng (mất context). Thay vào đó bấm "Tạo lại" (regenerate) — đơn giản và tránh trùng nội dung.
 7. Server gửi heartbeat comment `: ping` mỗi 15s để giữ kết nối qua proxy.
+8. `citation` (FR-CONTEXT-10 — T-M1-08) phát **sau** toàn bộ `token*`, **trước** `usage`/`done` — server chỉ biết marker `[N]` sau khi stream kết thúc. Chi tiết: [§7.9](#79-citation-marker-n--sse--chip-fr-context-10--t-m1-08).
 
 ### 4.4 Chiến lược provider & fallback
 
@@ -726,14 +727,16 @@ Các kịch bản E2E còn lại (offline, BFF down, stop, edit-resend, context 
 
 | Tầng | Số test | Vị trí |
 |---|---|---|
-| Unit | **740** — shared 140 · server 224 · extension 376 | `packages/shared/tests/` · `apps/server/tests/` · `apps/extension/tests/` |
-| E2E | **36** | `apps/extension/e2e/` |
+| Unit | **813** — shared 152 · server 250 · extension 411 | `packages/shared/tests/` · `apps/server/tests/` · `apps/extension/tests/` |
+| E2E | **40** | `apps/extension/e2e/` |
 
 > **T-M1-07 bổ sung:** `apps/extension/tests/messageContent.test.tsx` (25) · `tests/messageContentDefer.test.tsx` (2) · `tests/markdownSchema.test.ts` (17) · `e2e/markdown.spec.ts` (4 kịch bản).
+>
+> **T-M1-08 bổ sung:** `packages/shared/tests/citation.test.ts` (12) · `apps/server/tests/citationService.test.ts` (12) · `apps/server/tests/citationStream.test.ts` (5) · `apps/server/tests/contextPrompt.test.ts` (+7) · `apps/extension/tests/citationPlugin.test.ts` (11) · `tests/citationChip.test.tsx` (9) · `tests/messageContentCitation.test.tsx` (9) · `tests/chatStore.test.ts` (+4) · `tests/useChat.test.ts` (+2) · `e2e/citation.spec.ts` (4 kịch bản).
 
 ### 7.2.2 Audit chất lượng test bằng mutation testing (2026-11-04)
 
-> Đã thực hiện 2 vòng mutation audit thủ công (scratch script, không commit) để kiểm tra test có thực sự bắt lỗi hay không.
+> Đã thực hiện 5 vòng mutation audit thủ công (scratch script, không commit) để kiểm tra test có thực sự bắt lỗi hay không.
 
 **Phương pháp:** backup source → áp 1 mutation (đổi logic) → chạy test → nếu test **vẫn PASS** thì mutation sống sót → khôi phục source.
 
@@ -810,6 +813,17 @@ Các kịch bản E2E còn lại (offline, BFF down, stop, edit-resend, context 
 | 4 | Bỏ nhánh defer-highlight khi streaming | `apps/extension/tests/messageContent.test.tsx` — "đang stream → CHƯA có token highlight" |
 | 5 | Bỏ `useDeferredValue(content)` | `apps/extension/tests/messageContentDefer.test.tsx` — "gọi `useDeferredValue` với nội dung hiện tại" (file riêng vì mock `react` áp dụng cho cả file) |
 | 6 | Bỏ `overflow-x-auto` ở wrapper bảng | `apps/extension/tests/messageContent.test.tsx` — "render table có wrapper overflow-x-auto" |
+
+**Vòng 5 — T-M1-08 (2026-11-06):** 6 mutation spot-check cho cơ chế citation — **tất cả đều bị bắt**:
+
+| # | Mutation | Test bắt được |
+|---|---|---|
+| 1 | Bỏ `CITATION_INSTRUCTION` khỏi system prompt | `apps/server/tests/contextPrompt.test.ts` — 2 test fail (có/không instruction theo context) |
+| 2 | Đảo thứ tự tier trong `numberedContextItems()` | `apps/server/tests/contextPrompt.test.ts` — 3 test fail (thứ tự đánh số nguồn) |
+| 3 | Cho phép số `N` vượt phạm vi trong `extractCitations()` | `apps/server/tests/citationService.test.ts` — 2 test fail (bỏ số vượt phạm vi) |
+| 4 | Bỏ `dataCitationIndex` khỏi allowlist `span` | `apps/extension/tests/messageContentCitation.test.tsx` — 5 test fail (chip không render · span không còn attribute) |
+| 5 | Bỏ `case 'citation'` trong `useChat` | `apps/extension/tests/useChat.test.ts` — 2 unit fail + `e2e/citation.spec.ts` — 3 kịch bản fail |
+| 6 | Ép **mọi** `span` thành chip (bỏ phân biệt `dataCitationIndex` / token highlight) | `apps/extension/tests/messageContentCitation.test.tsx` — 4 test fail (token `.hljs-*` bị biến thành chip) |
 
 ### 7.3 Trích xuất nội dung trang (T-M1-01)
 
@@ -1416,6 +1430,104 @@ Token đổi theo theme `.dark` → highlight tự đổi màu, không cần cod
 | **Sau T-M1-07** | **712.80 kB** (gzip 218 kB) | **13.87 kB** (không đổi) |
 
 `rehype-highlight` chỉ vào bundle side panel → content script (build IIFE riêng) **không bị ảnh hưởng**.
+
+### 7.9 Citation: marker `[N]` → SSE → chip (FR-CONTEXT-10 — T-M1-08)
+
+#### 7.9.1 Quyết định thiết kế
+
+| Quyết định | Lý do |
+|---|---|
+| **LLM tự sinh marker `[N]`** trong câu trả lời | Biết được claim nào trích nguồn nào → phục vụ metric `citation_precision` / `citation_recall` trong eval |
+| **Server đánh số nguồn** trong `buildContextPrompt()` → parse marker → phát SSE `citation` | `chatCitationEventSchema` + bảng `citations` **đã có sẵn từ M0** → không cần migration mới |
+| Chip **inline** thay `[N]` trong câu trả lời + 1 dòng tóm tắt nguồn dưới message | Parity Edge Copilot / Chrome Gemini |
+| **Remark plugin (mdast)** thay vì xử lý string thô | Không đụng code block / inline code (node type khác `text`) → không phá T-M1-07 |
+| `span` + attribute `dataCitationIndex` (không dùng tag riêng) | `span` đã có trong `defaultSchema.tagNames`; `hast-util-sanitize` match **chính xác** tên property → không cần `data*` (allow-all) |
+| `@radix-ui/react-popover` + copy `shadcn/ui/popover` vào repo | Popover qua Portal → không bị clip khi thread scroll; đóng bằng Escape/blur do Radix xử lý |
+| Ghi vào bảng `citations` | Lưu lịch sử + eval được; bảng đã có trong migration `0000_adorable_sister_grimm.sql` |
+| Regex marker đặt ở `packages/shared` | Server (parse) và extension (plugin) dùng chung 1 nguồn → không lệch pattern |
+| Citation metadata **chỉ** lấy từ SSE event (không suy ra client-side) | Server là nguồn chân sự; client không cần replicate thứ tự tier → tránh coupling dễ vỡ |
+
+#### 7.9.2 Luồng dữ liệu
+
+```mermaid
+flowchart LR
+  client["Extension: context.items[]"] -->|"POST /api/chat"| server["BFF chatService"]
+  server -->|"buildContextPrompt<br/>gán nhãn [1] [2]"| provider["Provider LLM"]
+  provider -->|"text chứa [1]"| server
+  server -->|"parse marker<br/>→ citation event"| stream["SSE: type=citation"]
+  server -->|"INSERT citations"| db[("Postgres<br/>bảng citations")]
+  stream --> client
+  client --> chip["CitationChip inline<br/>+ CitationPopover"]
+```
+
+#### 7.9.3 Contract shared — `packages/shared/src/citation.ts`
+
+| Export | Giá trị / hành vi |
+|---|---|
+| `CITATION_MARKER_PATTERN` | `/\[(\d{1,2})\]/g` — chỉ bắt số 1–2 chữ số (tránh bắt `[2024]` hay `[abc]`) |
+| `CITATION_INSTRUCTION` | Chỉ dẫn system prompt: ghi kèm `[1]` / `[1][2]` ngay sau câu, chỉ dùng số đã cung cấp |
+| `parseCitationMarkers(text)` | Trả về danh sách số nguôn **distinct + tăng dần** |
+
+`parseCitationMarkers` dùng `text.matchAll(...)` → **không mutate `lastIndex`** của hằng regex → hàm thuần, gọi lại nhiều lần cho cùng kết quả.
+
+#### 7.9.4 Server — đánh số nguồn + chi dẫn model
+
+`buildContextPrompt()` gán nhãn theo thứ tự ưu tiên tier:
+
+```
+--- Nguồn [1] [Đã bôi đen] ---
+Tiêu đề: ...
+URL: ...
+```
+
+- `numberedContextItems(items)` (export) là **nguồn thứ tự duy nhất**: `sortItemsByTier()` → đánh số `1..N` (1-based).
+- Cùng thứ tự này được dùng cho **prompt** lẫn **citation event** → `[1]` trong prompt luôn khớp với `citation.index` gửi cho client.
+- `buildProviderMessages()`: khi `budget.items.length > 0` → system prompt = base + `CITATION_INSTRUCTION`. **Không có context → system prompt giữ nguyên** (không regression).
+
+#### 7.9.5 Server — parse marker + phát SSE + ghi DB
+
+`apps/server/src/services/citationService.ts`:
+
+| Hàm | Trách nhiệm |
+|---|---|
+| `extractCitations(text, sources)` | Thuần. Marker `[N]` → nguồn thứ `N` (1-based). Marker vượt số nguồn → **bỏ qua**. Marker trùng → 1 lần. |
+| `buildSnippet(source)` | `excerpt` ?? `text` (cắt còn ≤ 320 ký tự + `…`) |
+| `persistCitations(db, messageId, items)` | `INSERT` vào bảng `citations` (`message_id`, `idx`, `url`, `title`, `snippet`, `tab_id`). Lỗi ghi DB **không throw** → không làm hỏng luồng chat |
+
+Thứ tự event SSE: `meta` → `token*` → **`citation*`** → `usage` → `done`.
+
+#### 7.9.6 Extension — remark plugin + sanitize allowlist
+
+`apps/extension/src/sidepanel/components/chat/citationPlugin.ts` — plugin remark **thuần** (tự đệ quy, không thêm `unist-util-visit`):
+
+- Duyệt cây mdast; node `type === 'text'` → tách theo `CITATION_MARKER_PATTERN` → thay bằng node có `data: { hName: 'span', hProperties: { dataCitationIndex: N } }`.
+- Node `code` / `inlineCode` **không** bị đụng → code block giữ nguyên.
+- Export `transformCitationMarkers(tree)` để test thuần không cần React.
+
+`markdownSchema.ts` — thêm `dataCitationIndex` vào allowlist của `span`:
+
+```ts
+span: [['className', /^hljs-/], 'dataCitationIndex']
+```
+
+- **Không** dùng `data*` (allow-all) → bề mặt tấn công nhỏ nhất.
+- `hast-util-to-jsx-runtime` đổi property thành prop React `data-citation-index`; giá trị gốc vẫn nằm ở `node.properties.dataCitationIndex` → `MessageContent` đọc từ đó.
+
+#### 7.9.7 Extension — component
+
+| Component | Vai trò |
+|---|---|
+| `CitationChip` | Chip số `[N]` inline. Có metadata → bọc `CitationPopover`; chưa có (đang stream) → `<span>` không popover |
+| `CitationPopover` | Popover Radix: tiêu đề · domain · snippet · nút "Mở trang gốc" (`chrome.tabs.create`) |
+| `CitationList` | Dòng tóm tắt nguồn dưới bubble assistant (song song với chip inline) |
+| `MessageContent` | Override `span`: có `dataCitationIndex` → `CitationChip`; không có → pass-through (giữ `span.hljs-*` của T-M1-07) |
+| `MessageBubble` | Truyền `citations` xuống `MessageContent` + render `CitationList` |
+
+Danh sách nguồn được truyền qua React context (`CitationContext`) → không phải tạo lại `components` map mỗi render.
+
+#### 7.9.8 Token màu
+
+Chip dùng token có sẵn trong `design/tokens.css`: `--citation-bg` · `--citation-border` · `--citation-link` · `--citation-hover` (không hardcode màu). Class `.citation-chip` trong `apps/extension/src/sidepanel/index.css`.
 
 ---
 

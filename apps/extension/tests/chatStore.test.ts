@@ -82,6 +82,53 @@ describe('useChatStore', () => {
   })
 })
 
+describe('useChatStore — citation (FR-CONTEXT-10 — T-M1-08)', () => {
+  it('addCitation them nguon trich dan vao message', () => {
+    useChatStore.getState().addMessage({ ...userMessage, id: 'a1', role: 'assistant' })
+    useChatStore.getState().addCitation('a1', {
+      index: 1,
+      url: 'https://example.com/bai-viet',
+      title: 'Bai viet',
+      snippet: 'Doan trich dan.',
+    })
+
+    const message = useChatStore.getState().messages[0]
+    expect(message?.citations).toHaveLength(1)
+    expect(message?.citations?.[0]).toMatchObject({ index: 1, title: 'Bai viet' })
+  })
+
+  it('addCitation cung index → ghi de (khong trung)', () => {
+    useChatStore.getState().addMessage({ ...userMessage, id: 'a1', role: 'assistant' })
+    useChatStore.getState().addCitation('a1', { index: 1, url: 'u1', title: 'A', snippet: 's' })
+    useChatStore.getState().addCitation('a1', { index: 1, url: 'u2', title: 'B', snippet: 's' })
+
+    const message = useChatStore.getState().messages[0]
+    expect(message?.citations).toHaveLength(1)
+    expect(message?.citations?.[0]?.title).toBe('B')
+  })
+
+  it('addCitation sap xep theo index tang dan', () => {
+    useChatStore.getState().addMessage({ ...userMessage, id: 'a1', role: 'assistant' })
+    useChatStore.getState().addCitation('a1', { index: 3, url: 'u3', title: 'C', snippet: 's' })
+    useChatStore.getState().addCitation('a1', { index: 1, url: 'u1', title: 'A', snippet: 's' })
+    useChatStore.getState().addCitation('a1', { index: 2, url: 'u2', title: 'B', snippet: 's' })
+
+    const message = useChatStore.getState().messages[0]
+    expect(message?.citations?.map((c) => c.index)).toEqual([1, 2, 3])
+  })
+
+  it('addCitation tren id khong ton tai → khong tao message moi', () => {
+    useChatStore.getState().addCitation('khong-ton-tai', {
+      index: 1,
+      url: 'u',
+      title: 'T',
+      snippet: 's',
+    })
+
+    expect(useChatStore.getState().messages).toHaveLength(0)
+  })
+})
+
 describe('useChatStore — context (FR-CONTEXT-07)', () => {
   it('mac dinh khong gui context (contextEnabled = false)', () => {
     expect(useChatStore.getState().contextEnabled).toBe(false)

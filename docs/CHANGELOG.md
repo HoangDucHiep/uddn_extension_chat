@@ -9,6 +9,34 @@
 ## [Unreleased]
 
 ### Added
+- **T-M1-08 — Citation chip + popover (đoạn nguồn) (FR-CONTEXT-10)**
+  - `packages/shared/src/citation.ts` (mới) — `CITATION_MARKER_PATTERN` (`/\[(\d{1,2})\]/g`) · `CITATION_INSTRUCTION` (chỉ chèn vào system prompt **khi có context**) · `parseCitationMarkers()` (số phân biệt · sort tăng dần · **không** mutate `lastIndex` của regex global).
+  - `packages/shared/src/index.ts` — export `./citation.js`.
+  - `apps/server/src/services/citationService.ts` (mới) — `extractCitations(text, sources)` (parse marker `[N]` → **loại số vượt phạm vi** · format snippet `excerpt ?? text.slice(0, 320)`) · `buildSnippet()` · `persistCitations()` (insert bảng `citations`: `messageId`, `idx`, `url`, `title`, `snippet`, `tabId`).
+  - `apps/server/src/services/chatService.ts` — `numberedContextItems()` (đánh số **1-based** theo tier `selection` > `attachment` > `currentTab`) · `buildContextPrompt()` render `--- Nguồn [1] ([Đã bôi đen]) ---` · `buildProviderMessages()` chèn `CITATION_INSTRUCTION` · `createChatStream()` **emit SSE `citation` trước `done`** + gọi `persistCitations()`.
+  - `apps/extension/src/components/ui/popover.tsx` (mới) — wrapper shadcn/ui trên `@radix-ui/react-popover`.
+  - `apps/extension/src/sidepanel/components/chat/citationPlugin.ts` (mới) — remark plugin (thuần mdast) tách text node chứa `[N]` → `<span dataCitationIndex={N}>`; **không** đụng code block / inline code.
+  - `apps/extension/src/sidepanel/components/chat/CitationChip.tsx` (mới) — chip inline `<button class="citation-chip" data-testid="citation-chip-{N}">`; **có** metadata → button mở popover · **chưa** có metadata (đang stream) → `<span>`.
+  - `apps/extension/src/sidepanel/components/chat/CitationPopover.tsx` (mới) — Radix Popover qua Portal: tiêu đề · domain · đoạn trích (`max-h-[160px]`, scroll) · nút "Mở trang gốc" (`chrome.tabs.create`).
+  - `apps/extension/src/sidepanel/components/chat/CitationList.tsx` (mới) — dòng tóm tắt nguồn dưới bubble assistant (`data-testid="citation-list"`).
+  - `apps/extension/src/sidepanel/components/chat/markdownSchema.ts` — +`dataCitationIndex` vào allowlist `span` (`[['className', /^hljs-/], 'dataCitationIndex']`) — **không** dùng wildcard `data*`.
+  - `apps/extension/src/sidepanel/components/chat/MessageContent.tsx` — +`citationPlugin` vào `remarkPlugins` · `CitationContext` · override `span`: có `dataCitationIndex` → `CitationChip`, còn lại → pass-through (token `.hljs-*`).
+  - `apps/extension/src/sidepanel/components/MessageBubble.tsx` — truyền `message.citations` xuống `MessageContent` + render `CitationList`.
+  - `apps/extension/src/sidepanel/store/chatStore.ts` — +`ChatCitation` · `ChatMessage.citations` · action `addCitation`.
+  - `apps/extension/src/sidepanel/hooks/useChat.ts` — xử lý SSE `case 'citation'` → `addCitation`.
+  - `apps/extension/src/sidepanel/index.css` — +`.citation-chip` dùng token `--citation-bg/-border/-link/-hover` (không hardcode màu).
+  - **Test** — `packages/shared/tests/citation.test.ts` (mới, 12 test) · `apps/server/tests/citationService.test.ts` (mới, 12 test) · `apps/server/tests/citationStream.test.ts` (mới, 5 test) · `apps/server/tests/contextPrompt.test.ts` (+7 test) · `apps/extension/tests/citationPlugin.test.ts` (mới, 11 test) · `apps/extension/tests/citationChip.test.tsx` (mới, 9 test) · `apps/extension/tests/messageContentCitation.test.tsx` (mới, 9 test) · `apps/extension/tests/chatStore.test.ts` (+4 test) · `apps/extension/tests/useChat.test.ts` (+2 test) · `apps/extension/e2e/citation.spec.ts` (mới, 4 kịch bản).
+    - **Số test toàn repo:** 740 → **813 unit** (shared 152 · server 250 · extension 411) + 36 → **40 E2E**.
+  - **Mutation spot-check:** 6/6 mutation bị bắt — bỏ `CITATION_INSTRUCTION` (2 test fail) · đảo thứ tự tier (3 test fail) · cho phép số vượt phạm vi (2 test fail) · bỏ `dataCitationIndex` khỏi allowlist (5 test fail) · bỏ `case 'citation'` trong `useChat` (2 unit + 3 E2E fail) · ép mọi `span` thành chip (4 test fail).
+
+### Changed
+- `apps/server/src/services/chatService.ts` — system prompt nay có thêm hướng dẫn trích dẫn (`CITATION_INSTRUCTION`) **chỉ khi** request có context → chat thuần LLM không bị ảnh hưởng (FR-CONTEXT-13).
+- `apps/extension/src/sidepanel/components/chat/markdownSchema.ts` — allowlist `span` nay chấp nhận thêm `dataCitationIndex` (ngoài `className` pattern `hljs-*`).
+
+### Docs
+- `REQUIREMENTS.md` §4.2 (FR-CONTEXT-10) + §11.1 · `SYSTEM_DESIGN.md` §7.9 (mới) + §4.3 · `DESIGN_SYSTEM_BRIEF.md` §3.3 + §3.4 (spec `CitationChip` · `CitationPopover` · `CitationList`) · `IMPLEMENTATION_PLAN.md` task card T-M1-08 ✅ + §3.1j + §3.2 · `COMPARISON_MATRIX.md` §A (A29) + §B (B29) + §D + §E · `EVAL_PLAN.md` §4.1 (R5) + §5.1.1 (mới) + §9 (FC-13) · `HANDOFF.md` · `AGENTS.md` §6 + `docs/README.md`.
+
+### Added
 - **T-M1-07 — Markdown render + code block + copy + syntax highlight (FR-CHAT-02 / FR-CHAT-03 / FR-CHAT-04, NFR-SEC-04, NFR-PERF-02)**
   - `apps/extension/package.json` — +`react-markdown@^10.1.0` · `remark-gfm@^4.0.1` · `rehype-sanitize@^6.0.0` · `rehype-highlight@^7.0.2` (`sonner` đã có sẵn từ trước).
   - `apps/extension/src/sidepanel/components/chat/markdownSchema.ts` (mới) — `markdownSchema` (clone `defaultSchema` của `rehype-sanitize` + `span: [['className', /^hljs-/]]` + `code: [['className', /^language-./, 'hljs']]` + `protocols.href: ['http','https','mailto']`) · `LANGUAGE_ALIASES` · `SUPPORTED_LANGUAGES` · `toMarkdownNode()` / `languageFromNode()` / `extractCodeText()`.
