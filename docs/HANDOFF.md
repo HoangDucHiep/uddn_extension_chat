@@ -24,14 +24,35 @@
 | Hạng mục | Trạng thái |
 |---|---|
 | Docs | ✅ Đầy đủ 9 file (`docs/`) + `AGENTS.md` ở root |
-| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 + T-M1-05 + T-M1-02 + T-M1-24 + T-M1-25 + T-M1-06 + T-M1-07 + T-M1-08 + T-M1-09 + T-M1-10 xong** — 4 workspace, 983 unit test + 52 E2E |
+| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 + T-M1-05 + T-M1-02 + T-M1-24 + T-M1-25 + T-M1-06 + T-M1-07 + T-M1-08 + T-M1-09 + T-M1-10 + T-M1-11 xong** — 4 workspace, 1019 unit test + 57 E2E |
 | Git | ✅ Đã init (`main`) · tag `v0.1` đánh dấu M0 |
-| Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **14/25 task**) |
-| Task tiếp theo | **T-M1-03** (service worker: mở/toggle panel · context menu · keyboard shortcut) hoặc **T-M1-11** (nút tóm tắt 1-click + prompt gợi ý theo loại trang) — theo thứ tự ưu tiên M1 |
+| Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **15/25 task**) |
+| Task tiếp theo | **T-M1-03** (service worker: mở/toggle panel · context menu · keyboard shortcut) — theo thứ tự ưu tiên M1 |
 
 ### Đang làm dở
 
-_(Không có — T-M1-10 chat actions đã xong, task kế tiếp T-M1-03 / T-M1-11)_
+_(Không có — T-M1-11 prompt gợi ý + tóm tắt 1-click đã xong, task kế tiếp T-M1-03)_
+
+### Việc đã xong gần đây (T-M1-11 — Prompt gợi ý theo trang + Tóm tắt 1-click)
+
+- **T-M1-11 (FR-UX-03 / FR-UX-04)** — empty state của side panel nay hiện **`PromptGallery`**: **≥ 3 gợi ý đổi theo loại trang** (docs / bài báo / forum / video / PDF / mua sắm), nút **↻ làm mới** xoay vòng bộ gợi ý, và nút **"Tóm tắt trang này"** 1-click.
+  - **Contract** — `packages/shared/src/pageProfile.ts` (mới): `PAGE_PROFILES` (7 loại) · `classifyPage(url, title)` (host → path → title, match đầu thắng) · `PromptSuggestion` · `suggestionsForPage(profile, pageTitle)` (**4** gợi ý / profile, điền placeholder `{title}`) · `generalSuggestions()` (4 gợi ý chung — FR-UX-04) · `rotateSuggestions(list, offset)` (xoay vòng deterministic). `constants.ts` +`SUMMARY_PROMPT` (trùng wording dataset eval `summarize`). `index.ts` export `./pageProfile.js`.
+  - **Extension** — `lib/activePage.ts` (mới — `readActivePage()`, **không bao giờ throw**) · `hooks/useActivePage.ts` (mới — lắng nghe `chrome.tabs.onActivated` + `onUpdated`) · `chat/PromptGallery.tsx` (mới) · `chat/SummarizeButton.tsx` (mới) · `ChatWorkspace.tsx` (thay empty state tĩnh · `runSuggestion()` = `await attachCurrentTab()` → `await send(prompt)` · `handleSummarize()` = `runSuggestion(SUMMARY_PROMPT)`).
+  - **Verify** — typecheck ✅ · lint ✅ · test ✅ (**1019 unit** = shared 200 · server 312 · extension 507) · build ✅ · db:migrate ✅ (**không** có migration mới, **không** dependency mới) · **E2E 57/57** ✅ (+5 kịch bản `e2e/promptGallery.spec.ts`) · **mutation spot-check 5/5 bị bắt**.
+- Bằng chứng đầy đủ: `docs/IMPLEMENTATION_PLAN.md` §3.1m · `docs/SYSTEM_DESIGN.md` §7.12.
+
+### Quyết định kỹ thuật mới (T-M1-11)
+
+| Quyết định | Lý do |
+|---|---|
+| Bộ luật phân loại trang đặt ở **`packages/shared/src/pageProfile.ts`** | Dùng được cho extension (UI) · server (eval harness) · `apps/eval` → 1 nguồn sự thật, không lệch. `pageKind.ts` phục vụ **routing trích xuất** (`html`/`pdf`/`youtube`) — phân loại **UX** là khái niệm khác → 2 file riêng, không trộn |
+| Phân loại theo **host → path → title**, ưu tiên host | Host định nghĩa rõ, ổn định; URL bài viết đổi theo bài. Path/title là fallback cho site không có trong danh sách |
+| **Bấm gợi ý = hành động chủ động** → tự `attachCurrentTab()` trước khi gửi | Không có context thì "Tóm tắt trang này" sẽ bịa nội dung → vi phạm FR-CONTEXT-13. Bấm nút = user chủ động yêu cầu dùng context → tương thích mô hình "context chỉ khi user đính kèm" |
+| Click gợi ý → **gửi thẳng** (không điền composer trước) | Parity Edge/Gemini (bấm suggestion = chạy luôn); gợi ý viết dạng prompt độc lập, hoàn chỉnh |
+| Xoay vòng **deterministic** (offset + 1), không random | Test ổn định, không flaky |
+| `SUMMARY_PROMPT` đặt ở **`packages/shared/src/constants.ts`** | Trùng wording dataset eval `summarize` ([`EVAL_PLAN.md`](EVAL_PLAN.md) §3) → đo được, không lệch giữa UI và eval |
+| Nút "Tóm tắt trang này" **chỉ hiện** khi trang đọc được (`http`/`https`) | Không có tab đọc được → dùng 4 gợi ý chung (FR-UX-04), không hiện nút tóm tắt (tránh bấm rồi không có context) |
+| Dòng minh bạch "Sẽ tự đính kèm trang này khi bạn chọn gợi ý" | DP-3 — user biết chính xác context gì sẽ được gửi |
 
 ### Việc đã xong gần đây (T-M1-10 — Regenerate / Edit-resend / Stop / Continue / Draft / Scroll)
 

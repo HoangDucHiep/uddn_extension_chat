@@ -86,7 +86,7 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | T-M1-08 | Citation chip + popover (đoạn nguồn) | FR-CONTEXT-10 | `sidepanel/components/chat/CitationChip.tsx`, `CitationPopover.tsx`, `CitationList.tsx`, `chat/citationPlugin.ts` | Click chip → popover hiện đoạn nguồn + mở tab gốc | M | ✅ *(2026-11-06)* |
 | T-M1-09 | Chat CRUD: tạo/đổi tên/xoá/ghim/archives | FR-CHAT-08/09/11 | `sidepanel/components/chat/ConversationList.tsx`, store | Thao tác CRUD phản ánh trong UI ngay | L | ✅ *(2026-11-07)* |
 | T-M1-10 | Regenerate / Edit-resend / Stop / Continue | FR-CHAT-05/06/07/12/13, FR-UX-05 | `hooks/useChat.ts`, `chat/MessageActions.tsx` | 4 hành vi đúng AC trong §3.1; Esc dừng; Enter gửi / Shift+Enter xuống dòng | L | ✅ |
-| T-M1-11 | Prompt gợi ý theo trang + Summarize 1-click | FR-UX-03/04 | `sidepanel/components/chat/PromptGallery.tsx` | Gợi ý đổi theo loại trang (docs/bài báo/forum) | M | ⬜ |
+| T-M1-11 | Prompt gợi ý theo trang + Summarize 1-click | FR-UX-03/04 | `packages/shared/src/pageProfile.ts`, `sidepanel/components/chat/PromptGallery.tsx`, `chat/SummarizeButton.tsx` | Gợi ý đổi theo loại trang (docs/bài báo/forum) | M | ✅ *(2026-11-07)* |
 | T-M1-12 | Settings: theme, cỡ chữ, chiều rộng, quản lý dữ liệu, endpoint BFF | FR-SETTINGS-01/02/03/04/05/06/07, FR-UX-06, NFR-SEC-07 | `sidepanel/components/settings/*` | Áp dụng ngay, persist qua reload; xoá dữ liệu có confirm; telemetry/history mặc định OFF | M | ⬜ |
 | T-M1-13 | Export conversation (Markdown / JSON) | FR-CHAT-10 | `lib/export.ts` | Xuất đúng nội dung, mở được bằng Notepad/Markdown viewer | S | ⬜ |
 | T-M1-14 | Request logging đầy đủ vào `request_logs` | NFR-MAINT-04, FR-CONTEXT-12, NFR-REL-01, §7.2 | `apps/server/src/lib/requestLogger.ts` | Mỗi lượt chat có 1 dòng log: provider, model, token, cost, ttft, latency; snapshot context hash để tái lập | M | ⬜ |
@@ -658,6 +658,35 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 
 > **Quyết định kỹ thuật:** (1) **Một endpoint `/api/chat` + `operation`** thay vì 4 endpoint riêng → dùng chung 1 luồng SSE, 1 fallback chain, 1 code path; (2) **`continue` UPDATE message cũ** chứ không tạo message mới → nội dung dở + phần mới là **một** câu trả lời; (3) **`active` flag trong jsonb** thay bảng riêng cho biến thể → không cần migration; (4) **`CONTINUE_INSTRUCTION` gộp vào user turn cuối** nếu đã có → tránh 2 user turn liên tiếp (Gemini từ chối); (5) **draft scope `'new'`** cho panel chưa có conversation + `sidekick.activeDraftScope` để reload vẫn khoá đúng bản nháp.
 
+### 3.1m Kết quả T-M1-11 — Prompt gợi ý theo trang + Tóm tắt 1-click (FR-UX-03/04) (2026-11-07)
+
+> Chi tiết kiến trúc: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.12 · spec UI: [`DESIGN_SYSTEM_BRIEF.md`](DESIGN_SYSTEM_BRIEF.md) §3.3.
+
+**Không có migration, không dependency mới.**
+
+| Hạng mục | Kết quả |
+|---|---|
+| `packages/shared/src/pageProfile.ts` | ✅ **Mới** — `PAGE_PROFILES` (7 loại) · `classifyPage(url, title)` (host → path → title, match đầu thắng) · `PromptSuggestion` · `suggestionsForPage(profile, pageTitle)` (4 gợi ý / profile, điền placeholder `{title}`) · `generalSuggestions()` (4 gợi ý chung — FR-UX-04) · `rotateSuggestions(list, offset)` (xoay vòng deterministic) |
+| `packages/shared/src/constants.ts` | ✅ `SUMMARY_PROMPT` — trùng wording dataset eval `summarize` ([`EVAL_PLAN.md`](EVAL_PLAN.md) §3) |
+| `packages/shared/src/index.ts` | ✅ export `./pageProfile.js` |
+| `apps/extension/src/lib/activePage.ts` | ✅ **Mới** — `readActivePage(): Promise<{url, title} \| undefined>` · `chrome.tabs.query({ active: true, currentWindow: true })` · **không bao giờ throw** |
+| `apps/extension/src/sidepanel/hooks/useActivePage.ts` | ✅ **Mới** — state `{ url, title }` + `refresh()` · lắng nghe `chrome.tabs.onActivated` + `chrome.tabs.onUpdated` (chỉ khi `changeInfo.url` đổi) → đổi tab → gallery đổi bộ gợi ý (FR-UX-03) |
+| `apps/extension/src/sidepanel/components/chat/PromptGallery.tsx` | ✅ **Mới** — grid chip gợi ý (nhãn + preview prompt) · nút refresh (`RefreshCw`, `aria-label="Làm mới gợi ý"`) · nút "Tóm tắt trang này" · dòng minh bạch "Sẽ tự đính kèm trang này khi bạn chọn gợi ý" · props `profile` / `pageTitle` / `suggestions` / `onSelect` / `onSummarize` / `onRefresh` / `isSending` / `canAttachPage` |
+| `apps/extension/src/sidepanel/components/chat/SummarizeButton.tsx` | ✅ **Mới** — nút chính "Tóm tắt trang này" (`FileText`, variant `default`, size `sm`, `aria-label` tiếng Việt, disabled khi đang gửi) |
+| `apps/extension/src/sidepanel/ChatWorkspace.tsx` | ✅ Thay empty state tĩnh bằng `<PromptGallery />` · `useActivePage()` · `runSuggestion(prompt)` = `await attachCurrentTab()` → `await send(prompt)` · `handleSummarize()` = `runSuggestion(SUMMARY_PROMPT)` · `rotation` reset khi đổi profile |
+| Unit test | ✅ **Mới** — shared `pageProfile.test.ts` (23) · extension `activePage.test.ts` (5) · `promptGallery.test.tsx` (8) |
+| E2E | ✅ **Mới** `e2e/promptGallery.spec.ts` — 5 kịch bản: profile `docs` theo tab · click gợi ý → `context.items[0]` = trang vừa attach · nút tóm tắt → `SUMMARY_PROMPT` + context · `chrome://` → gợi ý chung (không nút tóm tắt) · đổi tab → gallery đổi profile |
+| `pnpm typecheck` | ✅ pass (shared · server · extension · eval) |
+| `pnpm lint` | ✅ pass (0 error, 0 warning) |
+| `pnpm test` | ✅ pass — shared **200** · server **312** · extension **507** (tổng **1019**, trước 983 → **+36**) |
+| `pnpm build` | ✅ pass — `dist/content.js` vẫn là **IIFE 1 file, không `import`** |
+| `pnpm db:migrate` | ✅ pass — **không có migration mới** |
+| `pnpm test:e2e` | ✅ pass — `promptGallery.spec.ts` **5/5** · tổng **57/57** |
+
+> **Mutation spot-check:** 5/5 mutation bị bắt — (1) `classifyPage()` trả `general` cho mọi URL (9 test fail) · (2) `suggestionsForPage()` trả mảng rỗng cho profile `docs` (2 test fail) · (3) `fillTitle()` không điền `{title}` (2 test fail) · (4) `runSuggestion()` bỏ `await attachCurrentTab()` (2 E2E fail) · (5) `useActivePage` không lắng nghe `tabs.onActivated` (1 E2E fail).
+
+> **Quyết định kỹ thuật:** (1) **Bộ luật phân loại đặt ở `packages/shared`** → dùng được cho extension + eval harness + server, 1 nguồn sự thật; `pageKind.ts` (routing trích xuất) và `pageProfile.ts` (ngữ cảnh UX) là 2 khái niệm khác → 2 file riêng; (2) **Bấm gợi ý = hành động chủ động** → tự đính kèm trang trước khi gửi (tương thích FR-CONTEXT-13: context vẫn không bao giờ tự ý gửi); (3) **Click gợi ý → gửi thẳng** (không điền composer trước) → parity Edge/Gemini; (4) **Xoay vòng deterministic** (offset + 1) → test ổn định, không flaky; (5) **`SUMMARY_PROMPT` ở shared/constants** → trùng wording dataset eval → đo được, không lệch.
+
 ### 3.2 Traceability FR → Task
 
 > Bảng đầy đủ FR → Task (kèm milestone) nằm ở [`REQUIREMENTS.md`](REQUIREMENTS.md) §11.1 — nơi duy nhất cần cập nhật khi thêm/bớt task.
@@ -673,7 +702,7 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | FR-PROVIDER-01..09 | 9 FR | T-M0-07/08 · T-M1-15/16 · T-M2-01/02/03 | FR-PROVIDER-04 (fallback) nằm trong T-M2-02 |
 | FR-WORKFLOW-01..13 | 13 FR | T-M4-01..08 · `FR-WORKFLOW-04` → **M5** | FR-WORKFLOW-04 deferred (rủi ro MV3 `tabs.onUpdated`) |
 | FR-SETTINGS-01..07 | 7 FR | T-M0-14 · T-M1-12/17 · **T-M2-19** (FR-SETTINGS-04) | FR-SETTINGS-03/04/05/07 trước đó không có task → gộp vào T-M1-12 |
-| FR-UX-01..10 | 10 FR | T-M1-03/10/11/12/18/19/20 · **T-M1-25 ✅** | FR-UX-02 (onboarding) tách task riêng T-M1-25 — **xong 2026-11-05** (3 bước, BYOK K2, Ollama, skippable) |
+| FR-UX-01..10 | 10 FR | T-M1-03/10/**11 ✅**/12/18/19/20 · **T-M1-25 ✅** | FR-UX-02 (onboarding) tách task riêng T-M1-25 — **xong 2026-11-05** (3 bước, BYOK K2, Ollama, skippable) · **FR-UX-03/04 (gợi ý theo trang + tóm tắt 1-click) do T-M1-11 ✅ (2026-11-07)** |
 | NFR-PERF-01..06 | 6 NFR | T-M0-11 · T-M1-01/07/14/20 · T-M2-13 · T-M3-02/04/09 | NFR là yêu cầu xuyên suốt |
 | NFR-SEC-01..08 | 8 NFR | T-M0-02/06/09/12 · T-M1-04/07/15/16 · **T-M2-19** | NFR-SEC-06 (domain nhạy cảm) → T-M2-19 |
 | NFR-REL-01..05 | 5 NFR | T-M1-10/14/15/19 · **T-M3-10** | NFR-REL-05 (backup DB) tách task M3 |

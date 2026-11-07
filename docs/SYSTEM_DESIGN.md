@@ -1742,6 +1742,114 @@ Mọi operation đều **yield `meta` kèm `turnId`** → client đồng bộ pa
 
 ---
 
+### 7.12 Prompt gợi ý theo trang + Tóm tắt 1-click (FR-UX-03 / FR-UX-04 — T-M1-11)
+
+> Nguồn sự thật cho hợp đồng: [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.9.2.
+
+#### 7.12.1 Quyết định thiết kế
+
+| Quyết định | Lý do |
+|---|---|
+| Bộ luật phân loại trang đặt ở `packages/shared/src/pageProfile.ts` | Dùng được cho cả extension (UI), server (eval harness) và `apps/eval` → 1 nguồn sự thật, không lệch. `pageKind.ts` phục vụ **routing trích xuất** (`html`/`pdf`/`youtube`) — phân loại **UX** là khái niệm khác → file riêng, không trộn |
+| Phân loại theo **host → path → title**, ưu tiên host | Host định nghĩa rõ, ổn định; URL bài viết thay đổi theo bài. Path/title là fallback cho site không có trong danh sách |
+| Click gợi ý → **gửi thẳng** (không điền composer trước) | Parity Edge/Gemini (bấm suggestion = chạy luôn). Gợi ý viết dạng prompt độc lập, hoàn chỉnh |
+| Trước khi gửi gợi ý page-specific → **tự attach tab hiện tại** | Không có context thì "Tóm tắt trang này" sẽ bịa nội dung → vi phạm FR-CONTEXT-13. Bấm nút = hành động chủ động của user |
+| Gợi ý dùng placeholder `{title}` điền tên trang | Gợi ý "cá nhân hóa" theo trang đang mở (A4: "dựa trên title + URL") |
+| Refresh: xoay vòng danh sách trong **cùng profile**, tự reset khi profile đổi | "refresh theo loại trang" (FR-UX-03) = 2 chiều: đổi trang → đổi bộ gợi ý; bấm nút ↻ → xoay bộ hiện tại |
+| Xoay vòng **deterministic** (offset tăng 1), không random | Test ổn định, không flaky |
+| Nút "Tóm tắt trang này" đặt trong `PromptGallery` (empty state) | Đúng chỗ Edge hiển thị "Create a Summary"; không làm rối hàng chip context (DP-2: chat-centric) |
+| Prompt tóm tắt đặt ở `packages/shared/src/constants.ts` (`SUMMARY_PROMPT`) | Trùng wording với dataset eval `summarize` ([`EVAL_PLAN.md`](EVAL_PLAN.md) §3) → đo được, không lệch |
+
+#### 7.12.2 Contract shared — `packages/shared/src/pageProfile.ts`
+
+```ts
+export const PAGE_PROFILES = ['docs','article','forum','video','pdf','shopping','general'] as const
+export type PageProfile = (typeof PAGE_PROFILES)[number]
+
+export function classifyPage(url: string, title?: string): PageProfile
+
+export interface PromptSuggestion {
+  id: string     // định danh gợi ý — duy nhất trong 1 bộ
+  label: string  // nhãn ngắn hiển thị trên chip
+  prompt: string // prompt đầy đủ sẽ gửi (đã điền {title})
+}
+
+export function suggestionsForPage(profile: PageProfile, pageTitle: string): PromptSuggestion[]
+export function generalSuggestions(): PromptSuggestion[]   // FR-UX-04 — không có context
+export function rotateSuggestions(suggestions: readonly PromptSuggestion[], offset: number): PromptSuggestion[]
+```
+
+Luật phân loại (thứ tự, match đầu thắng):
+
+| Profile | Nhận diện |
+|---|---|
+| `pdf` | URL kết thúc `.pdf` (tái dùng `isPdfUrl`) |
+| `video` | YouTube (tái dùng `extractYouTubeVideoId`) + vimeo / tiktok / twitch / dailymotion / odysee |
+| `forum` | stackoverflow / stackexchange / reddit / quora / news.ycombinator + path `/forum/`, `/community/`, `/questions/`, `/discussion/` |
+| `docs` | developer.mozilla.org, host `docs.*` / `developer.*`, readthedocs, github.com/blob + path `/docs/`, `/documentation/`, `/api/`, `/reference/`, `/guide/`, `/manual/` |
+| `article` | arxiv / medium / substack / wikipedia + path `/blog/`, `/post/`, `/article/`, `/news/` |
+| `shopping` | amazon / shopify + path `/product/`, `/shop/`, `/cart/` |
+| `general` | fallback (kể cả `chrome://`, `file://` → không có gợi ý theo trang) |
+
+Mỗi profile có **4** gợi ý (≥ 3 theo AC) dùng placeholder `{title}`; tên trang rõng → dùng "trang này".
+
+#### 7.12.3 Extension
+
+| File | Vai trò |
+|---|---|
+| `src/lib/activePage.ts` | `readActivePage(): Promise<{ url, title } \| undefined>` — `chrome.tabs.query({ active: true, currentWindow: true })`, **không bao giờ throw** (lỗi → `undefined`) |
+| `src/sidepanel/hooks/useActivePage.ts` | Hook theo dõi trang active; lắng nghe `chrome.tabs.onActivated` + `chrome.tabs.onUpdated` (chỉ khi `changeInfo.url` đổi) → đổi tab → gallery đổi bộ gợi ý |
+| `src/sidepanel/components/chat/PromptGallery.tsx` | Grid chip gợi ý + nút refresh (`RefreshCw`, `aria-label` tiếng Việt) + nút "Tóm tắt trang này" + dòng minh bạch "Sẽ tự đính kèm trang này khi bạn chọn gợi ý" |
+| `src/sidepanel/components/chat/SummarizeButton.tsx` | Nút chính "Tóm tắt trang này" — variant `default`, icon lucide, `aria-label`, `disabled` khi đang gửi |
+| `src/sidepanel/ChatWorkspace.tsx` | Thay khối empty state tĩnh bằng `<PromptGallery />`; thêm handler `runSuggestion` / `handleSummarize` |
+
+**Luồng gửi (điểm mấu chốt)**:
+
+```
+runSuggestion(prompt):
+  1. nếu trang đọc được → await attachCurrentTab()
+     (bỏ qua nếu attach lỗi → vẫn gửi, `ContextNotice` hiện sẵn có)
+  2. await send(prompt)
+
+handleSummarize():
+  1. await runSuggestion(SUMMARY_PROMPT)
+```
+
+`useChat.attachCurrentTab()` trả về `item | undefined` và tự bật `contextEnabled` trong store (`chatStore.attachItem`) → sau `await` thì `useChatStore.getState()` đã có item → `buildRequestContext()` gom được context. Không cần sửa `useChat`.
+
+**Điều kiện chọn bộ gợi ý:**
+
+- Có tab hiện tại đọc được (`detectPageKind(url) !== 'unknown'`) → `suggestionsForPage(profile, title)`.
+- Không có tab đọc được (`chrome://`, không có tab) → `generalSuggestions()` (FR-UX-04) + **không** hiện nút tóm tắt.
+
+```mermaid
+flowchart LR
+  tabActive["Tab active<br/>chrome.tabs.query"] --> profile["classifyPage<br/>packages/shared"]
+  profile --> gallery["PromptGallery<br/>useActivePage"]
+  gallery -->|click goi y| attach["attachCurrentTab<br/>useChat"]
+  gallery -->|click Tom tat| attach
+  attach --> send["send(prompt)<br/>useChat"]
+  send --> bff["POST /api/chat<br/>context.items"]
+```
+
+#### 7.12.4 Hiệu năng
+
+- Đọc tab active là **1 lần** `chrome.tabs.query` (≤ 5 ms) → cache trong state của `useActivePage`, chỉ gọi lại khi có sự kiện đổi tab / đổi URL.
+- `classifyPage` là hàm thuần (không I/O) → < 0.1 ms.
+- `suggestionsForPage` sinh mảng 4 phần tử → không đáng kể.
+- **Không** fetch nội dung trang khi mở gallery → panel cold-start không bị chậm (NFR-PERF-03).
+
+#### 7.12.5 Kiểm thử
+
+| Tầng | File | Phủ |
+|---|---|---|
+| Unit (shared) | `packages/shared/tests/pageProfile.test.ts` | classify từng profile · mỗi profile ≥ 3 gợi ý · `{title}` được điền · không còn placeholder · `rotateSuggestions` deterministic |
+| Unit (extension) | `apps/extension/tests/activePage.test.ts` | `readActivePage` undefined khi `chrome.tabs.query` lỗi (không throw) |
+| Unit (extension) | `apps/extension/tests/promptGallery.test.tsx` | render ≥ 3 chip · bấm chip → `onSelect(prompt)` · bấm refresh → `onRefresh` · bấm "Tóm tắt" → `onSummarize` · disabled khi `isSending` |
+| E2E | `apps/extension/e2e/promptGallery.spec.ts` | (1) profile docs theo tab · (2) click gợi ý → `context.items[0]` có trang · (3) nút tóm tắt → `SUMMARY_PROMPT` + context · (4) `chrome://` → gợi ý chung · (5) đổi tab → gallery đổi profile |
+
+---
+
 ## 8. Hiệu năng
 
 | Chỉ số | Mục tiêu | Cách đạt |
@@ -1751,7 +1859,7 @@ Mọi operation đều **yield `meta` kèm `turnId`** → client đồng bộ pa
 | Content extraction (HTML) | ≤ 800ms | Chạy trong content script, dùng Readability-lite (T-M1-01 ✅). Cache theo URL+hash trong `chrome.storage.local` — **chưa implement** (ưu tiên tối đa 1 lần/trang) |
 | Content extraction (PDF) | ≤ 3s | Fetch bytes + parse ở BFF (T-M1-21 ✅). Giới hạn 20 MB; cache kết quả theo URL+hash — **cache chưa implement** |
 | Content extraction (YouTube) | ≤ 2s | Fetch `timedtext` ở BFF (T-M1-22 ✅). Cache theo video id + language — **cache chưa implement** |
-| Panel mở | ≤ 300ms | Không fetch nặng khi mount; lazy-load settings |
+| Panel mở | ≤ 300ms | Không fetch nặng khi mount; lazy-load settings. **T-M1-11 ✅:** đọc tab active = 1 lần `chrome.tabs.query` (≤ 5 ms), `classifyPage` thuần (< 0.1 ms) → không ảnh hưởng cold start |
 | Scroll khi streaming | ≥ 50fps | Batch token bằng `requestAnimationFrame`, không render mỗi token · **T-M1-07 ✅:** `useDeferredValue` + defer highlight khi streaming (§7.8.4) |
 | Upload ảnh | ≤ 1s / ảnh | `FileReader` đọc base64 ở main thread (5 MB) · giới hạn 4 ảnh / 12 MB tổng · **TODO(T-M2-22)**: chuyển sang `OffscreenCanvas`/`createImageBitmap` + `Web Worker` nếu cần |
 | Token ảnh | ≤ 258 token / ảnh | Ước lượng theo quy ước OpenAI (ảnh 512 px) — trừ khỏi `historyBudget` trước khi cắt lịch sử |

@@ -412,8 +412,8 @@ BYOK trả lời câu *"key của ai?"*, không trả lời *"key nằm ở đâ
 |---|---|---|---|
 | FR-UX-01 | Mở/toggle panel bằng icon toolbar + phím tắt tự cấu hình | M | `chrome.sidePanel.open()` chỉ trong user gesture |
 | FR-UX-02 | Onboarding lần đầu (3 bước: quyền, chọn provider, thử câu hỏi) | M | ✅ T-M1-25 — xem AC chi tiết §4.9.1 |
-| FR-UX-03 | Empty state với prompt gợi ý theo ngữ cảnh trang | M | ≥ 3 gợi ý; refresh theo loại trang |
-| FR-UX-04 | Empty state khi chưa có context: gợi ý câu hỏi chung | M | |
+| FR-UX-03 | Empty state với prompt gợi ý theo ngữ cảnh trang | M | ✅ T-M1-11 — xem AC chi tiết §4.9.2. ≥ 3 gợi ý; refresh theo loại trang |
+| FR-UX-04 | Empty state khi chưa có context: gợi ý câu hỏi chung | M | ✅ T-M1-11 — xem AC chi tiết §4.9.2. Có nút "Tóm tắt trang này" 1-click |
 | FR-UX-05 | Scroll: tự cuộn theo stream; dừng auto-scroll khi user cuộn lên | M | Có nút "Cuộn xuống" khi đang lệch. **Đã implement (T-M1-10):** `ChatWorkspace` theo dõi `scrollHeight - scrollTop - clientHeight` → chỉ auto-scroll khi ≤ 80 px từ đáy; lệch → hiện nút tròn "Cuộn xuống" (`ScrollToBottomButton`), bấm → cuộn về đáy |
 | FR-UX-06 | Panel chịu được chiều rộng 320–640px; không vỡ layout | M | Test ở 320/400/520px |
 | FR-UX-07 | Focus ring rõ, điều hướng bằng bàn phím đầy đủ | M | Tab order hợp lý, focus không bị kẹt |
@@ -441,6 +441,33 @@ Quy tắc chung:
 - **Không phá parity**: onboarding chỉ là lớp UI; luồng chat hiện tại giữ nguyên (panel vẫn là 1 màn hình chính, DP-2).
 
 > Không nằm trong scope T-M1-25: Settings đầy đủ (T-M1-12) · Anthropic/OpenAI-native adapter (T-M2-01) · model picker (FR-PROVIDER-03) · K3 direct mode (T-M1-15).
+
+#### 4.9.2 FR-UX-03 / FR-UX-04 — Gợi ý theo trang + Tóm tắt 1-click (AC chi tiết — T-M1-11 ✅)
+
+Empty state của side panel hiển thị `PromptGallery` thay cho khối text tĩnh.
+
+**Phân loại trang** — `classifyPage(url, title)` trong `packages/shared/src/pageProfile.ts`:
+
+| Profile | Nhận diện |
+|---|---|
+| `pdf` | URL kết thúc `.pdf` |
+| `video` | YouTube (`extractYouTubeVideoId`) + vimeo / tiktok / twitch / dailymotion |
+| `forum` | stackoverflow / stackexchange / reddit / quora / news.ycombinator + path `/forum/`, `/community/`, `/questions/`, `/discussion/` |
+| `docs` | developer.mozilla.org, host `docs.*` / `developer.*`, readthedocs, github.com/blob + path `/docs/`, `/api/`, `/reference/`, `/guide/`, `/manual/` |
+| `article` | arxiv / medium / substack / wikipedia + path `/blog/`, `/post/`, `/article/`, `/news/` |
+| `shopping` | amazon / shopify + path `/product/`, `/shop/`, `/cart/` |
+| `general` | fallback (kể cả `chrome://`, `file://`) |
+
+Acceptance criteria:
+
+- **≥ 3 gợi ý** theo profile (thực tế 4) — `suggestionsForPage(profile, pageTitle)`; placeholder `{title}` được điền bằng tiêu đề trang, **không** còn placeholder sau khi điền.
+- **Refresh theo loại trang**: nút `↻` xoay vòng **deterministic** (offset + 1) trong *cùng* profile; đổi tab → đổi profile → reset offset về 0.
+- **Gợi ý chung** (FR-UX-04): không có tab đọc được (`chrome://`) hoặc không có tab → `generalSuggestions()` (4 câu hỏi chung), **không** hiện nút "Tóm tắt trang này".
+- **Tóm tắt 1-click**: nút "Tóm tắt trang này" gửi `SUMMARY_PROMPT` (đặt ở `packages/shared/src/constants.ts`, trùng wording dataset eval `summarize` — `EVAL_PLAN.md` §3).
+- **Tự đính kèm trang**: bấm gợi ý hoặc nút tóm tắt = hành động chủ động của user → `attachCurrentTab()` chạy **trước** khi `send(prompt)` → request luôn có `context.items[0]`. Không đính kèm gì → chat thuần LLM (FR-CONTEXT-13 giữ nguyên).
+- **Minh bạch (DP-3)**: dưới nút tóm tắt hiện dòng "Sẽ tự đính kèm trang này khi bạn chọn gợi ý".
+
+> Không nằm trong scope T-M1-11: gợi ý do LLM sinh động (T-M2) · gợi ý theo lịch sử chat (T-M1-19) · settings gợi ý tuỳ chỉnh (T-M1-12).
 
 ---
 
@@ -1063,8 +1090,8 @@ Chỉ bắt đầu M4 khi **đồng thời** thỏa:
 |---|---|---|---|
 | FR-UX-01 | M | T-M1-03 · T-M1-18 | M1 |
 | FR-UX-02 | M | **T-M1-25 ✅** | M1 |
-| FR-UX-03 | M | T-M1-11 · T-M1-19 | M1 |
-| FR-UX-04 | M | T-M1-11 · T-M1-19 | M1 |
+| FR-UX-03 | M | **T-M1-11 ✅** · T-M1-19 | M1 |
+| FR-UX-04 | M | **T-M1-11 ✅** · T-M1-19 | M1 |
 | FR-UX-05 | M | T-M1-10 | M1 |
 | FR-UX-06 | M | T-M1-12 · T-M1-20 | M1 |
 | FR-UX-07 | M | T-M1-20 | M1 |

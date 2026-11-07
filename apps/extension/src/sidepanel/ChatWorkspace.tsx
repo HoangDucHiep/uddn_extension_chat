@@ -1,6 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import type { ConversationMessage } from '@sidekick/shared'
+import {
+  classifyPage,
+  detectPageKind,
+  generalSuggestions,
+  rotateSuggestions,
+  suggestionsForPage,
+  SUMMARY_PROMPT,
+  type PageProfile,
+} from '@sidekick/shared'
 import { MessageBubble } from './components/MessageBubble'
 import { Composer } from './components/Composer'
 import { PanelHeader } from './components/PanelHeader'
@@ -11,11 +20,13 @@ import { MentionPopover } from './components/context/MentionPopover'
 import { AttachmentTray } from './components/composer/AttachmentTray'
 import { ConversationList } from './components/chat/ConversationList'
 import { ScrollToBottomButton } from './components/chat/ScrollToBottomButton'
+import { PromptGallery } from './components/chat/PromptGallery'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { useChat } from './hooks/useChat'
 import { useMention } from './hooks/useMention'
 import { useSelection } from './hooks/useSelection'
 import { useTabs } from './hooks/useTabs'
+import { useActivePage } from './hooks/useActivePage'
 import { useImageAttachments } from './hooks/useImageAttachments'
 import { useChatStore, type ChatMessage } from './store/chatStore'
 import { useConversationStore } from './store/conversationStore'
@@ -92,6 +103,39 @@ export function ChatWorkspace({ onOpenOnboarding }: ChatWorkspaceProps) {
   const mention = useMention()
   const { tabs, isLoading: isLoadingTabs } = useTabs(mention.state.open)
   const imageAttachments = useImageAttachments()
+
+  // --- FR-UX-03/04: goi y theo trang + tom tat 1-click (T-M1-11) ---
+  const { page: activePage } = useActivePage()
+
+  /** Trang hien tai co doc duoc noi dung khong (http/https). */
+  const canAttachPage =
+    activePage !== undefined && detectPageKind(activePage.url) !== 'unknown'
+
+  /** Loai trang → dung de chon bo goi y. */
+  const profile: PageProfile = useMemo(
+    () => classifyPage(activePage?.url ?? '', activePage?.title ?? ''),
+    [activePage?.url, activePage?.title],
+  )
+
+  // Bo goi y goc cua profile hien tai.
+  const baseSuggestions = useMemo(
+    () =>
+      canAttachPage
+        ? suggestionsForPage(profile, activePage?.title ?? '')
+        : generalSuggestions(),
+    [canAttachPage, profile, activePage?.title],
+  )
+
+  // Buoc xoay vong (nut "lam moi") — reset khi doi profile.
+  const [rotation, setRotation] = useState(0)
+  useEffect(() => {
+    setRotation(0)
+  }, [profile, canAttachPage])
+
+  const suggestions = useMemo(
+    () => rotateSuggestions(baseSuggestions, rotation),
+    [baseSuggestions, rotation],
+  )
 
   // Tieu de conversation hien tai → hien thi trong header.
   const hydrateConversation = useChatStore((state) => state.hydrateConversation)
@@ -216,6 +260,40 @@ export function ChatWorkspace({ onOpenOnboarding }: ChatWorkspaceProps) {
       setIsAttaching(false)
     })
   }
+
+  /**
+   * Chay 1 goi y (FR-UX-03 — T-M1-11).
+   *
+   * Bam goi y = user **chu dong** muon dung context trang hien tai → tu dinh
+   * kem trang truoc khi gui (tuong thich FR-CONTEXT-13).
+   *
+   * @param prompt - Prompt se gui len BFF.
+   */
+  const runSuggestion = useCallback(
+    async (prompt: string): Promise<void> => {
+      setIsAttaching(true)
+      try {
+        if (canAttachPage) {
+          // Loi attach → van gui (ContextNotice hien thi loi cho user).
+          await attachCurrentTab()
+        }
+        await send(prompt)
+      } finally {
+        setIsAttaching(false)
+      }
+    },
+    [attachCurrentTab, canAttachPage, send],
+  )
+
+  /**
+   * Tom tat trang hien tai 1-click (FR-UX-04 — T-M1-11).
+   *
+   * Tu dinh kem trang roi gui `SUMMARY_PROMPT` — dung wording chung voi
+   * dataset eval (docs/EVAL_PLAN.md §3).
+   */
+  const handleSummarize = useCallback(async (): Promise<void> => {
+    await runSuggestion(SUMMARY_PROMPT)
+  }, [runSuggestion])
 
   // Id cac tab da dinh kem → hien thi dau check trong popover.
   const attachedTabIds = useMemo(
@@ -372,16 +450,22 @@ export function ChatWorkspace({ onOpenOnboarding }: ChatWorkspaceProps) {
           data-testid="message-list"
         >
           {visibleMessages.length === 0 ? (
-            <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
-              <p className="text-[length:var(--font-size-lg)] font-medium text-[var(--text-primary)]">
-                Chao ban!
-              </p>
-              <p className="max-w-[280px] text-[length:var(--font-size-sm)] text-[var(--text-secondary)]">
-                Ban co the hoi bat ky cau hoi nao. Neu muon Sidekick AI dung noi dung
-                trang dang xem, hay bam &quot;Them trang nay&quot; hoac go &quot;@&quot; de
-                dinh kem tab khac.
-              </p>
-            </div>
+            <PromptGallery
+              profile={profile}
+              pageTitle={activePage?.title ?? ''}
+              suggestions={suggestions}
+              onSelect={(prompt) => {
+                void runSuggestion(prompt)
+              }}
+              onSummarize={() => {
+                void handleSummarize()
+              }}
+              onRefresh={() => {
+                setRotation((current) => current + 1)
+              }}
+              isSending={isStreaming || isAttaching}
+              canAttachPage={canAttachPage}
+            />
           ) : (
             visibleMessages.map((message) => (
               <MessageBubble

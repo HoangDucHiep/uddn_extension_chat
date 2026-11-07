@@ -164,3 +164,12 @@ export const DEFAULT_SYSTEM_PROMPT =
 export const CONTINUE_INSTRUCTION =
   'Tiep tuc cau tra loi truoc do tu dung cho no bi ngat. Chi viet phan tiep theo, ' +
   'khong lap lai phan da co.'
+
+/**
+ * Prompt tom tat trang 1-click (FR-UX-04 — T-M1-11).
+ *
+ * Dung chung wording voi dataset eval `summarize` (docs/EVAL_PLAN.md §3) →
+ * do duoc, khong lech giua UI va eval.
+ */
+export const SUMMARY_PROMPT =
+  'Tóm tắt trang này thành 5 ý chính, nêu 2 con số nổi bật và 1 câu hỏi chưa được trả lời. Trả lời bằng tiếng Việt.'

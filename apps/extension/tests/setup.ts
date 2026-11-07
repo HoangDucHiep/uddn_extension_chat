@@ -138,4 +138,5 @@ export {
   executeScriptMock,
   injectionResult,
   tabsCreateMock,
+  tabsQueryMock,
 }

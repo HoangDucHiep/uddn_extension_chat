@@ -1,7 +1,7 @@
 # Documentation Index — Sidekick AI (Chrome Extension Chat Sidebar)
 
 **Dự án:** Extension chat-bot sidebar cho trình duyệt, cạnh tranh với Edge Copilot Sidebar và Chrome Gemini Sidebar.
-**Giai đoạn hiện tại:** **M0 (Foundation) đã implement xong** (tag `v0.1`) · đang làm **M1 (Parity)** — 14/25 task (T-M1-01, T-M1-04 ✅ hấp thụ, T-M1-05, T-M1-21, T-M1-22, T-M1-23, T-M1-02, T-M1-24, T-M1-25, T-M1-06 ✅, T-M1-07 ✅, T-M1-08 ✅, T-M1-09 ✅, T-M1-10 ✅) · 983 unit test + 52 E2E.
+**Giai đoạn hiện tại:** **M0 (Foundation) đã implement xong** (tag `v0.1`) · đang làm **M1 (Parity)** — 15/25 task (T-M1-01, T-M1-04 ✅ hấp thụ, T-M1-05, T-M1-21, T-M1-22, T-M1-23, T-M1-02, T-M1-24, T-M1-25, T-M1-06 ✅, T-M1-07 ✅, T-M1-08 ✅, T-M1-09 ✅, T-M1-10 ✅, T-M1-11 ✅) · 1019 unit test + 57 E2E.
 **Entry point cho agent:** [`../AGENTS.md`](../AGENTS.md) · [`HANDOFF.md`](HANDOFF.md)
 
 ---
@@ -99,21 +99,21 @@ Chi tiết lý do & hệ quả: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §2 (12 A
 
 | Tài liệu | Phiên bản | Ngày | Trạng thái |
 |---|---|---|---|
-| REQUIREMENTS.md | v1.5 | 2026-11-05 | ✅ Đã cập nhật — FR-CONTEXT-01 (cache URL+hash) + FR-CONTEXT-12 (hash context & snapshot theo setting) — T-M1-06 |
-| COMPARISON_MATRIX.md | v1.5 | 2026-11-05 | ✅ Đã cập nhật — 2 dòng parity mới (tái lập lượt chat · cache context) — T-M1-06 |
+| REQUIREMENTS.md | v1.6 | 2026-11-07 | ✅ Đã cập nhật — FR-UX-03/04 gợi ý theo trang + tóm tắt 1-click + §4.9.2 — T-M1-11 |
+| COMPARISON_MATRIX.md | v1.6 | 2026-11-07 | ✅ Đã cập nhật — 2 dòng parity "Nút tóm tắt 1-click" + "Prompt gợi ý theo loại trang" → ✅ T-M1-11 |
 | EVAL_PLAN.md | v1.2 | 2026-11-05 | ✅ Đã cập nhật — §3.4.1 `context_hash` là khoá tái lập lượt chat — T-M1-06 |
-| DESIGN_SYSTEM_BRIEF.md | v1.4 | 2026-11-05 | ✅ Đã cập nhật — §3.5.1 cache context (**không có UI mới**) — T-M1-06 |
-| SYSTEM_DESIGN.md | v1.6 | 2026-11-05 | ✅ Đã cập nhật — §7.3.5 (hash context · snapshot · cache) · §7.2.1 (số test) · §7.2.2 (mutation vòng 3) — T-M1-06 |
-| IMPLEMENTATION_PLAN.md | v1.5 | 2026-11-05 | ✅ Đã cập nhật — T-M1-06 ✅ + §3.1i bảng verify — T-M1-06 |
-| HANDOFF.md | v1.6 | 2026-11-05 | ✅ Đã cập nhật — T-M1-06 hash context + snapshot + cache |
-| CHANGELOG.md | v1.6 | 2026-11-05 | ✅ Đang theo dõi |
+| DESIGN_SYSTEM_BRIEF.md | v1.5 | 2026-11-07 | ✅ Đã cập nhật — §3.3 `PromptGallery` + `SummarizeButton` (props · token · a11y) — T-M1-11 |
+| SYSTEM_DESIGN.md | v1.7 | 2026-11-07 | ✅ Đã cập nhật — §7.12 prompt gợi ý theo trang + tóm tắt 1-click — T-M1-11 |
+| IMPLEMENTATION_PLAN.md | v1.6 | 2026-11-07 | ✅ Đã cập nhật — T-M1-11 ✅ + §3.1m bảng verify — T-M1-11 |
+| HANDOFF.md | v1.7 | 2026-11-07 | ✅ Đã cập nhật — T-M1-11 gợi ý theo trang + tóm tắt 1-click (M1: 15/25) |
+| CHANGELOG.md | v1.7 | 2026-11-07 | ✅ Đang theo dõi |
 
 ## Trạng thái milestone
 
 | Milestone | Nội dung | Trạng thái |
 |---|---|---|
 | **M0 — Foundation** (2 tuần) | Monorepo, shared types, Docker/Postgres, Drizzle, BFF skeleton, provider Gemini, SSE, side panel shell | ✅ Xong (tag `v0.1`) |
-| **M1 — Parity** (3 tuần) | Content extraction (HTML + PDF + YouTube transcript), context đính kèm chủ động + ngân sách token, `@` multi-tab, selection, citations, markdown/code, conversation CRUD, chat actions (regenerate/edit-resend/stop/continue), settings, upload ảnh, onboarding, logging, K2/K3 | 🚧 Đang làm — 14/25 task (T-M1-01, T-M1-04 ✅ hấp thụ, T-M1-05, T-M1-21, T-M1-22, T-M1-23, T-M1-02, T-M1-24, T-M1-25, T-M1-06 ✅, T-M1-07 ✅, T-M1-08 ✅, T-M1-09 ✅, T-M1-10 ✅) |
+| **M1 — Parity** (3 tuần) | Content extraction (HTML + PDF + YouTube transcript), context đính kèm chủ động + ngân sách token, `@` multi-tab, selection, citations, markdown/code, conversation CRUD, chat actions (regenerate/edit-resend/stop/continue), gợi ý theo trang + tóm tắt 1-click, settings, upload ảnh, onboarding, logging, K2/K3 | 🚧 Đang làm — 15/25 task (T-M1-01, T-M1-04 ✅ hấp thụ, T-M1-05, T-M1-21, T-M1-22, T-M1-23, T-M1-02, T-M1-24, T-M1-25, T-M1-06 ✅, T-M1-07 ✅, T-M1-08 ✅, T-M1-09 ✅, T-M1-10 ✅, T-M1-11 ✅) |
 | **M2 — Advanced & Eval** (3 tuần) | Multi-provider, skills, tool registry + MCP, RAG, token/cost UI, **EVAL_REPORT** | ⬜ Chưa bắt đầu |
 | **M3 — Polish & Deliverable** (1 tuần) | Design system, states, a11y audit, i18n, demo video, slide, README, backup DB, ADR | ⬜ Chưa bắt đầu |
 | **M4 — Workflow** (tuỳ chọn, 2 tuần) | Scheduler, workflow CRUD, run log, import/export, notification | ⬜ Ngoài đường găng |

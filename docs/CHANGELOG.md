@@ -9,6 +9,19 @@
 ## [Unreleased]
 
 ### Added
+- **T-M1-11 — Prompt gợi ý theo trang + Tóm tắt 1-click (FR-UX-03 / FR-UX-04)**
+  - `packages/shared/src/pageProfile.ts` (mới) — `PAGE_PROFILES` (`docs` · `article` · `forum` · `video` · `pdf` · `shopping` · `general`) · `classifyPage(url, title)` (host → path → title, match đầu thắng) · `PromptSuggestion` · `suggestionsForPage(profile, pageTitle)` (**4** gợi ý / profile, điền placeholder `{title}`) · `generalSuggestions()` (4 gợi ý chung — FR-UX-04) · `rotateSuggestions(list, offset)` (xoay vòng deterministic).
+  - `packages/shared/src/constants.ts` — `SUMMARY_PROMPT` (trùng wording dataset eval `summarize`).
+  - `packages/shared/src/index.ts` — export `./pageProfile.js`.
+  - `apps/extension/src/lib/activePage.ts` (mới) — `readActivePage()` (`chrome.tabs.query({ active: true, currentWindow: true })`, **không bao giờ throw**).
+  - `apps/extension/src/sidepanel/hooks/useActivePage.ts` (mới) — theo dõi trang active · lắng nghe `chrome.tabs.onActivated` + `chrome.tabs.onUpdated` → đổi tab → gallery đổi bộ gợi ý.
+  - `apps/extension/src/sidepanel/components/chat/PromptGallery.tsx` (mới) — grid chip gợi ý + nút refresh (`RefreshCw`) + nút "Tóm tắt trang này" + dòng minh bạch "Sẽ tự đính kèm trang này khi bạn chọn gợi ý".
+  - `apps/extension/src/sidepanel/components/chat/SummarizeButton.tsx` (mới) — nút chính "Tóm tắt trang này" 1-click.
+  - `apps/extension/src/sidepanel/ChatWorkspace.tsx` — thay empty state tĩnh bằng `<PromptGallery />` · `runSuggestion(prompt)` = `await attachCurrentTab()` → `await send(prompt)` · `handleSummarize()` = `runSuggestion(SUMMARY_PROMPT)`.
+  - **Test** — `packages/shared/tests/pageProfile.test.ts` (mới, 23) · `apps/extension/tests/activePage.test.ts` (mới, 5) · `apps/extension/tests/promptGallery.test.tsx` (mới, 8) · `apps/extension/e2e/promptGallery.spec.ts` (mới, 5 kịch bản).
+    - **Số test toàn repo:** 983 → **1019 unit** (shared 200 · server 312 · extension 507) + 52 → **57 E2E**.
+    - **Mutation spot-check:** 5/5 mutation bị bắt — `classifyPage()` trả general cho mọi URL · `suggestionsForPage()` trả mảng rỗng · `fillTitle()` không điền `{title}` · `runSuggestion()` bỏ `await attachCurrentTab()` · `useActivePage` không lắng nghe `tabs.onActivated`.
+    - **Migration:** **không** có migration mới · **không** dependency mới.
 - **T-M1-10 — Regenerate / Edit-resend / Stop / Continue / Draft / Auto-scroll (FR-CHAT-05 / FR-CHAT-06 / FR-CHAT-07 / FR-CHAT-12 / FR-CHAT-13 + FR-UX-05)**
   - `packages/shared/src/schemas/chat.ts` — `chatOperationSchema` (`send` · `regenerate` · `continue` · `branch`) · `chatRequestSchema` += `operation?` · `assistantMessageId?` (uuid) · `parentTurnId?`.
   - `packages/shared/src/schemas/conversation.ts` — `conversationMessageSchema` += `turnId?` · `variantIndex?` · `active?` · `parentTurnId?` · `aborted?` · `conversationVariantSchema` · `conversationTurnSchema` · `activateVariantSchema` · `activateVariantResponseSchema` · `conversationMessagesResponseSchema` += `path: string[]` + `turns[]`.
@@ -35,6 +48,12 @@
     - **Migration:** **không** có migration mới — dùng sẵn `messages.meta` (jsonb) + `conversations.meta` (jsonb).
 
 ### Changed
+- `docs/REQUIREMENTS.md` — FR-UX-03/04 ghi "đã implement (T-M1-11)" + **§4.9.2** mới (AC chi tiết) + §11.1 đánh dấu ✅.
+- `docs/SYSTEM_DESIGN.md` — **§7.12** mới "Prompt gợi ý theo trang + Tóm tắt 1-click" + §8 hiệu năng (đọc tab active = 1 lần `chrome.tabs.query` ≤ 5 ms).
+- `docs/DESIGN_SYSTEM_BRIEF.md` — §3.3 thêm `PromptGallery` + `SummarizeButton` (props · token · a11y) + §4 state table + §6 traceability.
+- `docs/IMPLEMENTATION_PLAN.md` — task card T-M1-11 → ✅ + **§3.1m** kết quả verify.
+- `docs/COMPARISON_MATRIX.md` — §E: "Nút tóm tắt 1-click" + "Prompt gợi ý theo loại trang" → ✅ T-M1-11.
+- `docs/HANDOFF.md` · `AGENTS.md` §6 (M1: 14/25 → **15/25**) + mục tóm tắt T-M1-11.
 - `docs/REQUIREMENTS.md` — FR-CHAT-05/06/07/12/13 + FR-UX-05 ghi "đã implement (T-M1-10)".
 - `docs/SYSTEM_DESIGN.md` — §4.1 (bảng endpoint + request shape) + §7.11 mới "Turn / variant / branch (T-M1-10)".
 - `docs/DESIGN_SYSTEM_BRIEF.md` — §3.3 (+`MessageActions` · `MessageEditBox` · `ScrollToBottomButton` + a11y).
@@ -46,6 +65,7 @@
 - `apps/extension/src/lib/storage.ts` — draft giữ được sau khi reload panel (scope active lưu ở `sidekick.activeDraftScope`, fallback scope `new`).
 
 ### Docs
+- `REQUIREMENTS.md` §4.9.2 · `SYSTEM_DESIGN.md` §7.12 · `DESIGN_SYSTEM_BRIEF.md` §3.3 · `IMPLEMENTATION_PLAN.md` §3.1m · `COMPARISON_MATRIX.md` §E · `HANDOFF.md` · `AGENTS.md` §6.
 - `REQUIREMENTS.md` §4.2 · `SYSTEM_DESIGN.md` §4.1 + §7.11 · `DESIGN_SYSTEM_BRIEF.md` §3.3 · `IMPLEMENTATION_PLAN.md` · `COMPARISON_MATRIX.md` §E · `HANDOFF.md` · `AGENTS.md` §6.
 
 ---

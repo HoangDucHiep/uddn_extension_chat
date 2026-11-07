@@ -193,6 +193,8 @@ DP-2 quy định thread chat chiếm ≥ 90% không gian panel (DP-1: panel hẹ
 | `ErrorMessage` | Lỗi + hành động khôi phục | FR-CHAT-14 | Ảnh hưởng độ ổn định đo được |
 | `AttachmentChip` | Ảnh đính kèm trong message | FR-VISION-01 | |
 | `UsageBadge` | Token in/out + cost của lượt đó | FR-PROVIDER-05 | |
+| `PromptGallery` | Empty state: grid gợi ý theo loại trang + nút refresh + nút "Tóm tắt trang này" | FR-UX-03, FR-UX-04 | Gợi ý sai ngữ cảnh → user bấm nhầm |
+| `SummarizeButton` | Nút chính "Tóm tắt trang này" 1-click | FR-UX-04 | Thiếu → mất điểm parity Edge "Create a Summary" / Gemini "Summarize" |
 
 #### `MessageActions` (đã implement T-M1-10)
 
@@ -221,6 +223,24 @@ DP-2 quy định thread chat chiếm ≥ 90% không gian panel (DP-1: panel hẹ
 - **Điều kiện hiện:** thread lệch khỏi đáy > `SCROLL_BOTTOM_THRESHOLD` (80 px) → hiện; bấm → cuộn về đáy + reset trạng thái.
 - **Nội dung:** icon `ChevronDown` trong nút tròn `size="icon"`, nền `--surface-overlay` + viền `--border-default` + `--shadow-2`.
 - **A11y:** `aria-label="Cuộn xuống cuối hội thoại"`; nút luôn có focus ring rõ.
+
+#### `PromptGallery` (đã implement T-M1-11)
+
+- **Vị trí:** thay khối empty state trong vùng thread (`ChatWorkspace`) — canh giữa theo chiều ngang, dồn theo chiều dọc.
+- **Cấu trúc:** tiêu đề "Chào bạn!" + nhãn ngữ cảnh ("Gợi ý cho tài liệu: {title}") + nút refresh nhỏ (`RefreshCw`) → grid 1 cột các chip gợi ý → nút "Tóm tắt trang này" → dòng ghi chú nhỏ "Sẽ tự đính kèm trang này khi bạn chọn gợi ý".
+- **Chip gợi ý:** nút full-width, `--surface-raised` (nền) · `--border-default` (viền) · `--radius-md`; 2 dòng: **nhãn** (`--text-primary`, `--font-size-sm`) + **preview prompt** (`--text-tertiary`, `--font-size-xs`, `line-clamp-2`).
+- **Refresh:** icon-button tròn nhỏ cạnh nhãn ngữ cảnh; `aria-label="Làm mới gợi ý"`; xoay vòng deterministic trong cùng profile.
+- **Điều kiện hiện nút tóm tắt:** chỉ khi trang hiện tại đọc được (`http`/`https`). Không có tab đọc được → chỉ hiện gợi ý chung (FR-UX-04), **không** hiện nút tóm tắt.
+- **Trạng thái:** mọi chip + nút refresh + nút tóm tắt `disabled` khi đang gửi (`isStreaming` hoặc `isAttaching`).
+- **Token:** `--text-primary` · `--text-secondary` · `--text-tertiary` · `--surface-raised` · `--surface-sunken` (hover) · `--border-default` · `--radius-md` · `--space-2` / `--space-3` / `--space-4`. **Không hardcode màu.**
+- **A11y:** chip gợi ý là `<button>` thật (focus ring rõ) · refresh có `aria-label` tiếng Việt · dòng ghi chú dùng `--text-tertiary` nhưng vẫn đọc được (≥ 4.5:1).
+
+#### `SummarizeButton` (đã implement T-M1-11)
+
+- **Vị trí:** trong `PromptGallery`, full-width, ngay trên dòng ghi chú minh bạch.
+- **Nội dung:** icon `FileText` (`lucide-react`) + chữ "Tóm tắt trang này"; variant `default`, size `sm`.
+- **Trạng thái:** `disabled` khi đang gửi.
+- **A11y:** `aria-label="Tóm tắt trang này"`; focus ring theo token `--border-focus`.
 
 ### 3.4 Composer
 
@@ -451,9 +471,8 @@ Component `Onboarding` — màn hình **thay** nội dung chat trong side panel 
 |---|---|---|
 | **Loading khung** | Skeleton cho thread. Không spinner che toàn màn hình | NFR-PERF-03 |
 | **Streaming** | Token hiện dần, con trỏ nhấp nháy, không layout shift | FR-CHAT-01, DP-4 |
-| **Empty (chưa có chat)** | PromptGallery theo ngữ cảnh trang + nút tạo chat mới | FR-UX-03 |
-| **Empty (chưa có context)** | Gợi ý câu hỏi chung + nút bật context | FR-UX-04 |
-| **Error network** | Inline trong thread + nút Retry + nguyên nhân cụ thể | FR-CHAT-14 |
+| **Empty (chưa có chat)** | `PromptGallery`: ≥ 3 gợi ý theo loại trang + nút refresh (xoay vòng) + nút "Tóm tắt trang này" + dòng "Sẽ tự đính kèm trang này khi bạn chọn gợi ý" | FR-UX-03, FR-UX-04 |
+| **Empty (chưa có context)** | Gợi ý câu hỏi chung (`generalSuggestions()`), **không** hiện nút tóm tắt | FR-UX-04 || **Error network** | Inline trong thread + nút Retry + nguyên nhân cụ thể | FR-CHAT-14 |
 | **Error 401 (key)** | Link tới Settings → Provider | FR-CHAT-14 |
 | **Error 429** | Đếm ngược giây rồi cho thử lại | FR-CHAT-14 |
 | **BFF offline** | Banner cố định + CTA "Nhập API key dùng trực tiếp" (K3) | NFR-REL-03 |
@@ -495,7 +514,7 @@ Component `Onboarding` — màn hình **thay** nội dung chat trong side panel 
 | `CodeBlock`, `MarkdownTable` | FR-CHAT-03/04 | Rubric R6 (UX) |
 | `ToolCallBlock` | FR-TOOLS-02/06 | `tool_success_rate` |
 | `SkillMenu` | FR-SKILL-01/02 | Parity với Chrome Gemini |
-| `PromptGallery` | FR-UX-03 | Parity với Edge Copilot |
+| `PromptGallery`, `SummarizeButton` | FR-UX-03/04 | Parity với Edge Copilot (A4/A5) · Chrome Gemini (B9) |
 | `Composer` | FR-CHAT-12/13 | Rubric R4 (instruction following) |
 | `ErrorMessage` | FR-CHAT-14 | Độ ổn định, khó đo |
 | `ThemeSettings` | FR-SETTINGS-01/02 | WCAG |
