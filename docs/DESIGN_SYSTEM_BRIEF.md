@@ -523,7 +523,7 @@ Folder `apps/extension/src/sidepanel/components/states/` — **4 trạng thái**
 - **A11y:** `role="alert"` + `aria-live="polite"` (đếm ngược không spam screen reader — text thay đổi 1 lần/giây được `aria-live` ở mức polite) · nút hành động là `<button>` thật · dismiss là icon-button có `aria-label` tiếng Việt · focus ring `--border-focus`.
 - **Motion:** skeleton dùng `animate-pulse` → `prefers-reduced-motion` tắt animation.
 
-> `data-testid` cho E2E: `error-state` · `error-state-retry` · `error-state-open-settings` · `error-state-dismiss` · `error-state-countdown`.
+> `data-testid` cho E2E: `error-state` · `error-state-message` · `error-state-retry` · `error-state-check-key` · `error-state-dismiss` · `error-state-hint`.
 
 #### 3.9.2 `ConnectionBadge` — chip trạng thái kết nối
 
@@ -532,15 +532,15 @@ Folder `apps/extension/src/sidepanel/components/states/` — **4 trạng thái**
 - **DP-6:** **icon + chữ**, **không** chỉ dựa vào màu. Icon `lucide-react`: `Loader` (đang kết nối) · `Check` (đã kết nối) · `WifiOff` (offline) · `TriangleAlert` (lỗi server).
 - **Token:** `--text-secondary` · `--color-danger` (offline) · `--color-warning` (degraded) · `--surface-sunken` · `--radius-full` · `--font-size-xs`. **Không hardcode màu.**
 
-> `data-testid`: `connection-badge` · `connection-badge-offline` · `connection-badge-connected`.
+> `data-testid`: `connection-badge` · `loading-state` · `loading-state-row` · `empty-state`.
 
 #### 3.9.3 Banner offline
 
 - **Vị trí:** ngay dưới `PanelHeader`, **phía trên** thread.
-- **Nội dung:** "Không kết nối được tới máy chủ Sidekick" + nút "Thử lại" (probe lại ngay) · nút dismiss.
+- **Nội dung:** "Không kết nối được máy chủ. Đang thử lại..." + nút "Thử lại" (probe lại ngay). **Không** tự ẩn — lỗi kết nối là trạng thái kéo dài, không phải toast 5 s.
 - **A11y:** `role="status"` + `aria-live="polite"` · focus ring rõ.
 
-> `data-testid`: `offline-banner` · `offline-retry` · `offline-dismiss`.
+> `data-testid`: `offline-banner` · `offline-banner-retry`.
 
 ---
 

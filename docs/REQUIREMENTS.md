@@ -558,6 +558,7 @@ Acceptance criteria:
 | NFR-REL-02 | Tự retry 1 lần khi lỗi mạng, có backoff; không retry khi lỗi xác thực |
 | NFR-REL-03 | Nếu BFF không chạy → extension hiện thông báo rõ + cho nhập key để chạy direct mode |
 | NFR-REL-04 | Trạng thái kết nối hiển thị trực quan (đang kết nối / đã kết nối / offline) |
+| NFR-REL-05 | Database BFF có backup tự động (pg_dump cron) — phục vụ tái lập eval |
 
 **Chi tiết T-M1-19 (FR-CHAT-14 · FR-UX-08 · NFR-REL-02 · NFR-REL-04):**
 
@@ -565,7 +566,6 @@ Acceptance criteria:
 - **Retry tự động**: `useChat` thử lại **đúng 1 lần** sau backoff 800 ms khi lỗi là `network`/`server`/`unknown` **và** turn chưa được server tạo (`meta` chưa về). **Không** retry `auth` (key sai → retry vô ích) · **không** retry `rate-limit` (phải đợi hết hạn) · **không** retry `provider` (model sai → retry cũng lỗi).
 - **Server báo lỗi thật**: `chatService` suy ra `retryable` từ `errorCode` (`chunk.errorRetryable ?? isRetryableKind(classifyChatError(code))`) — **không** hardcode `true`; forward `retryAfterSeconds` từ provider (đọc header `Retry-After` khi HTTP 429, ghim tối đa 600 s).
 - **Trạng thái kết nối**: `useConnectionStatus` probe `GET <bffUrl>/api/health` (timeout 3 s) → `connecting` / `connected` / `degraded` / `offline`; backoff probe **5 s → 15 s → 30 s**; nghe `navigator.onLine` để báo offline tức thời; badge trong header + banner offline dưới header.
-| NFR-REL-05 | Database BFF có backup tự động (pg_dump cron) — phục vụ tái lập eval |
 
 ### 5.4 Khả dụng & tiếp cận
 
