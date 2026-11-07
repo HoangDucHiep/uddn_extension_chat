@@ -102,14 +102,14 @@ pnpm eval:run                # chạy eval harness
 | Milestone | Trạng thái | Ghi chú |
 |---|---|---|
 | **M0 — Foundation** | ✅ Hoàn thành | 15/15 task · 91 unit test + 2 E2E · tag `v0.1` |
-| **M1 — Parity** | 🚧 Đang làm | 13/25 task (T-M1-01, T-M1-04 ✅ hấp thụ, T-M1-05, T-M1-21, T-M1-22, T-M1-23, T-M1-02, T-M1-24, T-M1-25, T-M1-06 ✅, T-M1-07 ✅, T-M1-08 ✅, T-M1-09 ✅) · 904 unit test + 47 E2E |
+| **M1 — Parity** | 🚧 Đang làm | 14/25 task (T-M1-01, T-M1-04 ✅ hấp thụ, T-M1-05, T-M1-21, T-M1-22, T-M1-23, T-M1-02, T-M1-24, T-M1-25, T-M1-06 ✅, T-M1-07 ✅, T-M1-08 ✅, T-M1-09 ✅, T-M1-10 ✅) · 983 unit test + 52 E2E |
 | **M2 — Advanced & Eval** | ⬜ Chưa bắt đầu | `EVAL_REPORT.md` là deliverable bắt buộc |
 | **M3 — Polish & Deliverable** | ⬜ Chưa bắt đầu | |
 | **M4 — Workflow** | ⬜ Tuỳ chọn | Chỉ sau M3 + đã có eval report |
 
 **Trạng thái docs:** ✅ Requirements · ✅ Design System Brief · ✅ System Design · ✅ Implementation Plan · ✅ Comparison Matrix · ✅ Eval Plan · ✅ Handoff · ✅ Changelog
 
-**Việc tiếp theo:** **T-M1-03** (service worker: mở/toggle panel · context menu · keyboard shortcut) hoặc **T-M1-10** (Regenerate / Edit-resend / Stop / Continue) — theo thứ tự ưu tiên M1.
+**Việc tiếp theo:** **T-M1-03** (service worker: mở/toggle panel · context menu · keyboard shortcut) hoặc **T-M1-11** (nút tóm tắt 1-click + prompt gợi ý theo loại trang) — theo thứ tự ưu tiên M1.
 
 > **Chat CRUD (T-M1-09):** side panel có **drawer quản lý cuộc trò chuyện** (Radix Dialog trượt từ trái) — tạo · đổi tên · xoá (confirm dialog) · ghim · lưu trữ · search theo tên. Chọn conversation → tải lại lịch sử **kèm citations đã lưu**. Backend: `GET/POST /api/conversations` · `GET /api/conversations/:id/messages` · `PATCH/DELETE /api/conversations/:id` (phân trang keyset bằng cursor). **Phạm vi chốt:** ghim ở cấp **conversation** (cột `pinned` đã có sẵn từ M0 → không có migration mới); ghim tin nhắn để task sau. Chi tiết: [`SYSTEM_DESIGN.md`](docs/SYSTEM_DESIGN.md) §7.10.
 
@@ -124,6 +124,8 @@ pnpm eval:run                # chạy eval harness
 > **Hash context + snapshot + cache (T-M1-06):** `request_logs.context_hash` = hash của **context thật đã gửi** (đã cắt ngân sách) — đổi câu hỏi không đổi hash. `context_snapshot` (jsonb) chỉ ghi khi bật `LOG_CONTEXT_SNAPSHOT` (mặc định **TẮT** vì chứa nội dung trang). Extension cache context theo URL+hash trong `chrome.storage.local` (TTL 30 phút) → không trích xuất lại trang đã đọc, fallback về bản cache khi trang lỗi. Chi tiết: [`SYSTEM_DESIGN.md`](docs/SYSTEM_DESIGN.md) §7.3.5.
 
 > **Citation chip + popover (T-M1-08):** server đánh số nguồn **1-based** theo tier (`selection` > `attachment` > `currentTab`) → prompt render `--- Nguồn [1] (...) ---` + chèn `CITATION_INSTRUCTION` **chỉ khi có context**. LLM trả marker `[N]` → server parse, **loại số vượt phạm vi**, emit SSE `citation` (trước `done`) + lưu bảng `citations` (`idx`, `url`, `title`, `snippet`, `tabId`). Extension: remark plugin `citationPlugin` gắn `dataCitationIndex` (allowlist **tường minh**, không wildcard `data*`) → `CitationChip` inline + `CitationPopover` (Radix, xem **đoạn nguồn** + "Mở trang gốc") + `CitationList` tóm tắt nguồn dưới bubble. Chi tiết: [`SYSTEM_DESIGN.md`](docs/SYSTEM_DESIGN.md) §7.9.
+
+> **Chat actions (T-M1-10):** trạng thái turn/variant/path lưu **phía server** trong jsonb có sẵn (`messages.meta`: `turnId`/`variantIndex`/`active`/`parentTurnId`/`aborted` + `conversations.meta.path`) → **không** migration mới, không mất khi reload panel. `operation` trong `POST /api/chat`: `send` · `regenerate` (tạo **biến thể**, không lặp user message) · `continue` (**UPDATE** message cũ `content = partial + text`) · `branch` (edit-resend → cắt `path`, nhánh cũ giữ trong DB ở mục "Phiên bản cũ"). Extension: `MessageActions` ("Tạo lại" · switcher "1/2" · "Tiếp tục" · "Sửa") · `MessageEditBox` · `ScrollToBottomButton` · auto-scroll chỉ khi ở đáy (ngưỡng 80px) · draft tự lưu (debounce 300 ms, TTL 30 ngày) · Enter gửi / Shift+Enter xuống dòng / Esc dừng. Chi tiết: [`SYSTEM_DESIGN.md`](docs/SYSTEM_DESIGN.md) §7.11.
 
 ---
 

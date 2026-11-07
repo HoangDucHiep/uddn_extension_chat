@@ -69,6 +69,21 @@ export interface ChatMessage {
   images?: ChatImage[]
   /** Nguon trich dan cua message (FR-CONTEXT-10 — T-M1-08). */
   citations?: ChatCitation[]
+  /**
+   * Id cua turn chua message nay (T-M1-10).
+   *
+   * User message + cac bien the assistant cua cung 1 luot hoi–dap chia
+   * chung `turnId`.
+   */
+  turnId?: string
+  /** Chi so bien the assistant trong turn (0-based). */
+  variantIndex?: number
+  /** Message nam tren duong di active cua conversation. */
+  active?: boolean
+  /** Id cua turn cha (khi sua & gui lai → tao branch). */
+  parentTurnId?: string
+  /** Assistant bi stop giua chung → co nut "Tiep tuc" (FR-CHAT-07). */
+  aborted?: boolean
 }
 
 export interface ChatState {
@@ -97,6 +112,18 @@ export interface ChatState {
    * KHONG phai context item → khong phu thuoc toggle `contextEnabled`.
    */
   pendingImages: ImageAttachment[]
+  /**
+   * Duong di active cua conversation (T-M1-10 — FR-CHAT-06).
+   *
+   * Danh sach `turnId` theo thu tu. Turn khong nam trong day → nhanh cu.
+   */
+  path: string[]
+  /**
+   * Ban nhap chua gui (FR-CHAT-13 — T-M1-10).
+   *
+   * Persist theo `conversationId` trong `chrome.storage.local`.
+   */
+  draft: string
 
   addMessage: (message: ChatMessage) => void
   appendToMessage: (id: string, delta: string) => void
@@ -147,6 +174,34 @@ export interface ChatState {
   removePendingImage: (id: string) => void
   /** Xoa tat ca anh cho san. */
   clearPendingImages: () => void
+  /**
+   * Nap duong di active + tat ca turn (T-M1-10).
+   *
+   * @param path - Duong di active (danh sach `turnId`).
+   */
+  hydratePath: (path: readonly string[]) => void
+  /**
+   * Thay duong di active (T-M1-10 — khi sua & gui lai cat path).
+   *
+   * @param path - Duong di moi.
+   * @param inactiveTurnIds - Cac turn bi cat khoi path → `active = false`.
+   */
+  setPath: (path: readonly string[], inactiveTurnIds?: readonly string[]) => void
+  /**
+   * Doi bien the active cua 1 turn (T-M1-10 — FR-CHAT-05).
+   *
+   * @param turnId - Id turn.
+   * @param variantIndex - Chi so bien the moi.
+   */
+  activateVariant: (turnId: string, variantIndex: number) => void
+  /**
+   * Danh dau message bi stop giua chung (FR-CHAT-07 — T-M1-10).
+   *
+   * @param id - Id message assistant.
+   */
+  setAborted: (id: string, aborted: boolean) => void
+  /** Nap ban nhap (FR-CHAT-13 — T-M1-10). */
+  setDraft: (draft: string) => void
   reset: () => void
 }
 
@@ -164,6 +219,8 @@ const initialState = {
   contextEnabled: false,
   budget: undefined as ContextBudgetResult | undefined,
   pendingImages: [] as ImageAttachment[],
+  path: [] as string[],
+  draft: '',
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -206,6 +263,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
       conversationId,
       messages,
       isStreaming: false,
+      // Duong di moi → path cu cua conversation truoc khong con dung.
+      path: [],
+      draft: '',
     }),
 
   setStreaming: (isStreaming) => set({ isStreaming }),
@@ -295,6 +355,43 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   clearPendingImages: () => set({ pendingImages: [] }),
 
+  hydratePath: (path) => set({ path: [...path] }),
+
+  setPath: (path, inactiveTurnIds = []) => {
+    const inactive = new Set(inactiveTurnIds)
+    set((state) => ({
+      path: [...path],
+      messages: state.messages.map((message) => {
+        if (message.turnId === undefined) return message
+        if (inactive.has(message.turnId)) {
+          return message.active === false ? message : { ...message, active: false }
+        }
+        return message
+      }),
+    }))
+  },
+
+  activateVariant: (turnId, variantIndex) =>
+    set((state) => ({
+      messages: state.messages.map((message) => {
+        if (message.turnId !== turnId) return message
+        if (message.role === 'user') return message
+        return {
+          ...message,
+          active: message.variantIndex === variantIndex,
+        }
+      }),
+    })),
+
+  setAborted: (id, aborted) =>
+    set((state) => ({
+      messages: state.messages.map((message) =>
+        message.id === id ? { ...message, aborted } : message,
+      ),
+    })),
+
+  setDraft: (draft) => set({ draft }),
+
   reset: () =>
     set((state) => ({
       ...initialState,
@@ -305,5 +402,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       budget: state.budget,
       // Anh cho san thuoc ve luot gui hien tai → xoa khi clear.
       pendingImages: [],
+      // Draft thuoc ve luot gui hien tai → xoa khi clear.
+      draft: '',
     })),
 }))

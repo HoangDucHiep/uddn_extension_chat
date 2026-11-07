@@ -324,7 +324,8 @@ X-Request-Id: <uuid v4>            // idempotency + tracing
 | POST | `/extract/youtube` | `{ url }` | `{ text, title?, excerpt?, truncated, error? }` | `VALIDATION_ERROR`, `CONTEXT_TRANSCRIPT_UNAVAILABLE` |
 | GET | `/conversations` | `?q=&archived=&limit=&cursor=` ✅ | `{ items, nextCursor }` | `VALIDATION_ERROR` |
 | POST | `/conversations` | `{ title? }` ✅ | `201` + `ConversationSummary` | `VALIDATION_ERROR` |
-| GET | `/conversations/:id/messages` | — ✅ | `{ conversation, messages }` (kèm `citations[]` đã lưu) | `VALIDATION_ERROR`, `NOT_FOUND` |
+| GET | `/conversations/:id/messages` | — ✅ | `{ conversation, messages, path, turns }` (kèm `citations[]` đã lưu + `turnId`/`variantIndex`/`active`/`aborted`; `path` = đường đi active, `turns` = turn + biến thể) | `VALIDATION_ERROR`, `NOT_FOUND` |
+| POST | `/conversations/:id/turns/:turnId/activate` | `{ variantIndex }` ✅ | `{ path, turns }` | `VALIDATION_ERROR`, `NOT_FOUND` |
 | PATCH | `/conversations/:id` | `{ title?, pinned?, archived? }` ✅ | `ConversationSummary` | `VALIDATION_ERROR`, `NOT_FOUND` |
 | DELETE | `/conversations/:id` | — ✅ | `204` | `VALIDATION_ERROR`, `NOT_FOUND` |
 | GET | `/skills` | `?scope=builtin\|user` | `Skill[]` | — |
@@ -729,14 +730,16 @@ Các kịch bản E2E còn lại (offline, BFF down, stop, edit-resend, context 
 
 | Tầng | Số test | Vị trí |
 |---|---|---|
-| Unit | **904** — shared 165 · server 291 · extension 448 | `packages/shared/tests/` · `apps/server/tests/` · `apps/extension/tests/` |
-| E2E | **47** | `apps/extension/e2e/` |
+| Unit | **983** — shared 177 · server 312 · extension 494 | `packages/shared/tests/` · `apps/server/tests/` · `apps/extension/tests/` |
+| E2E | **52** | `apps/extension/e2e/` |
 
 > **T-M1-07 bổ sung:** `apps/extension/tests/messageContent.test.tsx` (25) · `tests/messageContentDefer.test.tsx` (2) · `tests/markdownSchema.test.ts` (17) · `e2e/markdown.spec.ts` (4 kịch bản).
 >
 > **T-M1-08 bổ sung:** `packages/shared/tests/citation.test.ts` (12) · `apps/server/tests/citationService.test.ts` (12) · `apps/server/tests/citationStream.test.ts` (5) · `apps/server/tests/contextPrompt.test.ts` (+7) · `apps/extension/tests/citationPlugin.test.ts` (11) · `tests/citationChip.test.tsx` (9) · `tests/messageContentCitation.test.tsx` (9) · `tests/chatStore.test.ts` (+4) · `tests/useChat.test.ts` (+2) · `e2e/citation.spec.ts` (4 kịch bản).
 >
 > **T-M1-09 bổ sung:** `packages/shared/tests/conversationSchema.test.ts` · `apps/server/tests/conversationService.test.ts` (28) · `apps/server/tests/conversationsRoute.test.ts` (13) · `apps/server/tests/helpers/fakeConversationDb.ts` (fake Drizzle DB — **không cần Docker**) · `apps/extension/tests/conversationStore.test.ts` (15) · `apps/extension/tests/conversationClient.test.ts` · `apps/extension/tests/conversationList.test.tsx` · `e2e/conversation.spec.ts` (7 kịch bản).
+>
+> **T-M1-10 bổ sung:** `packages/shared/tests/chatOperation.test.ts` · `apps/server/tests/turnService.test.ts` · `apps/server/tests/chatOperations.test.ts` · `apps/extension/tests/chatTurns.test.ts` · `apps/extension/tests/useChatOperations.test.ts` · `apps/extension/tests/messageActions.test.tsx` · `apps/extension/tests/draftStorage.test.ts` · `e2e/chatActions.spec.ts` (5 kịch bản).
 
 ### 7.2.2 Audit chất lượng test bằng mutation testing (2026-11-04)
 
@@ -1611,6 +1614,131 @@ decodeCursor(cursor)                      →  { pinned, updatedAt, id } | undef
 
 - Drawer dùng token có sẵn: `--surface-overlay` (nền panel) · `--border-default` (viền phải) · `--shadow-3` (đổ bóng) · `--text-primary` / `--text-secondary` / `--text-tertiary`.
 - Animation `sidekick-drawer-in` (translateX + opacity) & `sidekick-fade-in` (overlay) trong `apps/extension/src/sidepanel/index.css`, **tôn trọng `prefers-reduced-motion`** (`animation: none`).
+
+---
+
+### 7.11 Turn / variant / branch — regenerate, edit-resend, stop-continue (FR-CHAT-05/06/07/12/13 + FR-UX-05 — T-M1-10)
+
+> Nguồn sự thật cho hợp đồng: [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.1 (FR-CHAT-05, FR-CHAT-06, FR-CHAT-07, FR-CHAT-12, FR-CHAT-13) + §4.4 (FR-UX-05).
+
+#### 7.11.1 Quyết định thiết kế
+
+| Quyết định | Lý do |
+|---|---|
+| **Lưu trạng thái turn/variant/path phía server** (`messages.meta` jsonb + `conversations.meta.path`) | Panel reload là mất state → biến thể & nhánh phải sống lâu hơn 1 session. `jsonb` **đã có sẵn** từ migration `0000` → **không cần migration mới** |
+| **Turn** = 1 lượt hỏi–đáp (user message + các biến thể assistant) | Khớp trực giác người dùng: "tôi hỏi gì" ↔ "câu trả lời nào" |
+| **`path`** = danh sách `turnId` theo thứ tự = đường đi active | Nhánh cũ vẫn nằm trong DB nhưng không hiện trên đường đi chính |
+| **Biến thể assistant** dùng `variantIndex` (0-based) + cờ `active` | Chuyển qua lại biến thể là đổi cờ, không cần bảng riêng |
+| **`operation`** trong `ChatRequest` thay vì endpoint riêng | Mọi thao tac đều là "1 lượt chat" → dùng chung 1 luồng SSE, 1 code path, 1 fallback chain |
+| **`continue` UPDATE message cũ** (không tạo message mới) | Nội dung dở + phần mới là **một** câu trả lời → tách làm 2 message sẽ vỡ lịch sử |
+| **`CONTINUE_INSTRUCTION`** gộp vào user turn cuối (không tạo user turn mới nếu đã có) | Gemini từ chối 2 user turn liên tiếp |
+
+#### 7.11.2 Mô hình dữ liệu (không cần migration)
+
+`messages.meta` (jsonb):
+
+| Khoá | Kiểu | Ý nghĩa |
+|---|---|---|
+| `turnId` | `string` | Nhóm 1 lượt hỏi–đáp. User message + các assistant variant cùng `turnId` |
+| `variantIndex` | `number` | Biến thể assistant (0-based) trong turn. User message = `0` |
+| `active` | `boolean` | Message nằm trên đường đi hiện tại. Thiếu → coi như `true` (tương thích dữ liệu cũ) |
+| `parentTurnId` | `string?` | Turn cha — dùng cho branch của edit-resend |
+| `aborted` | `boolean?` | Assistant bị stop giữa chừng → hiện nút "Tiếp tục" |
+
+`conversations.meta.path` (jsonb): mảng `turnId` theo thứ tự = đường đi active. Turn không nằm trong `path` = nhánh cũ.
+
+```mermaid
+flowchart TB
+  subgraph conv1["Conversation"]
+    t1["turn-1 · user 'xin chào'"]
+    t1v1["assistant v0 (active)"]
+    t1v2["assistant v1 (inactive)"]
+    t2["turn-2 · user 'sửa lại câu hỏi' parent=turn-1"]
+    t2v1["assistant v0 (active)"]
+  end
+  t1 --> t1v1
+  t1 --> t1v2
+  t1 -.->|"branch"| t2
+  t2 --> t2v1
+```
+
+#### 7.11.3 Contract shared
+
+| Thành phần | Nội dung |
+|---|---|
+| `chatOperationSchema` | `z.enum(['send', 'regenerate', 'continue', 'branch'])` — `optional()` để client cũ không gửi field này vẫn hợp lệ |
+| `chatRequestSchema` | += `operation?` · `assistantMessageId?` (uuid) · `parentTurnId?` |
+| `chatMetaEventSchema` | += `turnId?: string` → client đồng bộ path sau khi server xác nhận turn |
+| `conversationMessageSchema` | += `turnId?` · `variantIndex?` · `active?` · `parentTurnId?` · `aborted?` |
+| `conversationTurnSchema` | `{ turnId, userMessageId?, userContent, parentTurnId?, onPath, variants[] }` |
+| `conversationMessagesResponseSchema` | += `path: string[]` · `turns: ConversationTurn[]` (default `[]` → tương thích dữ liệu cũ) |
+| `activateVariantSchema` | `{ variantIndex: number }` |
+| `API_ROUTES.conversationTurnActivate` | `/api/conversations/:id/turns/:turnId/activate` |
+| `CONTINUE_INSTRUCTION` | `"Tiếp tục câu trả lời trước đó từ đúng chỗ nó bị ngắt. Chỉ viết phần tiếp theo, không lặp lại phần đã có."` |
+
+#### 7.11.4 Server — `services/turnService.ts`
+
+| Hàm | Vai trò |
+|---|---|
+| `normalizeMessages(raw[])` | Gắn `turnId` / `variantIndex` / `active` cho mọi message. Message **cũ** (không có `meta.turnId`) → user bắt đầu turn gốc, assistant gắn vào turn trước |
+| `derivePath(messages[])` | Suy ra đường đi từ thứ tự message — fallback cho conversation tạo trước T-M1-10 |
+| `readConversationPath()` / `rewritePath()` | Đọc/ghi `conversations.meta.path` |
+| `loadNormalizedMessages()` / `loadMessage()` | Query DB → message đã chuẩn hoá |
+| `nextVariantIndex()` / `activeVariantIndex()` | Chỉ số biến thể kế tiếp / đang active (chỉ đếm **assistant**, user message không phải biến thể) |
+| `buildTurns(messages[], path[])` | Gom message → `ConversationTurn[]` (kèm `onPath`) |
+| `patchMessageMeta()` / `patchMessagesMeta()` | Ghi `meta` (merge, không ghi đè key khác) — dùng cho `active` / `aborted` |
+| `updateMessageContent()` | Ghi đè `content` + `meta` — dùng cho `continue` |
+
+#### 7.11.5 Server — `chatService.createChatStream()` theo `operation`
+
+| Operation | Hành vi |
+|---|---|
+| `send` (mặc định) | Tạo `turnId` mới → insert user message (`meta.turnId` / `variantIndex=0` / `active=true`) → `path.push(turnId)` → assistant message `variantIndex=0, active=true` |
+| `regenerate` | **Không** insert user message. Resolve `turnId` từ `assistantMessageId` → assistant message mới `variantIndex = max+1`, `active=true`; các biến thể cũ chuyển `active=false` |
+| `continue` | Resolve assistant message → `meta.turnId`. Provider messages = history + `CONTINUE_INSTRUCTION`. Xong → **UPDATE** message: `content = partial + text`, `meta.aborted = false` |
+| `branch` | Tạo `turnId` mới với `meta.parentTurnId` → insert user message → `path = path.slice(0, indexOf(parentTurnId)) + [newTurnId]` → các turn bị cắt chuyển `active=false` → assistant message thuộc turn mới |
+
+Mọi operation đều **yield `meta` kèm `turnId`** → client đồng bộ path sau mỗi lượt.
+
+#### 7.11.6 Extension — thư viện thuần (`lib/chatTurns.ts`)
+
+| Hàm | Vai trò |
+|---|---|
+| `groupTurns(messages[])` | Gom message → `TurnGroup[]` (user message + variants + active variant) |
+| `activePathMessages(messages[], path[])` | Lọc ra message thuộc đường đi active (user + biến thể active của mỗi turn) |
+| `offPathTurns(messages[], path[])` | Các turn đã bị cắt khỏi path → hiển thị ở mục "Phiên bản cũ" (chỉ đọc) |
+| `applyVariantSwitch(messages[], turnId, variantIndex)` | Đổi cờ `active` trong nhóm biến thể |
+| `variantLabel(variants[], activeVariant)` | Nhãn "2/3" (undefined khi chỉ 1 biến thể) |
+| `branchPath(path[], parentTurnId)` | Cắt đường đi tại turn cha |
+| `buildHistory(messages[], path[])` | Lịch sử gửi lên BFF — chỉ user + biến thể active, bỏ nội dung rỗng |
+
+#### 7.11.7 Extension — store + hook
+
+| Thành phần | Vai trò |
+|---|---|
+| `chatStore.path` | Đường đi active hiện tại |
+| `chatStore.draft` | Bản nháp chưa gửi |
+| `chatStore.hydratePath()` / `setPath()` | Nạp / thay đường đi (`setPath` đánh dấu `active=false` cho turn bị cắt) |
+| `chatStore.activateVariant()` | Đổi biến thể active (local, responsive) |
+| `chatStore.setAborted()` | Đánh dấu message bị stop giữa chừng |
+| `useChat.regenerate(id)` | `operation: 'regenerate'` + `assistantMessageId`; biến thể cũ chuyển `active=false` |
+| `useChat.editAndResend(id, content)` | `operation: 'branch'` + `parentTurnId`; cắt path local **trước** khi gọi API |
+| `useChat.continueAnswer(id)` | `operation: 'continue'` + `assistantMessageId`; token append vào message đang có |
+| `useChat.stop()` | `abortRef.abort()` → `catch` `AbortError` → giữ nội dung dở + `aborted: true` |
+
+#### 7.11.8 Draft (FR-CHAT-13)
+
+- Khoá `chrome.storage.local`: `sidekick.draft.<conversationId>` — mỗi conversation một khoá riêng.
+- Ghi **debounce 300 ms** · TTL **30 ngày** (`DRAFT_TTL_MS`) → draft quá hạn bị xoá khi đọc.
+- Scope `'new'` dùng khi panel mới (chưa có conversation) → bản nháp không mất khi user mới mở panel.
+- `sidekick.activeDraftScope` lưu conversation đang mở → reload panel vẫn khoá đúng bản nháp.
+- Xoá sau khi gửi thành công.
+
+#### 7.11.9 Auto-scroll (FR-UX-05)
+
+- `ChatWorkspace` theo dõi `scrollHeight - scrollTop - clientHeight` → `≤ 80 px` coi như đang ở đáy (`SCROLL_BOTTOM_THRESHOLD`).
+- Chỉ auto-scroll khi đang ở đáy → user đang đọc phần trên **không bị** kéo xuống.
+- Lệch → hiện nút tròn "Cuộn xuống" (`ScrollToBottomButton`), bấm → cuộn về đáy.
 
 ---
 

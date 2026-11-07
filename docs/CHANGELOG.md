@@ -9,6 +9,48 @@
 ## [Unreleased]
 
 ### Added
+- **T-M1-10 — Regenerate / Edit-resend / Stop / Continue / Draft / Auto-scroll (FR-CHAT-05 / FR-CHAT-06 / FR-CHAT-07 / FR-CHAT-12 / FR-CHAT-13 + FR-UX-05)**
+  - `packages/shared/src/schemas/chat.ts` — `chatOperationSchema` (`send` · `regenerate` · `continue` · `branch`) · `chatRequestSchema` += `operation?` · `assistantMessageId?` (uuid) · `parentTurnId?`.
+  - `packages/shared/src/schemas/conversation.ts` — `conversationMessageSchema` += `turnId?` · `variantIndex?` · `active?` · `parentTurnId?` · `aborted?` · `conversationVariantSchema` · `conversationTurnSchema` · `activateVariantSchema` · `activateVariantResponseSchema` · `conversationMessagesResponseSchema` += `path: string[]` + `turns[]`.
+  - `packages/shared/src/events.ts` — `chatMetaEventSchema` += `turnId?` → client đồng bộ turn khi stream.
+  - `packages/shared/src/constants.ts` — `CONTINUE_INSTRUCTION` ("Tiếp tục câu trả lời trước đó từ đúng chỗ nó bị ngắt. Chỉ viết phần tiếp theo, không lặp lại phần đã có.") · `API_ROUTES.conversationTurnActivate`.
+  - `apps/server/src/services/turnService.ts` (mới) — `normalizeMessages()` · `derivePath()` (fallback suy ra từ `createdAt` khi `conversations.meta.path` thiếu → tương thích dữ liệu cũ) · `readConversationPath()` · `rewritePath()` · `loadNormalizedMessages()` · `loadMessage()` · `nextVariantIndex()` · `activeVariantIndex()` · `buildTurns()` · `activeVariantMap()` · `newTurnId()` · `patchMessageMeta()` · `patchMessagesMeta()` · `updateMessageContent()`.
+  - `apps/server/src/services/chatService.ts` — `createChatStream()` xử lý `operation`: `send` (turn mới → insert user → `path.push`) · `regenerate` (**không** insert user message → assistant variant `max+1`, variant cũ `active=false`) · `continue` (UPDATE message cũ: `content = partial + text`, `aborted = false`; provider messages = history + 1 user turn `CONTINUE_INSTRUCTION`) · `branch` (turn mới `parentTurnId` → cắt `path` tại turn cha → các turn bị cắt `active=false`) · luôn `yield` SSE `meta` kèm `turnId` · `buildProviderMessages()` hỗ trợ `extraUserInstruction`.
+  - `apps/server/src/services/citationService.ts` — `clearCitations()` (xoá citation cũ khi continue ghi đè nội dung).
+  - `apps/server/src/services/conversationService.ts` — `getConversationMessages()` trả `messages` (kèm turn fields) + `path` + `turns` · `activateVariant()` đổi variant active trong nhóm.
+  - `apps/server/src/routes/conversations.ts` — route mới `POST /api/conversations/:id/turns/:turnId/activate` (body `{ variantIndex }`).
+  - `apps/extension/src/lib/chatTurns.ts` (mới, thuần) — `groupTurns()` · `activePathMessages()` · `offPathTurns()` · `applyVariantSwitch()` · `variantLabel()` · `branchPath()` · `buildHistory()`.
+  - `apps/extension/src/lib/storage.ts` — draft: `DRAFT_STORAGE_PREFIX` (`sidekick.draft.<scope>`) · `DRAFT_TTL_MS` (30 ngày) · `ACTIVE_SCOPE_STORAGE_KEY` (`sidekick.activeDraftScope`) · `draftKey()` · `readDraft()` · `writeDraft()` · `clearDraft()` · `readActiveDraftScope()` · `writeActiveDraftScope()`.
+  - `apps/extension/src/lib/conversationClient.ts` — `activateVariant(conversationId, turnId, variantIndex)`.
+  - `apps/extension/src/sidepanel/store/chatStore.ts` — `ChatMessage` += `turnId?` · `variantIndex?` · `active?` · `parentTurnId?` · `aborted?` · state += `path: string[]` · `draft: string` · actions `hydratePath()` · `setPath()` · `activateVariant()` · `setAborted()` · `setDraft()`.
+  - `apps/extension/src/sidepanel/hooks/useChat.ts` — dispatcher `streamTurn()` hỗ trợ `send` · `regenerate` · `editAndResend` · `continueAnswer` · `stop` · `activateVariant` · `setConversationPath`.
+  - `apps/extension/src/sidepanel/components/chat/MessageActions.tsx` (mới) — assistant: "Tạo lại" (`RefreshCw`) · switcher biến thể "1/2" (dropdown khi turn có >1 variant) · "Tiếp tục" (khi `aborted`) · user: "Sửa" (`Pencil`).
+  - `apps/extension/src/sidepanel/components/chat/MessageEditBox.tsx` (mới) — textarea inline + "Gửi lại" / "Hủy"; Enter gửi, Shift+Enter xuống dòng, Esc hủy.
+  - `apps/extension/src/sidepanel/components/chat/ScrollToBottomButton.tsx` (mới) — nút nổi "Cuộn xuống" (FR-UX-05), `aria-label` tiếng Việt.
+  - `apps/extension/src/sidepanel/components/MessageBubble.tsx` — nối `MessageActions` + `MessageEditBox`.
+  - `apps/extension/src/sidepanel/ChatWorkspace.tsx` — render theo **đường đi active** + mục "Phiên bản cũ" (collapsible) · auto-scroll chỉ khi đang ở đáy (ngưỡng 80px) + nút "Cuộn xuống" · tự lưu draft (debounce 300ms) + khôi phục theo scope · `Esc` ưu tiên dừng streaming.
+  - **Test** — `packages/shared/tests/chatOperation.test.ts` (mới) · `apps/server/tests/turnService.test.ts` (mới) · `apps/server/tests/chatOperations.test.ts` (mới) · `apps/extension/tests/chatTurns.test.ts` (mới) · `apps/extension/tests/useChatOperations.test.ts` (mới) · `apps/extension/tests/messageActions.test.tsx` (mới) · `apps/extension/tests/draftStorage.test.ts` (mới) · `apps/extension/e2e/chatActions.spec.ts` (mới, 5 kịch bản).
+    - **Số test toàn repo:** 904 → **983 unit** (shared 177 · server 312 · extension 494) + 47 → **52 E2E**.
+    - **Mutation spot-check:** 5/5 mutation bị bắt — `nextVariantIndex()` đếm cả user message · `activePathMessages()` trả mọi biến thể · `continue` không gép nội dung dở · `branchPath()` không cắt path · `readDraft()` bỏ TTL 30 ngày.
+    - **Migration:** **không** có migration mới — dùng sẵn `messages.meta` (jsonb) + `conversations.meta` (jsonb).
+
+### Changed
+- `docs/REQUIREMENTS.md` — FR-CHAT-05/06/07/12/13 + FR-UX-05 ghi "đã implement (T-M1-10)".
+- `docs/SYSTEM_DESIGN.md` — §4.1 (bảng endpoint + request shape) + §7.11 mới "Turn / variant / branch (T-M1-10)".
+- `docs/DESIGN_SYSTEM_BRIEF.md` — §3.3 (+`MessageActions` · `MessageEditBox` · `ScrollToBottomButton` + a11y).
+- `docs/IMPLEMENTATION_PLAN.md` — task card T-M1-10 ✅ + §3.1l kết quả verify.
+- `docs/COMPARISON_MATRIX.md` — §E checklist "Stop / Regenerate / Edit-resend" → ✅ T-M1-10.
+- `docs/HANDOFF.md` · `AGENTS.md` §6 (M1: 13/25 → **14/25**) + mục tóm tắt T-M1-10.
+
+### Fixed
+- `apps/extension/src/lib/storage.ts` — draft giữ được sau khi reload panel (scope active lưu ở `sidekick.activeDraftScope`, fallback scope `new`).
+
+### Docs
+- `REQUIREMENTS.md` §4.2 · `SYSTEM_DESIGN.md` §4.1 + §7.11 · `DESIGN_SYSTEM_BRIEF.md` §3.3 · `IMPLEMENTATION_PLAN.md` · `COMPARISON_MATRIX.md` §E · `HANDOFF.md` · `AGENTS.md` §6.
+
+---
+
+### Added
 - **T-M1-09 — Chat CRUD: tạo / đổi tên / xoá / ghim / lưu trữ / search (FR-CHAT-08 / FR-CHAT-09 / FR-CHAT-11)**
   - `packages/shared/src/schemas/conversation.ts` (mới) — `conversationSummarySchema` (id · title · pinned · archived · createdAt · updatedAt · messageCount) · `conversationListResponseSchema` (`items` + `nextCursor`) · `updateConversationSchema` (`{ title?, pinned?, archived? }` · refine "ít nhất 1 trường") · `conversationCitationSchema` · `conversationMessageSchema` (kèm `provider` / `model` / `tokensIn` / `tokensOut` + `citations[]`) · `conversationMessagesResponseSchema`.
   - `packages/shared/src/schemas/chat.ts` — `conversationListQuerySchema` **+`archived`** (transform `true`/`'true'` → boolean) để tách nhóm "Đã lưu trữ".

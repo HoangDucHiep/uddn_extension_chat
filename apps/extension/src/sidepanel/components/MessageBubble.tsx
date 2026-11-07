@@ -2,11 +2,30 @@ import { AlertCircle, Copy, Check } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { CitationList } from './chat/CitationList'
+import { MessageActions } from './chat/MessageActions'
 import { MessageContent } from './chat/MessageContent'
+import { MessageEditBox } from './chat/MessageEditBox'
+import type { TurnMessage } from '@/lib/chatTurns'
 import type { ChatMessage } from '../store/chatStore'
 
 export interface MessageBubbleProps {
   message: ChatMessage
+  /** Cac bien the assistant cua turn (T-M1-10 — FR-CHAT-05). */
+  variants?: readonly TurnMessage[]
+  /** Bien the dang active cua turn (T-M1-10 — FR-CHAT-05). */
+  activeVariant?: TurnMessage | undefined
+  /** Handler sinh lai cau tra loi (FR-CHAT-05). */
+  onRegenerate?: (messageId: string) => void
+  /** Handler sua tin nhan user (FR-CHAT-06). */
+  onEdit?: (messageId: string) => void
+  /** Handler xac nhan sua & gui lai (FR-CHAT-06). */
+  onEditSubmit?: (messageId: string, content: string) => void
+  /** Handler tiep tuc cau tra loi da bi stop (FR-CHAT-07). */
+  onContinue?: (messageId: string) => void
+  /** Handler chuyen bien the (FR-CHAT-05). */
+  onSelectVariant?: (turnId: string, variantIndex: number) => void
+  /** Dang stream → an thao tac phu thuoc trang thai. */
+  isStreaming?: boolean
 }
 
 /**
@@ -15,8 +34,19 @@ export interface MessageBubbleProps {
  * User message → text thuan (khong parse Markdown: an toan + nhanh).
  * Assistant message → render Markdown (FR-CHAT-02 — T-M1-07).
  */
-export function MessageBubble({ message }: MessageBubbleProps) {
+export function MessageBubble({
+  message,
+  variants = [],
+  activeVariant,
+  onRegenerate,
+  onEdit,
+  onEditSubmit,
+  onContinue,
+  onSelectVariant,
+  isStreaming = false,
+}: MessageBubbleProps) {
   const [copied, setCopied] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
   const isUser = message.role === 'user'
 
   const handleCopy = async (): Promise<void> => {
@@ -79,7 +109,19 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           </ul>
         ) : null}
 
-        {message.content.length > 0 ? (
+        {isUser && isEditing && onEditSubmit !== undefined ? (
+          <MessageEditBox
+            initialContent={message.content}
+            isBusy={isStreaming}
+            onSubmit={(content) => {
+              setIsEditing(false)
+              onEditSubmit(message.id, content)
+            }}
+            onCancel={() => {
+              setIsEditing(false)
+            }}
+          />
+        ) : message.content.length > 0 ? (
           isUser ? (
             <p className="whitespace-pre-wrap break-words">{message.content}</p>
           ) : (
@@ -128,6 +170,27 @@ export function MessageBubble({ message }: MessageBubbleProps) {
               </span>
             ) : null}
           </div>
+        ) : null}
+
+        {/* Thao tac tren message (T-M1-10): regenerate / edit / continue / variant. */}
+        {!isEditing ? (
+          <MessageActions
+            message={message}
+            variants={variants}
+            activeVariant={activeVariant}
+            isStreaming={isStreaming}
+            {...(onRegenerate !== undefined ? { onRegenerate } : {})}
+            {...(onEdit !== undefined
+              ? {
+                  onEdit: (messageId: string) => {
+                    setIsEditing(true)
+                    onEdit(messageId)
+                  },
+                }
+              : {})}
+            {...(onContinue !== undefined ? { onContinue } : {})}
+            {...(onSelectVariant !== undefined ? { onSelectVariant } : {})}
+          />
         ) : null}
 
         {/* Dong tom tat nguon trich dan (FR-CONTEXT-10 — T-M1-08). */}

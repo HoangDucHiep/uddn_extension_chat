@@ -12,6 +12,7 @@
  * Docs: docs/SYSTEM_DESIGN.md §7.9
  */
 
+import { eq } from 'drizzle-orm'
 import { parseCitationMarkers } from '@sidekick/shared'
 import type { Database } from '../db/index.js'
 import { citations as citationsTable } from '../db/schema.js'
@@ -82,6 +83,24 @@ export function buildSnippet(source: ContextItem): string {
 
   if (base.length <= MAX_LENGTH) return base
   return `${base.slice(0, MAX_LENGTH).trimEnd()}…`
+}
+
+/**
+ * Xoa cac citation cua 1 message (dung cho `continue` — viet lai noi dung
+ * thi citation cu cua phan bi stop phai bi thay the).
+ *
+ * Khong throw — loi ghi DB khong duoc lam mat luong chat.
+ *
+ * @param db - Database client.
+ * @param messageId - ID cua message assistant.
+ */
+export async function clearCitations(db: Database, messageId: string): Promise<void> {
+  try {
+    await db.delete(citationsTable).where(eq(citationsTable.messageId, messageId))
+  } catch {
+    // Xoa that bai → citation cu van hien thi (khong hong luong chat).
+    console.warn('[citationService] khong xoa duoc citations cu')
+  }
 }
 
 /**

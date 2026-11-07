@@ -178,7 +178,7 @@ Dùng làm acceptance checklist cho M1.
 - [ ] Nút tóm tắt 1-click — ⬜ T-M1-11
 - [ ] Prompt gợi ý theo loại trang — ⬜ T-M1-11
 - [ ] Nhiều conversation: tạo / đổi tên / xoá / ghim — ✅ T-M1-09 (drawer `ConversationList` (Radix Dialog trượt từ trái) · tạo / đổi tên / xoá (có confirm dialog) / ghim / lưu trữ / search theo tên · **phạm vi: ghim ở cấp conversation**, ghim tin nhắn để task sau)
-- [ ] Stop / Regenerate / Edit-resend — ⬜ T-M1-10
+- [ ] Stop / Regenerate / Edit-resend — ✅ T-M1-10 (regenerate tạo **biến thể** (switcher "1/2") lưu phía server `messages.meta` → không mất khi reload · edit-resend tạo **branch** (nhánh cũ giữ trong DB, hiển thị ở "Phiên bản cũ") · stop giữ nội dung dở + nút "Tiếp tục" (continue UPDATE message cũ) · Enter gửi / Shift+Enter xuống dòng / Esc dừng · tự lưu draft · auto-scroll chỉ khi ở đáy + nút "Cuộn xuống")
 - [ ] Export conversation (Markdown / JSON) — ⬜ T-M1-13
 - [ ] Skills `/` + tạo/sửa/xoá skill + library có sẵn + trang duyệt skill library — ⬜ T-M2-04/06/21
 - [ ] Onboarding lần đầu 3 bước — ✅ T-M1-25 (bước 1 giải thích quyền · bước 2 chọn provider + nhập API key (BYOK K2) hoặc dùng Ollama không cần key · bước 3 thử câu hỏi bằng SSE thật · skippable ở mọi bước · mở lại được từ nút "Hướng dẫn" trong header)

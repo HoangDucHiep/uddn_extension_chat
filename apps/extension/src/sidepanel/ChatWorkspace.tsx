@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import type { ConversationMessage } from '@sidekick/shared'
 import { MessageBubble } from './components/MessageBubble'
@@ -10,6 +10,7 @@ import { ContextBudget } from './components/context/ContextBudget'
 import { MentionPopover } from './components/context/MentionPopover'
 import { AttachmentTray } from './components/composer/AttachmentTray'
 import { ConversationList } from './components/chat/ConversationList'
+import { ScrollToBottomButton } from './components/chat/ScrollToBottomButton'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { useChat } from './hooks/useChat'
 import { useMention } from './hooks/useMention'
@@ -18,7 +19,19 @@ import { useTabs } from './hooks/useTabs'
 import { useImageAttachments } from './hooks/useImageAttachments'
 import { useChatStore, type ChatMessage } from './store/chatStore'
 import { useConversationStore } from './store/conversationStore'
-import { getConversationMessages } from '@/lib/conversationClient'
+import {
+  activateVariant as activateVariantRequest,
+  getConversationMessages,
+} from '@/lib/conversationClient'
+import {
+  clearDraft,
+  DRAFT_SCOPE_NEW,
+  readActiveDraftScope,
+  readDraft,
+  writeActiveDraftScope,
+  writeDraft,
+} from '@/lib/storage'
+import { activePathMessages, groupTurns, offPathTurns } from '@/lib/chatTurns'
 import type { OpenTab } from '@/lib/tabList'
 
 /**
@@ -34,6 +47,13 @@ export interface ChatWorkspaceProps {
   onOpenOnboarding: () => void
 }
 
+/**
+ * Ngan cach tuyet doi de auto-scroll (px).
+ *
+ * Thread duoi `SCROLL_BOTTOM_THRESHOLD` px → coi nhu dang o day → auto-scroll.
+ */
+const SCROLL_BOTTOM_THRESHOLD = 80
+
 export function ChatWorkspace({ onOpenOnboarding }: ChatWorkspaceProps) {
   const {
     messages,
@@ -46,6 +66,7 @@ export function ChatWorkspace({ onOpenOnboarding }: ChatWorkspaceProps) {
     attachedItems,
     contextEnabled,
     budget,
+    path,
     attachCurrentTab,
     attachTab,
     attachSelection,
@@ -55,10 +76,16 @@ export function ChatWorkspace({ onOpenOnboarding }: ChatWorkspaceProps) {
     send,
     stop,
     clear,
+    regenerate,
+    editAndResend,
+    continueAnswer,
+    setConversationPath,
+    activateVariant,
   } = useChat()
   const [input, setInput] = useState('')
   const [isAttaching, setIsAttaching] = useState(false)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+  const [isAtBottom, setIsAtBottom] = useState(true)
   const threadRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -80,18 +107,99 @@ export function ChatWorkspace({ onOpenOnboarding }: ChatWorkspaceProps) {
     },
   })
 
-  // Tu cuon xuong khi co tin nhan moi.
+  // --- FR-UX-05: chi auto-scroll khi user dang o day ---
+  const handleScroll = useCallback(() => {
+    const node = threadRef.current
+    if (node === null) return
+    const distance = node.scrollHeight - node.scrollTop - node.clientHeight
+    setIsAtBottom(distance <= SCROLL_BOTTOM_THRESHOLD)
+  }, [])
+
   useEffect(() => {
     const node = threadRef.current
-    if (node) {
-      node.scrollTop = node.scrollHeight
+    if (node === null) return
+    // User dang doc phan tren → khong cuon ep.
+    if (!isAtBottom) return
+    node.scrollTop = node.scrollHeight
+  }, [messages, isAtBottom])
+
+  const scrollToBottom = useCallback(() => {
+    const node = threadRef.current
+    if (node === null) return
+    node.scrollTop = node.scrollHeight
+    setIsAtBottom(true)
+  }, [])
+
+  // --- FR-CHAT-13: tu luu ban nhap theo conversation ---
+  const conversationId = useChatStore((state) => state.conversationId)
+  const draft = useChatStore((state) => state.draft)
+  const setDraft = useChatStore((state) => state.setDraft)
+
+  /**
+   * Khoa luu draft theo conversation.
+   *
+   * Chua co conversation (panel moi, user chua chat) → dung khoa `'new'`.
+   * Khi user tao conversation that, ban nhap do van con tren textarea.
+   */
+  const [draftScope, setDraftScope] = useState(DRAFT_SCOPE_NEW)
+
+  // Doc scope dang active (conversation dang mo) — khoi phuc sau reload.
+  useEffect(() => {
+    let cancelled = false
+    void readActiveDraftScope().then((scope) => {
+      if (cancelled) return
+      setDraftScope(scope)
+    })
+    return () => {
+      cancelled = true
     }
-  }, [messages])
+  }, [])
+
+  // Khi server xac nhan conversation → luu scope de reload van dung draft.
+  useEffect(() => {
+    if (conversationId === undefined) return
+    setDraftScope(conversationId)
+    void writeActiveDraftScope(conversationId)
+  }, [conversationId])
+
+  // Khoi phuc draft khi doi conversation.
+  useEffect(() => {
+    let cancelled = false
+    void readDraft(draftScope).then((stored) => {
+      if (cancelled) return
+      setDraft(stored ?? '')
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [draftScope, setDraft])
+
+  // Luu draft (debounce 300ms) khi noi dung thay doi.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void writeDraft(draftScope, draft)
+    }, 300)
+    return () => {
+      clearTimeout(timer)
+    }
+  }, [draftScope, draft])
+
+  // Dong bo `input` <-> draft khi draft thay doi tu ben ngoai (khoi phuc).
+  useEffect(() => {
+    setInput(draft)
+  }, [draft])
 
   const handleSend = (): void => {
     if (input.trim().length === 0) return
     void send(input)
     setInput('')
+    setDraft('')
+    // Xoa ban nhap cua ca conversation hien tai va cua scope `'new'`
+    // (truong hop chua tao conversation).
+    void clearDraft(draftScope)
+    if (draftScope !== DRAFT_SCOPE_NEW) {
+      void clearDraft(DRAFT_SCOPE_NEW)
+    }
   }
 
   const handleAddCurrentTab = (): void => {
@@ -175,6 +283,8 @@ export function ChatWorkspace({ onOpenOnboarding }: ChatWorkspaceProps) {
     try {
       const response = await getConversationMessages(id)
       hydrateConversation(id, response.messages.map(toChatMessage))
+      // Nap duong di active + bien the (T-M1-10).
+      setConversationPath(response.path ?? [])
     } catch {
       toast.error('Không tải được lịch sử cuộc trò chuyện')
     }
@@ -192,7 +302,52 @@ export function ChatWorkspace({ onOpenOnboarding }: ChatWorkspaceProps) {
   const handleCreateConversation = (id: string): void => {
     hydrateConversation(id, [])
     setActiveConversationId(id, 'Cuộc trò chuyện mới')
+    setConversationPath([])
     setIsDrawerOpen(false)
+  }
+
+  /**
+   * Chuyen bien the active cua 1 turn (FR-CHAT-05 — T-M1-10).
+   *
+   * Update local ngay (responsive) → dong bo server sau.
+   *
+   * @param turnId - Id turn.
+   * @param variantIndex - Chi so bien the moi.
+   */
+  const handleSelectVariant = (turnId: string, variantIndex: number): void => {
+    activateVariant(turnId, variantIndex)
+    if (conversationId === undefined) return
+    void activateVariantRequest(conversationId, turnId, variantIndex).catch(() => {
+      toast.error('Không chuyển được biến thể câu trả lời')
+    })
+  }
+
+  // --- Render theo duong di active (T-M1-10) ---
+  const visibleMessages = useMemo(
+    () => activePathMessages(messages, path),
+    [messages, path],
+  )
+
+  const turnGroups = useMemo(() => groupTurns(messages), [messages])
+  const turnById = useMemo(() => {
+    const map = new Map<string, (typeof turnGroups)[number]>()
+    for (const group of turnGroups) {
+      map.set(group.turnId, group)
+    }
+    return map
+  }, [turnGroups])
+
+  const offPath = useMemo(() => offPathTurns(messages, path), [messages, path])
+
+  /**
+   * Lay nhom bien the cua 1 turn (dung cho switcher bien the).
+   *
+   * @param turnId - Id turn.
+   */
+  const variantsOf = (turnId: string | undefined): readonly ChatMessage[] => {
+    if (turnId === undefined) return []
+    const group = turnById.get(turnId)
+    return group?.variants ?? []
   }
 
   return (
@@ -209,25 +364,78 @@ export function ChatWorkspace({ onOpenOnboarding }: ChatWorkspaceProps) {
         }}
       />
 
-      <div
-        ref={threadRef}
-        className="flex-1 space-y-3 overflow-y-auto px-[var(--space-3)] py-[var(--space-3)]"
-        data-testid="message-list"
-      >
-        {messages.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
-            <p className="text-[length:var(--font-size-lg)] font-medium text-[var(--text-primary)]">
-              Chao ban!
-            </p>
-            <p className="max-w-[280px] text-[length:var(--font-size-sm)] text-[var(--text-secondary)]">
-              Ban co the hoi bat ky cau hoi nao. Neu muon Sidekick AI dung noi dung
-              trang dang xem, hay bam &quot;Them trang nay&quot; hoac go &quot;@&quot; de
-              dinh kem tab khac.
-            </p>
-          </div>
-        ) : (
-          messages.map((message) => <MessageBubble key={message.id} message={message} />)
-        )}
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        <div
+          ref={threadRef}
+          onScroll={handleScroll}
+          className="flex-1 space-y-3 overflow-y-auto px-[var(--space-3)] py-[var(--space-3)]"
+          data-testid="message-list"
+        >
+          {visibleMessages.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
+              <p className="text-[length:var(--font-size-lg)] font-medium text-[var(--text-primary)]">
+                Chao ban!
+              </p>
+              <p className="max-w-[280px] text-[length:var(--font-size-sm)] text-[var(--text-secondary)]">
+                Ban co the hoi bat ky cau hoi nao. Neu muon Sidekick AI dung noi dung
+                trang dang xem, hay bam &quot;Them trang nay&quot; hoac go &quot;@&quot; de
+                dinh kem tab khac.
+              </p>
+            </div>
+          ) : (
+            visibleMessages.map((message) => (
+              <MessageBubble
+                key={message.id}
+                message={message}
+                variants={variantsOf(message.turnId)}
+                activeVariant={
+                  message.turnId !== undefined
+                    ? turnById.get(message.turnId)?.activeVariant
+                    : undefined
+                }
+                isStreaming={isStreaming}
+                onRegenerate={(messageId) => {
+                  void regenerate(messageId)
+                }}
+                onEdit={() => {
+                  // Chi can mo hop sua — noi dung submit xu ly trong bubble.
+                }}
+                onEditSubmit={(messageId, content) => {
+                  void editAndResend(messageId, content)
+                }}
+                onContinue={(messageId) => {
+                  void continueAnswer(messageId)
+                }}
+                onSelectVariant={handleSelectVariant}
+              />
+            ))
+          )}
+
+          {/* Nhanh cu (turn da bi cat khoi duong di) — chi doc (T-M1-10). */}
+          {offPath.length > 0 ? (
+            <details
+              className="rounded-[var(--radius-md)] border border-[var(--border-default)] p-[var(--space-2)]"
+              data-testid="off-path-turns"
+            >
+              <summary className="cursor-pointer text-[length:var(--font-size-sm)] text-[var(--text-secondary)]">
+                Phien ban cu ({offPath.length})
+              </summary>
+              <ul className="mt-2 space-y-2">
+                {offPath.map((group) => (
+                  <li
+                    key={group.turnId}
+                    className="text-[length:var(--font-size-sm)] text-[var(--text-tertiary)]"
+                  >
+                    {group.userContent}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          ) : null}
+        </div>
+
+        {/* FR-UX-05: nut "Cuon xuong" khi thread khong o day. */}
+        {!isAtBottom ? <ScrollToBottomButton onScrollToBottom={scrollToBottom} /> : null}
       </div>
 
       {contextError !== undefined && (
@@ -254,13 +462,23 @@ export function ChatWorkspace({ onOpenOnboarding }: ChatWorkspaceProps) {
 
       <Composer
         value={input}
-        onChange={setInput}
+        onChange={(value) => {
+          setInput(value)
+          setDraft(value)
+        }}
         onSend={handleSend}
         onStop={stop}
         isStreaming={isStreaming}
         mentionPopover={mentionPopover}
         onCursorChange={mention.sync}
-        onEscape={mention.close}
+        onEscape={() => {
+          // FR-CHAT-12: Esc dung stream truoc, dong popover `@` sau.
+          if (isStreaming) {
+            stop()
+            return
+          }
+          mention.close()
+        }}
         inputRef={inputRef}
         onImagesSelected={(files) => {
           void imageAttachments.addFiles(files)
@@ -305,6 +523,11 @@ function toChatMessage(message: ConversationMessage): ChatMessage {
     ...(message.model !== undefined ? { model: message.model } : {}),
     ...(message.tokensIn !== undefined ? { tokensIn: message.tokensIn } : {}),
     ...(message.tokensOut !== undefined ? { tokensOut: message.tokensOut } : {}),
+    ...(message.turnId !== undefined ? { turnId: message.turnId } : {}),
+    ...(message.variantIndex !== undefined ? { variantIndex: message.variantIndex } : {}),
+    ...(message.active !== undefined ? { active: message.active } : {}),
+    ...(message.parentTurnId !== undefined ? { parentTurnId: message.parentTurnId } : {}),
+    ...(message.aborted !== undefined ? { aborted: message.aborted } : {}),
     ...(message.citations.length > 0
       ? {
           citations: message.citations.map((citation) => ({

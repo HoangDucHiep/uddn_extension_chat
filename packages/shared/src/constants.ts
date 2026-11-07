@@ -131,6 +131,8 @@ export const API_ROUTES = {
   conversations: `${API_BASE_PATH}/conversations`,
   /** Lich su hoi thoai cua 1 conversation — template, thay `:id`. */
   conversationMessages: `${API_BASE_PATH}/conversations/:id/messages`,
+  /** Doi bien the active cua 1 turn — template, thay `:id` va `:turnId`. */
+  conversationTurnActivate: `${API_BASE_PATH}/conversations/:id/turns/:turnId/activate`,
   providers: `${API_BASE_PATH}/providers`,
   /** API key BYOK (K2) — GET/POST/DELETE + test. */
   providerKeys: `${API_BASE_PATH}/providers/keys`,
@@ -152,3 +154,13 @@ export type OnboardingStep = (typeof ONBOARDING_STEPS)[number]
 export const DEFAULT_SYSTEM_PROMPT =
   'Ban la Sidekick AI, tro ly ao trong sidebar cua trinh duyet. Tra loi ngan gon, dung nham hinh, ' +
   'va uu tien thong tin mau dich chinh xac.'
+
+/**
+ * Chi dan them cho provider khi tiep tuc cau tra loi da bi stop (FR-CHAT-07).
+ *
+ * Client gui `operation: 'continue'` → server append turn nay sau phan
+ * cau tra loi da ngat de model chi viet phan con thieu.
+ */
+export const CONTINUE_INSTRUCTION =
+  'Tiep tuc cau tra loi truoc do tu dung cho no bi ngat. Chi viet phan tiep theo, ' +
+  'khong lap lai phan da co.'

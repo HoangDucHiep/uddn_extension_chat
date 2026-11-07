@@ -24,14 +24,40 @@
 | Hạng mục | Trạng thái |
 |---|---|
 | Docs | ✅ Đầy đủ 9 file (`docs/`) + `AGENTS.md` ở root |
-| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 + T-M1-05 + T-M1-02 + T-M1-24 + T-M1-25 + T-M1-06 + T-M1-07 + T-M1-08 + T-M1-09 xong** — 4 workspace, 904 unit test + 47 E2E |
+| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 + T-M1-05 + T-M1-02 + T-M1-24 + T-M1-25 + T-M1-06 + T-M1-07 + T-M1-08 + T-M1-09 + T-M1-10 xong** — 4 workspace, 983 unit test + 52 E2E |
 | Git | ✅ Đã init (`main`) · tag `v0.1` đánh dấu M0 |
-| Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **13/25 task**) |
-| Task tiếp theo | **T-M1-03** (service worker: mở/toggle panel · context menu · keyboard shortcut) hoặc **T-M1-10** (Regenerate / Edit-resend / Stop / Continue) — theo thứ tự ưu tiên M1 |
+| Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **14/25 task**) |
+| Task tiếp theo | **T-M1-03** (service worker: mở/toggle panel · context menu · keyboard shortcut) hoặc **T-M1-11** (nút tóm tắt 1-click + prompt gợi ý theo loại trang) — theo thứ tự ưu tiên M1 |
 
 ### Đang làm dở
 
-_(Không có — T-M1-09 chat CRUD đã commit, task kế tiếp T-M1-03 / T-M1-10)_
+_(Không có — T-M1-10 chat actions đã xong, task kế tiếp T-M1-03 / T-M1-11)_
+
+### Việc đã xong gần đây (T-M1-10 — Regenerate / Edit-resend / Stop / Continue / Draft / Scroll)
+
+- **T-M1-10 (FR-CHAT-05 / FR-CHAT-06 / FR-CHAT-07 / FR-CHAT-12 / FR-CHAT-13 + FR-UX-05)** — chat giờ có đầy đủ nhóm thao tác trên tin nhắn: **"Tạo lại"** tạo *biến thể* (switcher "1/2") · **"Sửa"** trên tin nhắn user → gửi lại tạo **branch** (nhánh cũ giữ trong DB, hiển thị ở mục "Phiên bản cũ") · **"Dừng"** giữ nội dung dở + hiện nút **"Tiếp tục"** (continue ghi đè message cũ) · **Enter** gửi / **Shift+Enter** xuống dòng / **Esc** dừng streaming · **tự lưu draft** · **auto-scroll** chỉ khi đang ở đáy + nút nổi "Cuộn xuống".
+  - **Mô hình dữ liệu (lưu phía server, KHÔNG migration mới)** — `messages.meta` jsonb: `turnId` · `variantIndex` · `active` · `parentTurnId` · `aborted`; `conversations.meta.path` jsonb: mảng `turnId` = **đường đi hoạt động**. Turn không nằm trong `path` = nhánh cũ (vẫn giữ trong DB).
+  - **Contract** — `schemas/chat.ts` (+`chatOperationSchema` = `send`·`regenerate`·`continue`·`branch` · `operation?` · `assistantMessageId?` · `parentTurnId?`) · `schemas/conversation.ts` (+`turnId`/`variantIndex`/`active`/`parentTurnId`/`aborted` vào message · `conversationTurnSchema` · `conversationVariantSchema` · `activateVariantSchema` · response += `path[]` + `turns[]`) · `events.ts` (+`turnId` vào `chatMetaEventSchema`) · `constants.ts` (+`CONTINUE_INSTRUCTION` · `API_ROUTES.conversationTurnActivate`).
+  - **Server** — `services/turnService.ts` (mới): `normalizeMessages()` · `derivePath()` (fallback suy ra từ `createdAt` khi `path` thiếu → tương thích dữ liệu cũ) · `readConversationPath()` · `rewritePath()` · `loadNormalizedMessages()` · `nextVariantIndex()` · `activeVariantIndex()` · `buildTurns()` · `activeVariantMap()` · `patchMessageMeta()` · `updateMessageContent()`. `chatService.ts`: `createChatStream()` xử lý 4 operation (`regenerate` **không** insert user message; `continue` UPDATE message cũ `content = partial + text`; `branch` cắt `path` tại turn cha) · `buildProviderMessages()` hỗ trợ `extraUserInstruction`. `conversationService.ts` trả `path` + `turns` + `activateVariant()`. `routes/conversations.ts` + route `POST /api/conversations/:id/turns/:turnId/activate`.
+  - **Extension** — `lib/chatTurns.ts` (mới, thuần) · `lib/storage.ts` (+draft: `sidekick.draft.<scope>` · TTL 30 ngày · `sidekick.activeDraftScope`) · `lib/conversationClient.ts` (+`activateVariant`) · `store/chatStore.ts` (+`turnId`/`variantIndex`/`active`/`parentTurnId`/`aborted` + `path` + `draft` + actions) · `hooks/useChat.ts` (dispatcher `streamTurn()`) · `chat/MessageActions.tsx` (mới) · `chat/MessageEditBox.tsx` (mới) · `chat/ScrollToBottomButton.tsx` (mới) · `MessageBubble.tsx` · `ChatWorkspace.tsx` (render theo active path + "Phiên bản cũ" · auto-scroll ngưỡng 80px · draft debounce 300 ms).
+  - **Verify** — typecheck ✅ · lint ✅ · test ✅ (**983 unit** = shared 177 · server 312 · extension 494) · build ✅ · db:migrate ✅ (**không** có migration mới — `messages.meta` + `conversations.meta` jsonb đã có sẵn) · **E2E 52/52** ✅ (+5 kịch bản `e2e/chatActions.spec.ts`) · **mutation spot-check 5/5 bị bắt**.
+- Bằng chứng đầy đủ: `docs/IMPLEMENTATION_PLAN.md` §3.1l · `docs/SYSTEM_DESIGN.md` §7.11.
+
+### Quyết định kỹ thuật mới (T-M1-10)
+
+| Quyết định | Lý do |
+|---|---|
+| Lưu trạng thái turn/variant/path **phía server** (`messages.meta` + `conversations.meta.path`) | Reload panel → SW bị kill → state client mất; server là nguồn chân lý, đồng thời **không cần migration mới** (jsonb đã có sẵn từ `0000`) |
+| `variantIndex` **0-based**, user message = `0`, assistant biến thể đầu = `0` | `nextVariantIndex()` lọc `role !== 'user'` → biến thể assistant đầu tiên là 0, không nhảy số |
+| `derivePath()` fallback suy ra từ `createdAt` khi `conversations.meta.path` thiếu | Dữ liệu cũ (trước T-M1-10) không có `path` → vẫn load được lịch sử, không cần backfill |
+| `regenerate` **không** insert lại user message | Tránh lặp câu hỏi trong lịch sử — biến thể chỉ thay **phần trả lời** |
+| `continue` **UPDATE** message cũ, không tạo message mới | Nội dung dở + phần mới là **một** câu trả lời liên tục; tạo message mới sẽ vỡ thread và mất citation cũ (→ `clearCitations()` khi ghi đè) |
+| `CONTINUE_INSTRUCTION` yêu cầu "chỉ viết phần tiếp theo, không lặp lại" | Provider hay lặp lại phần đã có → prompt chặn rõ ràng |
+| `branch` cắt `path` tại turn cha, turn cũ chuyển `active=false` nhưng **giữ trong DB** | Không mất lịch sử; hiển thị ở mục "Phiên bản cũ" (collapsible, chỉ đọc) |
+| `operation` là `.optional()` trong zod, default `'send'` **ở server** | Payload cũ (không có `operation`) vẫn hợp lệ → không phá client cũ; `.default()` trong schema làm lỗi type khi test payload thiếu field |
+| Auto-scroll **chỉ** khi đang ở đáy (ngưỡng 80px) | Không tự cuộn khi user đang đọc giữa thread (FR-UX-05) → nút "Cuộn xuống" là đường thoát |
+| Draft lưu theo **scope** (`conversationId` hoặc `new`) + `sidekick.activeDraftScope` | Reload panel làm mất `conversationId` → không có scope lưu thì draft của conversation không khôi phục được |
+| Không thêm `@testing-library/user-event` | Dùng `fireEvent` → tránh thêm dependency UI mới chưa được duyệt (rule coding-standards) |
 
 ### Việc đã xong gần đây (T-M1-09 — Chat CRUD)
 

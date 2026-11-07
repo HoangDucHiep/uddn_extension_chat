@@ -3,6 +3,7 @@ import {
   applyContextBudget,
   CONTEXT_WINDOWS,
   type ChatEvent,
+  type ChatOperation,
   type ContextBundle,
   type ImageAttachment,
   type ProviderId,
@@ -17,12 +18,18 @@ import {
 import { readContextEnabled } from '@/lib/storage'
 import { readPreferredProvider } from '@/lib/onboarding'
 import { SELECTION_EMPTY_ERROR_CODE, type PendingSelection } from '@/lib/selectionProtocol'
+import { activePathMessages, buildHistory } from '@/lib/chatTurns'
 import { useChatStore, type ChatImage, type ChatMessage } from '../store/chatStore'
 
 /**
  * Hook `useChat` — dieu khien luong chat: gui prompt, nhan stream, dung.
  *
- * Docs: docs/SYSTEM_DESIGN.md §4.3
+ * Tu M1-10, them 3 thao tac:
+ *  - `regenerate` — sinh lai cau tra loi (FR-CHAT-05).
+ *  - `editAndResend` — sua & gui lai tin nhan user (FR-CHAT-06).
+ *  - `continueAnswer` — tiep tuc cau tra loi da bi stop (FR-CHAT-07).
+ *
+ * Docs: docs/SYSTEM_DESIGN.md §4.3, §7.11
  */
 
 /**
@@ -49,6 +56,7 @@ export function useChat() {
   const contextEnabled = useChatStore((state) => state.contextEnabled)
   const budget = useChatStore((state) => state.budget)
   const pendingImages = useChatStore((state) => state.pendingImages)
+  const path = useChatStore((state) => state.path)
 
   const addMessage = useChatStore((state) => state.addMessage)
   const appendToMessage = useChatStore((state) => state.appendToMessage)
@@ -64,6 +72,10 @@ export function useChat() {
   const setContextEnabled = useChatStore((state) => state.setContextEnabled)
   const hydrateContextEnabled = useChatStore((state) => state.hydrateContextEnabled)
   const clearPendingImages = useChatStore((state) => state.clearPendingImages)
+  const setPath = useChatStore((state) => state.setPath)
+  const hydratePath = useChatStore((state) => state.hydratePath)
+  const activateVariantLocal = useChatStore((state) => state.activateVariant)
+  const setAborted = useChatStore((state) => state.setAborted)
 
   // Nap trang thai bat/tat context da luu trong `chrome.storage.local`.
   // Chi ap dung khi user chua dinh kem gi → khong ghi de lua chon cua user.
@@ -164,64 +176,100 @@ export function useChat() {
 
   // Giu AbortController de "Dung" huy stream.
   const abortRef = useRef<AbortController | undefined>(undefined)
-  const send = useCallback(
-    async (content: string) => {
-      const trimmed = content.trim()
-      const state = useChatStore.getState()
-      const images = state.pendingImages
 
-      // Cho phep gui chi anh (khong co text) — vi du user hoi "mo ta anh nay".
-      if (trimmed.length === 0 && images.length === 0) return
+  /**
+   * Stream 1 luot chat voi 1 `operation` (T-M1-10).
+   *
+   * Dung chung cho `send` / `regenerate` / `editAndResend` / `continueAnswer`
+   * → chi 1 noi duy nhat xu ly SSE.
+   *
+   * @param operation - Loai thao tac.
+   * @param options - Tham so rieng cho tung operation.
+   */
+  const streamTurn = useCallback(
+    async (
+      operation: ChatOperation,
+      options: {
+        /** Noi dung user message (chi dung cho `send` / `branch`). */
+        userContent?: string
+        /** Id assistant message can thao tac (`regenerate` / `continue`). */
+        assistantMessageId?: string
+        /** Id turn cha (`branch`). */
+        parentTurnId?: string
+        /** Id message assistant nhan token (mac dinh: tao message moi). */
+        targetMessageId?: string
+        /** Lich su gui len provider (mac dinh: suy tu duong di active). */
+        history?: Array<{ role: 'user' | 'assistant'; content: string }>
+      } = {},
+    ) => {
+      const state = useChatStore.getState()
       if (state.isStreaming) return
+
+      const userContent = options.userContent?.trim() ?? ''
+      const images = operation === 'send' || operation === 'branch' ? state.pendingImages : []
+
+      // Chi phep gui chi anh (khong co text) — vi du user hoi "mo ta anh nay".
+      if (operation === 'send' && userContent.length === 0 && images.length === 0) return
 
       // Lich su TRUOC luot hien tai — snapshot truoc khi them user message.
       // Phai loai message assistant "placeholder" (content rong) va noi dung
       // rong, vi server validate `content` toi thieu 1 ky tu.
-      const history = state.messages
-        .filter(
-          (message) =>
-            message.role !== 'system' && message.content.trim().length > 0,
+      const history =
+        options.history ??
+        buildHistory(state.messages, state.path).filter(
+          (turn) => turn.content.trim().length > 0,
         )
-        .map((message) => ({
-          role: message.role === 'assistant' ? ('assistant' as const) : ('user' as const),
-          content: message.content,
-        }))
-
-      const userMessage: ChatMessage = {
-        id: `user-${Date.now()}`,
-        role: 'user',
-        content: trimmed,
-        createdAt: Date.now(),
-        status: 'done',
-        ...(images.length > 0 ? { images: images.map(toChatImage) } : {}),
-      }
-      addMessage(userMessage)
 
       // Tao message assistant o trang thai streaming de hien thi token ngay.
-      const assistantId = `assistant-${Date.now()}`
-      addMessage({
-        id: assistantId,
-        role: 'assistant',
-        content: '',
-        createdAt: Date.now(),
-        status: 'streaming',
-      })
+      // `continue` thi ghi vao message da bi stop (append noi dung).
+      const isContinue = operation === 'continue'
+      const assistantId =
+        options.targetMessageId ??
+        (isContinue ? (options.assistantMessageId ?? '') : `assistant-${Date.now()}`)
+
+      let userMessageId: string | undefined
+      if (operation === 'send' || operation === 'branch') {
+        const userMessage: ChatMessage = {
+          id: `user-${Date.now()}`,
+          role: 'user',
+          content: userContent,
+          createdAt: Date.now(),
+          status: 'done',
+          ...(images.length > 0 ? { images: images.map(toChatImage) } : {}),
+        }
+        addMessage(userMessage)
+        userMessageId = userMessage.id
+      }
+
+      if (!isContinue && options.targetMessageId === undefined) {
+        addMessage({
+          id: assistantId,
+          role: 'assistant',
+          content: '',
+          createdAt: Date.now(),
+          status: 'streaming',
+        })
+      }
 
       setStreaming(true)
       const controller = new AbortController()
       abortRef.current = controller
 
       // Anh da gui o luot nay → xoa khoi tray.
-      clearPendingImages()
+      if (images.length > 0) clearPendingImages()
 
       // Anh chi gui o luot hien tai (luot truoc da luu trong DB → server tu tai).
       const requestTurns = [
         ...history,
-        {
-          role: 'user' as const,
-          content: trimmed.length > 0 ? trimmed : '(ảnh đính kèm)',
-          ...(images.length > 0 ? { attachments: images } : {}),
-        },
+        ...(operation === 'send' || operation === 'branch'
+          ? [
+              {
+                role: 'user' as const,
+                content: userContent.length > 0 ? userContent : '(ảnh đính kèm)',
+                ...(images.length > 0 ? { attachments: images } : {}),
+              },
+            ]
+          : []),
       ]
 
       let sawDone = false
@@ -246,6 +294,13 @@ export function useChat() {
               keySource: event.keySource,
             })
             updateMessage(assistantId, { provider: event.provider, model: event.model })
+            if (event.turnId !== undefined) {
+              // Server xac nhan turn → gan vao message de client dong bo path.
+              updateMessage(assistantId, { turnId: event.turnId })
+              if (userMessageId !== undefined) {
+                updateMessage(userMessageId, { turnId: event.turnId })
+              }
+            }
             break
 
           case 'token':
@@ -279,6 +334,7 @@ export function useChat() {
             sawDone = true
             updateMessage(assistantId, {
               status: event.finishReason === 'error' ? 'error' : 'done',
+              ...(event.finishReason === 'aborted' ? { aborted: true } : {}),
             })
             break
 
@@ -292,6 +348,13 @@ export function useChat() {
           {
             messages: requestTurns,
             conversationId: useChatStore.getState().conversationId,
+            operation,
+            ...(options.assistantMessageId !== undefined
+              ? { assistantMessageId: options.assistantMessageId }
+              : {}),
+            ...(options.parentTurnId !== undefined
+              ? { parentTurnId: options.parentTurnId }
+              : {}),
             ...(context === undefined ? {} : { context }),
             ...(preferredProvider === undefined ? {} : { provider: preferredProvider }),
           },
@@ -309,6 +372,8 @@ export function useChat() {
         const isAbort = error instanceof Error && error.name === 'AbortError'
         updateMessage(assistantId, {
           status: isAbort ? 'done' : 'error',
+          // Stop giua chung → giu noi dung do + danh dau de hien "Tiep tuc".
+          ...(isAbort ? { aborted: true } : {}),
           ...(isAbort ? {} : { errorMessage: error instanceof Error ? error.message : String(error) }),
         })
       } finally {
@@ -328,6 +393,101 @@ export function useChat() {
     ],
   )
 
+  const send = useCallback(
+    async (content: string) => {
+      await streamTurn('send', { userContent: content })
+    },
+    [streamTurn],
+  )
+
+  /**
+   * Sinh lai cau tra loi cua 1 turn (FR-CHAT-05 — T-M1-10).
+   *
+   * @param assistantMessageId - Id cua assistant message can sinh lai.
+   */
+  const regenerate = useCallback(
+    async (assistantMessageId: string) => {
+      const state = useChatStore.getState()
+      const target = state.messages.find((message) => message.id === assistantMessageId)
+      if (target === undefined) return
+
+      // Bien the cu → `active = false`; bien the moi se la active.
+      const turnId = target.turnId
+      if (turnId !== undefined) {
+        state.messages
+          .filter((message) => message.turnId === turnId && message.role !== 'user')
+          .forEach((message) => {
+            updateMessage(message.id, { active: false })
+          })
+      }
+
+      await streamTurn('regenerate', {
+        assistantMessageId,
+        // Lich su = den het turn cua message dang sinh lai.
+        history: buildHistory(state.messages, state.path),
+      })
+    },
+    [streamTurn, updateMessage],
+  )
+
+  /**
+   * Sua & gui lai tin nhan user (FR-CHAT-06 — T-M1-10).
+   *
+   * @param userMessageId - Id cua user message can sua.
+   * @param newContent - Noi dung moi.
+   */
+  const editAndResend = useCallback(
+    async (userMessageId: string, newContent: string) => {
+      const trimmed = newContent.trim()
+      if (trimmed.length === 0) return
+
+      const state = useChatStore.getState()
+      const target = state.messages.find((message) => message.id === userMessageId)
+      if (target === undefined) return
+
+      const parentTurnId = target.turnId
+      if (parentTurnId === undefined) return
+
+      // Cat duong di tai turn cha → cac turn sau tro thanh nhanh cu.
+      const cutIndex = state.path.indexOf(parentTurnId)
+      const inactiveTurnIds = cutIndex >= 0 ? state.path.slice(cutIndex) : []
+      const nextPath = cutIndex >= 0 ? [...state.path.slice(0, cutIndex)] : [...state.path]
+
+      setPath(nextPath, inactiveTurnIds)
+
+      await streamTurn('branch', {
+        userContent: trimmed,
+        parentTurnId,
+        // Lich su = phan truoc turn cha.
+        history: buildHistory(state.messages, nextPath),
+      })
+    },
+    [streamTurn, setPath],
+  )
+
+  /**
+   * Tiep tuc cau tra loi da bi stop (FR-CHAT-07 — T-M1-10).
+   *
+   * @param assistantMessageId - Id cua assistant message bi stop.
+   */
+  const continueAnswer = useCallback(
+    async (assistantMessageId: string) => {
+      const state = useChatStore.getState()
+      const target = state.messages.find((message) => message.id === assistantMessageId)
+      if (target === undefined) return
+
+      setAborted(assistantMessageId, false)
+
+      await streamTurn('continue', {
+        assistantMessageId,
+        targetMessageId: assistantMessageId,
+        // Lich su = het turn hien tai (bao gom phan assistant da ngat).
+        history: buildHistory(state.messages, state.path),
+      })
+    },
+    [streamTurn, setAborted],
+  )
+
   const stop = useCallback(() => {
     abortRef.current?.abort()
   }, [])
@@ -335,6 +495,31 @@ export function useChat() {
   const clear = useCallback(() => {
     useChatStore.getState().reset()
   }, [])
+
+  /**
+   * Nap duong di active (T-M1-10).
+   *
+   * @param nextPath - Duong di moi.
+   */
+  const setConversationPath = useCallback(
+    (nextPath: readonly string[]) => {
+      hydratePath(nextPath)
+    },
+    [hydratePath],
+  )
+
+  /**
+   * Doi bien the active cua 1 turn (T-M1-10 — FR-CHAT-05).
+   *
+   * @param turnId - Id turn.
+   * @param variantIndex - Chi so bien the moi.
+   */
+  const activateVariant = useCallback(
+    (turnId: string, variantIndex: number) => {
+      activateVariantLocal(turnId, variantIndex)
+    },
+    [activateVariantLocal],
+  )
 
   return {
     messages,
@@ -349,6 +534,7 @@ export function useChat() {
     contextEnabled,
     budget,
     pendingImages,
+    path,
     attachCurrentTab,
     attachTab,
     attachSelection,
@@ -359,6 +545,16 @@ export function useChat() {
     send,
     stop,
     clear,
+    regenerate,
+    editAndResend,
+    continueAnswer,
+    setConversationPath,
+    activateVariant,
+    activePathMessages: useCallback(
+      (allMessages: readonly ChatMessage[]) =>
+        activePathMessages(allMessages, useChatStore.getState().path),
+      [],
+    ),
   }
 }
 
@@ -387,7 +583,7 @@ function toChatImage(attachment: ImageAttachment): ChatImage {
  * - Nguoc lai → ap dung ngan sach context roi gui `context.items`.
  *
  * Client cat theo context window *uoc luong*; server cat lai theo provider
- * thuc te nen day chi la lop hien thi + tiet kiem bang thong.
+ * * thuc te nen day chi la lop hien thi + tiet kiem bang thong.
  */
 function buildRequestContext(): ContextBundle | undefined {
   const state = useChatStore.getState()

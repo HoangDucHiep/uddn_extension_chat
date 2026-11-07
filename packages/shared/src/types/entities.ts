@@ -45,6 +45,21 @@ export const messageSchema = z.object({
   /** Token da dung (DP-6). */
   tokensIn: z.number().int().nonnegative().optional(),
   tokensOut: z.number().int().nonnegative().optional(),
+  /**
+   * Id cua turn chua message nay (T-M1-10).
+   *
+   * User message + cac bien the assistant cua cung 1 luot hoi–dap chia
+   * chung `turnId`.
+   */
+  turnId: z.string().optional(),
+  /** Chi so bien the assistant trong turn (0-based). */
+  variantIndex: z.number().int().nonnegative().optional(),
+  /** Message co nam tren duong di active cua conversation khong. */
+  active: z.boolean().optional(),
+  /** Id cua turn cha (khi sua & gui lai → tao branch). */
+  parentTurnId: z.string().optional(),
+  /** Assistant bi stop giua chung → co nut "Tiep tuc". */
+  aborted: z.boolean().optional(),
 })
 export type Message = z.infer<typeof messageSchema>
 

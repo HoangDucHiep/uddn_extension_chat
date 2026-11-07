@@ -85,7 +85,7 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | T-M1-07 | Markdown render + code block + copy + highlight | FR-CHAT-02/03/04, NFR-SEC-04, NFR-PERF-02 | `sidepanel/components/chat/MessageContent.tsx`, `CodeBlock.tsx`, `MarkdownTable.tsx` | Render table/code; copy → "Đã sao chép"; highlight đúng ngôn ngữ; sanitize HTML (chặn XSS) | L | ✅ *(2026-11-06)* |
 | T-M1-08 | Citation chip + popover (đoạn nguồn) | FR-CONTEXT-10 | `sidepanel/components/chat/CitationChip.tsx`, `CitationPopover.tsx`, `CitationList.tsx`, `chat/citationPlugin.ts` | Click chip → popover hiện đoạn nguồn + mở tab gốc | M | ✅ *(2026-11-06)* |
 | T-M1-09 | Chat CRUD: tạo/đổi tên/xoá/ghim/archives | FR-CHAT-08/09/11 | `sidepanel/components/chat/ConversationList.tsx`, store | Thao tác CRUD phản ánh trong UI ngay | L | ✅ *(2026-11-07)* |
-| T-M1-10 | Regenerate / Edit-resend / Stop / Continue | FR-CHAT-05/06/07/12/13, FR-UX-05 | `hooks/useChat.ts`, `chat/MessageActions.tsx` | 4 hành vi đúng AC trong §3.1; Esc dừng; Enter gửi / Shift+Enter xuống dòng | L | ⬜ |
+| T-M1-10 | Regenerate / Edit-resend / Stop / Continue | FR-CHAT-05/06/07/12/13, FR-UX-05 | `hooks/useChat.ts`, `chat/MessageActions.tsx` | 4 hành vi đúng AC trong §3.1; Esc dừng; Enter gửi / Shift+Enter xuống dòng | L | ✅ |
 | T-M1-11 | Prompt gợi ý theo trang + Summarize 1-click | FR-UX-03/04 | `sidepanel/components/chat/PromptGallery.tsx` | Gợi ý đổi theo loại trang (docs/bài báo/forum) | M | ⬜ |
 | T-M1-12 | Settings: theme, cỡ chữ, chiều rộng, quản lý dữ liệu, endpoint BFF | FR-SETTINGS-01/02/03/04/05/06/07, FR-UX-06, NFR-SEC-07 | `sidepanel/components/settings/*` | Áp dụng ngay, persist qua reload; xoá dữ liệu có confirm; telemetry/history mặc định OFF | M | ⬜ |
 | T-M1-13 | Export conversation (Markdown / JSON) | FR-CHAT-10 | `lib/export.ts` | Xuất đúng nội dung, mở được bằng Notepad/Markdown viewer | S | ⬜ |
@@ -621,6 +621,43 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 
 > **Quyết định kỹ thuật:** (1) **Ghim ở cấp conversation** — cột `pinned` đã có sẵn từ M0 → không cần migration, ghim tin nhắn để task sau; (2) **Drawer = Radix Dialog** (overlay) thay vì sidebar thu hẹp → giữ DP-2 "chat-centric" (thread ≥ 90% không gian); (3) **Phân trang keyset** (cursor base64url) thay OFFSET → danh sách đổi liên tục mỗi lượt chat nên OFFSET dễ lặp/sót dòng; (4) **Tiêu đề tự động** chỉ set khi *tạo mới* (`ON CONFLICT DO NOTHING`) → tên user đặt tay không bị ghi đè.
 
+### 3.1l Kết quả T-M1-10 — Regenerate / Edit-resend / Stop / Continue / Draft / Scroll (FR-CHAT-05/06/07/12/13 + FR-UX-05) (2026-11-07)
+
+> **Quyết định sản phẩm:** trạng thái turn / biến thể / nhánh lưu **phía server** (`messages.meta` jsonb + `conversations.meta.path`) → không mất khi reload panel. Đã chốt với user — không cần migration mới (cột jsonb đã có sẵn từ `0000`).
+
+| Hạng mục | Kết quả |
+|---|---|
+| `packages/shared/src/schemas/chat.ts` | ✅ `chatOperationSchema` = `z.enum(['send','regenerate','continue','branch'])` · `chatRequestSchema` += `operation?` · `assistantMessageId?` (uuid) · `parentTurnId?`. `operation` là **optional** → client cũ không gửi field này vẫn hợp lệ |
+| `packages/shared/src/schemas/conversation.ts` | ✅ `conversationMessageSchema` += `turnId?` · `variantIndex?` · `active?` · `parentTurnId?` · `aborted?` · `conversationVariantSchema` · `conversationTurnSchema` (`onPath`) · `conversationMessagesResponseSchema` += `path[]` + `turns[]` (default `[]`) · `activateVariantSchema` |
+| `packages/shared/src/events.ts` | ✅ `chatMetaEventSchema` += `turnId?: string` → client đồng bộ path sau mỗi lượt |
+| `packages/shared/src/constants.ts` | ✅ `CONTINUE_INSTRUCTION` · `API_ROUTES.conversationTurnActivate` |
+| `apps/server/src/services/turnService.ts` | ✅ **Mới** — `normalizeMessages()` (gắn `turnId`/`variantIndex`/`active`; message cũ → turn gốc) · `derivePath()` · `readConversationPath()` / `rewritePath()` · `loadNormalizedMessages()` / `loadMessage()` · `nextVariantIndex()` / `activeVariantIndex()` · `buildTurns()` · `patchMessageMeta()` / `patchMessagesMeta()` · `updateMessageContent()` |
+| `apps/server/src/services/chatService.ts` | ✅ `createChatStream()` xử lý 4 `operation` · `prepareTurn()` tính kế hoạch turn trước khi stream · `continue` **UPDATE** message cũ (`content = partial + mới`) + `CONTINUE_INSTRUCTION` · `branch` cắt `path` tại turn cha + `parentTurnId` · luôn yield `meta` kèm `turnId` |
+| `apps/server/src/services/conversationService.ts` | ✅ `getConversationMessages()` trả `messages` (kèm field turn) + `path` + `turns` · `activateVariant()` đổi biến thể active |
+| `apps/server/src/routes/conversations.ts` | ✅ **Mới** `POST /api/conversations/:id/turns/:turnId/activate` body `{ variantIndex }` → `{ path, turns }` |
+| `apps/extension/src/lib/chatTurns.ts` | ✅ **Mới (thuần)** — `groupTurns()` · `activePathMessages()` · `offPathTurns()` · `applyVariantSwitch()` · `variantLabel()` · `branchPath()` · `buildHistory()` |
+| `apps/extension/src/lib/storage.ts` | ✅ Draft: `draftKey()` · `readDraft()` / `writeDraft()` / `clearDraft()` (TTL 30 ngày) · `readActiveDraftScope()` / `writeActiveDraftScope()` |
+| `apps/extension/src/lib/conversationClient.ts` | ✅ `activateVariant()` |
+| `apps/extension/src/sidepanel/store/chatStore.ts` | ✅ `ChatMessage` += `turnId?` / `variantIndex?` / `active?` / `parentTurnId?` / `aborted?` · state += `path` · `draft` · actions `hydratePath()` / `setPath()` / `activateVariant()` / `setAborted()` / `setDraft()` |
+| `apps/extension/src/sidepanel/hooks/useChat.ts` | ✅ `streamTurn(operation, …)` dùng chung cho 4 thao tac · `regenerate()` / `editAndResend()` / `continueAnswer()` / `stop()` (→ `aborted: true`, giữ nội dung dở) · `setConversationPath()` / `activateVariant()` |
+| `apps/extension/src/sidepanel/components/chat/MessageActions.tsx` | ✅ **Mới** — "Tạo lại" (`RefreshCw`) · "Tiếp tục" (`RotateCcw`, chỉ khi `aborted`) · switcher biến thể "2/3" (Radix Popover) · "Sửa" (`Pencil`) cho user bubble |
+| `apps/extension/src/sidepanel/components/chat/MessageEditBox.tsx` | ✅ **Mới** — textarea inline + "Gửi lại" / "Hủy" · Enter gửi · Shift+Enter xuống dòng · Esc huỷ |
+| `apps/extension/src/sidepanel/components/chat/ScrollToBottomButton.tsx` | ✅ **Mới** — nút tròn "Cuộn xuống" (FR-UX-05) |
+| `apps/extension/src/sidepanel/components/MessageBubble.tsx` | ✅ Nối `MessageActions` + `MessageEditBox` |
+| `apps/extension/src/sidepanel/ChatWorkspace.tsx` | ✅ Render theo **đường đi active** + mục "Phiên bản cũ" (chỉ đọc) · auto-scroll chỉ khi ở đáy (ngưỡng 80 px) · draft theo `conversationId` (debounce 300 ms) · Esc ưu tiên `stop()` khi streaming |
+| Unit test | ✅ **Mới** — shared `chatOperation.test.ts` (contract) · server `turnService.test.ts` (13) + `chatOperations.test.ts` (7) · extension `chatTurns.test.ts` (16) · `draftStorage.test.ts` (8) · `useChatOperations.test.ts` (8) · `messageActions.test.tsx` (15) |
+| E2E | ✅ **Mới** `e2e/chatActions.spec.ts` — 5 kịch bản: stop → giữ nội dung dở + nút "Tiếp tục" · regenerate → `operation: 'regenerate'` · edit-resend → `operation: 'branch'` + `parentTurnId` · draft còn sau reload · nút "Cuộn xuống" khi cuộn lên |
+| `pnpm typecheck` | ✅ pass (shared · server · extension · eval) |
+| `pnpm lint` | ✅ pass (0 error, 0 warning) |
+| `pnpm test` | ✅ pass — shared **177** · server **312** · extension **494** (tổng **983**, trước 904 → **+79**) |
+| `pnpm build` | ✅ pass — `dist/content.js` vẫn là **IIFE 1 file, không `import`** |
+| `pnpm db:migrate` | ✅ pass — **không có migration mới** (`messages.meta` + `conversations.meta` đã có sẵn từ `0000`) |
+| `pnpm test:e2e` | ✅ pass — `chatActions.spec.ts` **5/5** · tổng **52/52** |
+
+> **Mutation spot-check:** 5/5 mutation bị bắt — (1) `nextVariantIndex()` đếm cả user message (1 test fail) · (2) `activePathMessages()` trả **mọi** biến thể thay vì biến thể active (1 test fail) · (3) `continue` **không** gép `continuePrefix` → mất nội dung dở (1 test fail) · (4) `branchPath()` không cắt path tại turn cha (1 test fail) · (5) `readDraft()` bỏ kiểm tra TTL 30 ngày (1 test fail).
+
+> **Quyết định kỹ thuật:** (1) **Một endpoint `/api/chat` + `operation`** thay vì 4 endpoint riêng → dùng chung 1 luồng SSE, 1 fallback chain, 1 code path; (2) **`continue` UPDATE message cũ** chứ không tạo message mới → nội dung dở + phần mới là **một** câu trả lời; (3) **`active` flag trong jsonb** thay bảng riêng cho biến thể → không cần migration; (4) **`CONTINUE_INSTRUCTION` gộp vào user turn cuối** nếu đã có → tránh 2 user turn liên tiếp (Gemini từ chối); (5) **draft scope `'new'`** cho panel chưa có conversation + `sidekick.activeDraftScope` để reload vẫn khoá đúng bản nháp.
+
 ### 3.2 Traceability FR → Task
 
 > Bảng đầy đủ FR → Task (kèm milestone) nằm ở [`REQUIREMENTS.md`](REQUIREMENTS.md) §11.1 — nơi duy nhất cần cập nhật khi thêm/bớt task.
@@ -628,7 +665,7 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 
 | Nhóm | FR trong nhóm | Task phụ trách | Ghi chú |
 |---|---|---|---|
-| FR-CHAT-01..14 | 14 FR | T-M0-10 · T-M0-13 · **T-M1-07 ✅**/**T-M1-09 ✅**/10/11/13/19 | FR-CHAT-02/03/04 (Markdown, code block + copy, bảng) do T-M1-07 ✅ · **FR-CHAT-08/09/11 (chat CRUD: tạo/đổi tên/xoá/ghim/lưu trữ/search) do T-M1-09 ✅ (2026-11-07)** |
+| FR-CHAT-01..14 | 14 FR | T-M0-10 · T-M0-13 · **T-M1-07 ✅**/**T-M1-09 ✅**/**T-M1-10 ✅**/11/13/19 | FR-CHAT-02/03/04 (Markdown, code block + copy, bảng) do T-M1-07 ✅ · **FR-CHAT-08/09/11 (chat CRUD: tạo/đổi tên/xoá/ghim/lưu trữ/search) do T-M1-09 ✅ (2026-11-07)** · **FR-CHAT-05/06/07/12/13 (regenerate + biến thể, edit-resend + branch, stop/continue, keyboard, draft) do T-M1-10 ✅ (2026-11-07)** |
 | FR-CONTEXT-01..13 | 13 FR | T-M1-01/02/04/05/**06 ✅**/**08 ✅**/14 · **T-M1-21/22/23** · **T-M2-19** | FR-CONTEXT-05/06 nâng lên Must (2026-11-04) · FR-CONTEXT-13 (chat không cần context) do T-M1-23 · **FR-CONTEXT-03 (`@` multi-tab) do T-M1-05 ✅** · **FR-CONTEXT-04 (selection) do T-M1-02 ✅** · **FR-CONTEXT-01 (cache URL+hash) + FR-CONTEXT-12 (snapshot) do T-M1-06 ✅** · **FR-CONTEXT-10 (citation chip + popover) do T-M1-08 ✅ (2026-11-06)** |
 | FR-VISION-01..05 | 5 FR | **T-M1-24 ✅** (upload) · **T-M2-22** (mở rộng) | FR-VISION-01 nâng lên M · **T-M1-24 xong 2026-11-05** (vision đầy đủ Gemini + OpenAI-compatible, lưu Postgres, multi-turn) |
 | FR-TOOLS-01..06 | 6 FR | T-M2-07/08/09/10/11/18 · **T-M2-20** | FR-TOOLS-03 (web search) tách riêng khỏi tool registry |

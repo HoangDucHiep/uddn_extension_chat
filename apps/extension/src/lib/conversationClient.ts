@@ -8,6 +8,7 @@
 
 import {
   API_ROUTES,
+  type ActivateVariantResponse,
   type ConversationListResponse,
   type ConversationMessagesResponse,
   type ConversationSummary,
@@ -94,5 +95,26 @@ export async function getConversationMessages(
 ): Promise<ConversationMessagesResponse> {
   return fetchJson<ConversationMessagesResponse>(
     `${API_ROUTES.conversations}/${id}/messages`,
+  )
+}
+
+/**
+ * Chuyen bien the active cua 1 turn (FR-CHAT-05 — T-M1-10).
+ *
+ * @param id - Id conversation.
+ * @param turnId - Id turn.
+ * @param variantIndex - Chi so bien the can kich hoat.
+ */
+export async function activateVariant(
+  id: string,
+  turnId: string,
+  variantIndex: number,
+): Promise<ActivateVariantResponse> {
+  return fetchJson<ActivateVariantResponse>(
+    `${API_ROUTES.conversations}/${id}/turns/${encodeURIComponent(turnId)}/activate`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ variantIndex }),
+    },
   )
 }

@@ -3,13 +3,21 @@
  *
  * Luong: validate -> resolve key -> stream provider -> chuan hoa thanh ChatEvent
  * -> ghi request_logs -> tra SSE.
- * Docs: docs/SYSTEM_DESIGN.md §4.3
+ *
+ * Tu M1-10, luot chat co **operation** (xem `chatOperationSchema`):
+ *  - `send` — luot moi (mac dinh).
+ *  - `regenerate` — sinh lai cau tra loi cua 1 turn (them bien the).
+ *  - `continue` — tiep tuc cau tra loi da bi stop giua chung.
+ *  - `branch` — sua & gui lai → tao turn moi, cat duong di hien tai.
+ *
+ * Docs: docs/SYSTEM_DESIGN.md §4.3, §7.11
  */
 
 import { randomUUID } from 'node:crypto'
 import {
   applyContextBudget,
   CITATION_INSTRUCTION,
+  CONTINUE_INSTRUCTION,
   CONTEXT_TIER_ORDER,
   CONTEXT_WINDOWS,
   DEFAULT_SYSTEM_PROMPT,
@@ -34,8 +42,19 @@ import { conversations, messages, requestLogs } from '../db/schema.js'
 import type { ProviderRegistry } from '../providers/registry.js'
 import { resolveKey, type EnvKeys } from '../providers/keyResolver.js'
 import { loadRecentAttachments, persistAttachments } from './attachmentService.js'
-import { extractCitations, persistCitations } from './citationService.js'
+import { clearCitations, extractCitations, persistCitations } from './citationService.js'
 import { buildAutoTitle } from './conversationService.js'
+import {
+  derivePath,
+  loadMessage,
+  loadNormalizedMessages,
+  newTurnId,
+  nextVariantIndex,
+  patchMessagesMeta,
+  readConversationPath,
+  rewritePath,
+  updateMessageContent,
+} from './turnService.js'
 
 /**
  * Max output tokens mac dinh.
@@ -72,8 +91,32 @@ export interface ChatStreamResult {
 }
 
 /**
+ * Ke hoach thao tac cua luot chat (T-M1-10).
+ *
+ * Tinh **truoc** khi stream provider → biet chinh xac:
+ *  - turn nao duoc dung,
+ *  - bien the nao duoc tao,
+ *  - co can ghi de message cu hay tao message moi,
+ *  - duong di active sau thao tac.
+ */
+interface TurnPlan {
+  /** Id cua turn chua luot chat nay. */
+  turnId: string
+  /** Chi so bien the assistant duoc tao (0-based). */
+  variantIndex: number
+  /** Id assistant message can **noi dung tiep** (`continue`) — undefined neu khong phai continue. */
+  continueMessageId: string | undefined
+  /** Noi dung assistant da co truoc khi continue (dung de ghep). */
+  continuePrefix: string
+  /** Id user message vua tao (`send` / `branch`) — undefined neu khong tao. */
+  userMessageId: string | undefined
+  /** Duong di active sau thao tac. */
+  path: string[]
+}
+
+/**
  * Tao mot luong chat. Generator se:
- *  1. luu conversation + user message
+ *  1. chuan bi turn (tao / bien the / branch)
  *  2. stream provider theo fallback chain
  *  3. yield ChatEvent (meta -> token* -> usage -> done)
  *  4. luu assistant message + request_logs
@@ -86,24 +129,11 @@ export function createChatStream(
   const requestId = randomUUID()
   const messageId = randomUUID()
   const conversationId = request.conversationId ?? randomUUID()
+  const operation = request.operation ?? 'send'
 
   const events = (async function* generate(): AsyncGenerator<ChatEvent, void, undefined> {
-    // --- 1. Luu conversation + user message (+ anh dinh kem) ---
-    const lastUserMessage = request.messages[request.messages.length - 1]
-    const requestAttachments = lastUserMessage?.attachments ?? []
-    const lastUserMessageId = await persistUserMessage(
-      deps.db,
-      conversationId,
-      lastUserMessage?.content ?? '',
-    )
-
-    // Luu anh vao DB → tra lai duoc cho UI + tai len cho cac luot sau.
-    // Luu truoc khi chon provider de du co du lieu khi bao loi.
-    await persistAttachments(deps.db, {
-      conversationId,
-      messageId: lastUserMessageId,
-      attachments: requestAttachments,
-    })
+    // --- 1. Chuan bi turn (T-M1-10) ---
+    const plan = await prepareTurn(deps, request, operation, conversationId)
 
     // Anh cua conversation (gom ca anh cua luot truoc) → gan cho provider.
     // Multi-turn: luot 2 chi co text van thay anh cua luot 1.
@@ -112,7 +142,7 @@ export function createChatStream(
       conversationId,
       VISION.MAX_IMAGES_PER_MESSAGE,
     )
-    const imagesForProvider = mergeImages(conversationImages, requestAttachments)
+    const imagesForProvider = mergeImages(conversationImages, requestAttachments(request))
 
     // --- 2. Chon provider + key ---
     // Provider user chon duoc dat DAU chuoi, nhung fallback chain van duoc
@@ -194,12 +224,13 @@ export function createChatStream(
     // --- 3. Meta event (luon dau tien) ---
     yield {
       type: 'meta',
-      messageId,
+      messageId: plan.continueMessageId ?? messageId,
       conversationId,
       provider: resolvedProvider,
       model: resolvedModel,
       keySource: resolvedKeySource,
       requestId,
+      turnId: plan.turnId,
     }
 
     // --- 4. Stream provider ---
@@ -215,6 +246,8 @@ export function createChatStream(
       reservedOutputTokens: request.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
       images: imagesForProvider,
       contextBudget,
+      // Tiep tuc → them chi dan "viet phan tiep theo" (FR-CHAT-07).
+      ...(operation === 'continue' ? { extraUserInstruction: CONTINUE_INSTRUCTION } : {}),
     })
     const startedAt = Date.now()
     let firstTokenAt: number | undefined
@@ -287,18 +320,34 @@ export function createChatStream(
     }
 
     // --- 6. Luu assistant message + request_logs ---
-    await persistAssistantMessage(deps.db, conversationId, messageId, text, {
-      provider: resolvedProvider,
-      model: resolvedModel,
-      tokensIn,
-      tokensOut,
-    })
+    const wasAborted = finishReason === 'aborted'
+
+    if (plan.continueMessageId !== undefined) {
+      // Tiep tuc → ghi de noi dung cua message da bi stop (khong tao message moi).
+      await updateMessageContent(
+        deps.db,
+        plan.continueMessageId,
+        plan.continuePrefix + text,
+        { aborted: wasAborted, variantIndex: plan.variantIndex },
+      )
+    } else {
+      await persistAssistantMessage(deps.db, conversationId, messageId, text, {
+        provider: resolvedProvider,
+        model: resolvedModel,
+        tokensIn,
+        tokensOut,
+        turnId: plan.turnId,
+        variantIndex: plan.variantIndex,
+        active: true,
+        aborted: wasAborted,
+      })
+    }
 
     // Conversation vua hoat dong → dua len dau danh sach (FR-CHAT-09).
     await touchConversation(deps.db, conversationId)
 
     // --- 6b. Trich dan (FR-CONTEXT-10 — T-M1-08) ---
-    // Marker `[N]` duoc LLM sin ra trong cau tra loi → resolve ve nguon
+    // Marker `[N]` duoc LLM sinh ra trong cau tra loi → resolve ve nguon
     // context thu N. Chi yield khi **co** context (khong co nguon → khong co
     // trich dan) va chi khi LLM that su trich dan.
     //
@@ -307,10 +356,16 @@ export function createChatStream(
     const citationSources = numberedContextItems(contextBudget.items).map(
       (entry) => entry.item,
     )
+    const fullText = plan.continuePrefix + text
     const resolvedCitations =
-      citationSources.length > 0 ? extractCitations(text, citationSources) : []
+      citationSources.length > 0 ? extractCitations(fullText, citationSources) : []
 
-    await persistCitations(deps.db, messageId, resolvedCitations)
+    if (plan.continueMessageId !== undefined) {
+      // Citation cu cua message da bi stop → xoa truoc khi ghi lai.
+      await clearCitations(deps.db, plan.continueMessageId)
+    }
+
+    await persistCitations(deps.db, plan.continueMessageId ?? messageId, resolvedCitations)
 
     for (const citation of resolvedCitations) {
       yield {
@@ -330,7 +385,7 @@ export function createChatStream(
       model: resolvedModel,
       keySource: resolvedKeySource,
       promptText: messagesForProvider.map((message) => message.content).join('\n'),
-      responseText: text,
+      responseText: fullText,
       // Context **da cat ngan sach** — dung chinh danh sach nay da gui cho
       // provider (T-M1-06) → `context_hash` khop voi context that.
       contextItems: contextBudget.items,
@@ -342,7 +397,7 @@ export function createChatStream(
     })
 
     // --- 7. Done event (luon cuoi cung) ---
-    yield { type: 'done', finishReason, messageId }
+    yield { type: 'done', finishReason, messageId: plan.continueMessageId ?? messageId }
   })()
 
   return {
@@ -354,6 +409,186 @@ export function createChatStream(
     keySource: 'K1',
     events,
   }
+}
+
+/**
+ * Anh dinh kem cua luot chat (tu turn user cuoi cung cua request).
+ *
+ * @param request - Request cua client.
+ */
+function requestAttachments(request: ChatRequest): readonly ImageAttachment[] {
+  const lastTurn = request.messages[request.messages.length - 1]
+  return lastTurn?.attachments ?? []
+}
+
+/**
+ * Chuan bi turn cho luot chat (T-M1-10).
+ *
+ * - `send` → tao turn moi, insert user message, them turn vao duong di.
+ * - `branch` → tao turn moi co `parentTurnId`, cat duong di tai turn cha,
+ *   insert user message, them turn moi vao duong di.
+ * - `regenerate` → tao bien the assistant moi cho turn cua `assistantMessageId`,
+ *   bien the cu chuyen `active = false`.
+ * - `continue` → xac dinh message can noi dung tiep; khong tao message moi.
+ *
+ * @param deps - Chat service deps.
+ * @param request - Request cua client.
+ * @param operation - Loai thao tac.
+ * @param conversationId - Id conversation.
+ */
+async function prepareTurn(
+  deps: ChatServiceDeps,
+  request: ChatRequest,
+  operation: 'send' | 'regenerate' | 'continue' | 'branch',
+  conversationId: string,
+): Promise<TurnPlan> {
+  if (operation === 'send') {
+    const turnId = newTurnId()
+    const userMessageId = await persistUserMessage(
+      deps.db,
+      conversationId,
+      request.messages[request.messages.length - 1]?.content ?? '',
+      { turnId, variantIndex: 0, active: true },
+    )
+
+    await persistAttachments(deps.db, {
+      conversationId,
+      messageId: userMessageId,
+      attachments: requestAttachments(request),
+    })
+
+    const path = (await readConversationPath(deps.db, conversationId)) ?? []
+    const nextPath = [...path, turnId]
+    await rewritePath(deps.db, conversationId, nextPath)
+
+    return {
+      turnId,
+      variantIndex: 0,
+      continueMessageId: undefined,
+      continuePrefix: '',
+      userMessageId,
+      path: nextPath,
+    }
+  }
+
+  if (operation === 'branch') {
+    const parentTurnId = request.parentTurnId
+    const turnId = newTurnId()
+
+    const userMessageId = await persistUserMessage(
+      deps.db,
+      conversationId,
+      request.messages[request.messages.length - 1]?.content ?? '',
+      {
+        turnId,
+        variantIndex: 0,
+        active: true,
+        ...(parentTurnId !== undefined ? { parentTurnId } : {}),
+      },
+    )
+
+    await persistAttachments(deps.db, {
+      conversationId,
+      messageId: userMessageId,
+      attachments: requestAttachments(request),
+    })
+
+    // Cat duong di tai turn cha → cac turn bi cat thanh nhanh cu.
+    const path = (await readConversationPath(deps.db, conversationId)) ?? []
+    const parentIndex = parentTurnId !== undefined ? path.indexOf(parentTurnId) : -1
+    const kept = parentIndex >= 0 ? path.slice(0, parentIndex) : [...path]
+    const nextPath = [...kept, turnId]
+
+    await deactivateTurnsFrom(deps.db, conversationId, path, parentIndex)
+    await rewritePath(deps.db, conversationId, nextPath)
+
+    return {
+      turnId,
+      variantIndex: 0,
+      continueMessageId: undefined,
+      continuePrefix: '',
+      userMessageId,
+      path: nextPath,
+    }
+  }
+
+  // `regenerate` / `continue` → can `assistantMessageId`.
+  const assistantMessageId = request.assistantMessageId
+  if (assistantMessageId === undefined) {
+    throw new Error('Thieu assistantMessageId cho thao tac nay')
+  }
+
+  const target = await loadMessage(deps.db, assistantMessageId)
+  if (target === undefined) {
+    throw new Error('Khong tim thay tin nhan can thao tac')
+  }
+
+  const normalized = await loadNormalizedMessages(deps.db, conversationId)
+  const targetNormalized = normalized.find((message) => message.id === assistantMessageId)
+  const turnId = targetNormalized?.turnId ?? `legacy-${assistantMessageId}`
+
+  const path = (await readConversationPath(deps.db, conversationId)) ?? derivePath(normalized)
+
+  if (operation === 'continue') {
+    return {
+      turnId,
+      variantIndex: targetNormalized?.variantIndex ?? 0,
+      continueMessageId: assistantMessageId,
+      continuePrefix: target.content,
+      userMessageId: undefined,
+      path,
+    }
+  }
+
+  // `regenerate` → bien the moi, bien the cu chuyen `active = false`.
+  const variantIndex = nextVariantIndex(normalized, turnId)
+  const siblings = normalized.filter(
+    (message) => message.turnId === turnId && message.role !== 'user',
+  )
+
+  await patchMessagesMeta(
+    deps.db,
+    siblings.map((message) => ({ id: message.id, patch: { active: false } })),
+  )
+
+  return {
+    turnId,
+    variantIndex,
+    continueMessageId: undefined,
+    continuePrefix: '',
+    userMessageId: undefined,
+    path,
+  }
+}
+
+/**
+ * Chuyen `active = false` cho cac turn bi cat khoi duong di.
+ *
+ * Turn cha (tai vi tri `parentIndex`) **khong** bi chuyen → no van la
+ * nhanh cu nhung turn con cua no la nhanh moi.
+ *
+ * @param db - Database client.
+ * @param conversationId - Id conversation.
+ * @param path - Duong di hien tai truoc khi cat.
+ * @param parentIndex - Vi tri turn cha trong path (-1 = khong cat gi).
+ */
+async function deactivateTurnsFrom(
+  db: Database,
+  conversationId: string,
+  path: readonly string[],
+  parentIndex: number,
+): Promise<void> {
+  if (parentIndex < 0) return
+
+  const cutTurnIds = path.slice(parentIndex)
+  if (cutTurnIds.length === 0) return
+
+  const normalized = await loadNormalizedMessages(db, conversationId)
+  const updates = normalized
+    .filter((message) => cutTurnIds.includes(message.turnId) && message.active)
+    .map((message) => ({ id: message.id, patch: { active: false } }))
+
+  await patchMessagesMeta(db, updates)
 }
 
 /** Tuy chon cho viec build messages cho provider. */
@@ -377,6 +612,13 @@ export interface BuildProviderMessagesOptions {
    * neu state thay doi giua 2 lan goi).
    */
   contextBudget?: ContextBudgetResult
+  /**
+   * Chi dan them cho model (FR-CHAT-07 — `continue`).
+   *
+   * Duoc gop vao user turn cuoi cung neu turn do la `user`, neu khong thi
+   * them 1 user turn moi → tranh 2 user turn lien tiep (Gemini tu choi).
+   */
+  extraUserInstruction?: string
 }
 
 /** Mot turn san de gui cho provider (co the kem anh). */
@@ -470,6 +712,19 @@ export function buildProviderMessages(
       }
     } else {
       result.push({ role: 'user', content: '(anh dinh kem)', attachments: [...images] })
+    }
+  }
+
+  // Chi dan "viet phan tiep theo" (FR-CHAT-07 — `continue`).
+  const instruction = options.extraUserInstruction
+  if (instruction !== undefined) {
+    const lastIndex = result.length - 1
+    const last = result[lastIndex]
+    if (last !== undefined && last.role === 'user') {
+      // Ghep vao user turn cuoi cung → tranh 2 user turn lien tiep.
+      result[lastIndex] = { ...last, content: `${last.content}\n\n${instruction}` }
+    } else {
+      result.push({ role: 'user', content: instruction })
     }
   }
 
@@ -607,6 +862,7 @@ async function persistUserMessage(
   db: Database,
   conversationId: string,
   content: string,
+  meta: Record<string, unknown> = {},
 ): Promise<string> {
   await db
     .insert(conversations)
@@ -614,7 +870,7 @@ async function persistUserMessage(
     .onConflictDoNothing()
   const inserted = await db
     .insert(messages)
-    .values({ conversationId, role: 'user', content })
+    .values({ conversationId, role: 'user', content, meta })
     .returning({ id: messages.id })
   return inserted[0]?.id ?? ''
 }
@@ -624,13 +880,25 @@ async function persistUserMessage(
  *
  * `meta` luu provider/model/token (DP-6) → khi tai lai lich su hoi thoai
  * (T-M1-09) thi chip thong tin van hien nhu luc chat truc tiep.
+ *
+ * T-M1-10: `meta` luu them `turnId` / `variantIndex` / `active` / `aborted`
+ * → phuc vu regenerate + branch + "Tiep tuc".
  */
 async function persistAssistantMessage(
   db: Database,
   conversationId: string,
   messageId: string,
   content: string,
-  meta: { provider: string; model: string; tokensIn: number; tokensOut: number },
+  meta: {
+    provider: string
+    model: string
+    tokensIn: number
+    tokensOut: number
+    turnId?: string | undefined
+    variantIndex?: number | undefined
+    active?: boolean | undefined
+    aborted?: boolean | undefined
+  },
 ): Promise<void> {
   await db.insert(messages).values({
     id: messageId,

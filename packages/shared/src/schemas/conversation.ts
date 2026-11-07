@@ -93,12 +93,95 @@ export const conversationMessageSchema = z.object({
   tokensIn: z.number().int().nonnegative().optional(),
   tokensOut: z.number().int().nonnegative().optional(),
   citations: z.array(conversationCitationSchema).default([]),
+  /**
+   * Id cua turn chua message nay (T-M1-10).
+   *
+   * User message + cac bien the assistant cua cung 1 luot hoi–dap chia
+   * chung `turnId`.
+   */
+  turnId: z.string().max(200).optional(),
+  /** Chi so bien the assistant trong turn (0-based) — user message luon = 0. */
+  variantIndex: z.number().int().nonnegative().optional(),
+  /**
+   * Message co nam tren duong di active cua conversation khong.
+   *
+   * `undefined` → coi nhu `true` (du lieu tao truoc T-M1-10).
+   */
+  active: z.boolean().optional(),
+  /** Id cua turn cha (khi sua & gui lai → tao branch). */
+  parentTurnId: z.string().max(200).optional(),
+  /** Assistant bi stop giua chung → co nut "Tiep tuc". */
+  aborted: z.boolean().optional(),
 })
 export type ConversationMessage = z.infer<typeof conversationMessageSchema>
+
+/**
+ * Mot bien the assistant cua 1 turn (T-M1-10 — FR-CHAT-05).
+ *
+ * Client dung `variantIndex` + `id` de chuyen qua lai cac bien the.
+ */
+export const conversationVariantSchema = z.object({
+  /** Id cua message assistant. */
+  id: z.string().uuid(),
+  /** Chi so bien the (0-based). */
+  variantIndex: z.number().int().nonnegative(),
+  /** Noi dung cau tra loi. */
+  content: z.string(),
+  createdAt: z.string(),
+  /** Bien the dang active. */
+  active: z.boolean(),
+  /** Bi stop giua chung → co nut "Tiep tuc". */
+  aborted: z.boolean().optional(),
+  citations: z.array(conversationCitationSchema).default([]),
+})
+export type ConversationVariant = z.infer<typeof conversationVariantSchema>
+
+/**
+ * Mot turn (luot hoi–dap) cua conversation (T-M1-10).
+ *
+ * `onPath` = turn dang nam tren duong di active cua conversation.
+ * Turn khong con tren path → nhanh cu (chi doc).
+ */
+export const conversationTurnSchema = z.object({
+  turnId: z.string(),
+  /** Id cua user message cua turn. */
+  userMessageId: z.string().uuid().optional(),
+  /** Noi dung cau hoi. */
+  userContent: z.string(),
+  /** Id cua turn cha (khi sua & gui lai). */
+  parentTurnId: z.string().optional(),
+  /** Turn dang tren duong di active. */
+  onPath: z.boolean(),
+  /** Cac bien the assistant cua turn. */
+  variants: z.array(conversationVariantSchema).default([]),
+})
+export type ConversationTurn = z.infer<typeof conversationTurnSchema>
 
 /** Response cua `GET /api/conversations/:id/messages`. */
 export const conversationMessagesResponseSchema = z.object({
   conversation: conversationSummarySchema,
   messages: z.array(conversationMessageSchema),
+  /**
+   * Duong di active cua conversation — danh sach `turnId` theo thu tu (T-M1-10).
+   */
+  path: z.array(z.string()).default([]),
+  /** Tat ca turn cua conversation (ke ca nhanh cu). */
+  turns: z.array(conversationTurnSchema).default([]),
 })
 export type ConversationMessagesResponse = z.infer<typeof conversationMessagesResponseSchema>
+
+/** Body cua `POST /api/conversations/:id/turns/:turnId/activate`. */
+export const activateVariantSchema = z.object({
+  /** Chi so bien the can kich hoat. */
+  variantIndex: z.number().int().nonnegative(),
+})
+export type ActivateVariantInput = z.infer<typeof activateVariantSchema>
+
+/** Response cua `POST /api/conversations/:id/turns/:turnId/activate`. */
+export const activateVariantResponseSchema = z.object({
+  /** Duong di active moi. */
+  path: z.array(z.string()).default([]),
+  /** Tat ca turn sau khi chuyen bien the. */
+  turns: z.array(conversationTurnSchema).default([]),
+})
+export type ActivateVariantResponse = z.infer<typeof activateVariantResponseSchema>

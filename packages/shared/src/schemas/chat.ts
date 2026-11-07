@@ -143,6 +143,17 @@ export function normalizeContext(value: unknown): unknown {
   return { items }
 }
 
+/**
+ * Loai thao tac chat (FR-CHAT-05/06/07 — T-M1-10).
+ *
+ * - `send` — luot moi: tao user message + assistant moi.
+ * - `regenerate` — sinh lai cau tra loi cua 1 turn (them bien the).
+ * - `continue` — tiep tuc cau tra loi da bi stop giua chung.
+ * - `branch` — sua & gui lai: tao turn moi, cat duong di hien tai.
+ */
+export const chatOperationSchema = z.enum(['send', 'regenerate', 'continue', 'branch'])
+export type ChatOperation = z.infer<typeof chatOperationSchema>
+
 /** Body cua POST /api/chat. */
 export const chatRequestSchema = z.object({
   messages: z.array(chatTurnSchema).min(1).max(LIMITS.MAX_HISTORY_MESSAGES),
@@ -155,6 +166,21 @@ export const chatRequestSchema = z.object({
   temperature: z.number().min(0).max(2).optional(),
   maxOutputTokens: z.number().int().min(1).max(LIMITS.MAX_OUTPUT_TOKENS).optional(),
   stream: z.boolean().optional(),
+  /**
+   * Thao tac cua luot chat (T-M1-10).
+   *
+   * `undefined` → server coi nhu `'send'` (tuong thich voi client cu).
+   */
+  operation: chatOperationSchema.optional(),
+  /**
+   * Id cua assistant message can thao tac (`regenerate` / `continue`).
+   */
+  assistantMessageId: z.string().uuid().optional(),
+  /**
+   * Id cua turn cha khi sua & gui lai (`branch`) — turn moi thay the
+   * duong di tai turn cha.
+   */
+  parentTurnId: z.string().max(200).optional(),
 })
 export type ChatRequest = z.infer<typeof chatRequestSchema>
 

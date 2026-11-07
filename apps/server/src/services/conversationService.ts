@@ -11,8 +11,28 @@
 
 import { and, asc, count, desc, eq, ilike, inArray } from 'drizzle-orm'
 import { AppError, ERROR_CODES } from '@sidekick/shared'
+import type { ConversationTurn } from '@sidekick/shared'
 import type { Database } from '../db/index.js'
 import { citations, conversations, messages } from '../db/schema.js'
+import {
+  buildTurns,
+  derivePath,
+  loadNormalizedMessages,
+  normalizeMessages,
+  patchMessagesMeta,
+  readConversationPath,
+  type RawMessage,
+} from './turnService.js'
+
+/**
+ * Doc `meta` jsonb cua 1 dong → typed record (khong dung `any`).
+ *
+ * @param meta - Gia tri jsonb thô.
+ */
+function readMeta(meta: unknown): Record<string, unknown> {
+  if (typeof meta !== 'object' || meta === null) return {}
+  return meta as Record<string, unknown>
+}
 
 /** Do dai toi da cua tieu de conversation (ky tu) — khop voi `packages/shared`. */
 export const MAX_CONVERSATION_TITLE_CHARS = 200
@@ -53,7 +73,7 @@ export interface ConversationMessage {
     url: string
     title: string
     snippet: string
-    tabId?: number
+    tabId?: number | undefined
   }>
 }
 
@@ -362,13 +382,22 @@ export async function deleteConversation(db: Database, id: string): Promise<void
 /**
  * Doc conversation + lich su messages (kem citations da luu).
  *
+ * Tu T-M1-10, response kem them:
+ *  - `path` — duong di active cua conversation (danh sach `turnId`).
+ *  - `turns` — tat ca turn (ke ca nhanh cu) + bien the assistant cua tung turn.
+ *
  * @param db - Database client.
  * @param id - Id conversation.
  */
 export async function getConversationMessages(
   db: Database,
   id: string,
-): Promise<{ conversation: ConversationSummary; messages: ConversationMessage[] }> {
+): Promise<{
+  conversation: ConversationSummary
+  messages: ConversationMessage[]
+  path: string[]
+  turns: ConversationTurn[]
+}> {
   const rows = await db.select().from(conversations).where(eq(conversations.id, id)).limit(1)
   const conversationRow = rows[0]
 
@@ -406,16 +435,16 @@ export async function getConversationMessages(
     citationsByMessage.set(row.messageId, list)
   }
 
-  const result: ConversationMessage[] = messageRows.map((row) => {
-    const meta = row.meta as Record<string, unknown>
-    const messageCitations = citationsByMessage.get(row.id) ?? []
-
+  // Chuan hoa message → moi message co `turnId` / `variantIndex` / `active`.
+  const rawMessages: RawMessage[] = messageRows.map((row) => {
+    const meta = readMeta(row.meta)
     return {
       id: row.id,
       role: normalizeRole(row.role),
       content: row.content,
       createdAt: row.createdAt.toISOString(),
-      citations: messageCitations,
+      meta: row.meta,
+      citations: citationsByMessage.get(row.id) ?? [],
       ...(typeof meta['provider'] === 'string' ? { provider: meta['provider'] } : {}),
       ...(typeof meta['model'] === 'string' ? { model: meta['model'] } : {}),
       ...(typeof meta['tokensIn'] === 'number' ? { tokensIn: meta['tokensIn'] } : {}),
@@ -423,12 +452,100 @@ export async function getConversationMessages(
     }
   })
 
+  const normalized = normalizeMessages(rawMessages)
+
+  // Duong di active: doc tu `conversations.meta.path` → fallback suy ra tu thu tu.
+  const storedPath = readPathFromMeta(conversationRow.meta)
+  const path = storedPath ?? derivePath(normalized)
+
+  const turns = buildTurns(normalized, path)
+
+  const result: ConversationMessage[] = normalized.map((message) => ({
+    id: message.id,
+    role: message.role,
+    content: message.content,
+    createdAt: message.createdAt,
+    citations: message.citations ?? [],
+    turnId: message.turnId,
+    variantIndex: message.variantIndex,
+    active: message.active,
+    ...(message.parentTurnId !== undefined ? { parentTurnId: message.parentTurnId } : {}),
+    ...(message.aborted !== undefined ? { aborted: message.aborted } : {}),
+    ...(message.provider !== undefined ? { provider: message.provider } : {}),
+    ...(message.model !== undefined ? { model: message.model } : {}),
+    ...(message.tokensIn !== undefined ? { tokensIn: message.tokensIn } : {}),
+    ...(message.tokensOut !== undefined ? { tokensOut: message.tokensOut } : {}),
+  }))
+
   const counts = await countMessagesByConversation(db, [id])
 
   return {
     conversation: toSummary(conversationRow, counts.get(id) ?? 0),
     messages: result,
+    path,
+    turns,
   }
+}
+
+/**
+ * Chuyen bien the active cua 1 turn (FR-CHAT-05 — T-M1-10).
+ *
+ * Bien the dang active cua turn → `active = false`; bien the moi →
+ * `active = true`. Cac turn khong doi.
+ *
+ * @param db - Database client.
+ * @param conversationId - Id conversation.
+ * @param turnId - Id turn.
+ * @param variantIndex - Chi so bien the can kich hoat.
+ * @returns Duong di + danh sach turn sau khi chuyen.
+ */
+export async function activateVariant(
+  db: Database,
+  conversationId: string,
+  turnId: string,
+  variantIndex: number,
+): Promise<{ path: string[]; turns: ConversationTurn[] }> {
+  const normalized = await loadNormalizedMessages(db, conversationId)
+
+  const inTurn = normalized.filter((message) => message.turnId === turnId)
+  if (inTurn.length === 0) {
+    throw new AppError(ERROR_CODES.NOT_FOUND, 'Khong tim thay luot hoi dap')
+  }
+
+  const target = inTurn.find(
+    (message) => message.role !== 'user' && message.variantIndex === variantIndex,
+  )
+  if (target === undefined) {
+    throw new AppError(ERROR_CODES.NOT_FOUND, 'Khong tim thay bien the cau tra loi')
+  }
+
+  // Tat bien the active cu, bat bien the moi.
+  const updates = inTurn
+    .filter((message) => message.role !== 'user')
+    .map((message) => ({
+      id: message.id,
+      patch: { active: message.variantIndex === variantIndex },
+    }))
+
+  await patchMessagesMeta(db, updates)
+
+  const storedPath = await readConversationPath(db, conversationId)
+  const path = storedPath ?? derivePath(normalized)
+
+  return { path, turns: buildTurns(normalized, path) }
+}
+
+/**
+ * Doc duong di active tu `conversations.meta`.
+ *
+ * @param meta - Gia tri jsonb thô.
+ * @returns Duong di, hoac `undefined` khi chua co (conversation tao truoc T-M1-10).
+ */
+export function readPathFromMeta(meta: unknown): string[] | undefined {
+  if (typeof meta !== 'object' || meta === null) return undefined
+  const path = (meta as { path?: unknown }).path
+  if (!Array.isArray(path)) return undefined
+  return path.filter((item): item is string => typeof item === 'string')
 }
 
 /**

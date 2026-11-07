@@ -12,6 +12,7 @@
 
 import { Router, type Request, type Response } from 'express'
 import {
+  activateVariantSchema,
   conversationListQuerySchema,
   createConversationSchema,
   ERROR_CODES,
@@ -19,6 +20,7 @@ import {
 } from '@sidekick/shared'
 import type { Database } from '../db/index.js'
 import {
+  activateVariant,
   createConversation,
   deleteConversation,
   getConversationMessages,
@@ -98,6 +100,49 @@ export function createConversationsRouter(deps: ConversationsRouterDeps): Router
     const result = await getConversationMessages(deps.db, id)
     res.status(200).json(result)
   })
+
+  /** Doi bien the active cua 1 turn (FR-CHAT-05 — T-M1-10). */
+  router.post(
+    '/conversations/:id/turns/:turnId/activate',
+    async (req: Request, res: Response) => {
+      const id = req.params['id']
+      const rawTurnId = req.params['turnId']
+      if (!isUuid(id)) {
+        res.status(400).json({
+          error: {
+            code: ERROR_CODES.VALIDATION_ERROR,
+            message: 'Id cuoc tro chuyen khong hop le',
+          },
+        })
+        return
+      }
+      const turnId = typeof rawTurnId === 'string' ? rawTurnId : ''
+      if (turnId.length === 0) {
+        res.status(400).json({
+          error: {
+            code: ERROR_CODES.VALIDATION_ERROR,
+            message: 'Id luot hoi dap khong hop le',
+          },
+        })
+        return
+      }
+
+      const parsed = activateVariantSchema.safeParse(req.body)
+      if (!parsed.success) {
+        res.status(400).json({
+          error: {
+            code: ERROR_CODES.VALIDATION_ERROR,
+            message: 'Body kich hoat bien the khong hop le',
+            details: { issues: parsed.error.issues },
+          },
+        })
+        return
+      }
+
+      const result = await activateVariant(deps.db, id, turnId, parsed.data.variantIndex)
+      res.status(200).json(result)
+    },
+  )
 
   /** Doi ten / ghim / luu tru. */
   router.patch('/conversations/:id', async (req: Request, res: Response) => {

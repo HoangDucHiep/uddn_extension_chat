@@ -23,6 +23,12 @@ export const chatMetaEventSchema = z.object({
   model: z.string().min(1),
   keySource: z.string().min(1),
   requestId: z.string().min(1),
+  /**
+   * Id cua turn chua message nay (T-M1-10).
+   *
+   * Client dung de gom bien the + dong bo path sau khi reload panel.
+   */
+  turnId: z.string().min(1).optional(),
 })
 export type ChatMetaEvent = z.infer<typeof chatMetaEventSchema>
 

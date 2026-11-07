@@ -179,7 +179,9 @@ DP-2 quy định thread chat chiếm ≥ 90% không gian panel (DP-1: panel hẹ
 | `MessageList` | Virtualize, auto-scroll, nút "cuộn xuống" | FR-UX-05 | Jank khi response dài |
 | `UserMessage` | Bubble, edit / copy / delete / branch | FR-CHAT-06, FR-CHAT-08 | |
 | `AssistantMessage` | Render markdown + actions row | FR-CHAT-02 | |
-| `MessageActions` | Copy, regenerate, thumbs up/down | FR-CHAT-05 | |
+| `MessageActions` | Regenerate, switch biến thể, continue, edit | FR-CHAT-05 | |
+| `MessageEditBox` | Sửa tin nhắn user inline (textarea + "Gửi lại" / "Hủy") | FR-CHAT-06 | |
+| `ScrollToBottomButton` | Nút tròn "Cuộn xuống" khi thread lệch khỏi đáy | FR-UX-05 | Kéo thread về đáy khi user đang đọc phần trên |
 | `CodeBlock` | Highlight, copy, ngôn ngữ, expand | FR-CHAT-03 | Ảnh hưởng rubric R6 |
 | `MarkdownTable` | Bảng, scroll ngang | FR-CHAT-04 | Vỡ layout ở panel hẹp |
 | `MessageContent` | Orchestrator render Markdown của message assistant (defer khi streaming) | FR-CHAT-02 | Jank khi stream dài (NFR-PERF-02) |
@@ -191,6 +193,34 @@ DP-2 quy định thread chat chiếm ≥ 90% không gian panel (DP-1: panel hẹ
 | `ErrorMessage` | Lỗi + hành động khôi phục | FR-CHAT-14 | Ảnh hưởng độ ổn định đo được |
 | `AttachmentChip` | Ảnh đính kèm trong message | FR-VISION-01 | |
 | `UsageBadge` | Token in/out + cost của lượt đó | FR-PROVIDER-05 | |
+
+#### `MessageActions` (đã implement T-M1-10)
+
+- **Vị trí:** hàng nhỏ dưới nội dung bubble, chỉ hiện khi có thao tác khả dụng.
+- **User bubble:** một icon-button "Sửa tin nhắn" (`Pencil`) → mở `MessageEditBox` inline.
+- **Assistant bubble:**
+  - Icon-button "Tạo lại câu trả lời" (`RefreshCw`) → `operation: 'regenerate'`.
+  - Icon-button "Tiếp tục câu trả lời" (`RotateCcw`) — **chỉ hiện** khi `message.aborted === true` (đã bị stop giữa chừng).
+  - Switcher biến thể: nút text `"2/3"` → Radix `Popover` liệt kê các biến thể, đánh dấu biến thể đang dùng (`aria-current="true"`). **Chỉ hiện** khi turn có > 1 biến thể.
+- **Trạng thái:** icon-button bị `disabled` khi đang streaming (tránh thao tác chồng nhau).
+- **Token:** `--text-secondary` (icon) · `--surface-sunken` (nền hover) · `--text-primary` (nhãn switcher) · `--border-default` · `--focus-ring`.
+- **A11y:** mọi icon-button có `aria-label` tiếng Việt; switcher có `aria-label="Chọn biến thể câu trả lời, hiện tại 2/3"`; focus ring theo token; không dùng màu là tín hiệu duy nhất (biến thể đang dùng có chữ "(đang dùng)").
+
+#### `MessageEditBox` (đã implement T-M1-10)
+
+- **Vị trí:** thay thế nội dung bubble user khi đang sửa (inline, không mở modal).
+- **Nội dung:** `Textarea` (auto-grow) + hàng nút "Hủy" (`ghost`) · "Gửi lại" (`default`).
+- **Keyboard:** Enter → gửi lại · Shift+Enter → xuống dòng · Esc → huỷ (không gửi).
+- **Trạng thái:** nút "Gửi lại" disabled khi nội dung rong hoặc đang xử lý.
+- **Token:** `--surface-raised` (nền) · `--border-default` (viền) · `--radius-md` · `--space-2` / `--space-3`.
+- **A11y:** `Textarea` có `aria-label="Sửa nội dung tin nhắn"`; focus tự động vào textarea + con trỏ đặt cuối khi mở.
+
+#### `ScrollToBottomButton` (đã implement T-M1-10)
+
+- **Vị trí:** nút tròn float, giữa theo chiều ngang, sát đáy thread (`bottom: var(--space-3)`), nằm **trong** wrapper tương đối của vùng thread.
+- **Điều kiện hiện:** thread lệch khỏi đáy > `SCROLL_BOTTOM_THRESHOLD` (80 px) → hiện; bấm → cuộn về đáy + reset trạng thái.
+- **Nội dung:** icon `ChevronDown` trong nút tròn `size="icon"`, nền `--surface-overlay` + viền `--border-default` + `--shadow-2`.
+- **A11y:** `aria-label="Cuộn xuống cuối hội thoại"`; nút luôn có focus ring rõ.
 
 ### 3.4 Composer
 
