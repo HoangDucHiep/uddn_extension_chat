@@ -207,7 +207,7 @@ Quy ước ưu tiên: **M** = Must (bắt buộc cho M1) · **S** = Should (bắ
 | FR-CHAT-11 | Ghim tin nhắn (pin) để giữ | C | Pin ở đầu thread. **Đã implement (T-M1-09) — phạm vi đã chốt:** ghim ở cấp **cuộc trò chuyện** (`conversations.pinned`), conversation ghim luôn ở đầu danh sách (`pinned desc, updated_at desc, id desc`). Ghim **tin nhắn** để task sau |
 | FR-CHAT-12 | Keyboard: Enter gửi, Shift+Enter xuống dòng, Esc dừng | M | Không nhập nhầm ký tự. **Đã implement (T-M1-10):** `Composer` — Enter gửi · Shift+Enter xuống dòng · Esc **dừng generation** nếu đang streaming, ngược lại đóng popover `@`; `MessageEditBox` — Enter gửi lại · Shift+Enter xuống dòng · Esc huỷ |
 | FR-CHAT-13 | Tự lưu bản nháp (draft) khi đóng panel | S | Mở lại vẫn còn draft của conversation đang mở. **Đã implement (T-M1-10):** `chrome.storage.local` key `sidekick.draft.<conversationId>` · ghi **debounce 300 ms** · TTL 30 ngày · khoá xoá sau khi gửi thành công · khôi phục khi mở lại panel / đổi conversation |
-| FR-CHAT-14 | Hiển thị trạng thái lỗi với hành động khôi phục | M | 429 → "Đã đạt giới hạn, thử lại sau Ns"; 401 → "Kiểm tra API key"; 5xx → "Retry" |
+| FR-CHAT-14 | Hiển thị trạng thái lỗi với hành động khôi phục | M | 429 → "Đã đạt giới hạn, thử lại sau Ns"; 401 → "Kiểm tra API key"; 5xx → "Retry". **Đã implement (T-M1-19):** card lỗi trong thread (`ErrorState`) — icon + nguyên nhân cụ thể + **1 hành động đúng theo nhóm lỗi**: `network`/`server`/`provider` → **Thử lại** · `auth` → **Kiểm tra API key** (mở drawer Settings) · `rate-limit` → **Thử lại sau Ns** với đếm ngược trực tiếp (nút bị disable tới khi hết hạn) · nút **✕** để ẩn thông báo. `role="alert"` + `aria-live="polite"`. Nhóm lỗi phân loại tập trung ở `packages/shared/src/chatErrors.ts` (`classifyChatError`) |
 
 ### 4.2 FR-CONTEXT — Ngữ cảnh trang & tab
 
@@ -433,7 +433,7 @@ Settings nằm trong **drawer** (Radix `Dialog` trượt từ phải), mở bằ
 | FR-UX-05 | Scroll: tự cuộn theo stream; dừng auto-scroll khi user cuộn lên | M | Có nút "Cuộn xuống" khi đang lệch. **Đã implement (T-M1-10):** `ChatWorkspace` theo dõi `scrollHeight - scrollTop - clientHeight` → chỉ auto-scroll khi ≤ 80 px từ đáy; lệch → hiện nút tròn "Cuộn xuống" (`ScrollToBottomButton`), bấm → cuộn về đáy |
 | FR-UX-06 | Panel chịu được chiều rộng 320–640px; không vỡ layout | M | ✅ T-M1-12 — nút gear trong header → drawer Settings trượt từ phải (giữ ≥ 90% context chat, DP-2). Bề rộng điều chỉnh được 400/640/960px (`--panel-max-width`); layout không vỡ ở cả 3 mức |
 | FR-UX-07 | Focus ring rõ, điều hướng bằng bàn phím đầy đủ | M | Tab order hợp lý, focus không bị kẹt |
-| FR-UX-08 | Toast / banner thông báo lỗi & trạng thái, không che nội dung | M | Auto-dismiss 5s, có dismiss thủ công |
+| FR-UX-08 | Toast / banner thông báo lỗi & trạng thái, không che nội dung | M | Auto-dismiss 5s, có dismiss thủ công. **Đã implement (T-M1-19):** lỗi trong thread → card inline `ErrorState` (không che nội dung, có ✕ dismiss thủ công) · lỗi **kết nối BFF** → **banner offline** ngay dưới header (`offline-banner`) kèm nút "Thử lại" (không tự ẩn — lỗi kết nối là trạng thái kéo dài, không phải toast 5 s) · trạng thái kết nối tức thời hiện ở **badge trong header** (`ConnectionBadge`). Toast 5 s (`sonner`) vẫn dùng cho thao tác one-shot (xoá lịch sử, đổi biến thể…) |
 | FR-UX-09 | Responsive: hỗ trợ zoom 200%, font nhỏ không vỡ | M | |
 | FR-UX-10 | Hoạt ảnh tối giản, tôn trọng `prefers-reduced-motion` | M | |
 
@@ -558,6 +558,13 @@ Acceptance criteria:
 | NFR-REL-02 | Tự retry 1 lần khi lỗi mạng, có backoff; không retry khi lỗi xác thực |
 | NFR-REL-03 | Nếu BFF không chạy → extension hiện thông báo rõ + cho nhập key để chạy direct mode |
 | NFR-REL-04 | Trạng thái kết nối hiển thị trực quan (đang kết nối / đã kết nối / offline) |
+
+**Chi tiết T-M1-19 (FR-CHAT-14 · FR-UX-08 · NFR-REL-02 · NFR-REL-04):**
+
+- **Taxonomy lỗi** (`packages/shared/src/chatErrors.ts`): `classifyChatError(code) → 'network' | 'rate-limit' | 'auth' | 'provider' | 'server' | 'unknown'` · `isRetryableKind(kind)` (false cho `auth`) · `shouldAutoRetry(kind)` (true cho `network`/`server`/`unknown`) · `defaultRetryAfterSeconds(kind)` (60 s cho `rate-limit`) · `AUTO_RETRY_BACKOFF_MS = 800`.
+- **Retry tự động**: `useChat` thử lại **đúng 1 lần** sau backoff 800 ms khi lỗi là `network`/`server`/`unknown` **và** turn chưa được server tạo (`meta` chưa về). **Không** retry `auth` (key sai → retry vô ích) · **không** retry `rate-limit` (phải đợi hết hạn) · **không** retry `provider` (model sai → retry cũng lỗi).
+- **Server báo lỗi thật**: `chatService` suy ra `retryable` từ `errorCode` (`chunk.errorRetryable ?? isRetryableKind(classifyChatError(code))`) — **không** hardcode `true`; forward `retryAfterSeconds` từ provider (đọc header `Retry-After` khi HTTP 429, ghim tối đa 600 s).
+- **Trạng thái kết nối**: `useConnectionStatus` probe `GET <bffUrl>/api/health` (timeout 3 s) → `connecting` / `connected` / `degraded` / `offline`; backoff probe **5 s → 15 s → 30 s**; nghe `navigator.onLine` để báo offline tức thời; badge trong header + banner offline dưới header.
 | NFR-REL-05 | Database BFF có backup tự động (pg_dump cron) — phục vụ tái lập eval |
 
 ### 5.4 Khả dụng & tiếp cận
@@ -1040,7 +1047,7 @@ Chỉ bắt đầu M4 khi **đồng thời** thỏa:
 | FR-CHAT-11 | C | T-M1-09 ✅ (cấp conversation) | M1 |
 | FR-CHAT-12 | M | T-M1-10 | M1 |
 | FR-CHAT-13 | S | T-M1-10 | M1 |
-| FR-CHAT-14 | M | T-M1-19 | M1 |
+| FR-CHAT-14 | M | T-M1-19 ✅ | M1 |
 
 #### FR-CONTEXT — Ngữ cảnh trang & tab
 
@@ -1143,12 +1150,12 @@ Chỉ bắt đầu M4 khi **đồng thời** thỏa:
 |---|---|---|---|
 | FR-UX-01 | M | **T-M1-03 ✅** · T-M1-18 | M1 |
 | FR-UX-02 | M | **T-M1-25 ✅** | M1 |
-| FR-UX-03 | M | **T-M1-11 ✅** · T-M1-19 | M1 |
-| FR-UX-04 | M | **T-M1-11 ✅** · T-M1-19 | M1 |
+| FR-UX-03 | M | **T-M1-11 ✅** · T-M1-19 ✅ | M1 |
+| FR-UX-04 | M | **T-M1-11 ✅** · T-M1-19 ✅ | M1 |
 | FR-UX-05 | M | T-M1-10 | M1 |
 | FR-UX-06 | M | **T-M1-12 ✅** (drawer Settings + bề rộng) · T-M1-20 | M1 |
 | FR-UX-07 | M | T-M1-20 | M1 |
-| FR-UX-08 | M | T-M1-19 | M1 |
+| FR-UX-08 | M | T-M1-19 ✅ | M1 |
 | FR-UX-09 | M | T-M1-20 | M1 |
 | FR-UX-10 | M | T-M1-20 · T-M3-04 | M1→M3 |
 
@@ -1171,9 +1178,9 @@ Chỉ bắt đầu M4 khi **đồng thời** thỏa:
 | NFR-SEC-07 (xoá toàn bộ dữ liệu) | **T-M1-12 ✅** | M1 |
 | NFR-SEC-08 (npm audit) | T-M0-02 ✅ | M0 |
 | NFR-REL-01 (không mất tin nhắn) | T-M1-10 · T-M1-14 | M1 |
-| NFR-REL-02 (retry 1 lần) | T-M1-19 | M1 |
+| NFR-REL-02 (retry 1 lần) | T-M1-19 ✅ | M1 |
 | NFR-REL-03 (BFF down → direct) | T-M1-15 | M1 |
-| NFR-REL-04 (trạng thái kết nối) | T-M1-19 | M1 |
+| NFR-REL-04 (trạng thái kết nối) | T-M1-19 ✅ | M1 |
 | NFR-REL-05 (backup DB) | **T-M3-10** | M3 |
 | NFR-A11Y-01 (WCAG 2.2 AA) | T-M1-20 · T-M3-03 | M1→M3 |
 | NFR-A11Y-02 (độ tương phản) | T-M1-20 · T-M3-03 | M1→M3 |

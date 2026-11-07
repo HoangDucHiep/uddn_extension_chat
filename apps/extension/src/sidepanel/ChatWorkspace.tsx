@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
+import { WifiOff } from 'lucide-react'
 import type { ConversationMessage } from '@sidekick/shared'
 import {
   classifyPage,
@@ -21,9 +22,11 @@ import { AttachmentTray } from './components/composer/AttachmentTray'
 import { ConversationList } from './components/chat/ConversationList'
 import { SettingsDrawer } from './components/settings/SettingsDrawer'
 import { ScrollToBottomButton } from './components/chat/ScrollToBottomButton'
-import { PromptGallery } from './components/chat/PromptGallery'
+import { EmptyState } from './components/states/EmptyState'
+import { LoadingState } from './components/states/LoadingState'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { useChat } from './hooks/useChat'
+import { useConnectionStatus } from './hooks/useConnectionStatus'
 import { useMention } from './hooks/useMention'
 import { useSelection } from './hooks/useSelection'
 import { useTabs } from './hooks/useTabs'
@@ -91,6 +94,7 @@ export function ChatWorkspace({ onOpenOnboarding }: ChatWorkspaceProps) {
     regenerate,
     editAndResend,
     continueAnswer,
+    retryMessage,
     setConversationPath,
     activateVariant,
   } = useChat()
@@ -105,6 +109,11 @@ export function ChatWorkspace({ onOpenOnboarding }: ChatWorkspaceProps) {
   const mention = useMention()
   const { tabs, isLoading: isLoadingTabs } = useTabs(mention.state.open)
   const imageAttachments = useImageAttachments()
+
+  // --- NFR-REL-04: trang thai ket noi toi BFF (T-M1-19) ---
+  const connection = useConnectionStatus()
+  /** Panel dang tai lich su hoi thoai → hien skeleton thay empty state. */
+  const [isHydrating, setIsHydrating] = useState(false)
 
   // --- FR-UX-03/04: goi y theo trang + tom tat 1-click (T-M1-11) ---
   const { page: activePage } = useActivePage()
@@ -360,6 +369,8 @@ export function ChatWorkspace({ onOpenOnboarding }: ChatWorkspaceProps) {
    */
   const handleSelectConversation = async (id: string, title: string): Promise<void> => {
     setActiveConversationId(id, title)
+    // Hien skeleton trong luc tai → tranh flash empty state (T-M1-19).
+    setIsHydrating(true)
     try {
       const response = await getConversationMessages(id)
       hydrateConversation(id, response.messages.map(toChatMessage))
@@ -367,6 +378,8 @@ export function ChatWorkspace({ onOpenOnboarding }: ChatWorkspaceProps) {
       setConversationPath(response.path ?? [])
     } catch {
       toast.error('Không tải được lịch sử cuộc trò chuyện')
+    } finally {
+      setIsHydrating(false)
     }
   }
 
@@ -437,6 +450,7 @@ export function ChatWorkspace({ onOpenOnboarding }: ChatWorkspaceProps) {
         model={activeModel}
         keySource={keySource}
         conversationTitle={conversationTitle}
+        connectionStatus={connection.status}
         onClear={clear}
         onOpenOnboarding={onOpenOnboarding}
         onOpenConversations={() => {
@@ -447,6 +461,26 @@ export function ChatWorkspace({ onOpenOnboarding }: ChatWorkspaceProps) {
         }}
       />
 
+      {/* Banner offline (NFR-REL-04 — T-M1-19). */}
+      {connection.status === 'offline' ? (
+        <div
+          className="flex items-center gap-2 border-b border-[var(--danger)] bg-[var(--surface-raised)] px-[var(--space-3)] py-[var(--space-1)] text-[length:var(--font-size-sm)] text-[var(--danger)]"
+          role="status"
+          data-testid="offline-banner"
+        >
+          <WifiOff className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <span className="flex-1">Không kết nối được máy chủ. Đang thử lại...</span>
+          <button
+            type="button"
+            onClick={connection.retry}
+            className="rounded-[var(--radius-sm)] px-2 py-0.5 text-[length:var(--font-size-xs)] underline focus-visible:outline-none focus-visible:ring-[var(--focus-ring)]"
+            data-testid="offline-banner-retry"
+          >
+            Thử lại
+          </button>
+        </div>
+      ) : null}
+
       <div className="relative flex min-h-0 flex-1 flex-col">
         <div
           ref={threadRef}
@@ -454,8 +488,10 @@ export function ChatWorkspace({ onOpenOnboarding }: ChatWorkspaceProps) {
           className="flex-1 space-y-3 overflow-y-auto px-[var(--space-3)] py-[var(--space-3)]"
           data-testid="message-list"
         >
-          {visibleMessages.length === 0 ? (
-            <PromptGallery
+          {isHydrating ? (
+            <LoadingState />
+          ) : visibleMessages.length === 0 ? (
+            <EmptyState
               profile={profile}
               pageTitle={activePage?.title ?? ''}
               suggestions={suggestions}
@@ -494,6 +530,12 @@ export function ChatWorkspace({ onOpenOnboarding }: ChatWorkspaceProps) {
                 }}
                 onContinue={(messageId) => {
                   void continueAnswer(messageId)
+                }}
+                onRetry={(messageId) => {
+                  void retryMessage(messageId)
+                }}
+                onOpenSettings={() => {
+                  setIsSettingsOpen(true)
                 }}
                 onSelectVariant={handleSelectVariant}
               />
@@ -626,6 +668,9 @@ function toChatMessage(message: ConversationMessage): ChatMessage {
     ...(message.active !== undefined ? { active: message.active } : {}),
     ...(message.parentTurnId !== undefined ? { parentTurnId: message.parentTurnId } : {}),
     ...(message.aborted !== undefined ? { aborted: message.aborted } : {}),
+    // Id tu server = uuid trong DB → dung cho `regenerate` / `continue`
+    // (client gui `assistantMessageId` la uuid — T-M1-19).
+    serverId: message.id,
     ...(message.citations.length > 0
       ? {
           citations: message.citations.map((citation) => ({

@@ -74,3 +74,46 @@ export function mapStatusToCode(status: number): string {
   if (status >= 500) return 'PROVIDER_UNAVAILABLE'
   return 'PROVIDER_ERROR'
 }
+
+/**
+ * Doc so giay cho thu lai tu header `Retry-After` (HTTP 429).
+ *
+ * Header co 2 dang: so giay (`60`) hoac HTTP-date. Chi so giay duoc xu ly
+ * — HTTP-date thi tra `undefined` (client dung gia tri mac dinh 60 giay).
+ *
+ * @param response - Response cua provider.
+ */
+export function parseRetryAfterSeconds(response: Response): number | undefined {
+  const header = response.headers.get('retry-after')
+  if (header === null) return undefined
+
+  const seconds = Number.parseInt(header.trim(), 10)
+  if (!Number.isInteger(seconds) || seconds < 0) return undefined
+  // tran toi da 10 phut — provider khong bat nguoc nhu vay.
+  return Math.min(seconds, 600)
+}
+
+/**
+ * Loi nay co **duoc user thu lai** khong (theo HTTP status) — muc dich cho **user**.
+ *
+ * - 401/403 → **khong** (sai API key → retry vo ich) — FR-CHAT-14 / NFR-REL-02.
+ * - 429 → **co**, nhung client phai dem nguoc `Retry-After` truoc.
+ * - 404 / 5xx → co (model khong ton tai hoac loi tam thoi).
+ *
+ * @param status - HTTP status tu provider.
+ */
+export function isRetryableStatus(status: number): boolean {
+  return status !== 401 && status !== 403
+}
+
+/**
+ * Loi nay duoc **thu model khac** trong chuoi fallback khong.
+ *
+ * Khac voi `isRetryableStatus`: 429 van duoc fallback (model khac co the
+ * con quota) — chi khong duoc **user** retry ngay.
+ *
+ * @param status - HTTP status tu provider.
+ */
+export function shouldTryFallbackModel(status: number): boolean {
+  return status === 404 || status === 429 || status >= 500
+}

@@ -84,7 +84,21 @@ export const chatErrorEventSchema = z.object({
   type: z.literal('error'),
   code: z.string().min(1),
   message: z.string(),
+  /**
+   * Loi co the thu lai khong.
+   *
+   * Server set tu provider chunk (`errorRetryable`) — **khong** hardcode
+   * `true`, vi loi 401 (sai API key) thi retry vo ich.
+   * FR-CHAT-14 / NFR-REL-02 — T-M1-19.
+   */
   retryable: z.boolean(),
+  /**
+   * So giay user phai cho truoc khi thu lai (429).
+   *
+   * Provider gui header `Retry-After` → server chuyen sang day.
+   * `undefined` → client dung gia tri mac dinh theo nhom loi.
+   */
+  retryAfterSeconds: z.number().int().nonnegative().optional(),
 })
 export type ChatErrorEvent = z.infer<typeof chatErrorEventSchema>
 

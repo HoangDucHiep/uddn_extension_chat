@@ -496,19 +496,67 @@ Component `Onboarding` — màn hình **thay** nội dung chat trong side panel 
 
 > `data-testid` cho E2E: `onboarding` · `onboarding-step-permissions` · `onboarding-step-provider` · `onboarding-step-try` · `onboarding-step-counter` · `onboarding-skip` · `onboarding-next` · `onboarding-back` · `onboarding-complete` · `onboarding-api-key` · `onboarding-save-key` · `onboarding-key-error` · `onboarding-key-success` · `onboarding-saved-key-id` · `onboarding-try-input` · `onboarding-try-send` · `onboarding-try-stop` · `onboarding-try-answer` · `onboarding-try-error` · `onboarding-providers-loading` · `onboarding-providers-error` · `onboarding-open-settings` · `onboarding-extension-id`.
 
+### 3.9 States — loading / empty / error / offline (đã implement T-M1-19)
+
+Folder `apps/extension/src/sidepanel/components/states/` — **4 trạng thái** của side panel dùng **một điểm vào chung**, đảm bảo panel không bao giờ hiện màn hình trắng/chết.
+
+| Component | Nội dung | FR |
+|---|---|---|
+| `LoadingState.tsx` | Skeleton rows cho thread (đang tải lịch sử hội thoại) | NFR-PERF-03 |
+| `EmptyState.tsx` | Wrapper mỏng của `PromptGallery` (đã có ở T-M1-11) | FR-UX-03/04 |
+| `ErrorState.tsx` | Card lỗi inline trong bubble + 1 hành động theo nhóm lỗi | FR-CHAT-14, FR-UX-08 |
+| `ConnectionBadge.tsx` | Chip trạng thái kết nối trong `PanelHeader` | NFR-REL-04, DP-6 |
+
+#### 3.9.1 `ErrorState` — card lỗi inline
+
+- **Vị trí:** trong bubble assistant, thay dòng chữ đỏ thô trước đây (`MessageBubble.tsx`).
+- **Bố cục:** icon (theo nhóm lỗi) · tiêu đề ngắn · mô tả nguyên nhân cụ thể · **1 hành động chính** · nút dismiss `✕` (`aria-label="Ẩn thông báo lỗi"`).
+- **Hành động theo nhóm lỗi** (`data-error-kind` trên card):
+
+| Nhóm | Hành động | Ghi chú |
+|---|---|---|
+| `auth` (401/403) | **"Kiểm tra API key"** → mở drawer Settings | Không có nút Retry (retry cũng lỗi) |
+| `rate-limit` (429) | **"Thử lại sau Ns"** — đếm ngược **tương tác** | Nút disabled tới khi đếm về 0 → tự đổi thành "Thử lại" |
+| `network` / `server` / `provider` / `unknown` | **"Thử lại"** | `retryMessage(messageId)` gửi lại lượt đó |
+
+- **Token:** `--surface-raised` (nền) · `--border-default` (viền) · `--text-primary` / `--text-secondary` · `--color-danger` (icon lỗi) · `--color-accent` (nút hành động) · `--radius-md` · `--space-2`/`--space-3` · `--font-size-sm`. **Không hardcode màu.**
+- **A11y:** `role="alert"` + `aria-live="polite"` (đếm ngược không spam screen reader — text thay đổi 1 lần/giây được `aria-live` ở mức polite) · nút hành động là `<button>` thật · dismiss là icon-button có `aria-label` tiếng Việt · focus ring `--border-focus`.
+- **Motion:** skeleton dùng `animate-pulse` → `prefers-reduced-motion` tắt animation.
+
+> `data-testid` cho E2E: `error-state` · `error-state-retry` · `error-state-open-settings` · `error-state-dismiss` · `error-state-countdown`.
+
+#### 3.9.2 `ConnectionBadge` — chip trạng thái kết nối
+
+- **Vị trí:** trong `PanelHeader`, cạnh chip provider.
+- **4 trạng thái:** `Đang kết nối` (đang probe lần đầu) · `Đã kết nối` · `Offline` (không gọi được BFF) · `Máy chủ lỗi` (BFF trả `degraded`).
+- **DP-6:** **icon + chữ**, **không** chỉ dựa vào màu. Icon `lucide-react`: `Loader` (đang kết nối) · `Check` (đã kết nối) · `WifiOff` (offline) · `TriangleAlert` (lỗi server).
+- **Token:** `--text-secondary` · `--color-danger` (offline) · `--color-warning` (degraded) · `--surface-sunken` · `--radius-full` · `--font-size-xs`. **Không hardcode màu.**
+
+> `data-testid`: `connection-badge` · `connection-badge-offline` · `connection-badge-connected`.
+
+#### 3.9.3 Banner offline
+
+- **Vị trí:** ngay dưới `PanelHeader`, **phía trên** thread.
+- **Nội dung:** "Không kết nối được tới máy chủ Sidekick" + nút "Thử lại" (probe lại ngay) · nút dismiss.
+- **A11y:** `role="status"` + `aria-live="polite"` · focus ring rõ.
+
+> `data-testid`: `offline-banner` · `offline-retry` · `offline-dismiss`.
+
 ---
 
 ## 4. State & hành vi UI chuẩn hoá
 
 | Trạng thái | Yêu cầu UI | FR |
 |---|---|---|
-| **Loading khung** | Skeleton cho thread. Không spinner che toàn màn hình | NFR-PERF-03 |
+| **Loading khung** | Skeleton cho thread (`LoadingState`). Không spinner che toàn màn hình | NFR-PERF-03, FR-CHAT-14 |
 | **Streaming** | Token hiện dần, con trỏ nhấp nháy, không layout shift | FR-CHAT-01, DP-4 |
 | **Empty (chưa có chat)** | `PromptGallery`: ≥ 3 gợi ý theo loại trang + nút refresh (xoay vòng) + nút "Tóm tắt trang này" + dòng "Sẽ tự đính kèm trang này khi bạn chọn gợi ý" | FR-UX-03, FR-UX-04 |
-| **Empty (chưa có context)** | Gợi ý câu hỏi chung (`generalSuggestions()`), **không** hiện nút tóm tắt | FR-UX-04 || **Error network** | Inline trong thread + nút Retry + nguyên nhân cụ thể | FR-CHAT-14 |
-| **Error 401 (key)** | Link tới Settings → Provider | FR-CHAT-14 |
-| **Error 429** | Đếm ngược giây rồi cho thử lại | FR-CHAT-14 |
-| **BFF offline** | Banner cố định + CTA "Nhập API key dùng trực tiếp" (K3) | NFR-REL-03 |
+| **Empty (chưa có context)** | Gợi ý câu hỏi chung (`generalSuggestions()`), **không** hiện nút tóm tắt | FR-UX-04 |
+| **Error network / 5xx** | Inline trong thread (`ErrorState`) + nút "Thử lại" + nguyên nhân cụ thể | FR-CHAT-14 |
+| **Error 401 (key)** | `ErrorState` → nút **"Kiểm tra API key"** mở drawer Settings (không có nút Retry) | FR-CHAT-14 |
+| **Error 429** | `ErrorState` → đếm ngược giây rồi cho thử lại (nút disabled tới hết đếm) | FR-CHAT-14 |
+| **BFF offline** | `ConnectionBadge` "Offline" ở header + banner dưới header + nút "Thử lại" | NFR-REL-04, FR-UX-08 |
+| **BFF degraded** | `ConnectionBadge` "Máy chủ lỗi" ở header (icon + chữ) | NFR-REL-04 |
 | **Quota đầy** | Badge cảnh báo + link quản lý quota | FR-PROVIDER-06 |
 | **Offline (không mạng)** | Badge trạng thái + gợi ý dùng Ollama local | FR-PROVIDER-07 |
 | **Đang chờ xác nhận** (M4) | Workflow dừng ở bước, hiện diff + Phê duyệt/Từ chối | FR-WORKFLOW-07 |
@@ -550,7 +598,9 @@ Component `Onboarding` — màn hình **thay** nội dung chat trong side panel 
 | `PromptGallery`, `SummarizeButton` | FR-UX-03/04 | Parity với Edge Copilot (A4/A5) · Chrome Gemini (B9) |
 | `Composer` | FR-CHAT-12/13 | Rubric R4 (instruction following) |
 | **Không có component mới** — T-M1-03 chỉ thêm context menu + phím tắt ở tầng browser | FR-UX-01 | Parity A1 / A25 / B1 / B19 |
-| `ErrorMessage` | FR-CHAT-14 | Độ ổn định, khó đo |
+| `ErrorState` | FR-CHAT-14, FR-UX-08 | Độ ổn định, khó đo · rubric R6 (thông báo lỗi có nút khôi phục) |
+| `ConnectionBadge` | NFR-REL-04 | Rubric R6 (người dùng biết BFF còn sống không) |
+| `LoadingState`, `EmptyState` | NFR-PERF-03, FR-UX-03/04 | Rubric R6 (không màn hình trắng) |
 | `ThemeSettings`, `AppearanceSettings` | FR-SETTINGS-01/02, FR-UX-06 | WCAG · parity theme (A24 / B12) |
 | `PrivacySettings` | FR-SETTINGS-04, FR-CONTEXT-08 | R7 privacy transparency |
 | `DataSettings` | FR-SETTINGS-03/07, NFR-SEC-07 | R7 privacy · WCAG |

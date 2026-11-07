@@ -60,6 +60,16 @@ export const providerChunkSchema = z.object({
   finishReason: z.string().optional(),
   errorCode: z.string().optional(),
   errorMessage: z.string().optional(),
+  /**
+   * Loi co the thu lai khong (FR-CHAT-14 — T-M1-19).
+   *
+   * `undefined` → server tu suy ra tu `errorCode` (xem `classifyChatError`).
+   */
+  errorRetryable: z.boolean().optional(),
+  /**
+   * So giay cho thu lai (tu header `Retry-After` cua provider, HTTP 429).
+   */
+  retryAfterSeconds: z.number().int().nonnegative().optional(),
 })
 export type ProviderChunk = z.infer<typeof providerChunkSchema>
 

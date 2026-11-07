@@ -62,7 +62,7 @@ export interface ChatMessage {
   model?: string
   /** Trang thai stream: dang cho, dang stream, da xong, loi. */
   status: 'pending' | 'streaming' | 'done' | 'error'
-  errorMessage?: string
+  errorMessage?: string | undefined
   tokensIn?: number
   tokensOut?: number
   /** Anh dinh kem cua message (FR-VISION-01 — T-M1-24). */
@@ -84,6 +84,24 @@ export interface ChatMessage {
   parentTurnId?: string
   /** Assistant bi stop giua chung → co nut "Tiep tuc" (FR-CHAT-07). */
   aborted?: boolean
+  /**
+   * Id message **phia server** (uuid) — tu SSE `meta.messageId`.
+   *
+   * Client sinh id local (`assistant-<timestamp>`) nen khong dung lam
+   * `assistantMessageId` cho `regenerate` / `continue` (server tra 404).
+   * FR-CHAT-14 — T-M1-19.
+   */
+  serverId?: string
+  /**
+   * Error code chuan cua server (FR-CHAT-14 — T-M1-19).
+   *
+   * Dung de phan loai nhom loi → chon dung hau dong khoi phuc.
+   */
+  errorCode?: string | undefined
+  /** Loi co the thu lai khong (server quyet dinh). */
+  errorRetryable?: boolean | undefined
+  /** So giay user phai cho truoc khi thu lai (429). */
+  errorRetryAfterSeconds?: number | undefined
 }
 
 export interface ChatState {
@@ -200,6 +218,20 @@ export interface ChatState {
    * @param id - Id message assistant.
    */
   setAborted: (id: string, aborted: boolean) => void
+  /**
+   * Gan thong tin loi cua message (FR-CHAT-14 — T-M1-19).
+   *
+   * @param id - Id message assistant.
+   * @param error - `{ code, retryable, retryAfterSeconds }` — bo undefined de xoa.
+   */
+  setMessageError: (
+    id: string,
+    error: {
+      code?: string | undefined
+      retryable?: boolean | undefined
+      retryAfterSeconds?: number | undefined
+    },
+  ) => void
   /** Nap ban nhap (FR-CHAT-13 — T-M1-10). */
   setDraft: (draft: string) => void
   reset: () => void
@@ -388,6 +420,22 @@ export const useChatStore = create<ChatState>((set, get) => ({
       messages: state.messages.map((message) =>
         message.id === id ? { ...message, aborted } : message,
       ),
+    })),
+
+  setMessageError: (id, error) =>
+    set((state) => ({
+      messages: state.messages.map((message) => {
+        if (message.id !== id) return message
+        const { code, retryable, retryAfterSeconds } = error
+        // Gan **ca 3** truong (ke ca `undefined`) → goi voi `undefined` de
+        // xoa thong tin loi cu (dung khi thu lai luot bi loi).
+        return {
+          ...message,
+          errorCode: code,
+          errorRetryable: retryable,
+          errorRetryAfterSeconds: retryAfterSeconds,
+        }
+      }),
     })),
 
   setDraft: (draft) => set({ draft }),

@@ -4,7 +4,14 @@
  */
 
 import type { ProviderChunk, ProviderImage, ProviderStreamRequest } from '@sidekick/shared'
-import { mapStatusToCode, readSseData, safeReadText } from './sse.js'
+import {
+  isRetryableStatus,
+  mapStatusToCode,
+  parseRetryAfterSeconds,
+  readSseData,
+  safeReadText,
+  shouldTryFallbackModel,
+} from './sse.js'
 import { errorChunk, type ProviderAdapter, type ProviderKeyCheck } from './types.js'
 
 /**
@@ -233,13 +240,21 @@ export class OpenAiCompatibleProvider implements ProviderAdapter {
       })
 
       if (!response.ok) {
-        const retryable = response.status === 404 || response.status === 429 || response.status >= 500
+        // `retryable` (fallback model) va `errorRetryable` (user retry) la 2
+        // khac nhau: 429 van fallback sang model khac, nhung user phai cho.
+        const retryable = shouldTryFallbackModel(response.status)
         const errorText = await safeReadText(response)
+        const retryAfterSeconds =
+          response.status === 429 ? parseRetryAfterSeconds(response) : undefined
         return {
           ok: false,
           error: errorChunk(
             mapStatusToCode(response.status),
             `Provider ${this.id} tra loi ${response.status}: ${errorText.slice(0, 300)}`,
+            {
+              retryable: isRetryableStatus(response.status),
+              ...(retryAfterSeconds !== undefined ? { retryAfterSeconds } : {}),
+            },
           ),
           retryable,
         }

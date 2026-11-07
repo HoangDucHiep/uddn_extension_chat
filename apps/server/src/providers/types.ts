@@ -78,7 +78,30 @@ export function doneChunk(finishReason: string): ProviderChunk {
   return { kind: 'done', finishReason }
 }
 
-/** Helper tao chunk error. */
-export function errorChunk(errorCode: string, errorMessage: string): ProviderChunk {
-  return { kind: 'error', errorCode, errorMessage }
+/**
+ * Helper tao chunk error.
+ *
+ * `retryable` = loi co the thu lai khong (FR-CHAT-14 — T-M1-19):
+ *  - 401/403 (sai API key) → **false** (retry vo ich).
+ *  - 429 → `false` (phai doi het han).
+ *  - 5xx / loi mang → `true`.
+ *
+ * @param errorCode - Error code chuan.
+ * @param errorMessage - Thong diep loi.
+ * @param options - `retryable` + `retryAfterSeconds` (tu provider).
+ */
+export function errorChunk(
+  errorCode: string,
+  errorMessage: string,
+  options?: { retryable?: boolean; retryAfterSeconds?: number },
+): ProviderChunk {
+  return {
+    kind: 'error',
+    errorCode,
+    errorMessage,
+    ...(options?.retryable !== undefined ? { errorRetryable: options.retryable } : {}),
+    ...(options?.retryAfterSeconds !== undefined
+      ? { retryAfterSeconds: options.retryAfterSeconds }
+      : {}),
+  }
 }

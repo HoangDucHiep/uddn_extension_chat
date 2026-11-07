@@ -17,6 +17,7 @@ import { randomUUID } from 'node:crypto'
 import {
   applyContextBudget,
   CITATION_INSTRUCTION,
+  classifyChatError,
   CONTINUE_INSTRUCTION,
   CONTEXT_TIER_ORDER,
   CONTEXT_WINDOWS,
@@ -24,6 +25,7 @@ import {
   ERROR_CODES,
   hashContextItems,
   hashString,
+  isRetryableKind,
   trimHistory,
   VISION,
   type BudgetedContextItem,
@@ -301,11 +303,18 @@ export function createChatStream(
       if (chunk.kind === 'error') {
         errorMessage = chunk.errorMessage
         finishReason = 'error'
+        const errorCode = chunk.errorCode ?? 'PROVIDER_ERROR'
+        // `retryable` phai phan anh `errorCode` thuc te — KHONG hardcode
+        // `true`, vi loi 401 (sai API key) retry vo ich (FR-CHAT-14 / NFR-REL-02).
+        const retryable = chunk.errorRetryable ?? isRetryableKind(classifyChatError(errorCode))
         yield {
           type: 'error',
-          code: chunk.errorCode ?? 'PROVIDER_ERROR',
+          code: errorCode,
           message: chunk.errorMessage ?? 'Provider loi',
-          retryable: true,
+          retryable,
+          ...(chunk.retryAfterSeconds !== undefined
+            ? { retryAfterSeconds: chunk.retryAfterSeconds }
+            : {}),
         }
         break
       }

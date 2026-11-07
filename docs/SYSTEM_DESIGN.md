@@ -506,7 +506,7 @@ type ChatEvent =
   | { type: 'tool_call'; id: string; name: string; args: unknown }
   | { type: 'tool_result'; id: string; ok: boolean; output: string; durationMs: number }
   | { type: 'usage'; tokensIn: number; tokensOut: number; costUsd: number }
-  | { type: 'error'; code: string; message: string; retryable: boolean }
+  | { type: 'error'; code: string; message: string; retryable: boolean; retryAfterSeconds?: number }
   | { type: 'done'; finishReason: 'stop' | 'length' | 'tool' | 'aborted' | 'error'; messageId: string };
 ```
 
@@ -528,6 +528,7 @@ data: {"type":"done","finishReason":"stop","messageId":"..."}
 6. Reconnect: client không tự reconnect giữa luồng (mất context). Thay vào đó bấm "Tạo lại" (regenerate) — đơn giản và tránh trùng nội dung.
 7. Server gửi heartbeat comment `: ping` mỗi 15s để giữ kết nối qua proxy.
 8. `citation` (FR-CONTEXT-10 — T-M1-08) phát **sau** toàn bộ `token*`, **trước** `usage`/`done` — server chỉ biết marker `[N]` sau khi stream kết thúc. Chi tiết: [§7.9](#79-citation-marker-n--sse--chip-fr-context-10--t-m1-08).
+9. `error` mang **thông tin lỗi thật** (T-M1-19): `code` (error code chuẩn) · `retryable` (**suy ra từ `code`**, không hardcode `true`) · `retryAfterSeconds` (từ header `Retry-After` của provider khi HTTP 429). Chi tiết: [§7.15](#715-states--retry--connection-status-fr-chat-14--fr-ux-08--nfr-rel-02--nfr-rel-04--t-m1-19).
 
 ### 4.4 Chiến lược provider & fallback
 
@@ -2149,6 +2150,120 @@ flowchart LR
 | E2E | `apps/extension/e2e/settings.spec.ts` | (1) bấm gear → drawer mở · (2) chọn "Tối" → `<html>` có `.dark` → reload → vẫn `.dark` · (3) đổi cỡ chữ → `--font-scale` đổi → reload → giữ · (4) xoá lịch sử (stub `DELETE /api/conversations`) → confirm → request đúng |
 
 > **Ghi chú E2E:** BFF được stub bằng `page.route` → test chạy độc lập, không cần Postgres thật.
+
+### 7.15 States · retry · connection status (FR-CHAT-14 · FR-UX-08 · NFR-REL-02 · NFR-REL-04 — T-M1-19)
+
+> Nguồn sự thật cho hợp đồng: [`REQUIREMENTS.md`](REQUIREMENTS.md) §5.3 (NFR-REL) + §4.1 (FR-CHAT-14).
+
+#### 7.15.1 Bốn trạng thái của side panel
+
+Side panel **không bao giờ** hiển thị màn hình trắng/chết. Mọi trạng thái đều có **một điểm vào chung** trong `apps/extension/src/sidepanel/components/states/`:
+
+| Trạng thái | Component | Khi nào | Hành động |
+|---|---|---|---|
+| **Loading** | `LoadingState.tsx` | Đang tải lịch sử hội thoại (`GET /api/conversations/:id/messages`) | Skeleton rows (`animate-pulse`) — **không** flash empty state |
+| **Empty** | `EmptyState.tsx` | Chưa có message nào | Wrapper của `PromptGallery` (T-M1-11) — ≥ 3 gợi ý theo trang |
+| **Error** | `ErrorState.tsx` | Lỗi trong 1 luot chat | 1 hành động đúng theo nhóm lỗi (xem §7.15.3) |
+| **Offline** | `offline-banner` trong `ChatWorkspace.tsx` | BFF không phản hồi | Banner dưới header + nút "Thử lại" |
+
+#### 7.15.2 Taxonomy lỗi (shared)
+
+Nguồn sự thật: [`packages/shared/src/chatErrors.ts`](../packages/shared/src/chatErrors.ts) — **thuần**, dùng chung server + extension + eval.
+
+```ts
+export type ChatErrorKind = 'network' | 'rate-limit' | 'auth' | 'provider' | 'server' | 'unknown'
+
+export function classifyChatError(code: string): ChatErrorKind
+export function isRetryableKind(kind: ChatErrorKind): boolean      // false cho 'auth'
+export function shouldAutoRetry(kind: ChatErrorKind): boolean      // true cho network/server/unknown
+export function defaultRetryAfterSeconds(kind: ChatErrorKind): number | undefined  // 60 cho 'rate-limit'
+export const AUTO_RETRY_BACKOFF_MS = 800
+```
+
+| Error code | Kind | `retryable` (user) | Auto-retry | Hành động trong UI |
+|---|---|---|---|---|
+| `INVALID_API_KEY` · `PROVIDER_KEY_INVALID` · `MISSING_API_KEY` · `UNAUTHORIZED` · `FORBIDDEN` | `auth` | ❌ | ❌ | **Kiểm tra API key** → mở drawer Settings |
+| `PROVIDER_RATE_LIMITED` · `RATE_LIMITED` · `PROVIDER_QUOTA_EXCEEDED` | `rate-limit` | ✅ (sau hạn) | ❌ | **Thử lại sau Ns** (đếm ngược, nút bị disable) |
+| `SERVICE_UNAVAILABLE` · `PROVIDER_UNAVAILABLE` · `TIMEOUT` | `network` | ✅ | ✅ | **Thử lại** |
+| `INTERNAL_ERROR` · `DB_ERROR` | `server` | ✅ | ✅ | **Thử lại** |
+| `PROVIDER_ERROR` · `MODEL_NOT_FOUND` | `provider` | ✅ | ❌ | **Thử lại** (model sai → retry cũng lỗi) |
+| (không nhận ra) | `unknown` | ✅ | ✅ | **Thử lại** |
+
+#### 7.15.3 Luồng lỗi
+
+```mermaid
+flowchart TD
+  Send["User gửi message"] --> Stream["streamChat (SSE)"]
+  Stream -->|"HTTP error / network error"| Throw["ChatRequestError{code,status,retryable}"]
+  Stream -->|"SSE error event"| ErrEvent["error{code,retryable,retryAfterSeconds}"]
+  Throw --> Classify["classifyChatError (shared)"]
+  ErrEvent --> Classify
+  Classify -->|"network / server / unknown"| Retry["wait 800ms → retry 1 lần"]
+  Classify -->|"auth"| Auth["ErrorState: mở Settings"]
+  Classify -->|"rate-limit"| Countdown["ErrorState: đếm ngược Ns"]
+  Classify -->|"provider"| Show["ErrorState: Thử lại"]
+  Retry --> Stream
+  Show --> Bubble["MessageBubble render ErrorState"]
+  Auth --> Bubble
+  Countdown --> Bubble
+```
+
+#### 7.15.4 Server — báo lỗi thật
+
+| Nơi | Thay đổi |
+|---|---|
+| `packages/shared/src/events.ts` | `chatErrorEventSchema` += `retryAfterSeconds?: number` (int ≥ 0) |
+| `packages/shared/src/schemas/provider.ts` | `providerChunkSchema` += `errorRetryable?: boolean` + `retryAfterSeconds?: number` |
+| `apps/server/src/providers/types.ts` | `errorChunk(code, message, { retryable, retryAfterSeconds })` |
+| `apps/server/src/providers/sse.ts` | `parseRetryAfterSeconds(response)` (đọc header `Retry-After`, ghim ≤ 600 s) · `isRetryableStatus(status)` (401/403 → false) · `shouldTryFallbackModel(status)` (429 **vẫn** fallback sang model khác) |
+| `apps/server/src/providers/{openaiCompatible,gemini}.ts` | HTTP 429 → gắn `retryAfterSeconds` từ header · HTTP 401/403 → `errorRetryable: false` |
+| `apps/server/src/services/chatService.ts` | `retryable = chunk.errorRetryable ?? isRetryableKind(classifyChatError(code))` — **không** hardcode `true`; forward `retryAfterSeconds` |
+
+> **Phân biệt 2 khái niệm `retryable`:** `shouldTryFallbackModel` (server thử **model** khác — 429 vẫn thử) ≠ `isRetryableStatus` (user có nên **retry** — 401/403 thì không).
+
+#### 7.15.5 Extension — plumbing
+
+| Nơi | Thay đổi |
+|---|---|
+| `apps/extension/src/lib/sseClient.ts` | `export class ChatRequestError extends Error { code; status; retryable }` — thay `new Error("CODE: msg")`; lỗi network → `ChatRequestError('SERVICE_UNAVAILABLE', …)` |
+| `apps/extension/src/sidepanel/store/chatStore.ts` | `ChatMessage` += `serverId?` (uuid từ SSE `meta.messageId`) · `errorCode?` · `errorRetryable?` · `errorRetryAfterSeconds?` · action `setMessageError(id, patch)` |
+| `apps/extension/src/sidepanel/hooks/useChat.ts` | Lưu `code`/`retryable`/`retryAfterSeconds` khi nhận SSE `error` · retry **1 lần** backoff 800 ms · `retryMessage(messageId)` (gọi `regenerate` với `serverId`) |
+
+> **`serverId` là bắt buộc:** client sinh id local (`assistant-<timestamp>`) nhưng server yêu cầu `assistantMessageId` là **uuid** (`chatRequestSchema`) → `regenerate` / `continue` / `retryMessage` phải dùng `serverId` (từ SSE `meta.messageId`), nếu không server trả 400.
+
+#### 7.15.6 Trạng thái kết nối
+
+Nguồn: [`apps/extension/src/lib/connectionStatus.ts`](../apps/extension/src/lib/connectionStatus.ts) (thuần) + [`apps/extension/src/sidepanel/hooks/useConnectionStatus.ts`](../apps/extension/src/sidepanel/hooks/useConnectionStatus.ts).
+
+- Probe `GET <bffUrl>/api/health` (timeout 3 s) → `connected` (HTTP 200 + `status: 'ok'`) · `degraded` (`status: 'degraded'`) · `offline` (HTTP lỗi / fetch reject / timeout).
+- **Backoff probe**: 5 s → 15 s → 30 s (giữ nguyên 30 s). Probe thành công → reset về 5 s.
+- `navigator.onLine` listener → báo `offline` **tức thời** (không chờ probe kế tiếp); `online` → probe lại ngay.
+- `ConnectionBadge` trong `PanelHeader` (icon + chữ, **không** chỉ dựa vào màu) + banner offline dưới header.
+
+#### 7.15.7 Kiểm thử
+
+| Tầng | File | Phủ |
+|---|---|---|
+| Unit (shared) | `packages/shared/tests/chatErrors.test.ts` | `classifyChatError` 6 nhóm · `isRetryableKind` · `shouldAutoRetry` · `defaultRetryAfterSeconds` · `AUTO_RETRY_BACKOFF_MS` |
+| Unit (shared) | `packages/shared/tests/events.test.ts` | `error` event có `retryAfterSeconds` · reject giá trị âm |
+| Unit (server) | `apps/server/tests/chatErrorEvent.test.ts` | 401 → `retryable: false` · 429 → `retryAfterSeconds` · provider 429 đọc header `Retry-After` · 401 → `errorRetryable: false` |
+| Unit (extension) | `apps/extension/tests/chatErrorState.test.tsx` | action đúng theo kind · đếm ngược 429 · dismiss · `role="alert"` · `data-error-kind` |
+| Unit (extension) | `apps/extension/tests/connectionStatus.test.ts` | `backoffFor` 5s→15s→30s · `probeConnection` ok/degraded/lỗi/reject |
+| Unit (extension) | `apps/extension/tests/chatRetry.test.ts` | retry **đúng 1 lần** · 401 **không** retry · sau retry vẫn có card lỗi · SSE `error` lưu `errorCode` + `retryAfterSeconds` · `retryMessage` gọi `regenerate` |
+| E2E | `apps/extension/e2e/states.spec.ts` | (1) BFF offline → badge + banner · (2) BFF online → badge "Đã kết nối" · (3) SSE 429 → card lỗi + đếm ngược · (4) mở conversation → skeleton loading |
+
+**Mutation spot-check (8 mutation, đều bị bắt):**
+
+| Mutation | Kết quả |
+|---|---|
+| `chatErrors.ts`: `shouldAutoRetry` bỏ điều kiện loại trừ `auth` | ✅ Bị bắt — *"auth / rate-limit / provider khong tu dong retry"* fail |
+| `useChat.ts`: bỏ guard số lần retry (thêm 1 lần gọi nữa) | ✅ Bị bắt — *"retry DUNG 1 lan"* fail (3 thay vì 2) |
+| `ErrorState.tsx`: đếm ngược không giảm | ✅ Bị bắt — *"het dem nguoc thi nut Thu lai duoc bat"* fail |
+| `sse.ts`: bỏ mapping header `Retry-After` | ✅ Bị bắt — *"429 doc header Retry-After"* fail |
+| `ChatWorkspace.tsx`: bỏ render banner offline | ✅ Bị bắt — E2E *"BFF offline → badge Offline + banner"* fail |
+| `connectionStatus.ts`: bỏ backoff (luôn 5 s) | ✅ Bị bắt — 3 test backoff fail |
+| `chatService.ts`: hardcode `retryable: true` | ✅ Bị bắt — *"401 → retryable=false"* fail |
+| `ChatWorkspace.tsx`: bỏ render `LoadingState` | ✅ Bị bắt — E2E *"skeleton loading thay empty state"* fail |
 
 ---
 

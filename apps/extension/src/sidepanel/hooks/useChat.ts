@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useRef } from 'react'
 import {
   applyContextBudget,
+  AUTO_RETRY_BACKOFF_MS,
+  classifyChatError,
   CONTEXT_WINDOWS,
+  shouldAutoRetry,
   type ChatEvent,
   type ChatOperation,
   type ContextBundle,
   type ImageAttachment,
   type ProviderId,
 } from '@sidekick/shared'
-import { streamChat } from '@/lib/sseClient'
+import { ChatRequestError, streamChat } from '@/lib/sseClient'
 import {
   attachCurrentTab as attachCurrentTabFromLib,
   attachSelection as attachSelectionFromLib,
@@ -76,6 +79,7 @@ export function useChat() {
   const hydratePath = useChatStore((state) => state.hydratePath)
   const activateVariantLocal = useChatStore((state) => state.activateVariant)
   const setAborted = useChatStore((state) => state.setAborted)
+  const setMessageError = useChatStore((state) => state.setMessageError)
 
   // Nap trang thai bat/tat context da luu trong `chrome.storage.local`.
   // Chi ap dung khi user chua dinh kem gi → khong ghi de lua chon cua user.
@@ -273,6 +277,11 @@ export function useChat() {
       ]
 
       let sawDone = false
+      let sawMeta = false
+      /** Loi do **server** bao trong SSE (sau khi turn da tao). */
+      let streamError:
+        | { code: string; message: string; retryable: boolean; retryAfterSeconds?: number }
+        | undefined
 
       // Context chi duoc gui khi user dinh kem item (FR-CONTEXT-07).
       // KHONG tu capture tab active — panel hoat dong nhu LLM thuan neu
@@ -287,13 +296,20 @@ export function useChat() {
       const handleEvent = (event: ChatEvent): void => {
         switch (event.type) {
           case 'meta':
+            sawMeta = true
             setConversationId(event.conversationId)
             setActive({
               provider: event.provider,
               model: event.model,
               keySource: event.keySource,
             })
-            updateMessage(assistantId, { provider: event.provider, model: event.model })
+            updateMessage(assistantId, {
+              provider: event.provider,
+              model: event.model,
+              // Id server (uuid) → can cho `regenerate` / `continue` /
+              // `retryMessage` goi len BFF (client id khong phai uuid).
+              serverId: event.messageId,
+            })
             if (event.turnId !== undefined) {
               // Server xac nhan turn → gan vao message de client dong bo path.
               updateMessage(assistantId, { turnId: event.turnId })
@@ -324,9 +340,25 @@ export function useChat() {
             break
 
           case 'error':
+            // Luu **ca** thong tin loi (code / retryable / retryAfterSeconds) —
+            // `ErrorState` can chon dung hau dong khoi phuc theo nhom loi.
+            // FR-CHAT-14 — T-M1-19.
+            streamError = {
+              code: event.code,
+              message: event.message,
+              retryable: event.retryable,
+              ...(event.retryAfterSeconds !== undefined
+                ? { retryAfterSeconds: event.retryAfterSeconds }
+                : {}),
+            }
             updateMessage(assistantId, {
               status: 'error',
               errorMessage: event.message,
+              errorCode: event.code,
+              errorRetryable: event.retryable,
+              ...(event.retryAfterSeconds !== undefined
+                ? { errorRetryAfterSeconds: event.retryAfterSeconds }
+                : {}),
             })
             break
 
@@ -343,39 +375,101 @@ export function useChat() {
         }
       }
 
-      try {
-        for await (const event of streamChat(
-          {
-            messages: requestTurns,
-            conversationId: useChatStore.getState().conversationId,
-            operation,
-            ...(options.assistantMessageId !== undefined
-              ? { assistantMessageId: options.assistantMessageId }
-              : {}),
-            ...(options.parentTurnId !== undefined
-              ? { parentTurnId: options.parentTurnId }
-              : {}),
-            ...(context === undefined ? {} : { context }),
-            ...(preferredProvider === undefined ? {} : { provider: preferredProvider }),
-          },
-          { signal: controller.signal, onEvent: handleEvent },
-        )) {
-          // Event da duoc xu ly trong onEvent.
-          void event
-        }
+      const chatRequest = {
+        messages: requestTurns,
+        conversationId: useChatStore.getState().conversationId,
+        operation,
+        ...(options.assistantMessageId !== undefined
+          ? { assistantMessageId: options.assistantMessageId }
+          : {}),
+        ...(options.parentTurnId !== undefined
+          ? { parentTurnId: options.parentTurnId }
+          : {}),
+        ...(context === undefined ? {} : { context }),
+        ...(preferredProvider === undefined ? {} : { provider: preferredProvider }),
+      }
 
-        // Stream bi cut dot ngột → coi nhu aborted (rule docs §4.3.5).
-        if (!sawDone) {
-          updateMessage(assistantId, { status: 'done' })
+      /**
+       * Chay 1 lan stream. Tra ve loi neu that bai (neu bi huy → `undefined`).
+       *
+       * @returns Loi duoc phan loai, hoac `undefined` khi stream xong/huy.
+       */
+      const runOnce = async (): Promise<
+        | { code: string; message: string; retryable: boolean; retryAfterSeconds?: number }
+        | undefined
+      > => {
+        sawDone = false
+        sawMeta = false
+        streamError = undefined
+        try {
+          for await (const event of streamChat(chatRequest, {
+            signal: controller.signal,
+            onEvent: handleEvent,
+          })) {
+            // Event da duoc xu ly trong onEvent.
+            void event
+          }
+
+          // Stream bi cut dot ngột → coi nhu aborted (rule docs §4.3.5).
+          if (!sawDone) {
+            updateMessage(assistantId, { status: 'done' })
+          }
+          return undefined
+        } catch (error) {
+          const isAbort = error instanceof Error && error.name === 'AbortError'
+          if (isAbort) {
+            updateMessage(assistantId, { status: 'done', aborted: true })
+            return undefined
+          }
+
+          const code = error instanceof ChatRequestError ? error.code : 'SERVICE_UNAVAILABLE'
+          const message = error instanceof Error ? error.message : String(error)
+          const retryable =
+            error instanceof ChatRequestError
+              ? error.retryable
+              : classifyChatError(code) !== 'auth'
+
+          // Loi do server bao trong SSE → uu tien thong tin do (co
+          // `retryAfterSeconds` chinh xac cho 429).
+          if (streamError !== undefined) {
+            return streamError
+          }
+
+          updateMessage(assistantId, {
+            status: 'error',
+            errorMessage: message,
+            errorCode: code,
+            errorRetryable: retryable,
+          })
+          return { code, message, retryable }
         }
-      } catch (error) {
-        const isAbort = error instanceof Error && error.name === 'AbortError'
-        updateMessage(assistantId, {
-          status: isAbort ? 'done' : 'error',
-          // Stop giua chung → giu noi dung do + danh dau de hien "Tiep tuc".
-          ...(isAbort ? { aborted: true } : {}),
-          ...(isAbort ? {} : { errorMessage: error instanceof Error ? error.message : String(error) }),
-        })
+      }
+
+      try {
+        const failure = await runOnce()
+
+        if (failure !== undefined) {
+          // Tu dong retry **1 lan** voi backoff 800ms (NFR-REL-02).
+          // Chi loi tam thoi (mang / 5xx) — KHONG retry loi auth (key sai)
+          // hay rate-limit (phai doi het han).
+          const kind = classifyChatError(failure.code)
+          const canAutoRetry = shouldAutoRetry(kind) && failure.retryable && !sawMeta
+          if (canAutoRetry) {
+            await sleep(AUTO_RETRY_BACKOFF_MS)
+            const secondFailure = await runOnce()
+            if (secondFailure !== undefined) {
+              updateMessage(assistantId, {
+                status: 'error',
+                errorMessage: secondFailure.message,
+                errorCode: secondFailure.code,
+                errorRetryable: secondFailure.retryable,
+                ...(secondFailure.retryAfterSeconds !== undefined
+                  ? { errorRetryAfterSeconds: secondFailure.retryAfterSeconds }
+                  : {}),
+              })
+            }
+          }
+        }
       } finally {
         setStreaming(false)
         abortRef.current = undefined
@@ -411,6 +505,11 @@ export function useChat() {
       const target = state.messages.find((message) => message.id === assistantMessageId)
       if (target === undefined) return
 
+      // Server chi nhan `assistantMessageId` la **uuid** → phai dung id server.
+      // Client id (`assistant-<timestamp>`) khong phai uuid → server tra 400.
+      const serverId = target.serverId
+      if (serverId === undefined) return
+
       // Bien the cu → `active = false`; bien the moi se la active.
       const turnId = target.turnId
       if (turnId !== undefined) {
@@ -422,7 +521,7 @@ export function useChat() {
       }
 
       await streamTurn('regenerate', {
-        assistantMessageId,
+        assistantMessageId: serverId,
         // Lich su = den het turn cua message dang sinh lai.
         history: buildHistory(state.messages, state.path),
       })
@@ -476,16 +575,53 @@ export function useChat() {
       const target = state.messages.find((message) => message.id === assistantMessageId)
       if (target === undefined) return
 
+      // Server chi nhan `assistantMessageId` la uuid → dung id server.
+      const serverId = target.serverId
+      if (serverId === undefined) return
+
       setAborted(assistantMessageId, false)
 
       await streamTurn('continue', {
-        assistantMessageId,
+        assistantMessageId: serverId,
         targetMessageId: assistantMessageId,
         // Lich su = het turn hien tai (bao gom phan assistant da ngat).
         history: buildHistory(state.messages, state.path),
       })
     },
     [streamTurn, setAborted],
+  )
+
+  /**
+   * Thu lai 1 luot chat bi loi (FR-CHAT-14 — T-M1-19).
+   *
+   * Nut "Thu lai" cua `ErrorState` → goi day. Luot duoc **sinh lai** tu
+   * user message (operation `regenerate`) → khong tao them user message.
+   *
+   * @param assistantMessageId - Id (client) cua assistant message bi loi.
+   */
+  const retryMessage = useCallback(
+    async (assistantMessageId: string) => {
+      const state = useChatStore.getState()
+      const target = state.messages.find((message) => message.id === assistantMessageId)
+      if (target === undefined) return
+      // Chi thu lai duoc khi server da tao message (co uuid).
+      if (target.serverId === undefined) return
+
+      // Xoa thong tin loi cu → card loi bi loi lai sau khi stream lai.
+      setMessageError(assistantMessageId, {
+        code: undefined,
+        retryable: undefined,
+        retryAfterSeconds: undefined,
+      })
+      updateMessage(assistantMessageId, { status: 'streaming', errorMessage: undefined })
+
+      await streamTurn('regenerate', {
+        assistantMessageId: target.serverId,
+        targetMessageId: assistantMessageId,
+        history: buildHistory(state.messages, state.path),
+      })
+    },
+    [streamTurn, setMessageError, updateMessage],
   )
 
   const stop = useCallback(() => {
@@ -548,6 +684,7 @@ export function useChat() {
     regenerate,
     editAndResend,
     continueAnswer,
+    retryMessage,
     setConversationPath,
     activateVariant,
     activePathMessages: useCallback(
@@ -556,6 +693,19 @@ export function useChat() {
       [],
     ),
   }
+}
+
+/**
+ * Cho mot khoang thoi gian (ms).
+ *
+ * Dung cho backoff giua 2 lan thu lai (NFR-REL-02).
+ *
+ * @param ms - So mili-giay cho.
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms)
+  })
 }
 
 /**

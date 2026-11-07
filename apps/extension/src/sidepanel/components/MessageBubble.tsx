@@ -1,10 +1,11 @@
-import { AlertCircle, Copy, Check } from 'lucide-react'
+import { Copy, Check } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { CitationList } from './chat/CitationList'
 import { MessageActions } from './chat/MessageActions'
 import { MessageContent } from './chat/MessageContent'
 import { MessageEditBox } from './chat/MessageEditBox'
+import { ErrorState } from './states/ErrorState'
 import type { TurnMessage } from '@/lib/chatTurns'
 import type { ChatMessage } from '../store/chatStore'
 
@@ -22,6 +23,10 @@ export interface MessageBubbleProps {
   onEditSubmit?: (messageId: string, content: string) => void
   /** Handler tiep tuc cau tra loi da bi stop (FR-CHAT-07). */
   onContinue?: (messageId: string) => void
+  /** Handler thu lai luot chat bi loi (FR-CHAT-14 — T-M1-19). */
+  onRetry?: (messageId: string) => void
+  /** Handler mo drawer Settings (dung cho loi 401 — FR-CHAT-14). */
+  onOpenSettings?: (() => void) | undefined
   /** Handler chuyen bien the (FR-CHAT-05). */
   onSelectVariant?: (turnId: string, variantIndex: number) => void
   /** Dang stream → an thao tac phu thuoc trang thai. */
@@ -42,6 +47,8 @@ export function MessageBubble({
   onEdit,
   onEditSubmit,
   onContinue,
+  onRetry,
+  onOpenSettings,
   onSelectVariant,
   isStreaming = false,
 }: MessageBubbleProps) {
@@ -135,14 +142,23 @@ export function MessageBubble({
           <span className="text-[var(--text-tertiary)]">Dang tao cau tra loi...</span>
         ) : null}
 
+        {/* Card loi voi hau dong khoi phuc (FR-CHAT-14 — T-M1-19). */}
         {message.status === 'error' && message.errorMessage ? (
-          <p
-            className="mt-2 flex items-start gap-1 text-[length:var(--font-size-sm)] text-[var(--danger)]"
-            role="alert"
-          >
-            <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-            <span>{message.errorMessage}</span>
-          </p>
+          <ErrorState
+            message={message.errorMessage}
+            code={message.errorCode}
+            retryable={message.errorRetryable ?? true}
+            retryAfterSeconds={message.errorRetryAfterSeconds}
+            isBusy={isStreaming}
+            {...(onRetry !== undefined
+              ? {
+                  onRetry: () => {
+                    onRetry(message.id)
+                  },
+                }
+              : {})}
+            {...(onOpenSettings !== undefined ? { onOpenSettings } : {})}
+          />
         ) : null}
 
         {!isUser && message.content.length > 0 ? (

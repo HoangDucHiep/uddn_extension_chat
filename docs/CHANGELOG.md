@@ -9,6 +9,21 @@
 ## [Unreleased]
 
 ### Added
+- **T-M1-19 — Error / loading / empty states + retry + connection status (FR-CHAT-14 + FR-UX-08 + NFR-REL-02/04)**
+  - `packages/shared/src/chatErrors.ts` (mới) — `ChatErrorKind` (`network` · `rate-limit` · `auth` · `provider` · `server` · `unknown`) · `classifyChatError(code)` · `isRetryableKind(kind)` (false cho `auth`) · `shouldAutoRetry(kind)` (true cho `network`/`server`/`unknown`) · `defaultRetryAfterSeconds(kind)` (60 cho `rate-limit`) · `AUTO_RETRY_BACKOFF_MS = 800`.
+  - `packages/shared/src/events.ts` — `chatErrorEventSchema` += `retryAfterSeconds?: number` (int ≥ 0).
+  - `packages/shared/src/schemas/provider.ts` — `providerChunkSchema` += `errorRetryable?: boolean` + `retryAfterSeconds?: number`.
+  - `packages/shared/src/index.ts` — export `./chatErrors.js`.
+  - `apps/server/src/providers/types.ts` — `errorChunk(code, message, { retryable, retryAfterSeconds })`.
+  - `apps/server/src/providers/sse.ts` — `parseRetryAfterSeconds()` (đọc header `Retry-After`, ghim ≤ 600 s) · `isRetryableStatus()` (401/403 → **không** retryable) · `shouldTryFallbackModel()` (429 **vẫn** fallback sang model khác).
+  - `apps/server/src/providers/openaiCompatible.ts` + `gemini.ts` — HTTP 429 → gắn `retryAfterSeconds` từ header `Retry-After` · HTTP 401/403 → `errorRetryable: false`.
+  - `apps/extension/src/lib/connectionStatus.ts` (mới) — `backoffFor()` (5 s → 15 s → 30 s) · `probeConnection(url)` (timeout 3 s → `connected` · `degraded` · `offline`).
+  - `apps/extension/src/sidepanel/hooks/useConnectionStatus.ts` (mới) — probe `GET <bffUrl>/api/health` + backoff · listener `navigator.onLine` (offline tức thời) · trả `{ status, lastCheckedAt, retry }`.
+  - `apps/extension/src/sidepanel/components/states/` (mới) — `ErrorState.tsx` (card lỗi inline: icon + nguyên nhân + **1 hành động theo nhóm lỗi** + dismiss ✕ · 429 đếm ngược tương tác rồi mới bật nút "Thử lại") · `ConnectionBadge.tsx` (chip "Đang kết nối" / "Đã kết nối" / "Offline" / "Máy chủ lỗi" — icon + chữ, **không** chỉ dựa vào màu) · `LoadingState.tsx` (skeleton rows khi tải lịch sử hội thoại) · `EmptyState.tsx` (wrapper của `PromptGallery`).
+  - **Test** — `packages/shared/tests/chatErrors.test.ts` (mới) · `packages/shared/tests/events.test.ts` (bổ sung `retryAfterSeconds`) · `apps/server/tests/chatErrorEvent.test.ts` (mới) · `apps/extension/tests/chatErrorState.test.tsx` (mới) · `apps/extension/tests/connectionStatus.test.ts` (mới) · `apps/extension/tests/chatRetry.test.ts` (mới) · `apps/extension/e2e/states.spec.ts` (mới, 4 kịch bản).
+    - **Số test toàn repo:** 1115 → **1165 unit** (shared 230 · server 319 · extension 616) + 65 → **69 E2E**.
+    - **Mutation spot-check:** 8/8 mutation bị bắt — `shouldAutoRetry` bỏ loại trừ `auth` · `useChat` bỏ guard số lần retry · `ErrorState` đếm ngược không giảm · `sse.ts` bỏ mapping `Retry-After` · `ChatWorkspace` bỏ banner offline · `connectionStatus` bỏ backoff · `chatService` hardcode `retryable: true` · `ChatWorkspace` bỏ `LoadingState`.
+    - **Migration:** **không** có migration mới · **không** dependency mới · **không** permission mới · **không** đổi manifest.
 - **T-M1-12 — Settings: theme · cỡ chữ · chiều rộng · quản lý dữ liệu · endpoint BFF (FR-SETTINGS-01..07 + FR-UX-06 + NFR-SEC-07)**
   - `packages/shared/src/schemas/settings.ts` (mới) — `settingsSchema` (Zod) · `themeModeSchema` (`light`/`dark`/`system`) · `densitySchema` (`compact`/`cozy`/`comfortable`) · `panelWidthSchema` (`narrow`/`default`/`wide`) · `uiLanguageSchema` (`vi`/`en`) · `fontScaleSchema` (enum 4 mức `0.9`/`1`/`1.1`/`1.2`) · `settingsPatchSchema`.
   - `apps/extension/src/lib/settings.ts` (mới) — `SETTINGS_STORAGE_KEY` (`sidekick.settings`) · `SIDEKICK_STORAGE_PREFIX` · `PRESERVED_STORAGE_KEYS` · `DEFAULT_SETTINGS` (telemetry/history **OFF**) · `readSettings()` (fallback **từng field**) · `writeSettings()` (**merge** + validate) · `resetSettings()` · `resolveTheme()` · `fontScaleFor()` · `densityScaleFor()` · `panelMaxWidthFor()` · `exportSettings()` · `importSettings()` · `deleteLocalSidekickData()` (xoá prefix `sidekick.`, **giữ** onboarding + provider).
@@ -32,8 +47,13 @@
     - **Migration:** **không** có migration mới · **không** dependency mới · **không** có UI mới.
 
 ### Changed
-- `apps/extension/src/sidepanel/components/PanelHeader.tsx` — thêm nút gear (`Settings`, `aria-label="Mở cài đặt"`, `data-testid="settings-button"`) → `onOpenSettings`.
-- `apps/extension/src/sidepanel/ChatWorkspace.tsx` — state `isSettingsOpen` · render `<SettingsDrawer>` cạnh drawer conversation · `onHistoryDeleted` → refresh danh sách conversation.
+- `apps/server/src/services/chatService.ts` — SSE `error` event **không** còn hardcode `retryable: true` → `chunk.errorRetryable ?? isRetryableKind(classifyChatError(code))` · forward `retryAfterSeconds`.
+- `apps/extension/src/lib/sseClient.ts` — `throw new Error("CODE: msg")` → `export class ChatRequestError extends Error { code; status; retryable }` (lỗi network → `SERVICE_UNAVAILABLE`) → caller branch được mà không parse chuỗi.
+- `apps/extension/src/sidepanel/store/chatStore.ts` — `ChatMessage` += `serverId?` (uuid từ SSE `meta.messageId`) · `errorCode?` · `errorRetryable?` · `errorRetryAfterSeconds?` · action `setMessageError(id, patch)`.
+- `apps/extension/src/sidepanel/hooks/useChat.ts` — lưu `code`/`retryable`/`retryAfterSeconds` khi nhận SSE `error` · retry **tự động 1 lần** backoff 800 ms (chỉ `network`/`server`/`unknown`) · expose `retryMessage(messageId)` (gọi `regenerate` với `serverId`) · `regenerate`/`continueAnswer` dùng **uuid server** thay vì id local.
+- `apps/extension/src/sidepanel/components/MessageBubble.tsx` — dòng chữ đỏ thô → `<ErrorState>` (card lỗi + hành động khôi phục).
+- `apps/extension/src/sidepanel/components/PanelHeader.tsx` — thêm nút gear (`Settings`, `aria-label="Mở cài đặt"`, `data-testid="settings-button"`) → `onOpenSettings` · render `<ConnectionBadge>` cạnh chip provider.
+- `apps/extension/src/sidepanel/ChatWorkspace.tsx` — state `isSettingsOpen` · render `<SettingsDrawer>` cạnh drawer conversation · `onHistoryDeleted` → refresh danh sách conversation · **+** banner offline (khi BFF không phản hồi) · `<LoadingState>` khi `isHydrating` lịch sử hội thoại · wire `retryMessage` + `onOpenSettings`.
 - `apps/extension/src/lib/conversationClient.ts` — `deleteAllConversations()` → `fetchJson('/api/conversations', { method: 'DELETE' })` → trả số đã xoá.
 - `design/tokens.css` — thêm `--density-scale` · `--space-1..8` = `calc(<px> * var(--density-scale))`.
 - `apps/extension/src/sidepanel/index.css` — `#root { max-width: var(--panel-max-width); min-width: var(--panel-min-width); margin-inline: auto; }` · animation `animate-drawer-in-right` (tôn trọng `prefers-reduced-motion`).
@@ -54,10 +74,20 @@
 - `docs/COMPARISON_MATRIX.md` — §E: 3 dòng parity → ✅ (toolbar icon toggle · context menu "Ask Sidekick" · keyboard shortcut) · A25 / B19 ghi chú T-M1-03.
 
 ### Fixed
+- Lỗi chat chỉ hiện 1 dòng chữ đỏ **không có đường khôi phục** — nay là `ErrorState` với hành động đúng theo nhóm lỗi (401 → mở Settings · 429 → đếm ngược · 5xx/network → "Thử lại").
+- Server báo `retryable: true` cho **mọi** lỗi → lỗi 401 (API key sai) cũng hiện nút "Thử lại" vô ích — nay `retryable` được suy ra từ nhóm lỗi + `errorRetryable` từ provider.
+- `regenerate` / `continue` / `retry` gửi **id local** (`assistant-<timestamp>`) trong khi server yêu cầu **uuid** → 400 — nay dùng `serverId` lấy từ SSE `meta.messageId`.
+- Mở conversation trong lúc đang tải lịch sử → **empty state nhấp nháy** (PromptGallery hiện rồi mất) — nay hiện skeleton `LoadingState`.
 - Sửa lỗi "Cannot create item with duplicate id" khi update extension — context menu giờ `removeAll()` trước `create()` và được đăng ký lại ở `runtime.onStartup`.
 - Sửa lỗi `chrome.sidePanel.open()` chỉ mở (không toggle) khi bấm icon toolbar — nay dùng native `openPanelOnActionClick` (Chrome 114+).
 
 ### Docs
+- Cập nhật `HANDOFF.md` (M1 17/25 → **18/25**) · `docs/README.md` · `AGENTS.md` (số task / số test / tóm tắt T-M1-19).
+- `docs/REQUIREMENTS.md` — FR-CHAT-14 ✅ + FR-UX-08 ✅ + NFR-REL-02 ✅ + NFR-REL-04 ✅ (AC chi tiết) · §11.1 traceability.
+- `docs/SYSTEM_DESIGN.md` — **§7.15** mới "States · retry · connection status" (4 trạng thái · taxonomy lỗi · luồng lỗi · server báo lỗi thật · plumbing extension · probe kết nối · kiểm thử + mutation) · §4.3 shape SSE `error` (+`retryAfterSeconds`).
+- `docs/DESIGN_SYSTEM_BRIEF.md` — **§3.9** mới "States — loading / empty / error / offline" (spec `ErrorState` · `ConnectionBadge` · `LoadingState` · `EmptyState` · token · a11y) · §4 bảng state (Error 401 → mở Settings · Error 429 đếm ngược · BFF offline badge + banner) · §6 traceability.
+- `docs/IMPLEMENTATION_PLAN.md` — task card T-M1-19 → ✅ *(2026-11-07)* · **§3.1p** "Kết quả verify T-M1-19" · traceability FR-CHAT-14 / FR-UX-08 / NFR-REL-02/04.
+- `docs/COMPARISON_MATRIX.md` — §E: thêm dòng parity "Error / loading / empty states + retry + trạng thái kết nối" → ✅ T-M1-19.
 - Cập nhật `HANDOFF.md` (M1 15/25 → **16/25**) · `docs/README.md` · `AGENTS.md` (số task / số test / tóm tắt T-M1-03).
 - **T-M1-11 — Prompt gợi ý theo trang + Tóm tắt 1-click (FR-UX-03 / FR-UX-04)**
   - `packages/shared/src/pageProfile.ts` (mới) — `PAGE_PROFILES` (`docs` · `article` · `forum` · `video` · `pdf` · `shopping` · `general`) · `classifyPage(url, title)` (host → path → title, match đầu thắng) · `PromptSuggestion` · `suggestionsForPage(profile, pageTitle)` (**4** gợi ý / profile, điền placeholder `{title}`) · `generalSuggestions()` (4 gợi ý chung — FR-UX-04) · `rotateSuggestions(list, offset)` (xoay vòng deterministic).

@@ -24,14 +24,38 @@
 | Hạng mục | Trạng thái |
 |---|---|
 | Docs | ✅ Đầy đủ 9 file (`docs/`) + `AGENTS.md` ở root |
-| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 + T-M1-05 + T-M1-02 + T-M1-24 + T-M1-25 + T-M1-06 + T-M1-07 + T-M1-08 + T-M1-09 + T-M1-10 + T-M1-11 + T-M1-03 + T-M1-12 xong** — 4 workspace, 1115 unit test + 65 E2E |
+| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 + T-M1-05 + T-M1-02 + T-M1-24 + T-M1-25 + T-M1-06 + T-M1-07 + T-M1-08 + T-M1-09 + T-M1-10 + T-M1-11 + T-M1-03 + T-M1-12 + T-M1-19 xong** — 4 workspace, 1165 unit test + 69 E2E |
 | Git | ✅ Đã init (`main`) · tag `v0.1` đánh dấu M0 |
-| Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **17/25 task**) |
-| Task tiếp theo | **T-M1-13** (Export conversation Markdown/JSON + provider/model/key trong Settings) — theo thứ tự ưu tiên M1 |
+| Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **18/25 task**) |
+| Task tiếp theo | **T-M1-14** (Log request đầy đủ vào `request_logs`) — T-M1-13 (export) đã được user **defer**; ưu tiên tiếp theo sau đó là T-M1-15 (K3 direct) · T-M1-16 (K2 BYOK UI) · T-M1-17 (i18n) · T-M1-18 (shortcuts) · T-M1-20 (responsive + a11y) |
 
 ### Đang làm dở
 
-_(Không có — T-M1-12 Settings xong, task kế tiếp T-M1-13)_
+_(Không có — T-M1-19 states/retry/connection xong)_
+
+### Việc đã xong gần đây (T-M1-19 — Error / loading / empty states + retry + connection status)
+
+- **T-M1-19 (FR-CHAT-14 + FR-UX-08 + NFR-REL-02 + NFR-REL-04)** — side panel nay có **4 trạng thái có UI riêng** trong `sidepanel/components/states/`: `LoadingState` (skeleton) · `EmptyState` (wrapper `PromptGallery`) · `ErrorState` (card lỗi inline) · `ConnectionBadge` (chip trạng thái kết nối ở header) + banner offline.
+  - **Shared (mới)** — `packages/shared/src/chatErrors.ts`: `ChatErrorKind` (`network` · `rate-limit` · `auth` · `provider` · `server` · `unknown`) · `classifyChatError(code)` · `isRetryableKind` · `shouldAutoRetry` · `defaultRetryAfterSeconds` · `AUTO_RETRY_BACKOFF_MS = 800`. Export từ `index.ts`.
+  - **Server (sửa)** — `providers/sse.ts` thêm `parseRetryAfterSeconds()` + `isRetryableStatus()` + `shouldTryFallbackModel()` · `openaiCompatible.ts`/`gemini.ts` đọc header `Retry-After` (429) và set `errorRetryable: false` (401/403) · `chatService.ts` **không** còn hardcode `retryable: true` → `chunk.errorRetryable ?? isRetryableKind(classifyChatError(code))`. SSE `error` event thêm `retryAfterSeconds?`.
+  - **Extension (sửa)** — `sseClient.ts` có `ChatRequestError { code, status, retryable }` · `chatStore` lưu `serverId` + `errorCode` + `errorRetryable` + `errorRetryAfterSeconds` · `useChat` retry **tự động 1 lần** backoff 800 ms + expose `retryMessage(messageId)` · `regenerate`/`continueAnswer` dùng **uuid server** (`serverId`) thay vì id local.
+  - **Extension (mới)** — `lib/connectionStatus.ts` (`backoffFor()` 5s→15s→30s · `probeConnection()`) · `hooks/useConnectionStatus.ts` (probe `GET /api/health` + `navigator.onLine`) · `components/states/*` (4 component) · `PanelHeader` render `ConnectionBadge` · `ChatWorkspace` render banner offline + `LoadingState` khi `isHydrating`.
+  - **Verify** — typecheck ✅ · lint ✅ · test ✅ (**1165 unit** = shared 230 · server 319 · extension 616) · build ✅ · db:migrate ✅ (**không** migration mới, **không** dependency mới, **không** permission mới) · **E2E 69/69** ✅ (+4 kịch bản `e2e/states.spec.ts`) · **mutation spot-check 8/8 bị bắt**.
+- Bằng chứng đầy đủ: `docs/IMPLEMENTATION_PLAN.md` §3.1p · `docs/SYSTEM_DESIGN.md` §7.15 · `docs/DESIGN_SYSTEM_BRIEF.md` §3.9.
+
+### Quyết định kỹ thuật mới (T-M1-19)
+
+| Quyết định | Lý do |
+|---|---|
+| Taxonomy lỗi đặt ở `packages/shared/src/chatErrors.ts` | Server + extension + eval cùng dùng 1 nguồn sự thật; `classifyChatError` là hàm **thuần** → test được không cần mock mạng |
+| Retry tự động **chỉ 1 lần** backoff 800 ms | NFR-REL-02; retry vô hạn sẽ spam provider khi BFF chết. **Không** retry `auth` (key sai → retry vô ích) · **không** retry `rate-limit` (phải chờ hạn) · **không** retry `provider` (model sai thì retry cũng sai) |
+| Server **không** hardcode `retryable` | `retryable = chunk.errorRetryable ?? isRetryableKind(classifyChatError(code))` → 401 không còn hiện nút "Thử lại" vô ích |
+| Phân biệt `shouldTryFallbackModel` (server) vs `isRetryableStatus` (user) | 429 server **vẫn** nên thử model khác, nhưng user **không** nên retry ngay |
+| `serverId` (uuid từ SSE `meta.messageId`) bắt buộc cho `regenerate`/`continue`/`retry` | Client sinh id local `assistant-<timestamp>` nhưng server yêu cầu uuid → trước đây gửi sai → 400 |
+| Probe `GET /api/health` thay vì suy đoán từ lỗi chat | Badge phản ánh đúng tình trạng BFF, kể cả khi user chưa chat lần nào |
+| Backoff probe 5 s → 15 s → 30 s | Không spam BFF khi nó chết; probe thành công → reset về 5 s |
+| Lỗi trong thread dùng **card inline**, không dùng toast `sonner` | Giữ nguyên ngữ cảnh lượt chat (DP-2) — user thấy lỗi của lượt nào, ngay tại lượt đó |
+| Không thêm dependency / permission / migration | Task là **UI + plumbing** — không cần chạm schema DB hay manifest |
 
 ### Việc đã xong gần đây (T-M1-12 — Settings: theme · cỡ chữ · chiều rộng · quản lý dữ liệu · endpoint BFF)
 
@@ -478,6 +502,7 @@ _(Ghi lại các câu hỏi chưa có câu trả lời, hoặc điều kiện đ
 - Có nên push lên remote (GitHub) để backup không? (hiện tại chỉ git local)
 - Ngôn ngữ chính của UI: tiếng Việt hay song ngữ ưu tiên?
 - Có cần giữ `MockProvider` trong production build không, hay chỉ dùng cho test?
+- **T-M1-13 (export) đã defer** — ưu tiên task M1 tiếp theo là T-M1-14 (log request vào DB) hay bỏ qua log để dồn sang T-M1-15 (K3 direct) / T-M1-16 (BYOK UI)?
 
 ---
 

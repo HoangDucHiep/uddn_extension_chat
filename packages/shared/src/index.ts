@@ -3,6 +3,7 @@
  * Extension, server va eval deu import tu day de dam bao cung mot source of truth.
  */
 
+export * from './chatErrors.js'
 export * from './constants.js'
 export * from './citation.js'
 export * from './contextBudget.js'

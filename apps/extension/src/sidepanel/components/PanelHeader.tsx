@@ -1,5 +1,7 @@
 import { CircleHelp, History, Settings, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { ConnectionBadge } from './states/ConnectionBadge'
+import type { ConnectionStatus } from '@/lib/connectionStatus'
 
 export interface PanelHeaderProps {
   provider?: string | undefined
@@ -14,6 +16,8 @@ export interface PanelHeaderProps {
   onOpenSettings?: (() => void) | undefined
   /** Tieu de conversation hien tai (hien thi trong header). */
   conversationTitle?: string | undefined
+  /** Trang thai ket noi toi BFF (NFR-REL-04 — T-M1-19). */
+  connectionStatus?: ConnectionStatus | undefined
 }
 
 /**
@@ -29,6 +33,7 @@ export function PanelHeader({
   onOpenConversations,
   onOpenSettings,
   conversationTitle,
+  connectionStatus,
 }: PanelHeaderProps) {
   return (
     <header
@@ -58,6 +63,7 @@ export function PanelHeader({
             {keySource ? ` · ${keySource}` : ''}
           </span>
         ) : null}
+        {connectionStatus !== undefined ? <ConnectionBadge status={connectionStatus} /> : null}
       </div>
 
       <div className="flex items-center gap-1">

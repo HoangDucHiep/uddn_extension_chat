@@ -54,6 +54,29 @@ describe('events', () => {
     ).toBe(true)
   })
 
+  it('parse error event co retryAfterSeconds (T-M1-19)', () => {
+    expect(
+      isChatEvent({
+        type: 'error',
+        code: 'PROVIDER_RATE_LIMITED',
+        message: 'x',
+        retryable: true,
+        retryAfterSeconds: 42,
+      }),
+    ).toBe(true)
+  })
+
+  it('error event tu choi retryAfterSeconds am', () => {
+    const parsed = chatEventSchema.safeParse({
+      type: 'error',
+      code: 'PROVIDER_RATE_LIMITED',
+      message: 'x',
+      retryable: true,
+      retryAfterSeconds: -1,
+    })
+    expect(parsed.success).toBe(false)
+  })
+
   it('parse done event', () => {
     expect(isChatEvent({ type: 'done', finishReason: 'stop', messageId: 'm1' })).toBe(true)
   })

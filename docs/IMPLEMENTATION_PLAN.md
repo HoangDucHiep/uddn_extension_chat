@@ -94,7 +94,7 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | T-M1-16 | K2 BYOK qua BFF: UI quản lý key | FR-PROVIDER-02, NFR-SEC-01 | `settings/ProviderSettings.tsx`, `POST /providers/keys` | Thêm key → test thành công; list key chỉ hiện 4 ký tự cuối | M | ⬜ |
 | T-M1-17 | i18n VI/EN | FR-SETTINGS-06 | `apps/extension/src/i18n/{vi.ts,en.ts,index.ts}` | Đổi ngôn ngữ → toàn bộ UI đổi | M | ⬜ |
 | T-M1-18 | Keyboard shortcuts cấu hình được | FR-UX-01 | `settings/ShortcutsSettings.tsx`, `background/commands.ts` | Đổi được phím tắt; tránh xung đột với Chrome mặc định | M | ⬜ |
-| T-M1-19 | Empty / loading / error states | FR-UX-03/04/08, FR-CHAT-14, NFR-REL-02/04 | `sidepanel/components/states/*` | 4 trạng thái có UI riêng, không màn hình trắng; retry 1 lần khi lỗi mạng | M | ⬜ |
+| T-M1-19 | Empty / loading / error states | FR-UX-03/04/08, FR-CHAT-14, NFR-REL-02/04 | `sidepanel/components/states/*` | 4 trạng thái có UI riêng, không màn hình trắng; retry 1 lần khi lỗi mạng | M | ✅ *(2026-11-07)* |
 | T-M1-20 | Responsive 320–640px + a11y pass cơ bản | FR-UX-06/07/09/10, NFR-A11Y-01..05, NFR-PERF-03 | style fixes | Không tràn ngang ở 320px; focus ring đủ; icon có aria-label; streaming OK với screen reader | M | ⬜ |
 | T-M1-21 | Trích xuất PDF (text-based) | FR-CONTEXT-05 | `apps/server/src/routes/extract.ts`, `apps/server/src/lib/pdfExtractor.ts`, `apps/server/src/lib/safeFetch.ts`, `apps/extension/src/lib/pageContext.ts` | Detect URL PDF → BFF fetch bytes + parse → `context.text`; PDF scan → báo "không đọc được, hãy upload ảnh"; `file://`/PDF nội bộ → báo rõ | L | ✅ |
 | T-M1-22 | Transcript YouTube | FR-CONTEXT-06 | `apps/server/src/routes/extract.ts`, `apps/server/src/lib/youtubeExtractor.ts` | Lấy `captionTracks` → `timedtext` → `context.text`; không có caption / geo-block / consent → báo rõ; không crash chat | M | ✅ |
@@ -753,6 +753,46 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 
 > **Hạn chế đã biết (ghi rõ trong UI):** (1) Bề rộng panel do người dùng kéo trong Chrome → extension chỉ đặt thêm `max-width`, **không** cưỡng chế được; (2) FR-SETTINGS-06 task này chỉ **lưu lựa chọn** VI/EN — dịch toàn bộ UI là T-M1-17 → không sửa text nào; (3) FR-SETTINGS-04 chỉ **lưu cờ** (OFF mặc định) — hành vi telemetry thật thuộc T-M2-19 → UI ghi rõ "chưa dùng trong phiên bản này" để không nói dối user.
 
+### 3.1p Kết quả T-M1-19 — Error / loading / empty states + retry + connection status (FR-CHAT-14 + FR-UX-08 + NFR-REL-02/04) (2026-11-07)
+
+> Chi tiết kiến trúc: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.15 · spec UI: [`DESIGN_SYSTEM_BRIEF.md`](DESIGN_SYSTEM_BRIEF.md) §3.9 · AC: [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.1 (FR-CHAT-14).
+
+**Không có migration DB mới, không dependency mới, không permission mới, không đổi manifest.**
+
+| Hạng mục | Kết quả |
+|---|---|
+| `packages/shared/src/chatErrors.ts` | ✅ **Mới** — `ChatErrorKind` (network · rate-limit · auth · provider · server · unknown) · `classifyChatError(code)` · `isRetryableKind` (false cho `auth`) · `shouldAutoRetry` (true cho network/server/unknown) · `defaultRetryAfterSeconds` (60 cho rate-limit) · `AUTO_RETRY_BACKOFF_MS = 800` |
+| `packages/shared/src/index.ts` | ✅ **Sửa** — export `./chatErrors.js` |
+| `packages/shared/src/events.ts` | ✅ **Sửa** — `chatErrorEventSchema` += `retryAfterSeconds?: number` (int ≥ 0) |
+| `packages/shared/src/schemas/provider.ts` | ✅ **Sửa** — `providerChunkSchema` += `errorRetryable?: boolean` + `retryAfterSeconds?: number` |
+| `apps/server/src/providers/types.ts` | ✅ **Sửa** — `errorChunk(code, message, { retryable, retryAfterSeconds })` |
+| `apps/server/src/providers/sse.ts` | ✅ **Sửa** — `parseRetryAfterSeconds()` (đọc header `Retry-After`, ghim ≤ 600 s) · `isRetryableStatus()` (401/403 → false) · `shouldTryFallbackModel()` (429 **vẫn** fallback model) |
+| `apps/server/src/providers/{openaiCompatible,gemini}.ts` | ✅ **Sửa** — HTTP 429 → gắn `retryAfterSeconds` · HTTP 401/403 → `errorRetryable: false` |
+| `apps/server/src/services/chatService.ts` | ✅ **Sửa** — `retryable = chunk.errorRetryable ?? isRetryableKind(classifyChatError(code))` (không hardcode `true`) · forward `retryAfterSeconds` |
+| `apps/extension/src/lib/sseClient.ts` | ✅ **Sửa** — `export class ChatRequestError extends Error { code; status; retryable }` (thay `new Error("CODE: msg")`) · lỗi network → `SERVICE_UNAVAILABLE` |
+| `apps/extension/src/sidepanel/store/chatStore.ts` | ✅ **Sửa** — `ChatMessage` += `serverId?` · `errorCode?` · `errorRetryable?` · `errorRetryAfterSeconds?` · action `setMessageError(id, patch)` |
+| `apps/extension/src/sidepanel/hooks/useChat.ts` | ✅ **Sửa** — lưu `code`/`retryable`/`retryAfterSeconds` khi nhận SSE `error` · retry **1 lần** backoff 800 ms (chỉ network/server/unknown) · `retryMessage(messageId)` (gọi `regenerate` với `serverId`) · `regenerate`/`continueAnswer` dùng uuid server |
+| `apps/extension/src/lib/connectionStatus.ts` | ✅ **Mới** — `backoffFor()` (5s → 15s → 30s) · `probeConnection(url)` (timeout 3 s → connected · degraded · offline) |
+| `apps/extension/src/sidepanel/hooks/useConnectionStatus.ts` | ✅ **Mới** — probe `GET <bffUrl>/api/health` + backoff · listener `navigator.onLine` (offline tức thời) · trả `{ status, lastCheckedAt, retry }` |
+| `apps/extension/src/sidepanel/components/states/` | ✅ **Mới** — `ErrorState.tsx` (card inline + hành động theo kind + đếm ngược 429 + dismiss) · `ConnectionBadge.tsx` · `LoadingState.tsx` (skeleton) · `EmptyState.tsx` (wrapper `PromptGallery`) |
+| `apps/extension/src/sidepanel/components/PanelHeader.tsx` | ✅ **Sửa** — render `<ConnectionBadge>` cạnh chip provider |
+| `apps/extension/src/sidepanel/components/MessageBubble.tsx` | ✅ **Sửa** — thay dòng chữ đỏ thô bằng `<ErrorState>` |
+| `apps/extension/src/sidepanel/ChatWorkspace.tsx` | ✅ **Sửa** — banner offline · `LoadingState` khi `isHydrating` · wire `retryMessage` + `onOpenSettings` |
+| Unit test | ✅ **Mới** — shared `chatErrors.test.ts` · extension `chatErrorState.test.tsx` · `connectionStatus.test.ts` · `chatRetry.test.ts` · server `chatErrorEvent.test.ts` · shared `events.test.ts` (bổ sung) |
+| E2E | ✅ **Mới** `e2e/states.spec.ts` — badge + banner offline · SSE 429 → card lỗi + đếm ngược · skeleton loading |
+| `pnpm typecheck` | ✅ pass (shared · server · extension · eval) |
+| `pnpm lint` | ✅ pass (0 error, 0 warning) |
+| `pnpm test` | ✅ pass — shared **230** · server **319** · extension **616** (tổng **1165**, trước 1115 → **+50**) |
+| `pnpm build` | ✅ pass |
+| `pnpm db:migrate` | ✅ pass — **không có migration mới** (no drift) |
+| `pnpm test:e2e` | ✅ pass — `states.spec.ts` **4/4** · tổng **69/69** |
+
+> **Mutation spot-check:** 8/8 mutation bị bắt — (1) `shouldAutoRetry` bỏ loại trừ `auth` (unit fail) · (2) `useChat` bỏ guard số lần retry (unit fail) · (3) `ErrorState` đếm ngược không giảm (unit fail) · (4) `sse.ts` bỏ mapping `Retry-After` (server unit fail) · (5) `ChatWorkspace` bỏ banner offline (E2E fail) · (6) `connectionStatus` bỏ backoff (3 unit fail) · (7) `chatService` hardcode `retryable: true` (server unit fail) · (8) `ChatWorkspace` bỏ `LoadingState` (E2E fail).
+
+> **Quyết định kỹ thuật:** (1) **Taxonomy ở `packages/shared`** → server + extension + eval dùng chung 1 nguồn sự thật; (2) **Retry tự động chỉ 1 lần** (NFR-REL-02) — không retry `auth` (sẽ tạo vòng lặp vô ích) · không retry `rate-limit` (cần chờ hạn) · không retry `provider` (model sai thì retry cũng sai); (3) **Server không hardcode `retryable`** → `errorRetryable ?? isRetryableKind(classifyChatError(code))`; (4) **`serverId` bắt buộc** cho `regenerate`/`continue`/`retry` — client sinh id local nhưng server yêu cầu uuid → lưu `meta.messageId` từ SSE; (5) **Probe `/api/health`** thay vì suy đoán từ lỗi chat → badge phản ánh đúng tình trạng BFF; (6) **Backoff 5s → 15s → 30s** cho probe để không spam BFF khi nó chết; (7) **Không toast** cho lỗi trong thread (sonner) — dùng card inline để giữ nguyên ngữ cảnh lượt chat (DP-2).
+
+> **Hạn chế đã biết:** (1) `ConnectionBadge` chỉ phản ánh BFF, **không** phản ánh provider có sống hay không → lỗi provider hiện ở card lỗi của lượt chat; (2) Đếm ngược 429 dùng header `Retry-After` của provider — provider không gửi header thì dùng mặc định 60 s; (3) Chưa có **K3 direct mode** khi BFF chết (NFR-REL-03) → thuộc T-M1-15.
+
 ### 3.2 Traceability FR → Task
 
 > Bảng đầy đủ FR → Task (kèm milestone) nằm ở [`REQUIREMENTS.md`](REQUIREMENTS.md) §11.1 — nơi duy nhất cần cập nhật khi thêm/bớt task.
@@ -760,7 +800,7 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 
 | Nhóm | FR trong nhóm | Task phụ trách | Ghi chú |
 |---|---|---|---|
-| FR-CHAT-01..14 | 14 FR | T-M0-10 · T-M0-13 · **T-M1-07 ✅**/**T-M1-09 ✅**/**T-M1-10 ✅**/11/13/19 | FR-CHAT-02/03/04 (Markdown, code block + copy, bảng) do T-M1-07 ✅ · **FR-CHAT-08/09/11 (chat CRUD: tạo/đổi tên/xoá/ghim/lưu trữ/search) do T-M1-09 ✅ (2026-11-07)** · **FR-CHAT-05/06/07/12/13 (regenerate + biến thể, edit-resend + branch, stop/continue, keyboard, draft) do T-M1-10 ✅ (2026-11-07)** |
+| FR-CHAT-01..14 | 14 FR | T-M0-10 · T-M0-13 · **T-M1-07 ✅**/**T-M1-09 ✅**/**T-M1-10 ✅**/11/13/**19 ✅** | FR-CHAT-02/03/04 (Markdown, code block + copy, bảng) do T-M1-07 ✅ · **FR-CHAT-08/09/11 (chat CRUD: tạo/đổi tên/xoá/ghim/lưu trữ/search) do T-M1-09 ✅ (2026-11-07)** · **FR-CHAT-05/06/07/12/13 (regenerate + biến thể, edit-resend + branch, stop/continue, keyboard, draft) do T-M1-10 ✅ (2026-11-07)** · **FR-CHAT-14 (error + hành động khôi phục: 429 đếm ngược / 401 → mở Settings / 5xx → Thử lại) do T-M1-19 ✅ (2026-11-07)** |
 | FR-CONTEXT-01..13 | 13 FR | T-M1-01/02/04/05/**06 ✅**/**08 ✅**/14 · **T-M1-21/22/23** · **T-M2-19** | FR-CONTEXT-05/06 nâng lên Must (2026-11-04) · FR-CONTEXT-13 (chat không cần context) do T-M1-23 · **FR-CONTEXT-03 (`@` multi-tab) do T-M1-05 ✅** · **FR-CONTEXT-04 (selection) do T-M1-02 ✅** · **FR-CONTEXT-01 (cache URL+hash) + FR-CONTEXT-12 (snapshot) do T-M1-06 ✅** · **FR-CONTEXT-10 (citation chip + popover) do T-M1-08 ✅ (2026-11-06)** |
 | FR-VISION-01..05 | 5 FR | **T-M1-24 ✅** (upload) · **T-M2-22** (mở rộng) | FR-VISION-01 nâng lên M · **T-M1-24 xong 2026-11-05** (vision đầy đủ Gemini + OpenAI-compatible, lưu Postgres, multi-turn) |
 | FR-TOOLS-01..06 | 6 FR | T-M2-07/08/09/10/11/18 · **T-M2-20** | FR-TOOLS-03 (web search) tách riêng khỏi tool registry |
@@ -768,10 +808,10 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | FR-PROVIDER-01..09 | 9 FR | T-M0-07/08 · T-M1-15/16 · T-M2-01/02/03 | FR-PROVIDER-04 (fallback) nằm trong T-M2-02 |
 | FR-WORKFLOW-01..13 | 13 FR | T-M4-01..08 · `FR-WORKFLOW-04` → **M5** | FR-WORKFLOW-04 deferred (rủi ro MV3 `tabs.onUpdated`) |
 | FR-SETTINGS-01..07 | 7 FR | T-M0-14 · **T-M1-12 ✅**/17 · **T-M2-19** (FR-SETTINGS-04) | **FR-SETTINGS-01/02/03/05/06/07 do T-M1-12 ✅ (2026-11-07)** (theme · cỡ chữ/mật độ/bề rộng · xoá lịch sử + xoá local + import/export · endpoint BFF có validate · lưu lựa chọn VI/EN) · FR-SETTINGS-04 (cờ telemetry/history, OFF mặc định) cũng do T-M1-12 ✅ — hành vi telemetry thật → T-M2-19 · dịch UI VI/EN → T-M1-17 |
-| FR-UX-01..10 | 10 FR | **T-M1-03 ✅**/10/**11 ✅**/**12 ✅**/18/19/20 · **T-M1-25 ✅** | FR-UX-02 (onboarding) tách task riêng T-M1-25 — **xong 2026-11-05** (3 bước, BYOK K2, Ollama, skippable) · **FR-UX-03/04 (gợi ý theo trang + tóm tắt 1-click) do T-M1-11 ✅ (2026-11-07)** · **FR-UX-01 (toggle panel · context menu · `Ctrl+Shift+K`) do T-M1-03 ✅ (2026-11-07)** · **FR-UX-06 (drawer Settings + bề rộng panel) do T-M1-12 ✅ (2026-11-07)** · đổi phím tắt cấu hình được → T-M1-18 |
+| FR-UX-01..10 | 10 FR | **T-M1-03 ✅**/10/**11 ✅**/**12 ✅**/**19 ✅**/18/20 · **T-M1-25 ✅** | FR-UX-02 (onboarding) tách task riêng T-M1-25 — **xong 2026-11-05** (3 bước, BYOK K2, Ollama, skippable) · **FR-UX-03/04 (gợi ý theo trang + tóm tắt 1-click) do T-M1-11 ✅ (2026-11-07)** · **FR-UX-01 (toggle panel · context menu · `Ctrl+Shift+K`) do T-M1-03 ✅ (2026-11-07)** · **FR-UX-06 (drawer Settings + bề rộng panel) do T-M1-12 ✅ (2026-11-07)** · **FR-UX-08 (banner trạng thái kết nối + lỗi, dismiss được) do T-M1-19 ✅ (2026-11-07)** · đổi phím tắt cấu hình được → T-M1-18 |
 | NFR-PERF-01..06 | 6 NFR | T-M0-11 · T-M1-01/07/14/20 · T-M2-13 · T-M3-02/04/09 | NFR là yêu cầu xuyên suốt |
 | NFR-SEC-01..08 | 8 NFR | T-M0-02/06/09/12 · T-M1-04/07/15/16 · **T-M2-19** | NFR-SEC-06 (domain nhạy cảm) → T-M2-19 |
-| NFR-REL-01..05 | 5 NFR | T-M1-10/14/15/19 · **T-M3-10** | NFR-REL-05 (backup DB) tách task M3 |
+| NFR-REL-01..05 | 5 NFR | T-M1-10/14/15/**19 ✅** · **T-M3-10** | **NFR-REL-02 (retry 1 lần backoff 800 ms, không retry lỗi auth) + NFR-REL-04 (badge + banner trạng thái kết nối) do T-M1-19 ✅ (2026-11-07)** · NFR-REL-03 (K3 direct khi BFF chết) → T-M1-15 · NFR-REL-05 (backup DB) tách task M3 |
 | NFR-A11Y-01..05 | 5 NFR | T-M1-20 · T-M3-03 | A11Y pass cơ bản ở M1, audit WCAG đầy đủ ở M3 |
 | NFR-MAINT-01..05 | 5 NFR | T-M0-02/07/10 · T-M1-14 · T-M2-04/07/12..17 · **T-M3-11** | NFR-MAINT-05 (ADR) tách task M3 |
 

@@ -9,6 +9,31 @@ import { getBffUrl } from './apiClient'
  * Docs: docs/SYSTEM_DESIGN.md ADR-2, rule mv3-chrome.mdc §2
  */
 
+/**
+ * Loi cua luong chat — mang **error code** chuan cua server.
+ *
+ * Truoc day loi duoc nem bang `new Error("CODE: message")` → client phai
+ * parse chuoi de biet co nen retry hay khong.nay moi la loi co **type**.
+ *
+ * FR-CHAT-14 / NFR-REL-02 — T-M1-19.
+ */
+export class ChatRequestError extends Error {
+  /** Error code chuan (`ERROR_CODES` / `PROVIDER_*`). */
+  readonly code: string
+  /** HTTP status (neu co). */
+  readonly status: number
+  /** Loi co the thu lai khong. */
+  readonly retryable: boolean
+
+  constructor(code: string, message: string, status = 0, retryable = true) {
+    super(message)
+    this.name = 'ChatRequestError'
+    this.code = code
+    this.status = status
+    this.retryable = retryable
+  }
+}
+
 export interface SseClientOptions {
   /** Signal de huy stream (user bam "Dung"). */
   signal?: AbortSignal
@@ -28,15 +53,28 @@ export async function* streamChat(
 ): AsyncGenerator<ChatEvent, void, undefined> {
   const baseUrl = await getBffUrl()
 
-  const response = await fetch(`${baseUrl}/api/chat`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'text/event-stream',
-    },
-    body: JSON.stringify(request),
-    ...(options.signal ? { signal: options.signal } : {}),
-  })
+  let response: Response
+  try {
+    response = await fetch(`${baseUrl}/api/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream',
+      },
+      body: JSON.stringify(request),
+      ...(options.signal ? { signal: options.signal } : {}),
+    })
+  } catch (error) {
+    // User huy → giu nguyen `AbortError` de `useChat` phan biet stop vs loi.
+    if (error instanceof Error && error.name === 'AbortError') throw error
+    // Khong noi duoc BFF → loi mang (retry duoc 1 lan — NFR-REL-02).
+    throw new ChatRequestError(
+      'SERVICE_UNAVAILABLE',
+      error instanceof Error ? error.message : String(error),
+      0,
+      true,
+    )
+  }
 
   if (!response.ok) {
     const text = await response.text().catch(() => '')
@@ -49,11 +87,11 @@ export async function* streamChat(
     } catch {
       // Body khong phai JSON → giu message mac dinh.
     }
-    throw new Error(`${code}: ${message}`)
+    throw new ChatRequestError(code, message, response.status, response.status !== 401 && response.status !== 403)
   }
 
   if (!response.body) {
-    throw new Error('BFF khong tra ve stream')
+    throw new ChatRequestError('STREAM_ERROR', 'BFF khong tra ve stream', response.status, true)
   }
 
   const reader = response.body.getReader()

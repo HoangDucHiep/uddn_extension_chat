@@ -67,6 +67,9 @@ const doneEvent: ChatEvent = {
   messageId: 'msg-1',
 }
 
+/** Id server (uuid) cua assistant message `a1` — T-M1-19. */
+const SERVER_ID_A1 = '11111111-1111-4111-8111-111111111111'
+
 beforeEach(async () => {
   useChatStore.getState().reset()
   useChatStore.getState().clearAttachedItems()
@@ -88,6 +91,7 @@ describe('useChat — chat actions (T-M1-10)', () => {
     const { result } = renderHook(() => useChat())
 
     // Tao san 1 turn da co assistant message.
+    // `serverId` = uuid tu server → `regenerate` gui id nay len BFF (T-M1-19).
     act(() => {
       useChatStore.getState().addMessage({
         id: 'u1',
@@ -106,6 +110,7 @@ describe('useChat — chat actions (T-M1-10)', () => {
         turnId: 't1',
         variantIndex: 0,
         active: true,
+        serverId: SERVER_ID_A1,
       })
     })
     useChatStore.getState().hydratePath(['t1'])
@@ -119,7 +124,7 @@ describe('useChat — chat actions (T-M1-10)', () => {
       assistantMessageId?: string
     }
     expect(request.operation).toBe('regenerate')
-    expect(request.assistantMessageId).toBe('a1')
+    expect(request.assistantMessageId).toBe(SERVER_ID_A1)
   })
 
   it('regenerate: bien the cu chuyen active=false', async () => {
@@ -140,6 +145,7 @@ describe('useChat — chat actions (T-M1-10)', () => {
         turnId: 't1',
         variantIndex: 0,
         active: true,
+        serverId: SERVER_ID_A1,
       })
     })
     useChatStore.getState().hydratePath(['t1'])
@@ -275,6 +281,7 @@ describe('useChat — chat actions (T-M1-10)', () => {
         variantIndex: 0,
         active: true,
         aborted: true,
+        serverId: SERVER_ID_A1,
       })
     })
     useChatStore.getState().hydratePath(['t1'])
@@ -288,7 +295,7 @@ describe('useChat — chat actions (T-M1-10)', () => {
       assistantMessageId?: string
     }
     expect(request.operation).toBe('continue')
-    expect(request.assistantMessageId).toBe('a1')
+    expect(request.assistantMessageId).toBe(SERVER_ID_A1)
 
     // Token duoc append vao message dang co (khong tao message moi).
     const assistant = useChatStore
