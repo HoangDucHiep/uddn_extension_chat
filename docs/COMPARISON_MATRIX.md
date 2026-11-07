@@ -185,7 +185,10 @@ Dùng làm acceptance checklist cho M1.
 - [ ] Skills `/` + tạo/sửa/xoá skill + library có sẵn + trang duyệt skill library — ⬜ T-M2-04/06/21
 - [ ] Onboarding lần đầu 3 bước — ✅ T-M1-25 (bước 1 giải thích quyền · bước 2 chọn provider + nhập API key (BYOK K2) hoặc dùng Ollama không cần key · bước 3 thử câu hỏi bằng SSE thật · skippable ở mọi bước · mở lại được từ nút "Hướng dẫn" trong header)
 - [ ] Không bắt buộc đăng nhập tài khoản Microsoft/Google (BYOK hoặc local model) — ✅ T-M1-25 (BYOK K2 qua onboarding + Ollama local không cần key)
-- [ ] Settings: theme, cỡ chữ, chiều rộng, provider/key, quản lý dữ liệu, i18n VI/EN — ⬜ T-M1-12/16/17
+- [ ] Settings: theme, cỡ chữ, chiều rộng, provider/key, quản lý dữ liệu, i18n VI/EN — ✅ **T-M1-12** (drawer Settings trượt từ phải · theme light/dark/system theo `prefers-color-scheme` · cỡ chữ 4 mức + mật độ 3 mức + bề rộng 3 mức · quản lý dữ liệu: xoá lịch sử chat + xoá dữ liệu cục bộ (đều có confirm) + import/export JSON · endpoint BFF có validate qua `/api/health` · telemetry/history OFF mặc định · *provider/key → T-M1-13/15/16 · i18n đầy đủ → T-M1-17*)
+- [ ] Theme sáng/tối (đối chiếu Edge Copilot A24 · Chrome Gemini B12) — ✅ **T-M1-12** (class `.dark` + `data-theme` trên `<html>` → dùng token sẵn có, **không** hardcode màu · theme `system` nghe `prefers-color-scheme` → đổi nền OS là panel đổi ngay · áp dụng tức thì, không reload)
+- [ ] Chỉnh cỡ chữ / bề rộng panel — ✅ **T-M1-12** (`--font-scale` 0.9–1.2 · `--density-scale` 0.85–1.15 · `--panel-max-width` 400/640/960px · **không** sửa component nào, chỉ set biến CSS trên `<html>` · persist qua reload qua `chrome.storage.local` key `sidekick.settings`) — *giới hạn: bề rộng do user kéo trong Chrome → extension chỉ đặt thêm `max-width`*
+- [ ] Xoá dữ liệu / quyền riêng tư (NFR-SEC-07) — ✅ **T-M1-12** ("Xoá lịch sử chat" → `DELETE /api/conversations` · "Xoá dữ liệu cục bộ" → xoá khoa `sidekick.*` trong `chrome.storage.local`, **giữ** trạng thái onboarding · telemetry + history OFF mặc định)
 - [ ] Token/cost hiển thị — ⬜ T-M2-03
 - [ ] Keyboard shortcuts cấu hình được — ⬜ T-M1-18
 - [ ] Log request đầy đủ vào DB — ⬜ T-M1-14

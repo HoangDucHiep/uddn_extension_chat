@@ -6,6 +6,7 @@
  *  - `GET    /api/conversations/:id/messages` — lich su + citations da luu
  *  - `PATCH  /api/conversations/:id`         — doi ten / ghim / luu tru
  *  - `DELETE /api/conversations/:id`         — xoa (cascade)
+ *  - `DELETE /api/conversations`             — xoa toan bo lich su (T-M1-12)
  *
  * Docs: docs/SYSTEM_DESIGN.md §4.1, §7.10
  */
@@ -22,6 +23,7 @@ import type { Database } from '../db/index.js'
 import {
   activateVariant,
   createConversation,
+  deleteAllConversations,
   deleteConversation,
   getConversationMessages,
   listConversations,
@@ -188,6 +190,17 @@ export function createConversationsRouter(deps: ConversationsRouterDeps): Router
 
     await deleteConversation(deps.db, id)
     res.status(204).send()
+  })
+
+  /**
+   * Xoa **toan bo** lich su chat (FR-SETTINGS-03 + NFR-SEC-07 — T-M1-12).
+   *
+   * Khac voi `DELETE /conversations/:id` (2 path segment) → route nay
+   * (1 segment) khong bao gio bi khop sai.
+   */
+  router.delete('/conversations', async (_req: Request, res: Response) => {
+    const deleted = await deleteAllConversations(deps.db)
+    res.status(200).json({ deleted })
   })
 
   return router

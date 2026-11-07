@@ -19,6 +19,7 @@ import { ContextBudget } from './components/context/ContextBudget'
 import { MentionPopover } from './components/context/MentionPopover'
 import { AttachmentTray } from './components/composer/AttachmentTray'
 import { ConversationList } from './components/chat/ConversationList'
+import { SettingsDrawer } from './components/settings/SettingsDrawer'
 import { ScrollToBottomButton } from './components/chat/ScrollToBottomButton'
 import { PromptGallery } from './components/chat/PromptGallery'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
@@ -96,6 +97,7 @@ export function ChatWorkspace({ onOpenOnboarding }: ChatWorkspaceProps) {
   const [input, setInput] = useState('')
   const [isAttaching, setIsAttaching] = useState(false)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isAtBottom, setIsAtBottom] = useState(true)
   const threadRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -440,6 +442,9 @@ export function ChatWorkspace({ onOpenOnboarding }: ChatWorkspaceProps) {
         onOpenConversations={() => {
           setIsDrawerOpen(true)
         }}
+        onOpenSettings={() => {
+          setIsSettingsOpen(true)
+        }}
       />
 
       <div className="relative flex min-h-0 flex-1 flex-col">
@@ -587,6 +592,15 @@ export function ChatWorkspace({ onOpenOnboarding }: ChatWorkspaceProps) {
           />
         </DialogContent>
       </Dialog>
+
+      {/* Drawer cai dat (FR-SETTINGS-01..07 — T-M1-12). */}
+      <SettingsDrawer
+        open={isSettingsOpen}
+        onOpenChange={setIsSettingsOpen}
+        onHistoryDeleted={() => {
+          void useConversationStore.getState().refresh()
+        }}
+      />
     </div>
   )
 }

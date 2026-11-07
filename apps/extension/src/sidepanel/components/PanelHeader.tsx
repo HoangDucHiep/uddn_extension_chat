@@ -1,4 +1,4 @@
-import { CircleHelp, History, Trash2 } from 'lucide-react'
+import { CircleHelp, History, Settings, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export interface PanelHeaderProps {
@@ -10,6 +10,8 @@ export interface PanelHeaderProps {
   onOpenOnboarding?: (() => void) | undefined
   /** Mo drawer danh sach cuoc tro chuyen (FR-CHAT-09 — T-M1-09). */
   onOpenConversations?: (() => void) | undefined
+  /** Mo drawer cai dat (FR-SETTINGS-01..07 — T-M1-12). */
+  onOpenSettings?: (() => void) | undefined
   /** Tieu de conversation hien tai (hien thi trong header). */
   conversationTitle?: string | undefined
 }
@@ -25,6 +27,7 @@ export function PanelHeader({
   onClear,
   onOpenOnboarding,
   onOpenConversations,
+  onOpenSettings,
   conversationTitle,
 }: PanelHeaderProps) {
   return (
@@ -79,6 +82,18 @@ export function PanelHeader({
             data-testid="help-button"
           >
             <CircleHelp className="h-3.5 w-3.5" aria-hidden="true" />
+          </Button>
+        ) : null}
+
+        {onOpenSettings ? (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={onOpenSettings}
+            aria-label="Mở cài đặt"
+            data-testid="settings-button"
+          >
+            <Settings className="h-3.5 w-3.5" aria-hidden="true" />
           </Button>
         ) : null}
 

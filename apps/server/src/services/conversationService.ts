@@ -380,6 +380,49 @@ export async function deleteConversation(db: Database, id: string): Promise<void
 }
 
 /**
+ * Xoa **toan bo** lich su chat (FR-SETTINGS-03 + NFR-SEC-07 — T-M1-12).
+ *
+ * Xoa explicit messages + citations truoc, roi xoa conversations.
+ * (Postgres co `ON DELETE CASCADE` → van an toan; explicit de unit test
+ * voi fake DB phan anh dung hieu ung.)
+ *
+ * @param db - Database client.
+ * @returns So conversation da xoa.
+ */
+export async function deleteAllConversations(db: Database): Promise<number> {
+  const conversationRows = await db
+    .select({ id: conversations.id })
+    .from(conversations)
+  const conversationIds = conversationRows.map((row) => row.id)
+
+  if (conversationIds.length === 0) return 0
+
+  const messageRows = await db
+    .select({ id: messages.id })
+    .from(messages)
+    .where(inArray(messages.conversationId, conversationIds))
+  const messageIds = messageRows.map((row) => row.id)
+
+  if (messageIds.length > 0) {
+    await db
+      .delete(citations)
+      .where(inArray(citations.messageId, messageIds))
+      .returning()
+  }
+
+  await db
+    .delete(messages)
+    .where(inArray(messages.conversationId, conversationIds))
+    .returning()
+  const deleted = await db
+    .delete(conversations)
+    .where(inArray(conversations.id, conversationIds))
+    .returning()
+
+  return deleted.length
+}
+
+/**
  * Doc conversation + lich su messages (kem citations da luu).
  *
  * Tu T-M1-10, response kem them:

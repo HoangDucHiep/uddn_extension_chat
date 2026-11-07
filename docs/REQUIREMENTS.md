@@ -398,13 +398,29 @@ BYOK trả lời câu *"key của ai?"*, không trả lời *"key nằm ở đâ
 
 | ID | Requirement | Priority | Acceptance criteria |
 |---|---|---|---|
-| FR-SETTINGS-01 | Theme: light / dark / system, theo dõi `prefers-color-scheme` | M | Áp dụng tức thì, không reload |
-| FR-SETTINGS-02 | Cỡ chữ, chiều rộng panel, mật độ hiển thị | M | Lưu theo user, áp dụng ngay |
-| FR-SETTINGS-03 | Quản lý dữ liệu: xoá lịch sử, export toàn bộ, xoá cache index | M | Xoá có confirm; export → file JSON |
-| FR-SETTINGS-04 | Bật/tắt telemetry, chia sẻ context, dùng history | M | Mặc định: telemetry OFF, history OFF |
-| FR-SETTINGS-05 | Đổi endpoint BFF (cho dev / self-host) | S | Validate endpoint khi lưu |
-| FR-SETTINGS-06 | Ngôn ngữ UI: VI / EN | M | Đổi không cần reload |
-| FR-SETTINGS-07 | Import/export toàn bộ settings | C | |
+| FR-SETTINGS-01 | Theme: light / dark / system, theo dõi `prefers-color-scheme` | M | ✅ T-M1-12 — xem AC chi tiết §4.8.1. Áp dụng tức thì, không reload |
+| FR-SETTINGS-02 | Cỡ chữ, chiều rộng panel, mật độ hiển thị | M | ✅ T-M1-12 — xem AC chi tiết §4.8.1. Lưu theo user, áp dụng ngay |
+| FR-SETTINGS-03 | Quản lý dữ liệu: xoá lịch sử, export toàn bộ, xoá cache index | M | ✅ T-M1-12 — xem AC chi tiết §4.8.1. Xoá có confirm; export → file JSON |
+| FR-SETTINGS-04 | Bật/tắt telemetry, chia sẻ context, dùng history | M | ✅ T-M1-12 (cờ) — xem AC chi tiết §4.8.1. Mặc định: telemetry OFF, history OFF. *Hành vi telemetry thật → T-M2-19* |
+| FR-SETTINGS-05 | Đổi endpoint BFF (cho dev / self-host) | S | ✅ T-M1-12 — xem AC chi tiết §4.8.1. Validate endpoint khi lưu |
+| FR-SETTINGS-06 | Ngôn ngữ UI: VI / EN | M | ✅ T-M1-12 (lưu lựa chọn) — xem AC chi tiết §4.8.1. *Dịch toàn bộ UI → T-M1-17* |
+| FR-SETTINGS-07 | Import/export toàn bộ settings | C | ✅ T-M1-12 — xem AC chi tiết §4.8.1 |
+
+#### 4.8.1 FR-SETTINGS — AC chi tiết (T-M1-12 ✅)
+
+Settings nằm trong **drawer** (Radix `Dialog` trượt từ phải), mở bằng nút gear (`Settings`, `data-testid="settings-button"`) trong header panel. Toàn bộ setting lưu ở `chrome.storage.local` key `sidekick.settings` → **persist qua reload panel** (AC FR-SETTINGS-01/02).
+
+| ID | Acceptance criteria (đã hiện thực) |
+|---|---|
+| FR-SETTINGS-01 | 3 lựa chọn `Sáng` / `Tối` / `Theo hệ điều hành`. Theme áp bằng class `.dark` + `data-theme` trên `<html>` (dùng token sẵn có trong `design/tokens.css`, **không** hardcode màu). Chế độ `system` nghe `matchMedia('(prefers-color-scheme: dark)')` → OS đổi nền → panel đổi ngay, **không reload** |
+| FR-SETTINGS-02 | Cỡ chữ 4 mức (0.9 / 1 / 1.1 / 1.2) → biến `--font-scale` trên `<html>`. Mật độ 3 mức (compact / cozy / comfortable) → biến `--density-scale` (nhân vào token `--space-*`). Bề rộng panel 3 mức (narrow 400px / default 640px / wide 960px) → biến `--panel-max-width`. Tất cả áp dụng **ngay** (effect trong `useSettings`) |
+| FR-SETTINGS-03 | 2 hành động, đều **có confirm dialog** (`destructive`): (1) "Xoá lịch sử chat" → `DELETE /api/conversations` (server, cascade messages/citations); (2) "Xoá dữ liệu cục bộ" → xoá mọi khoa `sidekick.*` trong `chrome.storage.local`, **giữ** `sidekick.onboarding.completed` + `sidekick.preferredProvider` (không bắt user làm lại onboarding). Export → file JSON (`sidekick-settings.json`) |
+| FR-SETTINGS-04 | 2 toggle: telemetry + history. **Mặc định OFF** (AC đạt). Task này chỉ **lưu cờ** — hành vi telemetry thật thuộc T-M2-19 (M2) → UI ghi rõ "chưa dùng trong phiên bản này" để không nói dối user |
+| FR-SETTINGS-05 | Input URL + nút "Kiểm tra & lưu" → gọi `GET <url>/api/health`; chỉ khi HTTP 2xx mới ghi vào `sidekick.bffUrl` (khoá dùng bởi `apiClient`) **và** `sidekick.settings.bffUrl`. URL không phải http/https → báo lỗi, không lưu |
+| FR-SETTINGS-06 | Radio `Tiếng Việt` / `English` → lựa chọn được lưu & persist ngay. **Không** dịch chuỗi UI ở task này (tránh scope creep) → ghi TODO(T-M1-17) cho i18n đầy đủ |
+| FR-SETTINGS-07 | "Xuất cài đặt" → tải file JSON chứa toàn bộ settings. "Nhập cài đặt" → đọc file, validate qua `settingsSchema` (Zod) của `packages/shared`; JSON sai / thiếu field → thông báo lỗi rõ ràng, **không** crash |
+
+> **Giới hạn đã biết (ghi rõ trong UI):** chiều rộng panel do người dùng kéo trong Chrome → extension chỉ đặt thêm `max-width`. Không thể cưỡng chế bề rộng tuyệt đối.
 
 ### 4.9 FR-UX — Trải nghiệm người dùng
 
@@ -415,7 +431,7 @@ BYOK trả lời câu *"key của ai?"*, không trả lời *"key nằm ở đâ
 | FR-UX-03 | Empty state với prompt gợi ý theo ngữ cảnh trang | M | ✅ T-M1-11 — xem AC chi tiết §4.9.2. ≥ 3 gợi ý; refresh theo loại trang |
 | FR-UX-04 | Empty state khi chưa có context: gợi ý câu hỏi chung | M | ✅ T-M1-11 — xem AC chi tiết §4.9.2. Có nút "Tóm tắt trang này" 1-click |
 | FR-UX-05 | Scroll: tự cuộn theo stream; dừng auto-scroll khi user cuộn lên | M | Có nút "Cuộn xuống" khi đang lệch. **Đã implement (T-M1-10):** `ChatWorkspace` theo dõi `scrollHeight - scrollTop - clientHeight` → chỉ auto-scroll khi ≤ 80 px từ đáy; lệch → hiện nút tròn "Cuộn xuống" (`ScrollToBottomButton`), bấm → cuộn về đáy |
-| FR-UX-06 | Panel chịu được chiều rộng 320–640px; không vỡ layout | M | Test ở 320/400/520px |
+| FR-UX-06 | Panel chịu được chiều rộng 320–640px; không vỡ layout | M | ✅ T-M1-12 — nút gear trong header → drawer Settings trượt từ phải (giữ ≥ 90% context chat, DP-2). Bề rộng điều chỉnh được 400/640/960px (`--panel-max-width`); layout không vỡ ở cả 3 mức |
 | FR-UX-07 | Focus ring rõ, điều hướng bằng bàn phím đầy đủ | M | Tab order hợp lý, focus không bị kẹt |
 | FR-UX-08 | Toast / banner thông báo lỗi & trạng thái, không che nội dung | M | Auto-dismiss 5s, có dismiss thủ công |
 | FR-UX-09 | Responsive: hỗ trợ zoom 200%, font nhỏ không vỡ | M | |
@@ -531,7 +547,7 @@ Acceptance criteria:
 | NFR-SEC-04 | Sanitize HTML/Markdown render — chặn XSS, chặn `javascript:` URL. **Đã implement (T-M1-07):** `rehype-sanitize` với schema custom (chỉ `http`/`https`/`mailto` cho `href`), raw HTML bị loại bỏ hoàn toàn (`skipHtml`) → không thể thực thi script trong nội dung LLM |
 | NFR-SEC-05 | BFF xác thực origin của extension (allowlist) để chống CSRF/abuse từ website khác |
 | NFR-SEC-06 | Không đọc nội dung trang trên domain nhạy cảm mặc định (ví dụ: ngân hàng, bệnh viện, email) — cần opt-in |
-| NFR-SEC-07 | Cho phép xoá toàn bộ dữ liệu local (chat + index + log) bằng 1 thao tác |
+| NFR-SEC-07 | Cho phép xoá toàn bộ dữ liệu local (chat + index + log) bằng 1 thao tác | ✅ T-M1-12 — 2 hành động trong drawer Settings, đều **có confirm dialog**: (1) "Xoá lịch sử chat" → `DELETE /api/conversations` (cascade messages/citations); (2) "Xoá dữ liệu cục bộ" → xoá mọi khoa `sidekick.*` (cache context, draft, lựa chọn đang chờ, settings) trong `chrome.storage.local`, **giữ** trạng thái onboarding + provider đã chọn |
 | NFR-SEC-08 | Dependency audit (npm audit) không có high/critical |
 
 ### 5.3 Độ tin cậy
@@ -1113,13 +1129,13 @@ Chỉ bắt đầu M4 khi **đồng thời** thỏa:
 
 | FR | Priority | Task | Milestone |
 |---|---|---|---|
-| FR-SETTINGS-01 | M | T-M0-14 ✅ · T-M1-12 | M0→M1 |
-| FR-SETTINGS-02 | M | T-M1-12 | M1 |
-| FR-SETTINGS-03 | M | T-M1-12 | M1 |
-| FR-SETTINGS-04 | M | T-M1-12 · **T-M2-19** | M1→M2 |
-| FR-SETTINGS-05 | S | T-M1-12 | M1 |
-| FR-SETTINGS-06 | M | T-M0-14 ✅ · T-M1-12 · T-M1-17 | M0→M1 |
-| FR-SETTINGS-07 | C | T-M1-12 | M1 |
+| FR-SETTINGS-01 | M | T-M0-14 ✅ · **T-M1-12 ✅** | M0→M1 |
+| FR-SETTINGS-02 | M | **T-M1-12 ✅** | M1 |
+| FR-SETTINGS-03 | M | **T-M1-12 ✅** | M1 |
+| FR-SETTINGS-04 | M | **T-M1-12 ✅** (cờ) · **T-M2-19** (hành vi thật) | M1→M2 |
+| FR-SETTINGS-05 | S | **T-M1-12 ✅** | M1 |
+| FR-SETTINGS-06 | M | T-M0-14 ✅ · **T-M1-12 ✅** (lưu lựa chọn) · T-M1-17 (dịch UI) | M0→M1 |
+| FR-SETTINGS-07 | C | **T-M1-12 ✅** | M1 |
 
 #### FR-UX — Trải nghiệm người dùng
 
@@ -1130,7 +1146,7 @@ Chỉ bắt đầu M4 khi **đồng thời** thỏa:
 | FR-UX-03 | M | **T-M1-11 ✅** · T-M1-19 | M1 |
 | FR-UX-04 | M | **T-M1-11 ✅** · T-M1-19 | M1 |
 | FR-UX-05 | M | T-M1-10 | M1 |
-| FR-UX-06 | M | T-M1-12 · T-M1-20 | M1 |
+| FR-UX-06 | M | **T-M1-12 ✅** (drawer Settings + bề rộng) · T-M1-20 | M1 |
 | FR-UX-07 | M | T-M1-20 | M1 |
 | FR-UX-08 | M | T-M1-19 | M1 |
 | FR-UX-09 | M | T-M1-20 | M1 |
@@ -1152,7 +1168,7 @@ Chỉ bắt đầu M4 khi **đồng thời** thỏa:
 | NFR-SEC-04 (sanitize markdown) | T-M1-07 ✅ | M1 |
 | NFR-SEC-05 (origin allowlist) | T-M0-06 ✅ | M0 |
 | NFR-SEC-06 (domain nhạy cảm opt-in) | **T-M2-19** | M2 |
-| NFR-SEC-07 (xoá toàn bộ dữ liệu) | T-M1-12 | M1 |
+| NFR-SEC-07 (xoá toàn bộ dữ liệu) | **T-M1-12 ✅** | M1 |
 | NFR-SEC-08 (npm audit) | T-M0-02 ✅ | M0 |
 | NFR-REL-01 (không mất tin nhắn) | T-M1-10 · T-M1-14 | M1 |
 | NFR-REL-02 (retry 1 lần) | T-M1-19 | M1 |

@@ -9,6 +9,18 @@
 ## [Unreleased]
 
 ### Added
+- **T-M1-12 — Settings: theme · cỡ chữ · chiều rộng · quản lý dữ liệu · endpoint BFF (FR-SETTINGS-01..07 + FR-UX-06 + NFR-SEC-07)**
+  - `packages/shared/src/schemas/settings.ts` (mới) — `settingsSchema` (Zod) · `themeModeSchema` (`light`/`dark`/`system`) · `densitySchema` (`compact`/`cozy`/`comfortable`) · `panelWidthSchema` (`narrow`/`default`/`wide`) · `uiLanguageSchema` (`vi`/`en`) · `fontScaleSchema` (enum 4 mức `0.9`/`1`/`1.1`/`1.2`) · `settingsPatchSchema`.
+  - `apps/extension/src/lib/settings.ts` (mới) — `SETTINGS_STORAGE_KEY` (`sidekick.settings`) · `SIDEKICK_STORAGE_PREFIX` · `PRESERVED_STORAGE_KEYS` · `DEFAULT_SETTINGS` (telemetry/history **OFF**) · `readSettings()` (fallback **từng field**) · `writeSettings()` (**merge** + validate) · `resetSettings()` · `resolveTheme()` · `fontScaleFor()` · `densityScaleFor()` · `panelMaxWidthFor()` · `exportSettings()` · `importSettings()` · `deleteLocalSidekickData()` (xoá prefix `sidekick.`, **giữ** onboarding + provider).
+  - `apps/extension/src/lib/theme.ts` (mới) — `prefersDarkScheme()` · `applyTheme()` (toggle class `.dark` + `data-theme`) · `applyFontScale()` (`--font-scale`) · `applyDensity()` (`--density-scale`) · `applyPanelWidth()` (`--panel-max-width`) · `watchSystemTheme()`.
+  - `apps/extension/src/sidepanel/hooks/useSettings.ts` (mới) — đọc `readSettings()` lúc mount · nghe `chrome.storage.onChanged` → đồng bộ · `update(patch)` optimistic · **effect** áp theme/font/density/width lên `<html>` → **áp dụng ngay, không reload** · `watchSystemTheme` khi `theme === 'system'`.
+  - `apps/extension/src/sidepanel/components/settings/` (mới) — `SettingsDrawer.tsx` (Radix Dialog trượt từ **phải**, `data-testid="settings-drawer"`) · `ThemeSettings.tsx` · `AppearanceSettings.tsx` · `PrivacySettings.tsx` · `DataSettings.tsx` · `EndpointSettings.tsx` · `LanguageSettings.tsx` · `SettingsControls.tsx` (`RadioGroup` · `ToggleRow` · `SettingsSection`).
+  - `apps/server/src/services/conversationService.ts` — `deleteAllConversations(db)` → xoá explicit citations → messages → conversations (cascade ở Postgres vẫn an toàn) → trả số conversation đã xoá.
+  - `apps/server/src/routes/conversations.ts` — `router.delete('/conversations')` → `200` + `{ deleted }` (khác `DELETE /conversations/:id` → `204`).
+  - **Test** — `packages/shared/tests/settings.test.ts` (mới, 15) · `apps/extension/tests/settings.test.ts` (mới, 22) · `apps/extension/tests/theme.test.ts` (mới, 11) · `apps/extension/tests/settingsData.test.ts` (mới, 6) · `apps/extension/tests/settingsDrawer.test.tsx` (mới, 10) · `apps/extension/e2e/settings.spec.ts` (mới, 4 kịch bản).
+    - **Số test toàn repo:** 1085 → **1115 unit** (shared 215 · server 314 · extension 586) + 61 → **65 E2E**.
+    - **Mutation spot-check:** 7/7 mutation bị bắt — `resolveTheme()` bỏ nhánh `system` · `applyTheme()` không toggle `.dark` · `writeSettings()` không merge · `deleteLocalSidekickData()` xoá cả `sidekick.onboarding.*` · `importSettings()` không validate · xoá `router.delete('/conversations')` · `applyFontScale()` không set `--font-scale`.
+    - **Migration:** **không** có migration mới · **không** dependency mới · **không** permission mới.
 - **T-M1-03 — Service worker: toggle panel · context menu · phím tắt (FR-UX-01)**
   - `apps/extension/src/background/panelController.ts` (mới) — `PANEL_OPEN_STATE_KEY` (`sidekick.panelOpen`, `chrome.storage.session`) · `applyOpenOnActionClick()` (native toggle `chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })`, Chrome 114+) · `isOpenOnActionClick()` · `readPanelOpenState()` / `writePanelOpenState()` · `openSidePanel()` (fallback `chrome.windows.getCurrent()`) · `closeSidePanel()` (feature detection Chrome 141+) · `toggleSidePanel()` → `'opened' | 'closed' | 'noop'`. **Mọi hàm bọc `try/catch`** → không bao giờ throw.
   - `apps/extension/src/background/contextMenus.ts` (mới) — `CONTEXT_MENU_OPEN_ID` (`sidekick-open`, `contexts: ['page']`) · `CONTEXT_MENU_ASK_SELECTION_ID` (`sidekick-ask-selection`, `contexts: ['selection']`) · `registerContextMenus()` (`removeAll()` **trước** `create()` → không lỗi duplicate id khi update extension) · `handleContextMenuClick()` (mục selection → `PendingSelection` → `writePendingSelection()` → panel tự nhận → `tier: 'selection'` → mở panel; text rỗng → bỏ qua).
@@ -20,8 +32,21 @@
     - **Migration:** **không** có migration mới · **không** dependency mới · **không** có UI mới.
 
 ### Changed
+- `apps/extension/src/sidepanel/components/PanelHeader.tsx` — thêm nút gear (`Settings`, `aria-label="Mở cài đặt"`, `data-testid="settings-button"`) → `onOpenSettings`.
+- `apps/extension/src/sidepanel/ChatWorkspace.tsx` — state `isSettingsOpen` · render `<SettingsDrawer>` cạnh drawer conversation · `onHistoryDeleted` → refresh danh sách conversation.
+- `apps/extension/src/lib/conversationClient.ts` — `deleteAllConversations()` → `fetchJson('/api/conversations', { method: 'DELETE' })` → trả số đã xoá.
+- `design/tokens.css` — thêm `--density-scale` · `--space-1..8` = `calc(<px> * var(--density-scale))`.
+- `apps/extension/src/sidepanel/index.css` — `#root { max-width: var(--panel-max-width); min-width: var(--panel-min-width); margin-inline: auto; }` · animation `animate-drawer-in-right` (tôn trọng `prefers-reduced-motion`).
+- `packages/shared/src/index.ts` — export `./schemas/settings.js`.
 - `apps/extension/src/background/serviceWorker.ts` — top-level `void applyOpenOnActionClick()` (native toggle bật lại mỗi lần SW khởi động) · `action.onClicked` thành **fallback** (guard `isOpenOnActionClick()` → không mở 2 lần) · thêm `commands.onCommand` → `handleCommand` · `contextMenus.onClicked` → `handleContextMenuClick` · `sidePanel.onOpened` / `onClosed` → `writePanelOpenState` (feature detection Chrome 141/142).
 - `apps/extension/tests/setup.ts` — bổ sung mock `chrome.sidePanel.close` / `getPanelBehavior` / `setPanelBehavior` / `onOpened` / `onClosed` · `chrome.contextMenus.create` / `removeAll` · `chrome.commands.onCommand` · `chrome.action.onClicked` · `chrome.windows.getCurrent` · `chrome.storage.session`.
+- `docs/REQUIREMENTS.md` — FR-SETTINGS-01..07 ✅ + **§4.8.1** (AC chi tiết) · FR-UX-06 ✅ · NFR-SEC-07 ✅ · §11.1 traceability.
+- `docs/SYSTEM_DESIGN.md` — **§7.14** mới "Settings" (quyết định thiết kế · shape `SidekickSettings` · contract `lib/settings.ts` + `lib/theme.ts` + hook `useSettings` · endpoint `DELETE /api/conversations` · luồng · hiệu năng · kiểm thử) · §4.1 bảng API thêm 1 dòng `DELETE /conversations`.
+- `docs/DESIGN_SYSTEM_BRIEF.md` — §3.7 Settings: 8 component mới + props + token + biến CSS + a11y · §6 traceability.
+- `docs/IMPLEMENTATION_PLAN.md` — task card T-M1-12 → ✅ *(2026-11-07)* · **§3.1o** "Kết quả verify T-M1-12" · traceability FR-SETTINGS / FR-UX-06.
+- `docs/COMPARISON_MATRIX.md` — §E: 4 dòng parity → ✅ (theme sáng/tối A24/B12 · cỡ chữ & bề rộng panel · xoá dữ liệu NFR-SEC-07 · Settings tổng).
+- `docs/HANDOFF.md` — M1 **16/25 → 17/25** · task kế tiếp · "Quyết định kỹ thuật mới (T-M1-12)".
+- `docs/README.md` · `AGENTS.md` — số task / số test / tóm tắt T-M1-12.
 - `docs/REQUIREMENTS.md` — FR-UX-01 ✅ + **§4.9.3** (AC chi tiết: 3 đường mở panel · 2 mục context menu · `Ctrl+Shift+K` · trạng thái `storage.session`).
 - `docs/SYSTEM_DESIGN.md` — **§7.13** mới "Toggle panel · context menu · phím tắt" (quyết định thiết kế · contract 3 file · luồng · hiệu năng · kiểm thử) · §8 hiệu năng.
 - `docs/DESIGN_SYSTEM_BRIEF.md` — §3.7 `ShortcutsSettings` ghi rõ thuộc T-M1-18 (chưa làm) · §6 traceability FR-UX-01 (không có component mới).

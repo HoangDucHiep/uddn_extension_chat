@@ -24,14 +24,41 @@
 | Hạng mục | Trạng thái |
 |---|---|
 | Docs | ✅ Đầy đủ 9 file (`docs/`) + `AGENTS.md` ở root |
-| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 + T-M1-05 + T-M1-02 + T-M1-24 + T-M1-25 + T-M1-06 + T-M1-07 + T-M1-08 + T-M1-09 + T-M1-10 + T-M1-11 + T-M1-03 xong** — 4 workspace, 1049 unit test + 61 E2E |
+| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 + T-M1-05 + T-M1-02 + T-M1-24 + T-M1-25 + T-M1-06 + T-M1-07 + T-M1-08 + T-M1-09 + T-M1-10 + T-M1-11 + T-M1-03 + T-M1-12 xong** — 4 workspace, 1115 unit test + 65 E2E |
 | Git | ✅ Đã init (`main`) · tag `v0.1` đánh dấu M0 |
-| Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **16/25 task**) |
-| Task tiếp theo | **T-M1-12** (Settings: theme · cỡ chữ · chiều rộng · quản lý dữ liệu · endpoint BFF) — theo thứ tự ưu tiên M1 |
+| Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **17/25 task**) |
+| Task tiếp theo | **T-M1-13** (Export conversation Markdown/JSON + provider/model/key trong Settings) — theo thứ tự ưu tiên M1 |
 
 ### Đang làm dở
 
-_(Không có — T-M1-03 toggle panel · context menu · phím tắt đã xong, task kế tiếp T-M1-12)_
+_(Không có — T-M1-12 Settings xong, task kế tiếp T-M1-13)_
+
+### Việc đã xong gần đây (T-M1-12 — Settings: theme · cỡ chữ · chiều rộng · quản lý dữ liệu · endpoint BFF)
+
+- **T-M1-12 (FR-SETTINGS-01..07 + FR-UX-06 + NFR-SEC-07)** — side panel nay có **drawer Cài đặt** (Radix Dialog trượt từ **phải**, mở bằng nút gear trong header): theme sáng/tối/theo-OS · cỡ chữ 4 mức · mật độ 3 mức · bề rộng panel 3 mức · telemetry & history (OFF mặc định) · xoá lịch sử chat · xoá dữ liệu cục bộ · import/export settings JSON · đổi endpoint BFF (có validate).
+  - **Shared (mới)** — `packages/shared/src/schemas/settings.ts`: `settingsSchema` (Zod) + 5 schema con (`fontScaleSchema` là **enum** 4 mức → chặn giá trị lạ từ storage).
+  - **Extension (mới)** — `lib/settings.ts` (`SETTINGS_STORAGE_KEY` = `sidekick.settings` · `readSettings()` fallback **từng field** · `writeSettings()` **merge** + validate · `deleteLocalSidekickData()` xoá prefix `sidekick.` nhưng **giữ** `sidekick.onboarding.completed` + `sidekick.preferredProvider`) · `lib/theme.ts` (`applyTheme` · `applyFontScale` · `applyDensity` · `applyPanelWidth` · `watchSystemTheme`) · `hooks/useSettings.ts` (đọc storage + nghe `chrome.storage.onChanged` → đồng bộ · `update()` optimistic · **effect** áp biến CSS lên `<html>` → áp dụng **ngay, không reload**).
+  - **UI (mới)** — `components/settings/`: `SettingsDrawer` · `ThemeSettings` · `AppearanceSettings` · `PrivacySettings` · `DataSettings` · `EndpointSettings` · `LanguageSettings` · `SettingsControls` (`RadioGroup` · `ToggleRow` · `SettingsSection`). Sửa `PanelHeader.tsx` (nút gear) + `ChatWorkspace.tsx` (state `isSettingsOpen`).
+  - **Server (mới)** — `deleteAllConversations(db)` + `router.delete('/conversations')` → `200` + `{ deleted }` (**không** migration mới).
+  - **Token/CSS** — `design/tokens.css` thêm `--density-scale` (`--space-*` = `calc(<px> * var(--density-scale))`) · `index.css` `#root { max-width: var(--panel-max-width) }` + animation `animate-drawer-in-right`.
+  - **Verify** — typecheck ✅ · lint ✅ · test ✅ (**1115 unit** = shared 215 · server 314 · extension 586) · build ✅ · db:migrate ✅ (**không** migration mới, **không** dependency mới, **không** permission mới) · **E2E 65/65** ✅ (+4 kịch bản `e2e/settings.spec.ts`) · **mutation spot-check 7/7 bị bắt**.
+- Bằng chứng đầy đủ: `docs/IMPLEMENTATION_PLAN.md` §3.1o · `docs/SYSTEM_DESIGN.md` §7.14.
+
+### Quyết định kỹ thuật mới (T-M1-12)
+
+| Quyết định | Lý do |
+|---|---|
+| Settings ở **drawer** (Radix Dialog trượt từ **phải**), không phải màn hình thay thế chat | Giữ nguyên context chat (DP-2: thread ≥ 90%); user chỉnh setting rồi đóng vẫn thấy đúng thread. Pattern đã có sẵn: `ConversationList` trong `Dialog` (T-M1-09) |
+| **Không** dùng Zustand store cho settings | Settings đọc/ghi `chrome.storage.local` → cần đồng bộ giữa panel + service worker → hook `useSettings()` + `chrome.storage.onChanged` (pattern `useOnboarding`) → 1 nguồn sự thật, không stale |
+| Theme áp bằng class `.dark` + `data-theme` | `design/tokens.css` đã có sẵn block `.dark` → **không** hardcode màu mới, chỉ bật/tắt. `system` → `matchMedia('(prefers-color-scheme: dark)')` + listener `change` |
+| Cỡ chữ / mật độ / bề rộng qua **biến CSS** (`--font-scale` · `--density-scale` · `--panel-max-width`) | Token đã có sẵn → **không sửa component nào**, chỉ set biến trên `<html>` → áp dụng tức thì, không reload |
+| Bề rộng panel chỉ đặt `max-width` | Chrome side panel do user kéo → extension **không** cưỡng chế được → ghi rõ giới hạn trong UI (không hứa sai) |
+| Xoá lịch sử chat bằng **1 endpoint** `DELETE /api/conversations` | Đã có `DELETE /conversations/:id`; loop client sẽ chậm + dễ sót → 1 endpoint server, cascade xoá messages/citations |
+| Xoá dữ liệu local theo **prefix** `sidekick.` | 1 lệnh `get(null)` + filter → xoá hết cache context + draft + pending selection + settings. **Giữ** `sidekick.onboarding.*` + `sidekick.preferredProvider` → không bắt user làm lại onboarding |
+| Endpoint BFF **validate** qua `GET <url>/api/health` trước khi lưu | AC FR-SETTINGS-05. Validate ở tầng UI, **không** đụng `apiClient` (giữ hành vi hiện tại) |
+| Telemetry/history chỉ **lưu cờ** (OFF mặc định) | Hành vi telemetry thật thuộc T-M2-19 → UI ghi rõ "chưa dùng trong phiên bản này" để **không nói dối** user |
+| FR-SETTINGS-06 chỉ **lưu lựa chọn** VI/EN | Dịch toàn bộ UI là T-M1-17 → tránh scope creep, không sửa text nào |
+| Radio/toggle viết tay bằng `<input type="radio">` native | Không thêm dependency UI mới; a11y tốt, điều hướng bàn phím mặc định đúng |
 
 ### Việc đã xong gần đây (T-M1-03 — Service worker: toggle panel · context menu · phím tắt)
 

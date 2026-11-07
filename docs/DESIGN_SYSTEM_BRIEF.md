@@ -420,18 +420,51 @@ Cache context chạy **hoàn toàn ngầm** ở tầng `lib/` (`contextCache.ts`
 
 ### 3.7 Settings
 
-| Component | FR liên quan |
+**Đã implement T-M1-12** — drawer Settings trượt từ **phải** (Radix `Dialog`), mở bằng nút gear (`Settings`, `aria-label="Mở cài đặt"`, `data-testid="settings-button"`) trong `PanelHeader`. Drawer **giữ nguyên** context chat phía sau (DP-2: thread ≥ 90%).
+
+| Component | FR liên quan | Trạng thái |
+|---|---|---|
+| `SettingsDrawer` | FR-SETTINGS-01..07 | ✅ T-M1-12 — orchestrator, 6 section |
+| `ThemeSettings` | FR-SETTINGS-01/02 | ✅ T-M1-12 — radio `Sáng` / `Tối` / `Theo hệ điều hành` |
+| `AppearanceSettings` | FR-SETTINGS-02 + FR-UX-06 | ✅ T-M1-12 — cỡ chữ (4 mức) · mật độ (3 mức) · bề rộng (3 mức) |
+| `PrivacySettings` | FR-CONTEXT-08, FR-SETTINGS-04 | ✅ T-M1-12 — toggle telemetry (OFF mặc định) · toggle history (OFF mặc định) |
+| `DataSettings` | FR-SETTINGS-03, FR-SETTINGS-07, NFR-SEC-07 | ✅ T-M1-12 — xoá lịch sử chat · xoá dữ liệu cục bộ · export/import JSON |
+| `EndpointSettings` | FR-SETTINGS-05 | ✅ T-M1-12 — input URL + "Kiểm tra & lưu" (`GET <url>/api/health`) |
+| `LanguageSettings` | FR-SETTINGS-06 | ✅ T-M1-12 — radio VI/EN (chỉ lưu lựa chọn; dịch UI → T-M1-17) |
+| `SettingsControls` | (dùng chung) | ✅ T-M1-12 — `RadioGroup` · `ToggleRow` · `SettingsSection` |
+| `ProviderSettings` | FR-PROVIDER-01/02/08 | ⬜ T-M1-13 |
+| `ModelPicker` | FR-PROVIDER-03 | ⬜ T-M1-13 |
+| `ToolsSettings` | FR-TOOLS-01 | ⬜ T-M1-13 |
+| `SkillsSettings` | FR-SKILL-03, FR-SKILL-07 | ⬜ T-M1-13 |
+| `ShortcutsSettings` | FR-UX-01 | ⬜ **T-M1-18**; T-M1-03 chỉ chốt phím tắt mặc định `Ctrl+Shift+K` + context menu, **không có UI mới** |
+| `WorkflowSettings` | FR-WORKFLOW-08 (M4) | ⬜ M4 |
+
+**Token dùng** (không hardcode màu): `--surface-overlay` · `--surface-sunken` · `--text-primary` · `--text-secondary` · `--text-tertiary` · `--border-subtle` · `--color-accent` · `--danger` · `--space-*` · `--radius-*`.
+
+**Biến CSS áp từ settings** (đặt trên `<html>`, không cần sửa component nào):
+
+| Biến | Nguồn | Giá trị |
+|---|---|---|
+| `--font-scale` | `fontScale` | `0.9` · `1` · `1.1` · `1.2` |
+| `--density-scale` | `density` | `0.85` (compact) · `1` (cozy) · `1.15` (comfortable) — nhân vào token `--space-*` |
+| `--panel-max-width` | `panelWidth` | `400px` (narrow) · `640px` (default) · `960px` (wide) |
+| `.dark` + `data-theme` | `theme` | `light` · `dark` (theme `system` → theo `prefers-color-scheme`) |
+
+**A11y**:
+
+| Điểm | Cách làm |
 |---|---|
-| `ProviderSettings` | FR-PROVIDER-01/02/08 |
-| `ModelPicker` | FR-PROVIDER-03 |
-| `ThemeSettings` | FR-SETTINGS-01/02 |
-| `PrivacySettings` | FR-CONTEXT-08, FR-SETTINGS-04 |
-| `ToolsSettings` | FR-TOOLS-01 |
-| `SkillsSettings` | FR-SKILL-03, FR-SKILL-07 |
-| `DataSettings` | FR-SETTINGS-03, FR-SETTINGS-07 |
-| `ShortcutsSettings` | FR-UX-01 — **chưa làm (T-M1-18)**; T-M1-03 chỉ chốt phím tắt mặc định `Ctrl+Shift+K` + context menu, **không có UI mới** |
-| `LanguageSettings` | FR-SETTINGS-06 |
-| `WorkflowSettings` | FR-WORKFLOW-08 (M4) |
+| Radio group | `<input type="radio">` native + `<label>` — điều hướng bàn phím mặc định đúng, không thêm component UI mới |
+| Toggle | `<input type="checkbox">` native + `<label>` |
+| Nút gear | `aria-label="Mở cài đặt"` tiếng Việt · icon `aria-hidden="true"` |
+| Ô nhập endpoint | `<label htmlFor="settings-bff-url">` liên kết `id` · `type="url"` |
+| File import | `<input type="file" accept="application/json,.json">` ẩn + nút trigger; không chặn focus |
+| Focus | Mọi interactive element có focus ring rõ (không `outline: none`) |
+| Motion | `animate-drawer-in-right` (12px translate) → tôn trọng `prefers-reduced-motion` |
+
+> `data-testid` cho E2E: `settings-button` · `settings-drawer` · `settings-theme` · `settings-font-scale` · `settings-density` · `settings-panel-width` · `settings-telemetry` · `settings-history` · `settings-delete-history` · `settings-delete-local` · `settings-export` · `settings-import` · `settings-import-input` · `settings-bff-url` · `settings-bff-check` · `settings-bff-reset` · `settings-language` · `radio-<value>`.
+
+> **Giới hạn đã biết:** bề rộng panel do người dùng kéo trong Chrome → extension chỉ đặt thêm `max-width`. Không thể cưỡng chế bề rộng tuyệt đối (ghi rõ trong UI).
 
 ### 3.8 Onboarding (đã implement T-M1-25)
 
@@ -518,7 +551,12 @@ Component `Onboarding` — màn hình **thay** nội dung chat trong side panel 
 | `Composer` | FR-CHAT-12/13 | Rubric R4 (instruction following) |
 | **Không có component mới** — T-M1-03 chỉ thêm context menu + phím tắt ở tầng browser | FR-UX-01 | Parity A1 / A25 / B1 / B19 |
 | `ErrorMessage` | FR-CHAT-14 | Độ ổn định, khó đo |
-| `ThemeSettings` | FR-SETTINGS-01/02 | WCAG |
+| `ThemeSettings`, `AppearanceSettings` | FR-SETTINGS-01/02, FR-UX-06 | WCAG · parity theme (A24 / B12) |
+| `PrivacySettings` | FR-SETTINGS-04, FR-CONTEXT-08 | R7 privacy transparency |
+| `DataSettings` | FR-SETTINGS-03/07, NFR-SEC-07 | R7 privacy · WCAG |
+| `EndpointSettings` | FR-SETTINGS-05 | Self-host / dev |
+| `LanguageSettings` | FR-SETTINGS-06 | Parity i18n (B14) |
+| `SettingsDrawer` | FR-SETTINGS-01..07, FR-UX-06 | Rubric R6 (UX) · parity drawer |
 | `Onboarding` | FR-UX-02 | Parity 3 bước lần đầu |
 | `AttachmentTray`, ảnh trong `MessageBubble` | FR-VISION-01 | Đối chiếu B17 (Gemini upload ảnh) |
 | `UsageBadge`, `ProviderBadge` | FR-PROVIDER-05/09 | Bảng 3 "năng lực hệ thống" |

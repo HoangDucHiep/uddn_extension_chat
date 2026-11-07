@@ -86,6 +86,18 @@ export async function deleteConversation(id: string): Promise<void> {
 }
 
 /**
+ * Xoa **toan bo** lich su chat (FR-SETTINGS-03 + NFR-SEC-07 — T-M1-12).
+ *
+ * @returns So conversation da xoa.
+ */
+export async function deleteAllConversations(): Promise<number> {
+  const response = await fetchJson<{ deleted: number }>(API_ROUTES.conversations, {
+    method: 'DELETE',
+  })
+  return response.deleted
+}
+
+/**
  * Tai lich su hoi thoai cua 1 conversation (kem citations da luu).
  *
  * @param id - Id conversation.

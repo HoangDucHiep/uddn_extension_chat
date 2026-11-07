@@ -31,6 +31,15 @@ body,
   -webkit-font-smoothing: antialiased;
 }
 
+/* Be rong panel (FR-SETTINGS-02 + FR-UX-06 — T-M1-12).
+   Chrome side panel do user keo → extension chi dat them `max-width`.
+   Noi dung can giua trong khoang rong con lai. */
+#root {
+  max-width: var(--panel-max-width);
+  min-width: var(--panel-min-width);
+  margin-inline: auto;
+}
+
 body {
   margin: 0;
   background-color: var(--surface-panel);
@@ -320,6 +329,25 @@ body {
   }
 }
 
+/* ------------------------------------------------------------------
+ * Drawer cai dat truot tu phai (FR-SETTINGS — T-M1-12)
+ * ------------------------------------------------------------------ */
+
+@keyframes sidekick-drawer-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-drawer-in-right {
+  animation: sidekick-drawer-in-right var(--duration-base) var(--ease-standard);
+}
+
 .animate-drawer-in {
   animation: sidekick-drawer-in var(--duration-base) var(--ease-standard);
 }
@@ -331,6 +359,7 @@ body {
 /* Ton trong `prefers-reduced-motion` (rule coding-standards.mdc). */
 @media (prefers-reduced-motion: reduce) {
   .animate-drawer-in,
+  .animate-drawer-in-right,
   .animate-fade-in {
     animation: none;
   }

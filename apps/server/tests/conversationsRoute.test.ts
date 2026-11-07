@@ -159,6 +159,32 @@ describe('DELETE /api/conversations/:id', () => {
   })
 })
 
+describe('DELETE /api/conversations', () => {
+  it('xoa toan bo lich su → 200 + bao so da xoa', async () => {
+    const id = '77777777-7777-4777-8777-777777777777'
+    fake.seedConversation({ id, title: 'Se xoa' })
+    fake.seedMessage({ id: 'm-del', conversationId: id, role: 'user', content: 'Hoi' })
+    fake.seedCitation({ messageId: 'm-del', idx: 1, url: 'https://a.test' })
+
+    const response = await fetch(`${baseUrl}/api/conversations`, { method: 'DELETE' })
+
+    expect(response.status).toBe(200)
+    const body = (await response.json()) as { deleted: number }
+    expect(body.deleted).toBeGreaterThanOrEqual(1)
+    expect(fake.conversationRows.some((row) => row.id === id)).toBe(false)
+    expect(fake.messageRows.some((row) => row.id === 'm-del')).toBe(false)
+  })
+
+  it('xoa het cac conversation', async () => {
+    const response = await fetch(`${baseUrl}/api/conversations`, { method: 'DELETE' })
+    const body = (await response.json()) as { deleted: number }
+
+    expect(response.status).toBe(200)
+    expect(body.deleted).toBe(fake.conversationRows.length)
+    expect(fake.conversationRows).toHaveLength(0)
+  })
+})
+
 describe('GET /api/conversations/:id/messages', () => {
   it('tra lich su + citations', async () => {
     const id = '55555555-5555-4555-8555-555555555555'

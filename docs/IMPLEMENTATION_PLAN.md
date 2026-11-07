@@ -87,7 +87,7 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | T-M1-09 | Chat CRUD: tạo/đổi tên/xoá/ghim/archives | FR-CHAT-08/09/11 | `sidepanel/components/chat/ConversationList.tsx`, store | Thao tác CRUD phản ánh trong UI ngay | L | ✅ *(2026-11-07)* |
 | T-M1-10 | Regenerate / Edit-resend / Stop / Continue | FR-CHAT-05/06/07/12/13, FR-UX-05 | `hooks/useChat.ts`, `chat/MessageActions.tsx` | 4 hành vi đúng AC trong §3.1; Esc dừng; Enter gửi / Shift+Enter xuống dòng | L | ✅ |
 | T-M1-11 | Prompt gợi ý theo trang + Summarize 1-click | FR-UX-03/04 | `packages/shared/src/pageProfile.ts`, `sidepanel/components/chat/PromptGallery.tsx`, `chat/SummarizeButton.tsx` | Gợi ý đổi theo loại trang (docs/bài báo/forum) | M | ✅ *(2026-11-07)* |
-| T-M1-12 | Settings: theme, cỡ chữ, chiều rộng, quản lý dữ liệu, endpoint BFF | FR-SETTINGS-01/02/03/04/05/06/07, FR-UX-06, NFR-SEC-07 | `sidepanel/components/settings/*` | Áp dụng ngay, persist qua reload; xoá dữ liệu có confirm; telemetry/history mặc định OFF | M | ⬜ |
+| T-M1-12 | Settings: theme, cỡ chữ, chiều rộng, quản lý dữ liệu, endpoint BFF | FR-SETTINGS-01/02/03/04/05/06/07, FR-UX-06, NFR-SEC-07 | `sidepanel/components/settings/*` | Áp dụng ngay, persist qua reload; xoá dữ liệu có confirm; telemetry/history mặc định OFF | M | ✅ *(2026-11-07)* |
 | T-M1-13 | Export conversation (Markdown / JSON) | FR-CHAT-10 | `lib/export.ts` | Xuất đúng nội dung, mở được bằng Notepad/Markdown viewer | S | ⬜ |
 | T-M1-14 | Request logging đầy đủ vào `request_logs` | NFR-MAINT-04, FR-CONTEXT-12, NFR-REL-01, §7.2 | `apps/server/src/lib/requestLogger.ts` | Mỗi lượt chat có 1 dòng log: provider, model, token, cost, ttft, latency; snapshot context hash để tái lập | M | ⬜ |
 | T-M1-15 | K3 direct mode (BYOK không cần BFF) | FR-PROVIDER-08/09, NFR-REL-03, NFR-SEC-01 | `lib/crypto.ts`, `lib/directProvider.ts`, `state/keyStore.ts` | Tắt Docker → vẫn chat được với key nhập tay; key mã hoá local | L | ⬜ |
@@ -716,6 +716,43 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 
 > **Quyết định kỹ thuật:** (1) **Native toggle** `setPanelBehavior({openPanelOnActionClick: true})` (Chrome 114+) → Chrome tự quản lý mở/đóng, không cần tự track state cho thao tác click icon; `action.onClicked` chỉ là **fallback** cho Chrome cũ; (2) **Custom command** thay vì `_execute_action` → `_execute_action` bị native toggle nuốt nên không kiểm soát được hành vi toggle; (3) **Trạng thái panel** lưu `chrome.storage.session` (sống suốt phiên browser, không mất khi SW bị kill ~30s) + event `onOpened`/`onClosed`; (4) **Feature detection** `typeof chrome.sidePanel.close === 'function'` thay vì đọc `chrome.runtime.getManifest` → rõ ràng, không hack; (5) **`removeAll()` trước `create()`** → sửa lỗi duplicate id khi update extension; (6) **Tách logic khỏi service worker** → SW chỉ là wiring, logic test được trong jsdom.
 
+### 3.1o Kết quả T-M1-12 — Settings: theme · cỡ chữ · chiều rộng · quản lý dữ liệu · endpoint BFF (FR-SETTINGS-01..07 + FR-UX-06 + NFR-SEC-07) (2026-11-07)
+
+> Chi tiết kiến trúc: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.14 · AC: [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.8.1.
+
+**Không có migration DB mới (chỉ thêm 1 endpoint DELETE), không dependency mới, không permission mới.**
+
+| Hạng mục | Kết quả |
+|---|---|
+| `packages/shared/src/schemas/settings.ts` | ✅ **Mới** — `settingsSchema` (Zod) + `themeModeSchema` · `densitySchema` · `panelWidthSchema` · `uiLanguageSchema` · `fontScaleSchema` (enum 4 mức) · `settingsPatchSchema` |
+| `packages/shared/src/index.ts` | ✅ **Sửa** — export `./schemas/settings.js` |
+| `apps/extension/src/lib/settings.ts` | ✅ **Mới** — `SETTINGS_STORAGE_KEY` (`sidekick.settings`) · `SIDEKICK_STORAGE_PREFIX` · `PRESERVED_STORAGE_KEYS` · `DEFAULT_SETTINGS` · `readSettings()` (fallback **từng field**) · `writeSettings()` (**merge** + validate) · `resetSettings()` · `resolveTheme()` · `fontScaleFor()` · `densityScaleFor()` · `panelMaxWidthFor()` · `exportSettings()` · `importSettings()` · `deleteLocalSidekickData()` |
+| `apps/extension/src/lib/theme.ts` | ✅ **Mới** — `prefersDarkScheme()` · `applyTheme()` (toggle `.dark` + `data-theme`) · `applyFontScale()` (`--font-scale`) · `applyDensity()` (`--density-scale`) · `applyPanelWidth()` (`--panel-max-width`) · `watchSystemTheme()` |
+| `apps/extension/src/sidepanel/hooks/useSettings.ts` | ✅ **Mới** — đọc `readSettings()` lúc mount · nghe `chrome.storage.onChanged` → đồng bị · `update(patch)` optimistic · **effect** áp theme/font/density/width lên `<html>` → **áp dụng ngay, không reload** · `watchSystemTheme` khi `theme === 'system'` |
+| `apps/extension/src/sidepanel/components/settings/` | ✅ **Mới** — `SettingsDrawer.tsx` (Radix Dialog trượt từ **phải**, `data-testid="settings-drawer"`) · `ThemeSettings.tsx` · `AppearanceSettings.tsx` · `PrivacySettings.tsx` · `DataSettings.tsx` · `EndpointSettings.tsx` · `LanguageSettings.tsx` · `SettingsControls.tsx` (`RadioGroup` · `ToggleRow` · `SettingsSection`) |
+| `apps/extension/src/sidepanel/components/PanelHeader.tsx` | ✅ **Sửa** — thêm nút gear (`Settings`, `aria-label="Mở cài đặt"`, `data-testid="settings-button"`) → `onOpenSettings` |
+| `apps/extension/src/sidepanel/ChatWorkspace.tsx` | ✅ **Sửa** — state `isSettingsOpen` · render `<SettingsDrawer>` cạnh drawer conversation · `onHistoryDeleted` → refresh danh sách conversation |
+| `apps/extension/src/lib/conversationClient.ts` | ✅ **Sửa** — `deleteAllConversations()` → `fetchJson('/api/conversations', { method: 'DELETE' })` → trả số đã xoá |
+| `apps/server/src/services/conversationService.ts` | ✅ **Sửa** — `deleteAllConversations(db)` → xoá explicit citations → messages → conversations (cascade ở Postgres vẫn an toàn) → trả số conversation đã xoá |
+| `apps/server/src/routes/conversations.ts` | ✅ **Sửa** — thêm `router.delete('/conversations')` → `200` + `{ deleted }` (khác `DELETE /conversations/:id` → `204`) |
+| `design/tokens.css` | ✅ **Sửa** — thêm `--density-scale` · `--space-1..8` = `calc(<px> * var(--density-scale))` |
+| `apps/extension/src/sidepanel/index.css` | ✅ **Sửa** — `#root { max-width: var(--panel-max-width); min-width: var(--panel-min-width); margin-inline: auto; }` · animation `animate-drawer-in-right` (tôn trọng `prefers-reduced-motion`) |
+| Unit test | ✅ **Mới** — shared `settings.test.ts` (15) · extension `settings.test.ts` (22) · `theme.test.ts` (11) · `settingsData.test.ts` (6) · `settingsDrawer.test.tsx` (10) |
+| `apps/server/tests/conversationsRoute.test.ts` | ✅ **Sửa** — thêm 2 test cho `DELETE /api/conversations` (200 + `{ deleted }` + xoá hết rows) |
+| E2E | ✅ **Mới** `e2e/settings.spec.ts` — 4 kịch bản: bấm gear → drawer mở · chọn "Tối" → `<html>` có `.dark` → reload → vẫn `.dark` · đổi cỡ chữ → `--font-scale` đổi → reload → giữ · xoá lịch sử (stub `DELETE /api/conversations`) → confirm → request đúng |
+| `pnpm typecheck` | ✅ pass (shared · server · extension · eval) |
+| `pnpm lint` | ✅ pass (0 error, 0 warning) |
+| `pnpm test` | ✅ pass — shared **215** · server **314** · extension **586** (tổng **1115**, trước 1085 → **+30**) |
+| `pnpm build` | ✅ pass — `dist/sidepanel.js` build OK · `dist/content.js` vẫn là **IIFE 1 file, không `import`** |
+| `pnpm db:migrate` | ✅ pass — **không có migration mới** |
+| `pnpm test:e2e` | ✅ pass — `settings.spec.ts` **4/4** · tổng **65/65** |
+
+> **Mutation spot-check:** 7/7 mutation bị bắt — (1) `resolveTheme()` bỏ nhánh `system` (1 unit fail) · (2) `applyTheme()` không toggle `.dark` (4 unit fail) · (3) `writeSettings()` không merge (3 unit fail) · (4) `deleteLocalSidekickData()` xoá cả `sidekick.onboarding.*` (1 unit fail) · (5) `importSettings()` không validate (1 unit fail) · (6) xoá `router.delete('/conversations')` (2 server test fail) · (7) `applyFontScale()` không set `--font-scale` (3 unit fail).
+
+> **Quyết định kỹ thuật:** (1) **Drawer** (Radix Dialog trượt từ phải) thay vì màn hình thay thế chat → giữ ≥ 90% context chat (DP-2); (2) **Không** Zustand store cho settings → hook `useSettings()` + `chrome.storage.onChanged` (đồng bộ giữa panel + SW, không stale); (3) Theme áp bằng class `.dark` + `data-theme` → **không** hardcode màu mới (token đã có sẵn); (4) Cỡ chữ / mật độ / bề rộng qua **biến CSS** (`--font-scale` · `--density-scale` · `--panel-max-width`) → **không sửa component nào**; (5) Xoá lịch sử chat bằng **1 endpoint** `DELETE /api/conversations` (không loop client → chậm + dễ sót); (6) Xoá dữ liệu local theo **prefix** `sidekick.` → **giữ** `sidekick.onboarding.*` + `sidekick.preferredProvider` (không bắt user làm lại onboarding); (7) Endpoint BFF **validate** qua `GET <url>/api/health` trước khi lưu (AC FR-SETTINGS-05); (8) Radio/toggle viết tay bằng `<input type="radio">` native → **không** thêm dependency UI mới.
+
+> **Hạn chế đã biết (ghi rõ trong UI):** (1) Bề rộng panel do người dùng kéo trong Chrome → extension chỉ đặt thêm `max-width`, **không** cưỡng chế được; (2) FR-SETTINGS-06 task này chỉ **lưu lựa chọn** VI/EN — dịch toàn bộ UI là T-M1-17 → không sửa text nào; (3) FR-SETTINGS-04 chỉ **lưu cờ** (OFF mặc định) — hành vi telemetry thật thuộc T-M2-19 → UI ghi rõ "chưa dùng trong phiên bản này" để không nói dối user.
+
 ### 3.2 Traceability FR → Task
 
 > Bảng đầy đủ FR → Task (kèm milestone) nằm ở [`REQUIREMENTS.md`](REQUIREMENTS.md) §11.1 — nơi duy nhất cần cập nhật khi thêm/bớt task.
@@ -730,8 +767,8 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | FR-SKILL-01..07 | 7 FR | T-M2-04/05/06 · **T-M2-21** | FR-SKILL-04 (skill mẫu) + FR-SKILL-06 (điều kiện) tách task |
 | FR-PROVIDER-01..09 | 9 FR | T-M0-07/08 · T-M1-15/16 · T-M2-01/02/03 | FR-PROVIDER-04 (fallback) nằm trong T-M2-02 |
 | FR-WORKFLOW-01..13 | 13 FR | T-M4-01..08 · `FR-WORKFLOW-04` → **M5** | FR-WORKFLOW-04 deferred (rủi ro MV3 `tabs.onUpdated`) |
-| FR-SETTINGS-01..07 | 7 FR | T-M0-14 · T-M1-12/17 · **T-M2-19** (FR-SETTINGS-04) | FR-SETTINGS-03/04/05/07 trước đó không có task → gộp vào T-M1-12 |
-| FR-UX-01..10 | 10 FR | **T-M1-03 ✅**/10/**11 ✅**/12/18/19/20 · **T-M1-25 ✅** | FR-UX-02 (onboarding) tách task riêng T-M1-25 — **xong 2026-11-05** (3 bước, BYOK K2, Ollama, skippable) · **FR-UX-03/04 (gợi ý theo trang + tóm tắt 1-click) do T-M1-11 ✅ (2026-11-07)** · **FR-UX-01 (toggle panel · context menu · `Ctrl+Shift+K`) do T-M1-03 ✅ (2026-11-07)** · đổi phím tắt cấu hình được → T-M1-18 |
+| FR-SETTINGS-01..07 | 7 FR | T-M0-14 · **T-M1-12 ✅**/17 · **T-M2-19** (FR-SETTINGS-04) | **FR-SETTINGS-01/02/03/05/06/07 do T-M1-12 ✅ (2026-11-07)** (theme · cỡ chữ/mật độ/bề rộng · xoá lịch sử + xoá local + import/export · endpoint BFF có validate · lưu lựa chọn VI/EN) · FR-SETTINGS-04 (cờ telemetry/history, OFF mặc định) cũng do T-M1-12 ✅ — hành vi telemetry thật → T-M2-19 · dịch UI VI/EN → T-M1-17 |
+| FR-UX-01..10 | 10 FR | **T-M1-03 ✅**/10/**11 ✅**/**12 ✅**/18/19/20 · **T-M1-25 ✅** | FR-UX-02 (onboarding) tách task riêng T-M1-25 — **xong 2026-11-05** (3 bước, BYOK K2, Ollama, skippable) · **FR-UX-03/04 (gợi ý theo trang + tóm tắt 1-click) do T-M1-11 ✅ (2026-11-07)** · **FR-UX-01 (toggle panel · context menu · `Ctrl+Shift+K`) do T-M1-03 ✅ (2026-11-07)** · **FR-UX-06 (drawer Settings + bề rộng panel) do T-M1-12 ✅ (2026-11-07)** · đổi phím tắt cấu hình được → T-M1-18 |
 | NFR-PERF-01..06 | 6 NFR | T-M0-11 · T-M1-01/07/14/20 · T-M2-13 · T-M3-02/04/09 | NFR là yêu cầu xuyên suốt |
 | NFR-SEC-01..08 | 8 NFR | T-M0-02/06/09/12 · T-M1-04/07/15/16 · **T-M2-19** | NFR-SEC-06 (domain nhạy cảm) → T-M2-19 |
 | NFR-REL-01..05 | 5 NFR | T-M1-10/14/15/19 · **T-M3-10** | NFR-REL-05 (backup DB) tách task M3 |

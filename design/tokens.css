@@ -73,15 +73,18 @@
   /* User chinh font-size → chi tiet cac token text tinh tu --font-scale. */
   --font-scale: 1;
 
+  /* Do mat UI (FR-SETTINGS-02) → space token nhan he so nay. */
+  --density-scale: 1;
+
   /* --- Spacing --- */
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-7: 32px;
-  --space-8: 40px;
+  --space-1: calc(4px * var(--density-scale));
+  --space-2: calc(8px * var(--density-scale));
+  --space-3: calc(12px * var(--density-scale));
+  --space-4: calc(16px * var(--density-scale));
+  --space-5: calc(20px * var(--density-scale));
+  --space-6: calc(24px * var(--density-scale));
+  --space-7: calc(32px * var(--density-scale));
+  --space-8: calc(40px * var(--density-scale));
 
   /* --- Radius --- */
   --radius-sm: 4px;

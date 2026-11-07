@@ -328,6 +328,7 @@ X-Request-Id: <uuid v4>            // idempotency + tracing
 | POST | `/conversations/:id/turns/:turnId/activate` | `{ variantIndex }` ✅ | `{ path, turns }` | `VALIDATION_ERROR`, `NOT_FOUND` |
 | PATCH | `/conversations/:id` | `{ title?, pinned?, archived? }` ✅ | `ConversationSummary` | `VALIDATION_ERROR`, `NOT_FOUND` |
 | DELETE | `/conversations/:id` | — ✅ | `204` | `VALIDATION_ERROR`, `NOT_FOUND` |
+| DELETE | `/conversations` | — ✅ | `200` + `{ deleted: number }` (xoá toàn bộ lịch sử chat — FR-SETTINGS-03 + NFR-SEC-07, T-M1-12) | — |
 | GET | `/skills` | `?scope=builtin\|user` | `Skill[]` | — |
 | POST | `/skills` | `{ name, prompt, description? }` | `Skill` | `VALIDATION_ERROR` |
 | PATCH | `/skills/:id` | `{ name?, prompt?, enabled? }` | `Skill` | `NOT_FOUND` |
@@ -1968,6 +1969,189 @@ flowchart LR
 
 ---
 
+### 7.14 Settings — theme · cỡ chữ · chiều rộng · quản lý dữ liệu · endpoint BFF (FR-SETTINGS-01..07 + FR-UX-06 + NFR-SEC-07 — T-M1-12)
+
+> Nguồn sự thật cho hợp đồng: [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.8.1.
+
+#### 7.14.1 Quyết định thiết kế
+
+| Quyết định | Lý do |
+|---|---|
+| Settings ở **drawer** (Radix `Dialog` trượt từ **phải**), không phải màn hình thay thế chat | Giữ được ngữ cảnh chat (DP-2: thread ≥ 90%); user chỉnh setting rồi đóng vẫn thấy đúng thread. Pattern đã có sẵn: `ConversationList` trong `Dialog` (§7.10) |
+| **Không** dùng Zustand store cho settings | Settings đọc/ghi `chrome.storage.local` → cần đồng bộ giữa panel + service worker. Dùng hook `useSettings()` + `chrome.storage.onChanged` (pattern đã có: `useOnboarding`) → 1 nguồn sự thật, không stale |
+| Theme áp bằng class `.dark` trên `<html>` + `data-theme` | `design/tokens.css` đã có sẵn block `.dark` → **không** hardcode màu mới, chỉ bật/tắt. `system` → `matchMedia('(prefers-color-scheme: dark)')` + listener `change` |
+| Cỡ chữ scale qua biến `--font-scale` | Token đã có (`tokens.css`) và `index.css` đã dùng `calc(var(--font-size-md) * var(--font-scale))` → chỉ cần set `--font-scale` (0.9 / 1 / 1.1 / 1.2) → **không** sửa component nào |
+| Mật độ qua biến `--density-scale` nhân vào token `--space-*` | Tương tự `--font-scale`: 1 biến → mọi padding/gap co giãn → không sửa component nào |
+| Chiều rộng panel: set `--panel-max-width` trên `<html>` | Chrome side panel chiều rộng do user kéo; extension **chỉ** set `min-width`/`max-width` được → dùng `max-width` + `width: 100%` → co giãn trong khoảng user cho phép. Giới hạn ghi rõ trong UI |
+| Xoá lịch sử chat: **thêm** `DELETE /api/conversations` (xoá tất cả) | Đã có `DELETE /api/conversations/:id` (§7.10). Xoá "tất cả" bằng cách loop client sẽ chậm + dễ sót → 1 endpoint server, cascade xoá messages/citations |
+| Xoá dữ liệu local: xoá theo **prefix** `sidekick.` trong `chrome.storage.local` | Dùng 1 lệnh `chrome.storage.local.get(null)` + filter prefix → xoá hết cache context + draft + pending selection + settings. **Giữ** `sidekick.onboarding.*` + `sidekick.preferredProvider` (không mất trạng thái onboarding) — nêu rõ trong UI |
+| Telemetry/history: **cờ OFF mặc định**, chưa nối hành vi | FR-SETTINGS-04 AC chỉ yêu cầu "mặc định OFF". Nối telemetry thật là việc M2 (T-M2-19). Task này chỉ lưu cờ + hiển thị "chưa dùng" → tránh nói dối user |
+| Ngôn ngữ VI/EN: **UI Settings chỉ hiển thị lựa chọn**, chưa dịch toàn bộ | FR-SETTINGS-06 đầy đủ là T-M1-17 (i18n). T-M1-12 chỉ lưu lựa chọn + persist → ghi rõ TODO(T-M1-17) |
+| Endpoint BFF: validate bằng `fetch` tới `<url>/api/health` trước khi lưu | AC FR-SETTINGS-05: "Validate endpoint khi lưu". `getBffUrl()` đã bỏ trailing slash; `setBffUrl()` chưa validate → bổ sung validate ở tầng UI, không đụng `apiClient` (giữ hành vi hiện tại) |
+| Không thêm dependency UI mới | Chỉ có `button`/`input`/`dialog` trong `components/ui/`. Radio/switch viết tay bằng `<input type="radio">` + Tailwind (pattern đã dùng ở `StepProvider`) |
+
+#### 7.14.2 Shape — `SidekickSettings`
+
+Nguồn sự thật: [`packages/shared/src/schemas/settings.ts`](../packages/shared/src/schemas/settings.ts) (Zod).
+
+```ts
+export const themeModeSchema = z.enum(['light', 'dark', 'system'])
+export const densitySchema = z.enum(['compact', 'cozy', 'comfortable'])
+export const panelWidthSchema = z.enum(['narrow', 'default', 'wide'])
+export const uiLanguageSchema = z.enum(['vi', 'en'])
+export const fontScaleSchema = z.union([z.literal(0.9), z.literal(1), z.literal(1.1), z.literal(1.2)])
+
+export const settingsSchema = z.object({
+  theme: themeModeSchema,
+  fontScale: fontScaleSchema,
+  density: densitySchema,
+  panelWidth: panelWidthSchema,
+  telemetryEnabled: z.boolean(),   // default false
+  historyEnabled: z.boolean(),     // default false
+  uiLanguage: uiLanguageSchema,
+  bffUrl: z.string().min(1).max(500),
+})
+```
+
+- `fontScale` dùng **enum** (không phải `number`) → tránh giá trị lạ (vd 1.37) từ storage không map được về token hợp lệ.
+- Lưu ở `chrome.storage.local` key **`sidekick.settings`** (object phẳng, không nested) → đọc/ghi O(1), không cần migration.
+
+#### 7.14.3 Contract — `apps/extension/src/lib/settings.ts`
+
+```ts
+export const SETTINGS_STORAGE_KEY = 'sidekick.settings'
+export const SIDEKICK_STORAGE_PREFIX = 'sidekick.'
+export const PRESERVED_STORAGE_KEYS = ['sidekick.onboarding.completed', 'sidekick.preferredProvider']
+export const DEFAULT_SETTINGS: Settings
+
+export async function readSettings(): Promise<Settings>
+export async function writeSettings(patch: Partial<Settings>): Promise<void>
+export async function resetSettings(): Promise<void>
+export function resolveTheme(mode: ThemeMode, prefersDark: boolean): 'light' | 'dark'
+export function fontScaleFor(scale: number): string
+export function densityScaleFor(density: DensityMode): string
+export function panelMaxWidthFor(width: PanelWidth): string
+export async function exportSettings(): Promise<string>
+export async function importSettings(json: string): Promise<Settings>
+export async function deleteLocalSidekickData(): Promise<string[]>
+```
+
+- Mọi hàm bọc `try/catch` → **không bao giờ throw** (trừ `importSettings` → ném lỗi rõ ràng cho UI hiển thị).
+- `readSettings`: giá trị sai schema → fallback **từng field** (một field hỏng không làm mất các field hợp lệ).
+- `writeSettings`: **merge** với giá trị hiện tại, rồi validate qua `settingsSchema` → field không hợp lệ bị bỏ qua.
+- `deleteLocalSidekickData`: xoá mọi khoa `sidekick.*` **trừ** `PRESERVED_STORAGE_KEYS`.
+
+#### 7.14.4 Contract — `apps/extension/src/lib/theme.ts`
+
+```ts
+export function prefersDarkScheme(): boolean
+export function applyTheme(mode: ThemeMode, prefersDark: boolean): void
+export function applyFontScale(scale: number): void
+export function applyDensity(density: DensityMode): void
+export function applyPanelWidth(width: PanelWidth): void
+export function watchSystemTheme(onChange: (prefersDark: boolean) => void): () => void
+```
+
+| Hàm | Tác động lên `<html>` |
+|---|---|
+| `applyTheme` | `classList.toggle('dark', resolved === 'dark')` + `setAttribute('data-theme', resolved)` |
+| `applyFontScale` | `style.setProperty('--font-scale', fontScaleFor(scale))` |
+| `applyDensity` | `style.setProperty('--density-scale', densityScaleFor(density))` |
+| `applyPanelWidth` | `style.setProperty('--panel-max-width', panelMaxWidthFor(width))` |
+
+- Bảng `--panel-max-width`: `narrow` 400px · `default` 640px · `wide` 960px.
+- `design/tokens.css`: `--space-1..8` = `calc(<px> * var(--density-scale))` → mật độ áp cho **mọi** padding/gap.
+- `index.css`: `#root { max-width: var(--panel-max-width); min-width: var(--panel-min-width); margin-inline: auto; }`.
+
+#### 7.14.5 Hook — `apps/extension/src/sidepanel/hooks/useSettings.ts`
+
+```ts
+export interface UseSettingsResult {
+  settings: Settings
+  isLoading: boolean
+  update: (patch: Partial<Settings>) => Promise<void>
+}
+```
+
+- Đọc `readSettings()` lúc mount → `settings` + `isLoading`.
+- Lắng nghe `chrome.storage.onChanged` (area `local`, key `sidekick.settings`) → đồng bị khi đổi ở nơi khác.
+- `update(patch)` → set state ngay (**optimistic**) → `writeSettings(patch)` → storage.
+- **Effect** áp theme / font-scale / density / panel-width lên `<html>` mỗi khi `settings` đổi → áp dụng **ngay, không reload** (AC FR-SETTINGS-01/02).
+- `watchSystemTheme` chỉ khi `theme === 'system'` → OS đổi nền → apply lại.
+
+#### 7.14.6 Component
+
+| File | Nội dung |
+|---|---|
+| `components/settings/SettingsDrawer.tsx` | Orchestrator: Radix `Dialog` trượt từ phải + 6 section · `data-testid="settings-drawer"` |
+| `components/settings/ThemeSettings.tsx` | FR-SETTINGS-01 — radio `Sáng` / `Tối` / `Theo hệ điều hành` |
+| `components/settings/AppearanceSettings.tsx` | FR-SETTINGS-02 — cỡ chữ (4 mức) · mật độ (3 mức) · chiều rộng (3 mức) |
+| `components/settings/PrivacySettings.tsx` | FR-SETTINGS-04 — toggle telemetry (OFF) · toggle history (OFF) |
+| `components/settings/DataSettings.tsx` | FR-SETTINGS-03/07 — xoá lịch sử chat (server) · xoá dữ liệu local · export settings (JSON) · import settings (file) |
+| `components/settings/EndpointSettings.tsx` | FR-SETTINGS-05 — input URL BFF + nút "Kiểm tra & lưu" (gọi `/api/health`) |
+| `components/settings/LanguageSettings.tsx` | FR-SETTINGS-06 — radio VI / EN (lưu lựa chọn; dịch UI → T-M1-17) |
+| `components/settings/SettingsControls.tsx` | Sub-component dùng chung: `RadioGroup` · `ToggleRow` · `SettingsSection` |
+
+- Mỗi section dùng **radio/checkbox native** + `<label>` (a11y tốt, không cần component mới).
+- Xoá dữ liệu → dùng `ConfirmDialog` có sẵn (§7.10) với `destructive` + `isBusy`.
+- Entry point: nút gear trong `PanelHeader.tsx` (`data-testid="settings-button"`) → `ChatWorkspace.tsx` giữ state `isSettingsOpen`.
+
+#### 7.14.7 Endpoint — `DELETE /api/conversations`
+
+```ts
+// apps/server/src/services/conversationService.ts
+export async function deleteAllConversations(db: Database): Promise<number>
+```
+
+- Xoá **explicit** citations → messages → conversations (Postgres có `ON DELETE CASCADE` → vẫn an toàn; explicit để unit test với fake DB phản ánh đúng hiệu ứng).
+- Response: `200` + `{ deleted: number }`.
+- **Không** có migration DB mới (chỉ thêm endpoint DELETE).
+
+#### 7.14.8 Luồng
+
+```mermaid
+flowchart LR
+  header["PanelHeader: nut gear"] --> drawer["SettingsDrawer"]
+  drawer --> theme["ThemeSettings"]
+  drawer --> appearance["AppearanceSettings"]
+  drawer --> privacy["PrivacySettings"]
+  drawer --> data["DataSettings"]
+  drawer --> endpoint["EndpointSettings"]
+  drawer --> lang["LanguageSettings"]
+  theme --> hook["useSettings"]
+  appearance --> hook
+  privacy --> hook
+  lang --> hook
+  hook --> storage["chrome.storage.local<br/>sidekick.settings"]
+  hook --> apply["applyTheme / applyFontScale<br/>/ applyDensity / applyPanelWidth → html"]
+  data --> delHist["DELETE /api/conversations"]
+  data --> delLocal["xoa prefix sidekick.*<br/>trong storage.local"]
+  endpoint --> health["GET <url>/api/health"]
+```
+
+#### 7.14.9 Hiệu năng
+
+- Đọc settings = 1 lần `chrome.storage.local.get` (< 1 ms) lúc mount panel → không ảnh hưởng cold start.
+- Mỗi lần đổi setting = 1 lần `set` + 4 lần `setProperty` trên `<html>` → không re-render component nào khác (biến CSS áp bằng style, không qua React).
+- Xoá lịch sử = 1 request `DELETE` (không loop N conversation).
+- Xoá dữ liệu local = 1 lần `get(null)` + 1 lần `remove(keys)` → O(số khoá).
+
+#### 7.14.10 Kiểm thử
+
+| Tầng | File | Phủ |
+|---|---|---|
+| Unit (shared) | `packages/shared/tests/settings.test.ts` | `settingsSchema` validate/reject · `fontScaleSchema` chỉ nhận 4 mức |
+| Unit (extension) | `apps/extension/tests/settings.test.ts` | `readSettings` default / lỗi / fallback từng field · `writeSettings` merge · `resetSettings` · `resolveTheme` 3 case · `fontScaleFor` clamp · `panelMaxWidthFor` map · `densityScaleFor` · `exportSettings` / `importSettings` (reject JSON sai) |
+| Unit (extension) | `apps/extension/tests/theme.test.ts` | `applyTheme` toggle `.dark` light/dark/system · `applyFontScale` set `--font-scale` · `applyDensity` · `applyPanelWidth` · `watchSystemTheme` callback + hủy |
+| Unit (extension) | `apps/extension/tests/settingsData.test.ts` | `deleteLocalSidekickData` xoá đúng prefix `sidekick.` · **giữ** `sidekick.onboarding.completed` + `sidekick.preferredProvider` · `deleteAllConversations` gọi `DELETE /api/conversations` |
+| Unit (extension) | `apps/extension/tests/settingsDrawer.test.tsx` | render drawer + 6 section · đổi theme → `documentElement.classList` đổi · đổi cỡ chữ → `--font-scale` đổi · toggle → `writeSettings` được gọi · xoá lịch sử → confirm dialog → gọi DELETE |
+| Unit (server) | `apps/server/tests/conversationsRoute.test.ts` | `DELETE /api/conversations` → 200 + `{ deleted }` + xoá hết rows |
+| E2E | `apps/extension/e2e/settings.spec.ts` | (1) bấm gear → drawer mở · (2) chọn "Tối" → `<html>` có `.dark` → reload → vẫn `.dark` · (3) đổi cỡ chữ → `--font-scale` đổi → reload → giữ · (4) xoá lịch sử (stub `DELETE /api/conversations`) → confirm → request đúng |
+
+> **Ghi chú E2E:** BFF được stub bằng `page.route` → test chạy độc lập, không cần Postgres thật.
+
+---
+
 ## 8. Hiệu năng
 
 | Chỉ số | Mục tiêu | Cách đạt |
@@ -1977,7 +2161,7 @@ flowchart LR
 | Content extraction (HTML) | ≤ 800ms | Chạy trong content script, dùng Readability-lite (T-M1-01 ✅). Cache theo URL+hash trong `chrome.storage.local` — **chưa implement** (ưu tiên tối đa 1 lần/trang) |
 | Content extraction (PDF) | ≤ 3s | Fetch bytes + parse ở BFF (T-M1-21 ✅). Giới hạn 20 MB; cache kết quả theo URL+hash — **cache chưa implement** |
 | Content extraction (YouTube) | ≤ 2s | Fetch `timedtext` ở BFF (T-M1-22 ✅). Cache theo video id + language — **cache chưa implement** |
-| Panel mở | ≤ 300ms | Không fetch nặng khi mount; lazy-load settings. **T-M1-11 ✅:** đọc tab active = 1 lần `chrome.tabs.query` (≤ 5 ms), `classifyPage` thuần (< 0.1 ms) → không ảnh hưởng cold start. **T-M1-03 ✅:** mọi thao tác mở/toggle panel = 1 lần gọi API Chrome + 1 lần `storage.session.get` (< 1 ms) |
+| Panel mở | ≤ 300ms | Không fetch nặng khi mount; lazy-load settings. **T-M1-11 ✅:** đọc tab active = 1 lần `chrome.tabs.query` (≤ 5 ms), `classifyPage` thuần (< 0.1 ms) → không ảnh hưởng cold start. **T-M1-03 ✅:** mọi thao tác mở/toggle panel = 1 lần gọi API Chrome + 1 lần `storage.session.get` (< 1 ms). **T-M1-12 ✅:** đọc settings = 1 lần `chrome.storage.local.get` (< 1 ms); đổi setting = 1 lần `set` + 4 lần `setProperty` trên `<html>` (không re-render component khác) |
 | Scroll khi streaming | ≥ 50fps | Batch token bằng `requestAnimationFrame`, không render mỗi token · **T-M1-07 ✅:** `useDeferredValue` + defer highlight khi streaming (§7.8.4) |
 | Upload ảnh | ≤ 1s / ảnh | `FileReader` đọc base64 ở main thread (5 MB) · giới hạn 4 ảnh / 12 MB tổng · **TODO(T-M2-22)**: chuyển sang `OffscreenCanvas`/`createImageBitmap` + `Web Worker` nếu cần |
 | Token ảnh | ≤ 258 token / ảnh | Ước lượng theo quy ước OpenAI (ảnh 512 px) — trừ khỏi `historyBudget` trước khi cắt lịch sử |
