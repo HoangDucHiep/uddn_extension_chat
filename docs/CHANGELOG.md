@@ -9,6 +9,31 @@
 ## [Unreleased]
 
 ### Added
+- **T-M1-03 — Service worker: toggle panel · context menu · phím tắt (FR-UX-01)**
+  - `apps/extension/src/background/panelController.ts` (mới) — `PANEL_OPEN_STATE_KEY` (`sidekick.panelOpen`, `chrome.storage.session`) · `applyOpenOnActionClick()` (native toggle `chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })`, Chrome 114+) · `isOpenOnActionClick()` · `readPanelOpenState()` / `writePanelOpenState()` · `openSidePanel()` (fallback `chrome.windows.getCurrent()`) · `closeSidePanel()` (feature detection Chrome 141+) · `toggleSidePanel()` → `'opened' | 'closed' | 'noop'`. **Mọi hàm bọc `try/catch`** → không bao giờ throw.
+  - `apps/extension/src/background/contextMenus.ts` (mới) — `CONTEXT_MENU_OPEN_ID` (`sidekick-open`, `contexts: ['page']`) · `CONTEXT_MENU_ASK_SELECTION_ID` (`sidekick-ask-selection`, `contexts: ['selection']`) · `registerContextMenus()` (`removeAll()` **trước** `create()` → không lỗi duplicate id khi update extension) · `handleContextMenuClick()` (mục selection → `PendingSelection` → `writePendingSelection()` → panel tự nhận → `tier: 'selection'` → mở panel; text rỗng → bỏ qua).
+  - `apps/extension/src/background/commands.ts` (mới) — `COMMAND_TOGGLE_PANEL` (`sidekick-toggle-panel`) · `handleCommand()` → `toggleSidePanel(tab?.windowId)`.
+  - `apps/extension/public/manifest.json` — khối `commands`: `sidekick-toggle-panel` · `suggested_key` = `Ctrl+Shift+K` (Windows/Linux) · `Command+Shift+K` (macOS). **Không** thêm permission mới.
+  - **Test** — `apps/extension/tests/panelController.test.ts` (mới, 19) · `apps/extension/tests/contextMenus.test.ts` (mới, 7) · `apps/extension/tests/commands.test.ts` (mới, 4) · `apps/extension/e2e/serviceWorker.spec.ts` (mới, 4 kịch bản).
+    - **Số test toàn repo:** 1019 → **1049 unit** (shared 200 · server 312 · extension 537) + 57 → **61 E2E**.
+    - **Mutation spot-check:** 6/6 mutation bị bắt — `toggleSidePanel()` bỏ `closeSidePanel()` · `handleContextMenuClick()` bỏ `openSidePanel()` · `registerContextMenus()` bỏ `removeAll()` · `applyOpenOnActionClick()` bỏ `setPanelBehavior()` · `handleCommand()` bỏ guard command · `handleContextMenuClick()` bỏ `writePendingSelection()`.
+    - **Migration:** **không** có migration mới · **không** dependency mới · **không** có UI mới.
+
+### Changed
+- `apps/extension/src/background/serviceWorker.ts` — top-level `void applyOpenOnActionClick()` (native toggle bật lại mỗi lần SW khởi động) · `action.onClicked` thành **fallback** (guard `isOpenOnActionClick()` → không mở 2 lần) · thêm `commands.onCommand` → `handleCommand` · `contextMenus.onClicked` → `handleContextMenuClick` · `sidePanel.onOpened` / `onClosed` → `writePanelOpenState` (feature detection Chrome 141/142).
+- `apps/extension/tests/setup.ts` — bổ sung mock `chrome.sidePanel.close` / `getPanelBehavior` / `setPanelBehavior` / `onOpened` / `onClosed` · `chrome.contextMenus.create` / `removeAll` · `chrome.commands.onCommand` · `chrome.action.onClicked` · `chrome.windows.getCurrent` · `chrome.storage.session`.
+- `docs/REQUIREMENTS.md` — FR-UX-01 ✅ + **§4.9.3** (AC chi tiết: 3 đường mở panel · 2 mục context menu · `Ctrl+Shift+K` · trạng thái `storage.session`).
+- `docs/SYSTEM_DESIGN.md` — **§7.13** mới "Toggle panel · context menu · phím tắt" (quyết định thiết kế · contract 3 file · luồng · hiệu năng · kiểm thử) · §8 hiệu năng.
+- `docs/DESIGN_SYSTEM_BRIEF.md` — §3.7 `ShortcutsSettings` ghi rõ thuộc T-M1-18 (chưa làm) · §6 traceability FR-UX-01 (không có component mới).
+- `docs/IMPLEMENTATION_PLAN.md` — task card T-M1-03 → ✅ · **§3.1n** "Kết quả verify T-M1-03" · traceability FR-UX-01.
+- `docs/COMPARISON_MATRIX.md` — §E: 3 dòng parity → ✅ (toolbar icon toggle · context menu "Ask Sidekick" · keyboard shortcut) · A25 / B19 ghi chú T-M1-03.
+
+### Fixed
+- Sửa lỗi "Cannot create item with duplicate id" khi update extension — context menu giờ `removeAll()` trước `create()` và được đăng ký lại ở `runtime.onStartup`.
+- Sửa lỗi `chrome.sidePanel.open()` chỉ mở (không toggle) khi bấm icon toolbar — nay dùng native `openPanelOnActionClick` (Chrome 114+).
+
+### Docs
+- Cập nhật `HANDOFF.md` (M1 15/25 → **16/25**) · `docs/README.md` · `AGENTS.md` (số task / số test / tóm tắt T-M1-03).
 - **T-M1-11 — Prompt gợi ý theo trang + Tóm tắt 1-click (FR-UX-03 / FR-UX-04)**
   - `packages/shared/src/pageProfile.ts` (mới) — `PAGE_PROFILES` (`docs` · `article` · `forum` · `video` · `pdf` · `shopping` · `general`) · `classifyPage(url, title)` (host → path → title, match đầu thắng) · `PromptSuggestion` · `suggestionsForPage(profile, pageTitle)` (**4** gợi ý / profile, điền placeholder `{title}`) · `generalSuggestions()` (4 gợi ý chung — FR-UX-04) · `rotateSuggestions(list, offset)` (xoay vòng deterministic).
   - `packages/shared/src/constants.ts` — `SUMMARY_PROMPT` (trùng wording dataset eval `summarize`).

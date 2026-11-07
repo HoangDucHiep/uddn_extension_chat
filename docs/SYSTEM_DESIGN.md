@@ -1848,6 +1848,124 @@ flowchart LR
 | Unit (extension) | `apps/extension/tests/promptGallery.test.tsx` | render ≥ 3 chip · bấm chip → `onSelect(prompt)` · bấm refresh → `onRefresh` · bấm "Tóm tắt" → `onSummarize` · disabled khi `isSending` |
 | E2E | `apps/extension/e2e/promptGallery.spec.ts` | (1) profile docs theo tab · (2) click gợi ý → `context.items[0]` có trang · (3) nút tóm tắt → `SUMMARY_PROMPT` + context · (4) `chrome://` → gợi ý chung · (5) đổi tab → gallery đổi profile |
 
+### 7.13 Toggle panel · context menu · phím tắt (FR-UX-01 — T-M1-03)
+
+> Nguồn sự thật cho hợp đồng: [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.9.3.
+
+#### 7.13.1 Quyết định thiết kế
+
+| Quyết định | Lý do |
+|---|---|
+| Toolbar toggle dùng **native** `chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })` | Chrome tự quản lý mở/đóng → không cần tự track state cho thao tác click icon. API có từ **Chrome 114** (không phải 141) → khớp `minimum_chrome_version: 114` |
+| Vẫn giữ `action.onClicked` như **fallback** | Chrome cũ / `setPanelBehavior` lỗi → mở panel bằng `open()`. Guard bằng `getPanelBehavior()` để **không** mở 2 lần (khi behavior đã bật, Chrome **không** dispatch `action.onClicked`) |
+| Phím tắt = **custom command** `sidekick-toggle-panel` + tự xử lý toggle | `_execute_action` bị `openPanelOnActionClick` nuốt → không kiểm soát được toggle. Tự xử lý → 1 nguồn sự thật, test được |
+| Track trạng thái panel bằng `chrome.storage.session` + event `sidePanel.onOpened`/`onClosed` | `onOpened` (Chrome 141) / `onClosed` (142) → biết panel đang mở hay không để quyết định open vs close. `storage.session` sống suốt phiên browser → **không** mất khi SW bị kill (~30s) |
+| Đóng panel: `chrome.sidePanel.close({ windowId })` (Chrome 141+) + **feature detection** | Chrome < 141 không đóng được → phím tắt chỉ mở. Dùng `typeof chrome.sidePanel.close === 'function'`, không đụng `chrome.runtime.getManifest` hack |
+| Context menu: **2 mục** — `sidekick-open` (`contexts: ['page']`) + `sidekick-ask-selection` (`contexts: ['selection']`) | AC ghi "context menu 'Ask Sidekick'". Mục selection tái dùng **đường B** của T-M1-02: `info.selectionText` → `PendingSelection` → `writePendingSelection()` → panel tự nhận (`useSelection`) → chip `tier: 'selection'` |
+| Menu tạo lại an toàn: `chrome.contextMenus.removeAll()` **trước** `create()` | Sửa lỗi duplicate id khi update extension; `removeAll` có Promise từ Chrome 123 → dùng `await` bọc `try/catch` |
+| `setPanelBehavior` gọi ở **top-level** của service worker | MV3 SW bị kill ~30s → top-level chạy lại → behavior luôn được bật lại (idempotent, upsert) |
+| Tách logic ra file riêng (`background/panelController.ts`, `background/contextMenus.ts`, `background/commands.ts`) | Service worker chỉ nên là **wiring**; logic test được trong jsdom với mock `chrome.*` |
+| **Không** thêm UI mới cho task này | Đổi phím tắt là T-M1-18 (`settings/ShortcutsSettings.tsx`) — task này chỉ chốt phím mặc định + contract để T-M1-18 mở rộng |
+
+#### 7.13.2 Contract — `apps/extension/src/background/panelController.ts`
+
+```ts
+export const PANEL_OPEN_STATE_KEY = 'sidekick.panelOpen'
+
+export type PanelToggleResult = 'opened' | 'closed' | 'noop'
+
+export async function applyOpenOnActionClick(): Promise<boolean>
+export async function isOpenOnActionClick(): Promise<boolean>
+export async function readPanelOpenState(): Promise<boolean>
+export async function writePanelOpenState(open: boolean): Promise<void>
+export async function openSidePanel(windowId?: number): Promise<boolean>
+export async function closeSidePanel(windowId?: number): Promise<boolean>
+export async function toggleSidePanel(windowId?: number): Promise<PanelToggleResult>
+```
+
+- Mọi hàm bọc `try/catch` → **không bao giờ throw** (SW không được crash).
+- `openSidePanel(windowId?)`: nếu không có `windowId` → fallback `chrome.windows.getCurrent()`.
+- `toggleSidePanel`: đọc state → đang mở → `close()` → `'closed'`; ngược lại → `open()` → `'opened'`; thao tác thất bại → `'noop'`.
+
+#### 7.13.3 Contract — `apps/extension/src/background/contextMenus.ts`
+
+```ts
+export const CONTEXT_MENU_OPEN_ID = 'sidekick-open'
+export const CONTEXT_MENU_ASK_SELECTION_ID = 'sidekick-ask-selection'
+
+export async function registerContextMenus(): Promise<void>
+export async function handleContextMenuClick(
+  info: chrome.contextMenus.OnClickData,
+  tab?: chrome.tabs.Tab,
+): Promise<void>
+```
+
+- `registerContextMenus()`: `removeAll()` → `create()` × 2 (mỗi `create` bọc `try/catch` riêng → menu đã tồn tại không làm hỏng menu còn lại).
+- `handleContextMenuClick()`:
+  - `sidekick-open` → `openSidePanel(tab?.windowId)`.
+  - `sidekick-ask-selection` → `normalizeSelectionText(info.selectionText)` + `isMeaningfulSelection()` → dựng `PendingSelection` (`selectionItemId()` + `info.pageUrl` + `tab.title` + `tab.id`) → `writePendingSelection()` → `openSidePanel(tab?.windowId)`. Text rỗng/quá ngắn → **không** ghi, **không** mở panel.
+
+#### 7.13.4 Contract — `apps/extension/src/background/commands.ts`
+
+```ts
+export const COMMAND_TOGGLE_PANEL = 'sidekick-toggle-panel'
+
+export async function handleCommand(
+  command: string,
+  tab?: chrome.tabs.Tab,
+): Promise<void>
+```
+
+- Command lạ → bỏ qua (không side-effect).
+
+#### 7.13.5 Manifest
+
+```json
+"commands": {
+  "sidekick-toggle-panel": {
+    "suggested_key": { "default": "Ctrl+Shift+K", "mac": "Command+Shift+K" },
+    "description": "Mo / dong Sidekick AI"
+  }
+}
+```
+
+- **Không** thêm permission mới (`commands` không cần permission; `contextMenus` đã có từ trước).
+- `Ctrl+Shift+K` **không** trùng shortcut mặc định của Chrome (đã verify: Chrome dùng `Ctrl+Shift+A` cho tab search, `Ctrl+Shift+J` cho DevTools).
+
+#### 7.13.6 Luồng
+
+```mermaid
+flowchart LR
+  actionClick["Click icon toolbar"] --> behavior["setPanelBehavior<br/>openPanelOnActionClick"]
+  actionClick -.-> fallback["fallback: action.onClicked<br/>→ sidePanel.open"]
+  cmd["Ctrl+Shift+K"] --> commands["chrome.commands.onCommand"]
+  commands --> toggle["toggleSidePanel<br/>state = storage.session"]
+  menuOpen["Menu 'Mo Sidekick AI'"] --> ctxMenu["handleContextMenuClick"]
+  menuSel["Menu 'Hoi Sidekick voi doan da chon'"] --> ctxMenu
+  ctxMenu --> pending["writePendingSelection<br/>→ panel tu nhan"]
+  pending --> openPanel["openSidePanel<br/>sidePanel.open"]
+  toggle --> openPanel
+  fallback --> openPanel
+  openPanel --> panel["Side Panel"]
+```
+
+#### 7.13.7 Hiệu năng
+
+- Mọi thao tác đều là **1 lần gọi API** của Chrome (`sidePanel.open` / `close` / `setPanelBehavior` / `getPanelBehavior`) → không I/O nặng, không chặn SW.
+- Đọc/ghi trạng thái panel = 1 lần `chrome.storage.session.get/set` (in-memory) → < 1 ms.
+- `registerContextMenus()` chỉ chạy ở `onInstalled` / `onStartup` → không chạy lại mỗi lần SW restart.
+
+#### 7.13.8 Kiểm thử
+
+| Tầng | File | Phủ |
+|---|---|---|
+| Unit (extension) | `apps/extension/tests/panelController.test.ts` | `setPanelBehavior` / `getPanelBehavior` · `openSidePanel` có/fallback windowId · `closeSidePanel` feature detection (Chrome < 141) · `toggleSidePanel` mở/đóng/noop · lỗi Chrome → không throw |
+| Unit (extension) | `apps/extension/tests/contextMenus.test.ts` | `removeAll` trước `create` · 2 mục đúng id/title/contexts · `sidekick-open` → `sidePanel.open` · `sidekick-ask-selection` → ghi `PendingSelection` đúng text/url/title/tabId + mở panel · selection rỗng → không ghi, không mở |
+| Unit (extension) | `apps/extension/tests/commands.test.ts` | command toggle → `toggleSidePanel(windowId)` · command lạ → bỏ qua |
+| E2E | `apps/extension/e2e/serviceWorker.spec.ts` | (1) `getPanelBehavior()` → `openPanelOnActionClick: true` · (2) `commands.getAll()` → `Ctrl+Shift+K` + SW đã đăng ký listener · (3) menu `sidekick-open` đã tồn tại (`create` lại → "duplicate id") · (4) mở/đóng panel → `sidekick.panelOpen` trong `chrome.storage.session` cập nhật đúng |
+
+> **Hạn chế E2E đã biết:** Playwright **không** kích hoạt được accelerator của browser (extension command) trong headless — đã verify cả `page.keyboard.press` lẫn `Input.dispatchKeyEvent` qua CDP đều không tới `chrome.commands`. Vì vậy phần "bấm phím tắt" được cover bằng unit test; E2E assert **đăng ký** shortcut + **vòng đời** trạng thái panel.
+
 ---
 
 ## 8. Hiệu năng
@@ -1859,7 +1977,7 @@ flowchart LR
 | Content extraction (HTML) | ≤ 800ms | Chạy trong content script, dùng Readability-lite (T-M1-01 ✅). Cache theo URL+hash trong `chrome.storage.local` — **chưa implement** (ưu tiên tối đa 1 lần/trang) |
 | Content extraction (PDF) | ≤ 3s | Fetch bytes + parse ở BFF (T-M1-21 ✅). Giới hạn 20 MB; cache kết quả theo URL+hash — **cache chưa implement** |
 | Content extraction (YouTube) | ≤ 2s | Fetch `timedtext` ở BFF (T-M1-22 ✅). Cache theo video id + language — **cache chưa implement** |
-| Panel mở | ≤ 300ms | Không fetch nặng khi mount; lazy-load settings. **T-M1-11 ✅:** đọc tab active = 1 lần `chrome.tabs.query` (≤ 5 ms), `classifyPage` thuần (< 0.1 ms) → không ảnh hưởng cold start |
+| Panel mở | ≤ 300ms | Không fetch nặng khi mount; lazy-load settings. **T-M1-11 ✅:** đọc tab active = 1 lần `chrome.tabs.query` (≤ 5 ms), `classifyPage` thuần (< 0.1 ms) → không ảnh hưởng cold start. **T-M1-03 ✅:** mọi thao tác mở/toggle panel = 1 lần gọi API Chrome + 1 lần `storage.session.get` (< 1 ms) |
 | Scroll khi streaming | ≥ 50fps | Batch token bằng `requestAnimationFrame`, không render mỗi token · **T-M1-07 ✅:** `useDeferredValue` + defer highlight khi streaming (§7.8.4) |
 | Upload ảnh | ≤ 1s / ảnh | `FileReader` đọc base64 ở main thread (5 MB) · giới hạn 4 ảnh / 12 MB tổng · **TODO(T-M2-22)**: chuyển sang `OffscreenCanvas`/`createImageBitmap` + `Web Worker` nếu cần |
 | Token ảnh | ≤ 258 token / ảnh | Ước lượng theo quy ước OpenAI (ảnh 512 px) — trừ khỏi `historyBudget` trước khi cắt lịch sử |

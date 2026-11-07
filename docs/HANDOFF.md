@@ -24,14 +24,37 @@
 | Hạng mục | Trạng thái |
 |---|---|
 | Docs | ✅ Đầy đủ 9 file (`docs/`) + `AGENTS.md` ở root |
-| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 + T-M1-05 + T-M1-02 + T-M1-24 + T-M1-25 + T-M1-06 + T-M1-07 + T-M1-08 + T-M1-09 + T-M1-10 + T-M1-11 xong** — 4 workspace, 1019 unit test + 57 E2E |
+| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 + T-M1-05 + T-M1-02 + T-M1-24 + T-M1-25 + T-M1-06 + T-M1-07 + T-M1-08 + T-M1-09 + T-M1-10 + T-M1-11 + T-M1-03 xong** — 4 workspace, 1049 unit test + 61 E2E |
 | Git | ✅ Đã init (`main`) · tag `v0.1` đánh dấu M0 |
-| Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **15/25 task**) |
-| Task tiếp theo | **T-M1-03** (service worker: mở/toggle panel · context menu · keyboard shortcut) — theo thứ tự ưu tiên M1 |
+| Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **16/25 task**) |
+| Task tiếp theo | **T-M1-12** (Settings: theme · cỡ chữ · chiều rộng · quản lý dữ liệu · endpoint BFF) — theo thứ tự ưu tiên M1 |
 
 ### Đang làm dở
 
-_(Không có — T-M1-11 prompt gợi ý + tóm tắt 1-click đã xong, task kế tiếp T-M1-03)_
+_(Không có — T-M1-03 toggle panel · context menu · phím tắt đã xong, task kế tiếp T-M1-12)_
+
+### Việc đã xong gần đây (T-M1-03 — Service worker: toggle panel · context menu · phím tắt)
+
+- **T-M1-03 (FR-UX-01)** — side panel giờ mở được qua **3 đường**: bấm icon toolbar (**toggle** mở/đóng) · **context menu** (2 mục) · **phím tắt `Ctrl+Shift+K`**.
+  - **Background (mới)** — `background/panelController.ts` (`applyOpenOnActionClick()` · `isOpenOnActionClick()` · `read/writePanelOpenState()` · `openSidePanel()` · `closeSidePanel()` · `toggleSidePanel()` → `'opened'|'closed'|'noop'` · **mọi hàm bọc `try/catch`**) · `background/contextMenus.ts` (`registerContextMenus()` · `handleContextMenuClick()`) · `background/commands.ts` (`handleCommand()`).
+  - **Service worker** — top-level `void applyOpenOnActionClick()` (native toggle, Chrome 114+) · `action.onClicked` chỉ là **fallback** (guard `isOpenOnActionClick()`) · `commands.onCommand` · `contextMenus.onClicked` · `sidePanel.onOpened`/`onClosed` → ghi `sidekick.panelOpen` vào `chrome.storage.session`.
+  - **Manifest** — khối `commands`: `sidekick-toggle-panel` · `Ctrl+Shift+K` (Windows/Linux) · `Command+Shift+K` (macOS). **Không** thêm permission.
+  - **Sửa lỗi** — context menu cũ tạo trong `onInstalled` → lỗi "duplicate id" khi update extension; nay `removeAll()` → `create()` × 2 + đăng ký lại ở `onStartup`.
+  - **Verify** — typecheck ✅ · lint ✅ · test ✅ (**1049 unit** = shared 200 · server 312 · extension 537) · build ✅ · db:migrate ✅ (**không** migration mới, **không** dependency mới, **không** UI mới) · **E2E 61/61** ✅ (+4 kịch bản `e2e/serviceWorker.spec.ts`) · **mutation spot-check 6/6 bị bắt**.
+- Bằng chứng đầy đủ: `docs/IMPLEMENTATION_PLAN.md` §3.1n · `docs/SYSTEM_DESIGN.md` §7.13.
+
+### Quyết định kỹ thuật mới (T-M1-03)
+
+| Quyết định | Lý do |
+|---|---|
+| Toolbar toggle dùng **native** `setPanelBehavior({ openPanelOnActionClick: true })` | Chrome tự quản lý mở/đóng → không cần tự track state cho thao tác click icon. API có từ **Chrome 114** (không phải 141) → khớp `minimum_chrome_version` |
+| `action.onClicked` giữ làm **fallback** (guard `getPanelBehavior()`) | Chrome cũ / `setPanelBehavior` lỗi → mở panel bằng `open()`. Guard để **không** mở 2 lần (khi behavior đã bật, Chrome **không** dispatch `action.onClicked`) |
+| Phím tắt = **custom command** + tự xử lý toggle (không dùng `_execute_action`) | `_execute_action` bị native `openPanelOnActionClick` nuốt → không kiểm soát được hành vi toggle. Tự xử lý → 1 nguồn sự thật, test được |
+| Trạng thái panel lưu `chrome.storage.session` + event `onOpened`/`onClosed` | `storage.session` sống suốt phiên browser → **không** mất khi SW bị kill (~30s). `onOpened` (Chrome 141) / `onClosed` (142) → feature detection |
+| Đóng panel bằng **feature detection** `typeof chrome.sidePanel.close === 'function'` | Chrome < 141 không đóng được → phím tắt chỉ mở. Rõ ràng hơn là đọc `chrome.runtime.getManifest` |
+| Context menu **2 mục** + `removeAll()` trước `create()` | AC ghi "context menu 'Ask Sidekick'". Mục selection tái dùng **đường B** của T-M1-02 (`info.selectionText` → `PendingSelection` → `writePendingSelection()` → panel tự nhận → `tier: 'selection'`). `removeAll()` sửa lỗi duplicate id |
+| Tách logic khỏi service worker (3 file riêng) | SW chỉ nên là **wiring**; logic test được trong jsdom với mock `chrome.*` → mutation spot-check hiệu quả |
+| **Không** có UI mới trong task này | Đổi phím tắt là T-M1-18 (`settings/ShortcutsSettings.tsx`); T-M1-03 chỉ chốt phím mặc định + contract để T-M1-18 mở rộng |
 
 ### Việc đã xong gần đây (T-M1-11 — Prompt gợi ý theo trang + Tóm tắt 1-click)
 

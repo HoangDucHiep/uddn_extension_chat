@@ -429,7 +429,7 @@ Cache context chạy **hoàn toàn ngầm** ở tầng `lib/` (`contextCache.ts`
 | `ToolsSettings` | FR-TOOLS-01 |
 | `SkillsSettings` | FR-SKILL-03, FR-SKILL-07 |
 | `DataSettings` | FR-SETTINGS-03, FR-SETTINGS-07 |
-| `ShortcutsSettings` | FR-UX-01 |
+| `ShortcutsSettings` | FR-UX-01 — **chưa làm (T-M1-18)**; T-M1-03 chỉ chốt phím tắt mặc định `Ctrl+Shift+K` + context menu, **không có UI mới** |
 | `LanguageSettings` | FR-SETTINGS-06 |
 | `WorkflowSettings` | FR-WORKFLOW-08 (M4) |
 
@@ -516,6 +516,7 @@ Component `Onboarding` — màn hình **thay** nội dung chat trong side panel 
 | `SkillMenu` | FR-SKILL-01/02 | Parity với Chrome Gemini |
 | `PromptGallery`, `SummarizeButton` | FR-UX-03/04 | Parity với Edge Copilot (A4/A5) · Chrome Gemini (B9) |
 | `Composer` | FR-CHAT-12/13 | Rubric R4 (instruction following) |
+| **Không có component mới** — T-M1-03 chỉ thêm context menu + phím tắt ở tầng browser | FR-UX-01 | Parity A1 / A25 / B1 / B19 |
 | `ErrorMessage` | FR-CHAT-14 | Độ ổn định, khó đo |
 | `ThemeSettings` | FR-SETTINGS-01/02 | WCAG |
 | `Onboarding` | FR-UX-02 | Parity 3 bước lần đầu |

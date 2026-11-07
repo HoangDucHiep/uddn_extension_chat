@@ -3,60 +3,70 @@
  *
  * CHI lam viec nhe: mo/toggle side panel, context menu, command shortcut.
  * KHONG giu conversation state (SW bi kill sau ~30s) va KHONG proxy streaming.
- * Docs: docs/SYSTEM_DESIGN.md ADR-2, rule mv3-chrome.mdc §2
+ *
+ * Logic nam trong file rieng (`panelController` / `contextMenus` / `commands`)
+ * de test duoc trong jsdom; file nay chi la **wiring**.
+ *
+ * Docs: docs/SYSTEM_DESIGN.md ADR-2, §7.13, rule mv3-chrome.mdc §2
  */
 
 import { handleRuntimeMessage } from '@/lib/selectionBridge'
+import { handleCommand } from './commands'
+import { handleContextMenuClick, registerContextMenus } from './contextMenus'
+import {
+  applyOpenOnActionClick,
+  isOpenOnActionClick,
+  openSidePanel,
+  writePanelOpenState,
+} from './panelController'
 
-/**
- * Mo side panel — chi chay duoc trong user gesture.
- * `chrome.sidePanel.open()` can chi mo panel o cua so trinh duyet hien tai.
- */
-async function openSidePanel(windowId?: number): Promise<void> {
-  try {
-    const targetWindowId = windowId ?? (await getCurrentWindowId())
-    if (targetWindowId === undefined) {
-      console.warn('[sw] khong xac dinh duoc window id')
-      return
-    }
-    await chrome.sidePanel.open({ windowId: targetWindowId })
-  } catch (error) {
-    // `chrome.sidePanel.open` that bai khi khong co user gesture.
-    console.warn('[sw] khong mo duoc side panel:', error)
-  }
-}
+// Native toggle cua Chrome (co tu Chrome 114). Top-level → chay lai moi
+// lan SW khoi dong (SW bi kill sau ~30s) → behavior luon duoc upsert.
+void applyOpenOnActionClick()
 
-/** Lay id cua cua so trinh duyet hien tai. */
-async function getCurrentWindowId(): Promise<number | undefined> {
-  try {
-    const current = await chrome.windows.getCurrent()
-    return current?.id
-  } catch {
-    return undefined
-  }
-}
-
-// Click icon tren toolbar -> mo side panel.
+// Click icon tren toolbar.
+// Native toggle da bat → Chrome KHONG dispatch `action.onClicked` → chi
+// chay fallback khi `setPanelBehavior` that bai (Chrome cu / loi).
 chrome.action.onClicked.addListener((tab) => {
-  if (tab.windowId !== undefined) {
-    void openSidePanel(tab.windowId)
-  }
+  void (async () => {
+    if (await isOpenOnActionClick()) return
+    await openSidePanel(tab.windowId)
+  })()
 })
 
-// Context menu "Mo Sidekick AI" tren trang web.
+// Context menu "Mo Sidekick AI" + "Hoi Sidekick voi doan da chon".
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.contextMenus.create({
-    id: 'sidekick-open',
-    title: 'Mo Sidekick AI',
-    contexts: ['page', 'selection'],
-  })
+  void registerContextMenus()
 })
 
-chrome.contextMenus.onClicked.addListener((info: chrome.contextMenus.OnClickData) => {
-  if (info.menuItemId === 'sidekick-open') {
-    void openSidePanel()
-  }
+chrome.runtime.onStartup.addListener(() => {
+  void registerContextMenus()
 })
+
+chrome.contextMenus.onClicked.addListener(
+  (info: chrome.contextMenus.OnClickData, tab?: chrome.tabs.Tab) => {
+    void handleContextMenuClick(info, tab)
+  },
+)
+
+// Phim tat `Ctrl+Shift+K` → toggle panel.
+chrome.commands.onCommand.addListener((command: string, tab?: chrome.tabs.Tab) => {
+  void handleCommand(command, tab)
+})
+
+// Trang thai panel dang mo → phim tat biet phai mo hay dong.
+// `onOpened` co tu Chrome 141, `onClosed` tu 142 → feature detection.
+if (typeof chrome.sidePanel.onOpened !== 'undefined') {
+  chrome.sidePanel.onOpened.addListener(() => {
+    void writePanelOpenState(true)
+  })
+}
+
+if (typeof chrome.sidePanel.onClosed !== 'undefined') {
+  chrome.sidePanel.onClosed.addListener(() => {
+    void writePanelOpenState(false)
+  })
+}
 
 // Content script gui doan text user boi den (T-M1-02) → luu vao storage
 // + thu mo panel. Panel dang dong van nhan duoc doan chon (storage).

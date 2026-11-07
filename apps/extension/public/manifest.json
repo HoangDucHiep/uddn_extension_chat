@@ -17,6 +17,16 @@
     "default_path": "sidepanel.html"
   },
 
+  "commands": {
+    "sidekick-toggle-panel": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+K",
+        "mac": "Command+Shift+K"
+      },
+      "description": "Mo / dong Sidekick AI"
+    }
+  },
+
   "action": {
     "default_title": "Mo Sidekick AI",
     "default_icon": {

@@ -13,6 +13,9 @@ interface StorageArea {
 
 const storage: Record<string, unknown> = {}
 
+/** Storage cua `chrome.storage.session` — tach rieng voi `local`. */
+const sessionStorage: Record<string, unknown> = {}
+
 /**
  * Mock duoc gan generic de `vi.mocked()` trong test giu dung chu ky ham
  * goc cua Chrome API (neu mock khong generic, TS suy ra `void`).
@@ -37,6 +40,56 @@ function injectionResult(result: unknown): chrome.scripting.InjectionResult {
   return { result, documentId: 'doc-1', frameId: 0 }
 }
 const sidePanelOpenMock = vi.fn(async (_options: chrome.sidePanel.OpenOptions): Promise<void> => undefined)
+
+/** Mock `chrome.sidePanel.close` (Chrome 141+). */
+const sidePanelCloseMock = vi.fn(async (_options: chrome.sidePanel.CloseOptions): Promise<void> => undefined)
+
+/** Mock `chrome.sidePanel.setPanelBehavior` — tra ve behavior da dat. */
+const sidePanelSetBehaviorMock = vi.fn(
+  async (_behavior: chrome.sidePanel.PanelBehavior): Promise<void> => undefined,
+)
+
+/** Mock `chrome.sidePanel.getPanelBehavior` — behavior hien tai. */
+const sidePanelGetBehaviorMock = vi.fn(
+  async (): Promise<chrome.sidePanel.PanelBehavior> => ({ openPanelOnActionClick: false }),
+)
+
+/** Mock `chrome.windows.getCurrent` — id cua so hien tai. */
+const windowsGetCurrentMock = vi.fn(async (): Promise<chrome.windows.Window | undefined> => ({
+  id: 1,
+  focused: true,
+  top: 0,
+  left: 0,
+  width: 1280,
+  height: 720,
+  incognito: false,
+  state: 'normal',
+  type: 'normal',
+  alwaysOnTop: false,
+}))
+
+/** Mock `chrome.contextMenus.create` — ghi lai thuoc tinh tao menu. */
+const contextMenusCreateMock = vi.fn((_properties: chrome.contextMenus.CreateProperties): string => {
+  const id = _properties.id ?? 'menu-auto'
+  contextMenusCreated.push({
+    id,
+    title: _properties.title,
+    contexts: _properties.contexts as readonly string[] | undefined,
+  })
+  return id
+})
+
+/** Danh sach menu da tao (de test assert). */
+const contextMenusCreated: Array<{
+  id: string
+  title: string | undefined
+  contexts: readonly string[] | undefined
+}> = []
+
+/** Mock `chrome.contextMenus.removeAll`. */
+const contextMenusRemoveAllMock = vi.fn(async (): Promise<void> => {
+  contextMenusCreated.length = 0
+})
 
 /**
  * Mock `chrome.tabs.create`.
@@ -101,6 +154,26 @@ const chromeMock = {
         fireStorageChanged(changes)
       }),
     } satisfies StorageArea,
+    session: {
+      get: vi.fn(async (key: string | string[] | null) => {
+        if (key === null || key === undefined) return { ...sessionStorage }
+        const keys = Array.isArray(key) ? key : [key]
+        const result: Record<string, unknown> = {}
+        for (const item of keys) {
+          if (item in sessionStorage) result[item] = sessionStorage[item]
+        }
+        return result
+      }),
+      set: vi.fn(async (items: Record<string, unknown>) => {
+        Object.assign(sessionStorage, items)
+      }),
+      remove: vi.fn(async (key: string | string[]) => {
+        const keys = Array.isArray(key) ? key : [key]
+        for (const item of keys) {
+          delete sessionStorage[item]
+        }
+      }),
+    } satisfies StorageArea,
     onChanged: {
       addListener: vi.fn((listener: StorageChangedListener) => {
         storageChangedListeners.add(listener)
@@ -113,11 +186,32 @@ const chromeMock = {
   runtime: {
     sendMessage: vi.fn(async () => undefined),
     onMessage: { addListener: vi.fn() },
+    onInstalled: { addListener: vi.fn() },
+    onStartup: { addListener: vi.fn() },
     id: 'sidekick-test-extension-id',
     getURL: vi.fn((path: string) => `chrome-extension://sidekick-test-extension-id/${path}`),
   },
   sidePanel: {
     open: sidePanelOpenMock,
+    close: sidePanelCloseMock,
+    setPanelBehavior: sidePanelSetBehaviorMock,
+    getPanelBehavior: sidePanelGetBehaviorMock,
+    onOpened: { addListener: vi.fn() },
+    onClosed: { addListener: vi.fn() },
+  },
+  contextMenus: {
+    create: contextMenusCreateMock,
+    removeAll: contextMenusRemoveAllMock,
+    onClicked: { addListener: vi.fn() },
+  },
+  commands: {
+    onCommand: { addListener: vi.fn() },
+  },
+  action: {
+    onClicked: { addListener: vi.fn() },
+  },
+  windows: {
+    getCurrent: windowsGetCurrentMock,
   },
   tabs: {
     get: tabsGetMock,
@@ -132,11 +226,18 @@ const chromeMock = {
 globalThis.chrome = chromeMock as unknown as typeof chrome
 
 export {
+  contextMenusCreateMock,
+  contextMenusCreated,
+  contextMenusRemoveAllMock,
   fireStorageChanged,
   sidePanelOpenMock,
+  sidePanelCloseMock,
+  sidePanelSetBehaviorMock,
+  sidePanelGetBehaviorMock,
   storageChangedListeners,
   executeScriptMock,
   injectionResult,
   tabsCreateMock,
   tabsQueryMock,
+  windowsGetCurrentMock,
 }

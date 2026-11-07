@@ -102,14 +102,14 @@ pnpm eval:run                # chạy eval harness
 | Milestone | Trạng thái | Ghi chú |
 |---|---|---|
 | **M0 — Foundation** | ✅ Hoàn thành | 15/15 task · 91 unit test + 2 E2E · tag `v0.1` |
-| **M1 — Parity** | 🚧 Đang làm | 15/25 task (T-M1-01, T-M1-04 ✅ hấp thụ, T-M1-05, T-M1-21, T-M1-22, T-M1-23, T-M1-02, T-M1-24, T-M1-25, T-M1-06 ✅, T-M1-07 ✅, T-M1-08 ✅, T-M1-09 ✅, T-M1-10 ✅, T-M1-11 ✅) · 1019 unit test + 57 E2E |
+| **M1 — Parity** | 🚧 Đang làm | 16/25 task (T-M1-01, T-M1-04 ✅ hấp thụ, T-M1-05, T-M1-21, T-M1-22, T-M1-23, T-M1-02, T-M1-24, T-M1-25, T-M1-06 ✅, T-M1-07 ✅, T-M1-08 ✅, T-M1-09 ✅, T-M1-10 ✅, T-M1-11 ✅, T-M1-03 ✅) · 1049 unit test + 61 E2E |
 | **M2 — Advanced & Eval** | ⬜ Chưa bắt đầu | `EVAL_REPORT.md` là deliverable bắt buộc |
 | **M3 — Polish & Deliverable** | ⬜ Chưa bắt đầu | |
 | **M4 — Workflow** | ⬜ Tuỳ chọn | Chỉ sau M3 + đã có eval report |
 
 **Trạng thái docs:** ✅ Requirements · ✅ Design System Brief · ✅ System Design · ✅ Implementation Plan · ✅ Comparison Matrix · ✅ Eval Plan · ✅ Handoff · ✅ Changelog
 
-**Việc tiếp theo:** **T-M1-03** (service worker: mở/toggle panel · context menu · keyboard shortcut) — theo thứ tự ưu tiên M1.
+**Việc tiếp theo:** **T-M1-12** (Settings: theme · cỡ chữ · chiều rộng · quản lý dữ liệu · endpoint BFF) — theo thứ tự ưu tiên M1.
 
 > **Chat CRUD (T-M1-09):** side panel có **drawer quản lý cuộc trò chuyện** (Radix Dialog trượt từ trái) — tạo · đổi tên · xoá (confirm dialog) · ghim · lưu trữ · search theo tên. Chọn conversation → tải lại lịch sử **kèm citations đã lưu**. Backend: `GET/POST /api/conversations` · `GET /api/conversations/:id/messages` · `PATCH/DELETE /api/conversations/:id` (phân trang keyset bằng cursor). **Phạm vi chốt:** ghim ở cấp **conversation** (cột `pinned` đã có sẵn từ M0 → không có migration mới); ghim tin nhắn để task sau. Chi tiết: [`SYSTEM_DESIGN.md`](docs/SYSTEM_DESIGN.md) §7.10.
 
@@ -128,6 +128,8 @@ pnpm eval:run                # chạy eval harness
 > **Chat actions (T-M1-10):** trạng thái turn/variant/path lưu **phía server** trong jsonb có sẵn (`messages.meta`: `turnId`/`variantIndex`/`active`/`parentTurnId`/`aborted` + `conversations.meta.path`) → **không** migration mới, không mất khi reload panel. `operation` trong `POST /api/chat`: `send` · `regenerate` (tạo **biến thể**, không lặp user message) · `continue` (**UPDATE** message cũ `content = partial + text`) · `branch` (edit-resend → cắt `path`, nhánh cũ giữ trong DB ở mục "Phiên bản cũ"). Extension: `MessageActions` ("Tạo lại" · switcher "1/2" · "Tiếp tục" · "Sửa") · `MessageEditBox` · `ScrollToBottomButton` · auto-scroll chỉ khi ở đáy (ngưỡng 80px) · draft tự lưu (debounce 300 ms, TTL 30 ngày) · Enter gửi / Shift+Enter xuống dòng / Esc dừng. Chi tiết: [`SYSTEM_DESIGN.md`](docs/SYSTEM_DESIGN.md) §7.11.
 
 > **Prompt gợi ý theo trang + Summarize 1-click (T-M1-11):** empty state hiện `PromptGallery` — **≥ 3 gợi ý đổi theo loại trang** (docs / article / forum / video / pdf / shopping / general) + nút refresh (xoay vòng deterministic trong cùng profile) + nút **"Tóm tắt trang này"** 1-click. Bộ luật phân loại đặt ở `packages/shared/src/pageProfile.ts` (`classifyPage` · `suggestionsForPage` · `generalSuggestions`) → dùng chung cho extension + eval. Bấm gợi ý / nút tóm tắt = hành động chủ động → **tự attach trang hiện tại trước khi gửi** (tương thích FR-CONTEXT-13: context không bao giờ tự ý gửi). Không có tab đọc được (`chrome://`) → 4 gợi ý chung (FR-UX-04), không hiện nút tóm tắt. Chi tiết: [`REQUIREMENTS.md`](docs/REQUIREMENTS.md) §4.9.2 · [`SYSTEM_DESIGN.md`](docs/SYSTEM_DESIGN.md) §7.12.
+
+> **Toggle panel · context menu · phím tắt (T-M1-03):** side panel mở qua **3 đường** — (1) **bấm icon toolbar** dùng native `chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })` (Chrome 114+) → Chrome tự toggle mở/đóng; `action.onClicked` chỉ là **fallback** cho Chrome cũ (guard `getPanelBehavior()`); (2) **context menu** 2 mục — `sidekick-open` ("Mở Sidekick AI", `contexts: ['page']`) + `sidekick-ask-selection` ("Hỏi Sidekick với đoạn đã chọn", `contexts: ['selection']` → đoạn chọn vào context `tier: 'selection'`) — đăng ký lại **an toàn** qua `removeAll()` → `create()` (fix lỗi duplicate id khi update extension); (3) **phím tắt `Ctrl+Shift+K`** (macOS `Command+Shift+K`) — custom command `sidekick-toggle-panel` tự xử lý toggle (không dùng `_execute_action` vì bị native toggle nuốt) · trạng thái panel track bằng `chrome.storage.session['sidekick.panelOpen']` + event `sidePanel.onOpened`/`onClosed` (Chrome 141/142) → **không** mất khi SW bị kill ~30s. Logic tách 3 file thuần (`background/panelController.ts` · `contextMenus.ts` · `commands.ts`) → SW chỉ là wiring, test được trong jsdom; **không** migration, **không** dependency mới, **không** UI mới (đổi phím tắt → T-M1-18). Chi tiết: [`REQUIREMENTS.md`](docs/REQUIREMENTS.md) §4.9.3 · [`SYSTEM_DESIGN.md`](docs/SYSTEM_DESIGN.md) §7.13.
 
 ---
 

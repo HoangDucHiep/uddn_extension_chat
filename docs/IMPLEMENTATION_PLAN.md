@@ -78,7 +78,7 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 |---|---|---|---|---|---|---|
 | T-M1-01 | Content script: extractor Readability-lite | FR-CONTEXT-01, NFR-PERF-04 | `apps/extension/src/content/extractor.ts` | Trích được title + nội dung chính trên bài blog/docs; ≤ 800ms cho DOM ≤ 2MB | L | ✅ |
 | T-M1-02 | Content script: selection context | FR-CONTEXT-04 | `content/selection.ts` | Bôi đen → panel nhận đúng đoạn text | M | ✅ |
-| T-M1-03 | Service worker: mở/toggle panel, context menu, shortcut | FR-UX-01 | `apps/extension/src/background/*` | Toolbar click toggle; `Ctrl+Shift+K` mở; context menu "Ask Sidekick" | M | ⬜ |
+| T-M1-03 | Service worker: mở/toggle panel, context menu, shortcut | FR-UX-01 | `apps/extension/src/background/*` | Toolbar click toggle; `Ctrl+Shift+K` mở; context menu "Ask Sidekick" | M | ✅ *(2026-11-07)* |
 | T-M1-04 | Context chips + toggle bật/tắt context trang | FR-CONTEXT-02, NFR-SEC-02 | `sidepanel/components/context/ContextChips.tsx` | Chip hiển thị domain đang share; bỏ chip được; tắt → không gửi content | M | ✅ *(hấp thụ bởi T-M1-23)* |
 | T-M1-05 | `@` mention multi-tab | FR-CONTEXT-03 | `context/MentionPopover.tsx`, `hooks/useTabs.ts`, `hooks/useMention.ts`, `lib/tabList.ts` | Gõ `@` → list tab (title+favicon), chọn nhiều được | L | ✅ |
 | T-M1-06 | Truyền context sang BFF (tab list + content) | FR-CONTEXT-01/02/03, FR-CONTEXT-07, FR-CONTEXT-12 | `packages/shared/src/contextHash.ts`, `apps/server/src/services/chatService.ts`, `apps/extension/src/lib/contextCache.ts` | Log `request_logs.context_hash` khớp với context đã gửi | M | ✅ |
@@ -687,6 +687,35 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 
 > **Quyết định kỹ thuật:** (1) **Bộ luật phân loại đặt ở `packages/shared`** → dùng được cho extension + eval harness + server, 1 nguồn sự thật; `pageKind.ts` (routing trích xuất) và `pageProfile.ts` (ngữ cảnh UX) là 2 khái niệm khác → 2 file riêng; (2) **Bấm gợi ý = hành động chủ động** → tự đính kèm trang trước khi gửi (tương thích FR-CONTEXT-13: context vẫn không bao giờ tự ý gửi); (3) **Click gợi ý → gửi thẳng** (không điền composer trước) → parity Edge/Gemini; (4) **Xoay vòng deterministic** (offset + 1) → test ổn định, không flaky; (5) **`SUMMARY_PROMPT` ở shared/constants** → trùng wording dataset eval → đo được, không lệch.
 
+### 3.1n Kết quả T-M1-03 — Service worker: toggle panel · context menu · phím tắt (FR-UX-01) (2026-11-07)
+
+> Chi tiết kiến trúc: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.13 · AC: [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.9.3.
+
+**Không có migration, không dependency mới, không permission mới, không có UI mới.**
+
+| Hạng mục | Kết quả |
+|---|---|
+| `apps/extension/src/background/panelController.ts` | ✅ **Mới** — `PANEL_OPEN_STATE_KEY` · `applyOpenOnActionClick()` (native toggle, Chrome 114+) · `isOpenOnActionClick()` · `readPanelOpenState()` / `writePanelOpenState()` (`chrome.storage.session`) · `openSidePanel()` · `closeSidePanel()` (feature detection Chrome 141+) · `toggleSidePanel()` → `'opened' \| 'closed' \| 'noop'` · **mọi hàm bọc `try/catch`** → không bao giờ throw |
+| `apps/extension/src/background/contextMenus.ts` | ✅ **Mới** — `CONTEXT_MENU_OPEN_ID` (`sidekick-open`, `contexts: ['page']`) · `CONTEXT_MENU_ASK_SELECTION_ID` (`sidekick-ask-selection`, `contexts: ['selection']`) · `registerContextMenus()` (`removeAll()` → `create()` × 2) · `handleContextMenuClick()` (mục selection → `writePendingSelection()` → panel tự nhận → `openSidePanel()`) |
+| `apps/extension/src/background/commands.ts` | ✅ **Mới** — `COMMAND_TOGGLE_PANEL` (`sidekick-toggle-panel`) · `handleCommand()` → `toggleSidePanel(tab?.windowId)` |
+| `apps/extension/src/background/serviceWorker.ts` | ✅ **Sửa** — top-level `void applyOpenOnActionClick()` · `action.onClicked` là **fallback** (guard `isOpenOnActionClick()`) · `commands.onCommand` → `handleCommand` · `contextMenus.onClicked` → `handleContextMenuClick` · `sidePanel.onOpened` / `onClosed` → `writePanelOpenState` (feature detection Chrome 141/142) · giữ nguyên `runtime.onMessage` (T-M1-02) |
+| `apps/extension/public/manifest.json` | ✅ **Sửa** — thêm khối `commands`: `sidekick-toggle-panel` · `suggested_key` = `Ctrl+Shift+K` (Windows/Linux) · `Command+Shift+K` (macOS). **Không** thêm permission (`commands` không cần permission) |
+| Unit test | ✅ **Mới** — extension `panelController.test.ts` (19) · `contextMenus.test.ts` (7) · `commands.test.ts` (4) |
+| `apps/extension/tests/setup.ts` | ✅ **Sửa** — bổ sung mock `chrome.sidePanel.close` / `getPanelBehavior` / `setPanelBehavior` / `onOpened` / `onClosed` · `chrome.contextMenus.create` / `removeAll` · `chrome.commands.onCommand` · `chrome.action.onClicked` · `chrome.windows.getCurrent` · `chrome.storage.session` |
+| E2E | ✅ **Mới** `e2e/serviceWorker.spec.ts` — 4 kịch bản: `getPanelBehavior()` → `openPanelOnActionClick: true` · `commands.getAll()` → `Ctrl+Shift+K` + SW đã đăng ký listener · menu `sidekick-open` đã tồn tại (`create` lại → "duplicate id") · mở/đóng panel → `sidekick.panelOpen` trong `storage.session` cập nhật đúng |
+| `pnpm typecheck` | ✅ pass (shared · server · extension · eval) |
+| `pnpm lint` | ✅ pass (0 error, 0 warning) |
+| `pnpm test` | ✅ pass — shared **200** · server **312** · extension **537** (tổng **1049**, trước 1019 → **+30**) |
+| `pnpm build` | ✅ pass — `dist/background.js` có chunk mới · `dist/content.js` vẫn là **IIFE 1 file, không `import`** |
+| `pnpm db:migrate` | ✅ pass — **không có migration mới** |
+| `pnpm test:e2e` | ✅ pass — `serviceWorker.spec.ts` **4/4** · tổng **61/61** |
+
+> **Mutation spot-check:** 6/6 mutation bị bắt — (1) `toggleSidePanel()` bỏ `closeSidePanel()` (1 unit fail) · (2) `handleContextMenuClick()` bỏ `openSidePanel()` (1 unit fail) · (3) `registerContextMenus()` bỏ `removeAll()` (1 unit fail) · (4) `applyOpenOnActionClick()` bỏ `setPanelBehavior()` (2 unit fail) · (5) `handleCommand()` bỏ guard command (1 unit fail) · (6) `handleContextMenuClick()` bỏ `writePendingSelection()` (1 unit fail).
+
+> **Hạn chế E2E đã biết:** Playwright **không** kích hoạt được accelerator của browser (extension command) trong headless — đã verify cả `page.keyboard.press` lẫn `Input.dispatchKeyEvent` qua CDP đều không tới `chrome.commands`. Vì vậy phần "bấm phím tắt" được cover bằng unit test (`tests/commands.test.ts`); E2E assert **đăng ký** shortcut + **vòng đời** trạng thái panel.
+
+> **Quyết định kỹ thuật:** (1) **Native toggle** `setPanelBehavior({openPanelOnActionClick: true})` (Chrome 114+) → Chrome tự quản lý mở/đóng, không cần tự track state cho thao tác click icon; `action.onClicked` chỉ là **fallback** cho Chrome cũ; (2) **Custom command** thay vì `_execute_action` → `_execute_action` bị native toggle nuốt nên không kiểm soát được hành vi toggle; (3) **Trạng thái panel** lưu `chrome.storage.session` (sống suốt phiên browser, không mất khi SW bị kill ~30s) + event `onOpened`/`onClosed`; (4) **Feature detection** `typeof chrome.sidePanel.close === 'function'` thay vì đọc `chrome.runtime.getManifest` → rõ ràng, không hack; (5) **`removeAll()` trước `create()`** → sửa lỗi duplicate id khi update extension; (6) **Tách logic khỏi service worker** → SW chỉ là wiring, logic test được trong jsdom.
+
 ### 3.2 Traceability FR → Task
 
 > Bảng đầy đủ FR → Task (kèm milestone) nằm ở [`REQUIREMENTS.md`](REQUIREMENTS.md) §11.1 — nơi duy nhất cần cập nhật khi thêm/bớt task.
@@ -702,7 +731,7 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | FR-PROVIDER-01..09 | 9 FR | T-M0-07/08 · T-M1-15/16 · T-M2-01/02/03 | FR-PROVIDER-04 (fallback) nằm trong T-M2-02 |
 | FR-WORKFLOW-01..13 | 13 FR | T-M4-01..08 · `FR-WORKFLOW-04` → **M5** | FR-WORKFLOW-04 deferred (rủi ro MV3 `tabs.onUpdated`) |
 | FR-SETTINGS-01..07 | 7 FR | T-M0-14 · T-M1-12/17 · **T-M2-19** (FR-SETTINGS-04) | FR-SETTINGS-03/04/05/07 trước đó không có task → gộp vào T-M1-12 |
-| FR-UX-01..10 | 10 FR | T-M1-03/10/**11 ✅**/12/18/19/20 · **T-M1-25 ✅** | FR-UX-02 (onboarding) tách task riêng T-M1-25 — **xong 2026-11-05** (3 bước, BYOK K2, Ollama, skippable) · **FR-UX-03/04 (gợi ý theo trang + tóm tắt 1-click) do T-M1-11 ✅ (2026-11-07)** |
+| FR-UX-01..10 | 10 FR | **T-M1-03 ✅**/10/**11 ✅**/12/18/19/20 · **T-M1-25 ✅** | FR-UX-02 (onboarding) tách task riêng T-M1-25 — **xong 2026-11-05** (3 bước, BYOK K2, Ollama, skippable) · **FR-UX-03/04 (gợi ý theo trang + tóm tắt 1-click) do T-M1-11 ✅ (2026-11-07)** · **FR-UX-01 (toggle panel · context menu · `Ctrl+Shift+K`) do T-M1-03 ✅ (2026-11-07)** · đổi phím tắt cấu hình được → T-M1-18 |
 | NFR-PERF-01..06 | 6 NFR | T-M0-11 · T-M1-01/07/14/20 · T-M2-13 · T-M3-02/04/09 | NFR là yêu cầu xuyên suốt |
 | NFR-SEC-01..08 | 8 NFR | T-M0-02/06/09/12 · T-M1-04/07/15/16 · **T-M2-19** | NFR-SEC-06 (domain nhạy cảm) → T-M2-19 |
 | NFR-REL-01..05 | 5 NFR | T-M1-10/14/15/19 · **T-M3-10** | NFR-REL-05 (backup DB) tách task M3 |

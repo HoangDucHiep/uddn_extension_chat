@@ -50,7 +50,7 @@ Cột ưu tiên: **M** = Must (M1) · **S** = Should (M2) · **C** = Could (M2/M
 | A22 | Chọn model | Không cho chọn model (chỉ model của Copilot) | 🟢 FR-PROVIDER-03 |
 | A23 | API / BYOK | Không có | 🟢 FR-PROVIDER-02 |
 | A24 | Chọn vị trí panel (trái/phải) | Do người dùng đặt trong Chrome settings (dùng chung `getLayout()`) | M (tự cấu hình) |
-| A25 | Keyboard shortcut mở Copilot | Không có shortcut mặc định (chỉ qua menu) | 🟢 FR-UX-01 |
+| A25 | Keyboard shortcut mở Copilot | Không có shortcut mặc định (chỉ qua menu) | 🟢 FR-UX-01 — ✅ T-M1-03 (`Ctrl+Shift+K` toggle panel; đổi được → T-M1-18) |
 | A26 | Yêu cầu đăng nhập | Bắt buộc đăng nhập tài khoản Microsoft; một số tính năng cần **M365 subscription** | 🟢 FR-PROVIDER-02 (không cần tài khoản hãng) |
 | A27 | Copilot Actions (Edge) | Tác vụ web **một lần** có giám sát (đặt nhà hàng, sửa trang, huỷ newsletter). Có bước xác nhận cho hành động rủi ro (mua hàng, gửi email). **Preview, trong Copilot Mode** | C |
 | A28 | Lịch chạy tự động | **Không có trong Edge.** Chỉ ở **M365 Copilot Tasks** (chạy ngay hoặc theo lịch, giới hạn 10 scheduled prompts) — cần **Copilot license**, sản phẩm khác, không nằm trong sidebar | 🟢 FR-WORKFLOW-03 (M4) |
@@ -81,7 +81,7 @@ Cột ưu tiên: **M** = Must (M1) · **S** = Should (M2) · **C** = Could (M2/M
 | B16 | History recall | Nhớ tab đã mở tuần trước | S |
 | B17 | Upload ảnh | Gửi ảnh kèm câu hỏi | M |
 | B18 | Multi-conversation | Nhiều cuộc trò chuyện cùng lúc | M |
-| B19 | Keyboard shortcuts | Windows: `Alt+G` mở/toggle, `Alt+Shift+G` switch, `Ctrl+Alt+G` selection mode; macOS `Ctrl+G`/`Ctrl+⌘+G`/`Ctrl+Shift+G`; ChromeOS `Search+G` | M (tự cấu hình) |
+| B19 | Keyboard shortcuts | Windows: `Alt+G` mở/toggle, `Alt+Shift+G` switch, `Ctrl+Alt+G` selection mode; macOS `Ctrl+G`/`Ctrl+⌘+G`/`Ctrl+Shift+G`; ChromeOS `Search+G` | M (tự cấu hình) — ✅ T-M1-03 (`Ctrl+Shift+K` toggle panel; đổi được → T-M1-18) |
 | B20 | Connected apps / Skills cần sign-in Google | Ràng buộc vào hệ sinh thái Google | 🟢 FR-PROVIDER-02 |
 | B21 | Chọn model | Không cho chọn model (chỉ model của Gemini) | 🟢 FR-PROVIDER-03 |
 | B22 | API / BYOK | Không có | 🟢 FR-PROVIDER-02 |
@@ -160,7 +160,9 @@ Cột ưu tiên: **M** = Must (M1) · **S** = Should (M2) · **C** = Could (M2/M
 
 Dùng làm acceptance checklist cho M1.
 
-- [ ] Side panel mở được từ toolbar icon (không `default_popup`) — ✅ M0
+- [x] Side panel mở được từ toolbar icon (không `default_popup`) — ✅ M0 · **✅ T-M1-03** (native toggle `chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })` — Chrome 114+ → click icon **mở/đóng**; `action.onClicked` chỉ là fallback cho Chrome cũ)
+- [x] Context menu "Ask Sidekick" — ✅ T-M1-03 (2 mục: "Mở Sidekick AI" (`contexts: ['page']`) · "Hỏi Sidekick với đoạn đã chọn" (`contexts: ['selection']` → đoạn chọn vào context `tier: 'selection'`) · đăng ký lại an toàn qua `removeAll()` → `create()` → không lỗi duplicate id khi update extension)
+- [x] Keyboard shortcut mở/toggle panel — ✅ T-M1-03 (`Ctrl+Shift+K` · macOS `Command+Shift+K` · custom command `sidekick-toggle-panel` tự xử lý toggle · trạng thái track bằng `chrome.storage.session` + `sidePanel.onOpened`/`onClosed`) — *đổi phím tắt cấu hình được → T-M1-18*
 - [ ] Panel giữ nguyên khi chuyển tab
 - [ ] Stream token-by-token, hiện dần — ✅ M0
 - [ ] Markdown + bảng + code block + copy + syntax highlight — ✅ T-M1-07 (`react-markdown` + `remark-gfm` → bảng/strikethrough/task list · `rehype-highlight` (highlight.js đồng bộ, 37 ngôn ngữ) · code block có nhãn ngôn ngữ + nút 1-click copy → toast "Đã sao chép" · bảng rộng scroll ngang · `rehype-sanitize` allowlist thẩm chặn XSS · link `target="_blank" rel="noopener noreferrer"`)

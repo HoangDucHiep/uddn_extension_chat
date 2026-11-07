@@ -410,7 +410,7 @@ BYOK trả lời câu *"key của ai?"*, không trả lời *"key nằm ở đâ
 
 | ID | Requirement | Priority | Acceptance criteria |
 |---|---|---|---|
-| FR-UX-01 | Mở/toggle panel bằng icon toolbar + phím tắt tự cấu hình | M | `chrome.sidePanel.open()` chỉ trong user gesture |
+| FR-UX-01 | Mở/toggle panel bằng icon toolbar + phím tắt tự cấu hình | M | ✅ T-M1-03 — xem AC chi tiết §4.9.3. `chrome.sidePanel.open()` chỉ trong user gesture; native toggle `openPanelOnActionClick` + context menu + `Ctrl+Shift+K` |
 | FR-UX-02 | Onboarding lần đầu (3 bước: quyền, chọn provider, thử câu hỏi) | M | ✅ T-M1-25 — xem AC chi tiết §4.9.1 |
 | FR-UX-03 | Empty state với prompt gợi ý theo ngữ cảnh trang | M | ✅ T-M1-11 — xem AC chi tiết §4.9.2. ≥ 3 gợi ý; refresh theo loại trang |
 | FR-UX-04 | Empty state khi chưa có context: gợi ý câu hỏi chung | M | ✅ T-M1-11 — xem AC chi tiết §4.9.2. Có nút "Tóm tắt trang này" 1-click |
@@ -468,6 +468,43 @@ Acceptance criteria:
 - **Minh bạch (DP-3)**: dưới nút tóm tắt hiện dòng "Sẽ tự đính kèm trang này khi bạn chọn gợi ý".
 
 > Không nằm trong scope T-M1-11: gợi ý do LLM sinh động (T-M2) · gợi ý theo lịch sử chat (T-M1-19) · settings gợi ý tuỳ chỉnh (T-M1-12).
+
+#### 4.9.3 FR-UX-01 — Mở / toggle panel · context menu · phím tắt (AC chi tiết — T-M1-03 ✅)
+
+Ba đường mở side panel — tất cả đều là **user gesture** nên `chrome.sidePanel.open()` hợp lệ.
+
+**1. Toolbar click (toggle)** — dùng native API của Chrome:
+
+- `chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })` được gọi ở **top-level** của service worker (API có từ **Chrome 114** → khớp `minimum_chrome_version`) → Chrome tự quản lý mở/đóng khi bấm icon.
+- Vì native toggle đã bật thì Chrome **không** dispatch `action.onClicked` → listener `action.onClicked` chỉ là **fallback** cho Chrome cũ / `setPanelBehavior` lỗi (guard bằng `getPanelBehavior()` để không mở 2 lần).
+- Manifest **không** có `default_popup` (rule mv3-chrome.mdc §4) — nếu có popup thì popup chiếm ưu tiên.
+
+**2. Context menu** — 2 mục:
+
+| Id | Nhãn | `contexts` | Hành vi |
+|---|---|---|---|
+| `sidekick-open` | "Mở Sidekick AI" | `['page']` | Mở panel (không kèm context) |
+| `sidekick-ask-selection` | "Hỏi Sidekick với đoạn đã chọn" | `['selection']` | Ghi `PendingSelection` vào `chrome.storage.local` → panel tự nhận (`useSelection` → `consumePendingSelection`) → chip `tier: 'selection'` (cao nhất) → mở panel |
+
+- Menu được tạo lại **an toàn**: `chrome.contextMenus.removeAll()` chạy **trước** `create()` → không lỗi "duplicate id" khi update extension.
+- Đăng ký ở `runtime.onInstalled` **và** `runtime.onStartup`.
+- `selectionText` rỗng / quá ngắn → **không** ghi, **không** mở panel (tránh mở panel vô nghĩa).
+
+**3. Phím tắt** — custom command `sidekick-toggle-panel`:
+
+- Manifest: `suggested_key` = `Ctrl+Shift+K` (Windows/Linux) · `Command+Shift+K` (macOS) → **không** trùng shortcut mặc định của Chrome.
+- **Không** dùng `_execute_action` (bị native `openPanelOnActionClick` "ăn" → không kiểm soát được toggle) → tự xử lý toggle.
+- Trạng thái panel đang mở hay không được track bằng `chrome.storage.session['sidekick.panelOpen']` + event `sidePanel.onOpened` (Chrome 141) / `onClosed` (Chrome 142) → `storage.session` sống suốt phiên browser nên **không** mất khi service worker bị kill (~30s).
+- Đóng panel dùng `chrome.sidePanel.close({ windowId })` (Chrome 141+) với **feature detection** → Chrome < 141 thì phím tắt chỉ mở (không throw).
+
+Acceptance criteria:
+
+- **Không** có `any` trong TypeScript; mọi hàm của service worker bọc `try/catch` → **không bao giờ** crash SW.
+- **Không** thêm permission mới (`commands` không cần permission; `contextMenus` đã có từ trước).
+- **Không** có UI mới trong task này — đổi phím tắt là **T-M1-18** (`settings/ShortcutsSettings.tsx`).
+- Vòng đời: mở panel → `sidekick.panelOpen = true`; đóng → `false` (quan sát được qua `chrome.storage.session`).
+
+> Không nằm trong scope T-M1-03: cho user **tự cấu hình** phím tắt (T-M1-18) · hiển thị trạng thái panel trong UI (T-M1-12) · chặn theo domain (T-M2-19).
 
 ---
 
@@ -1088,7 +1125,7 @@ Chỉ bắt đầu M4 khi **đồng thời** thỏa:
 
 | FR | Priority | Task | Milestone |
 |---|---|---|---|
-| FR-UX-01 | M | T-M1-03 · T-M1-18 | M1 |
+| FR-UX-01 | M | **T-M1-03 ✅** · T-M1-18 | M1 |
 | FR-UX-02 | M | **T-M1-25 ✅** | M1 |
 | FR-UX-03 | M | **T-M1-11 ✅** · T-M1-19 | M1 |
 | FR-UX-04 | M | **T-M1-11 ✅** · T-M1-19 | M1 |
