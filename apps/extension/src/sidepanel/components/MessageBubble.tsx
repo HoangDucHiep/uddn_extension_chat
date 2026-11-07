@@ -185,6 +185,15 @@ export function MessageBubble({
                 · {message.tokensOut} tokens
               </span>
             ) : null}
+            {/* Request-id (T-M1-14) — 6 ky tu dau de doi chieu voi log BFF. */}
+            {message.requestId !== undefined ? (
+              <span
+                className="font-mono text-[length:var(--font-size-xs)] text-[var(--text-tertiary)]"
+                title={`Request ID: ${message.requestId}`}
+              >
+                · {message.requestId.slice(0, 6)}
+              </span>
+            ) : null}
           </div>
         ) : null}
 

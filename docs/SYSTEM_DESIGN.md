@@ -337,8 +337,8 @@ X-Request-Id: <uuid v4>            // idempotency + tracing
 | POST | `/tools/mcp/servers` | `{ name, command, args?, env? }` | `McpServer` | `VALIDATION_ERROR` |
 | DELETE | `/tools/mcp/servers/:id` | — | `204` | `NOT_FOUND` |
 | POST | `/tools/invoke` | `{ toolName, args }` | `{ output, ok }` | `TOOL_ERROR`, `APPROVAL_REQUIRED` |
-| GET | `/logs` | `?from=&to=&provider=&limit=` | `{ items, total }` | — |
-| GET | `/usage` | `?from=&to=` | `{ totalTokens, totalCostUsd, byDay[] }` | — |
+| GET | `/logs` | `?limit=&offset=&provider=&from=&to=&conversationId=` ✅ | `{ items, total }` — **chỉ metadata**, không có `promptText`/`responseText`/`contextSnapshot` (T-M1-14) | `VALIDATION_ERROR` |
+| GET | `/usage` | `?from=&to=` ✅ | `{ totalTokens, totalCostUsd, byDay[] }` — tổng hợp token + chi phí theo ngày (T-M1-14) | `VALIDATION_ERROR` |
 | POST | `/rag/search` | `{ query, topK? }` | `{ documents: [{ id, title, snippet, score }] }` | — |
 | GET | `/rag/documents` | `?q=&limit=` | `RagDocument[]` | — |
 | DELETE | `/rag/documents/:id` | — | `204` | `NOT_FOUND` |
@@ -615,7 +615,7 @@ Mỗi `ProviderAdapter` phải cài `supportsVision(model: string): boolean`. Kh
 | Bảng | Mặc định | Tuỳ chọn |
 |---|---|---|
 | `messages`, `citations`, `tool_calls` | Giữ vô hạn (lịch sử chat của user) | Xoá theo conversation |
-| `request_logs` | 90 ngày | 30 / 365 / vô hạn |
+| `request_logs` | 90 ngày | 30 / 365 / vô hạn — **đã enforce** (T-M1-14): `pruneRequestLogs()` chạy lúc khởi động + mỗi 24 h, đọc `LOG_RETENTION_DAYS` |
 | `context_snapshot` | **Tắt mặc định** (chỉ lưu `context_hash`) | Bật để debug — qua setting `LOG_CONTEXT_SNAPSHOT` (T-M1-06) |
 | `rag_documents` | Giữ cùng với nguồn | Xoá thủ công |
 | `eval_runs` / `eval_results` | Vô hạn (bằng chứng đồ án) | — |
@@ -647,6 +647,19 @@ BFF chỉ nhận request từ extension. Kiểm tra header `Origin` / `X-Sidekic
 - Allow: `chrome-extension://<extension-id>` (id thật nằm trong `.env` → `ALLOWED_ORIGINS`), `http://localhost:*` cho dev.
 - CORS: `origin` cụ thể (không dùng `*`), `credentials: false`.
 - BFF **không** lộ ra internet: bind `127.0.0.1` mặc định trong docker-compose.
+- `X-Request-Id` nằm trong `allowedHeaders` **và** `exposedHeaders` (T-M1-14) → client gửi và đọc được id.
+
+### 6.2.1 Log format & dữ liệu nhạy cảm (T-M1-14)
+
+| Nội dung log | Mặc định | Bật/tắt bằng |
+|---|---|---|
+| Log HTTP **JSON** (method · path · status · duration · request-id) | **BẬT** | `LOG_LEVEL` |
+| `request_logs` — metadata (provider · model · token · cost · ttft · latency · `context_hash`) | **BẬT** | `LOG_REQUESTS=true` |
+| `request_logs.prompt_text` / `response_text` | **TẮT** | `LOG_FULL_CONTENT=true` (chứa nội dung người dùng) |
+| `request_logs.context_snapshot` | **TẮT** | `LOG_CONTEXT_SNAPSHOT=true` (chứa nội dung trang) |
+| API `GET /api/logs` · `GET /api/usage` | **Chỉ metadata** | Luôn luôn — không bao giờ trả nội dung |
+
+> **Không bao giờ** ghi API key hay body request vào log. Id trong log phải qua bộ lọc charset (`A-Za-z0-9._:/-`, ≤ 200 ký tự) để chống **log injection**. Chi tiết: §7.16.
 
 ### 6.3 MV3 extension security
 
@@ -2264,6 +2277,109 @@ Nguồn: [`apps/extension/src/lib/connectionStatus.ts`](../apps/extension/src/li
 | `connectionStatus.ts`: bỏ backoff (luôn 5 s) | ✅ Bị bắt — 3 test backoff fail |
 | `chatService.ts`: hardcode `retryable: true` | ✅ Bị bắt — *"401 → retryable=false"* fail |
 | `ChatWorkspace.tsx`: bỏ render `LoadingState` | ✅ Bị bắt — E2E *"skeleton loading thay empty state"* fail |
+
+---
+
+### 7.16 Request logging đầy đủ vào `request_logs` (NFR-MAINT-04 · FR-CONTEXT-12 · FR-PROVIDER-05/06 — T-M1-14)
+
+> Nguồn sự thật cho hợp đồng: [`REQUIREMENTS.md`](REQUIREMENTS.md) §5.2 (NFR-MAINT) + §4.1 (FR-PROVIDER-05/06, FR-CONTEXT-12).
+
+#### 7.16.1 Vấn đề đã giải quyết
+
+| Khoảng trống trước T-M1-14 | Sau T-M1-14 |
+|---|---|
+| `LOG_REQUESTS` mặc định `false` → **0 dòng log** | Mặc định `true` (chỉ metadata — an toàn) |
+| `cost_usd` **luôn = 0**; SSE `usage` hardcode `costUsd: 0` | `calculateCostUsd()` từ bảng giá token; SSE `usage` mang chi phí thật |
+| `tool_calls` **luôn = null** | Cột đã wire + shape-test; `null` khi không có tool call (tool thật → M2) |
+| Lượt **thất bại** không được ghi (`MISSING_API_KEY` return sớm) | **Mọi** lượt đều có 1 dòng (thành công **và** thất bại) |
+| Request-id sinh trong service, không tới client / log HTTP / provider | `X-Request-Id` xuyên suốt client → BFF → provider |
+| Log HTTP dạng text (`GET /api/health 200 12ms`) | **JSON** 1 dòng/request |
+| `GET /logs` · `GET /usage` có trong §4.1 nhưng **chưa implement** | Đã implement + validate Zod + **chỉ metadata** |
+| Retention 90 ngày **không được enforce** | `pruneRequestLogs()` chạy lúc khởi động + mỗi 24 h |
+
+> **Không có migration DB mới** — mọi cột (`cost_usd`, `tool_calls`, `context_hash`, `context_snapshot`, …) đã có sẵn từ M0.
+
+#### 7.16.2 Luồng request-id
+
+```mermaid
+flowchart LR
+  client["Side Panel<br/>generateRequestId()"] -->|"X-Request-Id header"| mw["createRequestIdMiddleware()<br/>req.sidekickRequestId + echo response"]
+  mw --> route["POST /api/chat"]
+  route --> svc["createChatStream(…, { requestId })"]
+  svc -->|"requestId trong ProviderStreamRequest"| prov["Provider API<br/>header X-Request-Id"]
+  svc -->|"insert row (success OR error)"| tbl[("request_logs")]
+  tbl --> api["GET /api/logs · GET /api/usage"]
+  api --> eval["apps/eval client"]
+```
+
+| Bước | Nơi | Hành vi |
+|---|---|---|
+| Sinh id | `apps/extension/src/lib/sseClient.ts` → `generateRequestId()` | `crypto.randomUUID()`; gửi header `X-Request-Id` |
+| Chấp nhận id | `apps/server/src/middleware/requestId.ts` | Id hợp lệ (≤ 200 ký tự, charset `A-Za-z0-9._:/-`) → dùng; **không** hợp lệ → `randomUUID()` (chống log injection) |
+| Gắn id | `req.sidekickRequestId` (augment Express tại `apps/server/src/types/express.d.ts`) | Không dùng `any` |
+| Echo | Response header `X-Request-Id` (mọi route) + SSE `meta.requestId` | Client hiển thị 6 ký tự đầu ở meta line |
+| Truyền provider | `ProviderStreamRequest.requestId` → header `X-Request-Id` | `openaiCompatible.ts` (Groq/OpenRouter/Ollama) + `gemini.ts`. **Best-effort** — provider có thể bỏ qua |
+
+#### 7.16.3 Format log JSON
+
+`apps/server/src/middleware/requestLogger.ts` — **1 dòng JSON / request**:
+
+```json
+{"ts":"2026-11-07T14:59:04.887Z","level":"info","event":"http_request","requestId":"req-live-test-003","method":"POST","path":"/api/chat","status":200,"durationMs":462}
+```
+
+> **Không bao giờ** log body / API key / nội dung người dùng. Chỉ method · path · status · duration · request-id.
+
+#### 7.16.4 Mô hình chi phí
+
+Nguồn: [`packages/shared/src/pricing.ts`](../packages/shared/src/pricing.ts) — `PROVIDER_PRICING` (USD / 1M token) + `calculateCostUsd({ provider, model, tokensIn, tokensOut })` → làm tròn **6** chữ số (khớp `numeric(12, 6)`).
+
+- Model có giá riêng → dùng giá riêng; model lạ → giá mặc định của provider; provider không có trong bảng → `0`.
+- `mock` / `ollama` (local) → `0` (không có chi phí thực).
+- Bảng giá là **snapshot** → khi chốt `EVAL_REPORT.md` phải ghi lại giá đã dùng (xem [`EVAL_PLAN.md`](EVAL_PLAN.md) §5.3).
+
+#### 7.16.5 API đọc log (chỉ metadata)
+
+| Method | Path | Query | Response |
+|---|---|---|---|
+| GET | `/api/logs` | `limit` (≤ 200, mặc định 50) · `offset` · `provider` · `conversationId` (uuid) · `from` / `to` (ISO 8601) | `{ items: RequestLogSummary[], total }` |
+| GET | `/api/usage` | `from` / `to` (ISO 8601) | `{ totalTokens, totalCostUsd, byDay[] }` |
+
+`RequestLogSummary` (`packages/shared/src/schemas/logs.ts`) — **không** có `promptText` / `responseText` / `contextSnapshot`. Chỉ: `id` · `requestId` · `conversationId` · `provider` · `model` · `keySource` · `contextHash` · `tokensIn` · `tokensOut` · `costUsd` · `ttftMs` · `latencyMs` · `toolCallCount` · `error` · `createdAt`.
+
+> **Cả hai endpoint đều validate Zod ở biên** → `400 VALIDATION_ERROR` khi query sai.
+
+#### 7.16.6 Biến môi trường
+
+| Biến | Mặc định | Ý nghĩa |
+|---|---|---|
+| `LOG_REQUESTS` | `true` | Ghi 1 dòng `request_logs` cho mỗi lượt chat (chỉ metadata) |
+| `LOG_FULL_CONTENT` | `false` | Lưu **thêm** `prompt_text` + `response_text` (chứa nội dung người dùng — mặc định **TẮT**) |
+| `LOG_RETENTION_DAYS` | `90` | Số ngày giữ `request_logs`; `0` = giữ vô hạn |
+| `LOG_CONTEXT_SNAPSHOT` | `false` | Lưu `context_snapshot` (T-M1-06) |
+
+#### 7.16.7 Kiểm thử
+
+| Tầng | File | Phạm vi |
+|---|---|---|
+| Unit (shared) | `packages/shared/tests/pricing.test.ts` | model biết · model lạ → giá mặc định · `mock`/`ollama` → 0 · làm tròn 6 chữ số · token 0 / âm |
+| Unit (server) | `apps/server/tests/requestLogService.test.ts` | shape insert (cost / `tool_calls` null vs array) · dòng lỗi · prune cutoff · filter + phân trang logs · tổng hợp usage |
+| Unit (server) | `apps/server/tests/requestLogger.test.ts` | shape JSON 1 dòng · id echo từ header · id sinh khi thiếu · **không** rò body/secret |
+| Unit (server) | `apps/server/tests/logsRoute.test.ts` | validate query · payload **chỉ metadata** (không `promptText`/`responseText`) |
+| Unit (extension) | `apps/extension/tests/sseClient.test.ts` | `X-Request-Id` được gửi · id của server thắng |
+| Unit (extension) | `apps/extension/tests/useChat.test.ts` | `requestId` lưu trên message assistant · truyền xuống `streamChat` |
+| E2E | `apps/extension/e2e/requestLog.spec.ts` | gửi prompt → `GET /api/logs?limit=1` trả dòng có `requestId` khớp · `ttftMs` > 0 · `latencyMs` > 0 · `costUsd` ≥ 0 · `GET /api/usage` tổng hợp đúng |
+
+**Mutation spot-check (6 mutation, đều bị bắt):**
+
+| Mutation | Kết quả |
+|---|---|
+| `pricing.ts`: `calculateCostUsd` trả `0` | ✗ Bị bắt — *"tinh dung theo bang gia rieng cua model"* fail |
+| `requestLogService.ts`: dùng hash của **prompt** thay `context_hash` | ✗ Bị bắt — *"context rong → context_hash = null"* + test context hash fail |
+| `chatService.ts`: bỏ nhánh ghi log ở đường lỗi | ✗ Bị bắt — *"error code duoc ghi vao cot `error`*" fail |
+| `routes/logs.ts`: trả `promptText` trong summary | ✗ Bị bắt — *"CHI metadata"* fail (route + summary) |
+| `pruneRequestLogs`: sai mốc cutoff (bỏ `retentionDays`) | ✗ Bị bắt — *"xoa dong cu hon thoi han giu"* + *"retentionDays = 0"* fail |
+| `requestId.ts`: bỏ nhánh đọc `X-Request-Id` (luôn sinh id mới) | ✗ Bị bắt — *"dung id tu header"* fail |
 
 ---
 

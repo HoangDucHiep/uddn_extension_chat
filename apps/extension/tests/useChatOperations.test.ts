@@ -6,6 +6,7 @@ const streamChatMock = vi.fn()
 
 vi.mock('@/lib/sseClient', () => ({
   streamChat: (request: unknown, options: unknown) => streamChatMock(request, options),
+  generateRequestId: () => 'req-generated-1',
 }))
 
 const captureTabContextMock = vi.fn()

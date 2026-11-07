@@ -39,6 +39,26 @@ export interface SseClientOptions {
   signal?: AbortSignal
   /** Callback cho tung event nhan duoc. */
   onEvent?: (event: ChatEvent) => void
+  /**
+   * Request-id do client sinh (T-M1-14 — NFR-MAINT-04).
+   *
+   * Gui len header `X-Request-Id` de server dung chung id → ghep duoc log
+   * cua BFF, dong `request_logs` va log cua provider.
+   */
+  requestId?: string
+}
+
+/**
+ * Sinh request-id cho 1 request (T-M1-14).
+ *
+ * `crypto.randomUUID()` co san trong side panel (secure context cua
+ * extension). Fallback sang `Math.random` neu khong co (test env).
+ */
+export function generateRequestId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return `req-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
 }
 
 /**
@@ -53,6 +73,10 @@ export async function* streamChat(
 ): AsyncGenerator<ChatEvent, void, undefined> {
   const baseUrl = await getBffUrl()
 
+  // Request-id sinh o client → gui len server qua header `X-Request-Id`
+  // (T-M1-14 — NFR-MAINT-04). Server se echo lai header nay tren response.
+  const requestId = options.requestId ?? generateRequestId()
+
   let response: Response
   try {
     response = await fetch(`${baseUrl}/api/chat`, {
@@ -60,6 +84,7 @@ export async function* streamChat(
       headers: {
         'Content-Type': 'application/json',
         Accept: 'text/event-stream',
+        'X-Request-Id': requestId,
       },
       body: JSON.stringify(request),
       ...(options.signal ? { signal: options.signal } : {}),

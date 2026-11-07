@@ -46,12 +46,17 @@ export function createChatRouter(deps: ChatServiceDeps): Router {
       'Cache-Control': 'no-cache, no-transform',
       Connection: 'keep-alive',
       'X-Accel-Buffering': 'no',
+      // Echo request-id de client biet id chinh thuc cua server
+      // (NFR-MAINT-04 — T-M1-14).
+      'X-Request-Id': req.sidekickRequestId ?? '',
     })
 
     // Flush headers ngay de client biet stream da bat dau.
     res.flushHeaders?.()
 
-    const stream = createChatStream(deps, parsed.data, abortController.signal)
+    const stream = createChatStream(deps, parsed.data, abortController.signal, {
+      requestId: req.sidekickRequestId,
+    })
 
     try {
       for await (const event of stream.events) {

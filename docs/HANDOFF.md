@@ -24,14 +24,39 @@
 | Hạng mục | Trạng thái |
 |---|---|
 | Docs | ✅ Đầy đủ 9 file (`docs/`) + `AGENTS.md` ở root |
-| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 + T-M1-05 + T-M1-02 + T-M1-24 + T-M1-25 + T-M1-06 + T-M1-07 + T-M1-08 + T-M1-09 + T-M1-10 + T-M1-11 + T-M1-03 + T-M1-12 + T-M1-19 xong** — 4 workspace, 1165 unit test + 69 E2E |
+| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 + T-M1-05 + T-M1-02 + T-M1-24 + T-M1-25 + T-M1-06 + T-M1-07 + T-M1-08 + T-M1-09 + T-M1-10 + T-M1-11 + T-M1-03 + T-M1-12 + T-M1-19 + T-M1-14 xong** — 4 workspace, 1243 unit test + 71 E2E |
 | Git | ✅ Đã init (`main`) · tag `v0.1` đánh dấu M0 |
-| Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **18/25 task**) |
-| Task tiếp theo | **T-M1-14** (Log request đầy đủ vào `request_logs`) — T-M1-13 (export) đã được user **defer**; ưu tiên tiếp theo sau đó là T-M1-15 (K3 direct) · T-M1-16 (K2 BYOK UI) · T-M1-17 (i18n) · T-M1-18 (shortcuts) · T-M1-20 (responsive + a11y) |
+| Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **19/25 task**) |
+| Task tiếp theo | **T-M1-15** (K3 direct mode — BYOK không cần BFF) · T-M1-16 (K2 BYOK UI) · T-M1-17 (i18n VI/EN) · T-M1-18 (shortcuts cấu hình được) · T-M1-20 (responsive 320–640px + a11y) — T-M1-13 (export) đã được user **defer** |
 
 ### Đang làm dở
 
-_(Không có — T-M1-19 states/retry/connection xong)_
+_(Không có — T-M1-14 request logging đầy đủ xong)_
+
+### Việc đã xong gần đây (T-M1-14 — Request logging đầy đủ vào `request_logs`)
+
+- **T-M1-14 (NFR-MAINT-04 + FR-CONTEXT-12 + NFR-REL-01)** — bảng `request_logs` **không còn là bảng chết**: **mọi** lượt chat (thành công **và** thất bại) đều ghi 1 dòng, `cost_usd` **thật**, `tool_calls` đã wire, `request_id` xuyên suốt client → BFF → provider, log HTTP dạng **JSON**, retention 90 ngày **được enforce**, và có **API đọc metadata** cho eval harness.
+  - **Shared (mới)** — `packages/shared/src/pricing.ts`: `PROVIDER_PRICING` (USD / 1M token) · `resolveModelPricing()` · `calculateCostUsd()` (làm tròn 6 chữ số — khớp `numeric(12,6)`) · `packages/shared/src/schemas/logs.ts`: `requestLogSummarySchema` (**metadata only**) · `logsResponseSchema` · `usageResponseSchema` · `logsQuerySchema` · `usageQuerySchema`. `providerStreamRequestSchema` += `requestId?` · `API_ROUTES.logs` / `API_ROUTES.usage`.
+  - **Server (mới)** — `middleware/requestId.ts` (đọc `X-Request-Id` · sanitize charset · fallback `randomUUID()` · echo header · `req.sidekickRequestId` qua Express type augmentation) · `services/requestLogService.ts` (`insertRequestLog` · `buildContextSnapshot` · `toRequestLogSummary` · `listRequestLogs` · `aggregateUsage` · `pruneRequestLogs`) · `routes/logs.ts` (`GET /api/logs` · `GET /api/usage`, Zod ở biên, **chỉ metadata**).
+  - **Server (sửa)** — `middleware/requestLogger.ts` → **1 dòng JSON** mỗi request `{ ts, level, event: 'http_request', requestId, method, path, status, durationMs }` · `middleware/origin.ts` += `X-Request-Id` · `config/env.ts`: `LOG_REQUESTS` mặc định **`true`** + **mới** `LOG_FULL_CONTENT` (mặc định `false`) + **mới** `LOG_RETENTION_DAYS` (mặc định `90`) · `services/chatService.ts`: nhận `options.requestId` · log **cả nhánh lỗi** · ghi `costUsd` thật + `toolCalls` · SSE `usage` mang cost thật · `keySource` trả về giá trị đã resolve · `providers/{openaiCompatible,gemini}.ts` forward `X-Request-Id` · `index.ts` hẹn prune lúc startup + mỗi 24 h.
+  - **Extension (sửa)** — `lib/sseClient.ts` `generateRequestId()` + header `X-Request-Id` (ưu tiên id server echo) · `hooks/useChat.ts` sinh id + lưu vào assistant message khi nhận SSE `meta` · `store/chatStore.ts` `ChatMessage` += `requestId?` · `components/MessageBubble.tsx` hiện **6 ký tự đầu** của id ở dòng meta (design token, không hardcode màu).
+  - **Eval (mới)** — `apps/eval/src/logs.ts` (`fetchLogs` · `fetchUsage` · `summarizeLogs`) + subcommand `pnpm eval:run logs`.
+  - **Verify** — typecheck ✅ · lint ✅ · test ✅ (**1243 unit** = shared 243 · server 377 · extension 623) · build ✅ · db:migrate ✅ (**không** migration mới, **không** dependency mới, **không** permission mới) · **E2E 71/71** ✅ (+2 kịch bản `e2e/requestLog.spec.ts`) · **mutation spot-check 6/6 bị bắt** · kiểm chứng live: `POST /api/chat` với `X-Request-Id: req-live-test-003` → dòng Postgres khớp tuyệt đối (`requestId` · `tokensIn` · `tokensOut` · `ttftMs` · `latencyMs` · `costUsd`).
+- Bằng chứng đầy đủ: `docs/IMPLEMENTATION_PLAN.md` §3.1q · `docs/SYSTEM_DESIGN.md` §7.16 · `docs/DESIGN_SYSTEM_BRIEF.md` §3.10 · `docs/EVAL_PLAN.md` §5.3.1.
+
+### Quyết định kỹ thuật mới (T-M1-14)
+
+| Quyết định | Lý do |
+|---|---|
+| **Không** migration DB | Mọi cột (`cost_usd` · `tool_calls` · `context_hash` · `context_snapshot`) đã có sẵn từ M0 → task này là code + contract |
+| `LOG_REQUESTS` mặc định `true` | Log mặc định chỉ chứa **metadata** (không nội dung người dùng) → an toàn; nội dung đầy đủ vẫn **TẮT** qua `LOG_FULL_CONTENT=false` |
+| `X-Request-Id` do **client** sinh | NFR-MAINT-04 đòi id xuyên suốt client → BFF → provider → DB → eval. Client sinh uuid → server nhận & sanitize (charset an toàn, ≤ 200 ký tự) → nếu không hợp lệ thì `randomUUID()` (chống log injection) |
+| `cost_usd` tính từ **bảng giá snapshot** (`PROVIDER_PRICING`) | Không gọi API giá của provider → chi phí là **ước lượng ổn định** cho eval; **phải** ghi rõ giá đã dùng trong `EVAL_REPORT.md` (xem `EVAL_PLAN.md` §5.3.1) |
+| Endpoint log chỉ trả **metadata** | `prompt_text` / `response_text` / `context_snapshot` **không** bao giờ ra khỏi server → an toàn khi chia sẻ log eval |
+| Retention 90 ngày thực thi thật (startup + 24 h) | `SYSTEM_DESIGN.md` §5.2 trước đó chỉ là lời hứa, không có code prune |
+| `tool_calls` đã wire nhưng M1 **không** phát sinh tool call | Tool/MCP thật ở M2 (T-M2-07..11) → giá trị `null`; vẫn shape-test để sẵn sàng |
+| Chip **request-id** trong dòng meta (6 ký tự) | Trust-by-transparency, cùng slot chip provider/model → user báo lỗi thì đối chiếu được với log DB; **không** hiện cost (thuộc T-M2-03 `UsageBadge`) |
+| `GET /api/logs` dùng `limit`/`offset` (không keyset) | Dataset eval M2 có thể cần cursor → ghi rõ hạn chế trong `IMPLEMENTATION_PLAN.md` §3.1q |
 
 ### Việc đã xong gần đây (T-M1-19 — Error / loading / empty states + retry + connection status)
 

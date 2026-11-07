@@ -36,10 +36,33 @@ const envSchema = z.object({
   /** Model mac dinh cua Ollama. */
   OLLAMA_MODEL: z.string().default('llama3.2'),
 
+  /**
+   * Ghi 1 dong `request_logs` cho moi luot chat (mac dinh **BAT**).
+   *
+   * Chi ghi **metadata** (provider · model · token · cost · ttft · latency ·
+   * context_hash) → khong chua noi dung nguoi dung. Muon luu them prompt /
+   * response day du → bat them `LOG_FULL_CONTENT`.
+   */
   LOG_REQUESTS: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((value) => value === 'true'),
+  /**
+   * Luu **prompt + response day du** vao `request_logs` (mac dinh TAT).
+   *
+   * NOI DUNG NHAY CAM — chi bat khi can truy viet chi tiet. Khong dung
+   * cho muc dich tinh chi phi (chi can token).
+   */
+  LOG_FULL_CONTENT: z
     .enum(['true', 'false'])
     .default('false')
     .transform((value) => value === 'true'),
+  /**
+   * So ngay giu lai `request_logs` (mac dinh 90 ngay — retention policy §5.2).
+   *
+   * `0` = giu vinh vien (khong dung cho production).
+   */
+  LOG_RETENTION_DAYS: z.coerce.number().int().min(0).default(90),
   /**
    * Luu snapshot context vao `request_logs.context_snapshot` (mac dinh TAT).
    *

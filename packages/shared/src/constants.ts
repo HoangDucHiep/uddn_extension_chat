@@ -140,6 +140,10 @@ export const API_ROUTES = {
   extractYoutube: `${API_BASE_PATH}/extract/youtube`,
   /** Anh dinh kem — GET /api/attachments/:id tra ve binary. */
   attachment: `${API_BASE_PATH}/attachments`,
+  /** Log cau truc cua cac luot chat (chi metadata) — T-M1-14. */
+  logs: `${API_BASE_PATH}/logs`,
+  /** Tong hop token + chi phi theo ngay — T-M1-14. */
+  usage: `${API_BASE_PATH}/usage`,
 } as const
 
 /**

@@ -542,6 +542,19 @@ Folder `apps/extension/src/sidepanel/components/states/` — **4 trạng thái**
 
 > `data-testid`: `offline-banner` · `offline-banner-retry`.
 
+### 3.10 Request-id chip trong dòng meta của message (đã implement T-M1-14)
+
+- **Vị trí:** dòng meta của bubble **assistant**, ngay sau chip `provider · model` và sau số token — cùng slot với chip provider/model (trust-by-transparency).
+- **Nội dung:** **6 ký tự đầu** của `requestId` (ví dụ `a1b2c3`) — chỉ phần đủ để **đối chiếu** với dòng log trong DB (`GET /api/logs`).
+- **Tooltip:** `title="Request ID: {full requestId}"` → hover hiện id đầy đủ (copy/paste được khi báo lỗi).
+- **Font:** `font-mono` để phân biệt với model name; **cỡ chữ `--font-size-xs`**, màu `--text-tertiary` (cùng cấp độ thị giác với dòng token).
+- **Token:** `--text-tertiary` · `--font-size-xs`. **Không hardcode màu.**
+- **Điều kiện hiện:** chỉ hiện khi `message.requestId` khác `undefined` (message do server trả `meta.requestId`; message user / message local chưa gửi → không hiện).
+- **Không phải badge nổi bật:** đây là **chi tiết kỹ thuật phụ trợ**, không phải thông tin hành động → không dùng `--color-accent`, không nền đậm (tránh cạnh tranh chú ý với nội dung).
+- **A11y:** nằm trong text thuần của dòng meta → được đọc bởi screen reader như một đoạn text; không cần `aria-label` riêng. Id đầy đủ nằm trong `title` (đọc được qua tooltip).
+
+> **Liên quan:** `UsageBadge` (hiển thị token in/out + cost) vẫn là **T-M2-03** — T-M1-14 chỉ hiện **request-id**, **không** hiện cost lên UI (cost đã có trong DB + SSE `usage`).
+
 ---
 
 ## 4. State & hành vi UI chuẩn hoá
@@ -610,6 +623,7 @@ Folder `apps/extension/src/sidepanel/components/states/` — **4 trạng thái**
 | `Onboarding` | FR-UX-02 | Parity 3 bước lần đầu |
 | `AttachmentTray`, ảnh trong `MessageBubble` | FR-VISION-01 | Đối chiếu B17 (Gemini upload ảnh) |
 | `UsageBadge`, `ProviderBadge` | FR-PROVIDER-05/09 | Bảng 3 "năng lực hệ thống" |
+| Request-id chip trong dòng meta của `MessageBubble` | NFR-MAINT-04, FR-CONTEXT-12 | Minh bạch kỹ thuật · hỗ trợ điều tra lỗi khi chấm eval |
 
 ---
 

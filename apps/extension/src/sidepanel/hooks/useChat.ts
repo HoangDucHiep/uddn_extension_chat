@@ -11,7 +11,7 @@ import {
   type ImageAttachment,
   type ProviderId,
 } from '@sidekick/shared'
-import { ChatRequestError, streamChat } from '@/lib/sseClient'
+import { ChatRequestError, generateRequestId, streamChat } from '@/lib/sseClient'
 import {
   attachCurrentTab as attachCurrentTabFromLib,
   attachSelection as attachSelectionFromLib,
@@ -224,6 +224,11 @@ export function useChat() {
           (turn) => turn.content.trim().length > 0,
         )
 
+      // Request-id sinh o client → gui header `X-Request-Id` len server →
+      // server ghi cung id vao `request_logs` + chuyen tiep cho provider
+      // (T-M1-14 — NFR-MAINT-04). Gan vao message de hien thi ngan.
+      const requestId = generateRequestId()
+
       // Tao message assistant o trang thai streaming de hien thi token ngay.
       // `continue` thi ghi vao message da bi stop (append noi dung).
       const isContinue = operation === 'continue'
@@ -252,6 +257,7 @@ export function useChat() {
           content: '',
           createdAt: Date.now(),
           status: 'streaming',
+          requestId,
         })
       }
 
@@ -309,6 +315,9 @@ export function useChat() {
               // Id server (uuid) → can cho `regenerate` / `continue` /
               // `retryMessage` goi len BFF (client id khong phai uuid).
               serverId: event.messageId,
+              // Server xac nhan request-id (nguon su that) → ghi de id client
+              // (T-M1-14). Server luon echo id qua header + SSE `meta`.
+              ...(event.requestId !== undefined ? { requestId: event.requestId } : {}),
             })
             if (event.turnId !== undefined) {
               // Server xac nhan turn → gan vao message de client dong bo path.
@@ -405,6 +414,7 @@ export function useChat() {
           for await (const event of streamChat(chatRequest, {
             signal: controller.signal,
             onEvent: handleEvent,
+            requestId,
           })) {
             // Event da duoc xu ly trong onEvent.
             void event

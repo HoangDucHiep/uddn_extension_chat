@@ -320,6 +320,39 @@ Cơ chế đã implement: LLM trả marker `[N]` trong câu trả lời → serv
 | `cost_per_correct_task` = tổng cost / số task đạt ≥ 4.0 |
 | `bff_memory_mb`, `bff_cpu` (đo khi chạy Docker) |
 
+#### 5.3.1 Nguồn sự thật của metric: bảng `request_logs` (T-M1-14 ✅)
+
+Từ T-M1-14, **mọi lượt chat đều tự ghi 1 dòng** vào `request_logs` (thành công **và** thất bại). Harness **không** tự đo lại token / cost / latency — nó **đọc** từ bảng này:
+
+| Metric trong báo cáo | Nguồn | Ghi chú |
+|---|---|---|
+| `tokens_in` / `tokens_out` | `request_logs.tokens_in` · `tokens_out` | Do provider báo, không suy đoán |
+| `cost_usd` | `request_logs.cost_usd` | **Ước lượng** theo `PROVIDER_PRICING` (xem cảnh báo bên dưới) |
+| `ttft_ms` | `request_logs.ttft_ms` | Đo server-side (nhận token đầu tiên từ provider) |
+| `latency_total_ms` | `request_logs.latency_ms` | Đo server-side (tới khi stream kết thúc) |
+| `error` | `request_logs.error` | Error code chuẩn — dùng để tính `success_rate` |
+| `tool_call_count` | `request_logs.tool_calls` | Luôn `0` ở M1 (tool thật ở M2) |
+
+**Cách đọc (đã implement):**
+
+```bash
+# Xem các dòng log gần đây + tổng
+pnpm eval:run logs -- --limit 20
+
+# Tổng hợp usage theo ngày
+curl -s "$BFF/api/usage?from=2026-11-01&to=2026-11-07"
+```
+
+> **API đọc log chỉ trả metadata** (`GET /api/logs`, `GET /api/usage`) — không có `prompt_text` / `response_text` / `context_snapshot`. Transcript đầy đủ vẫn do harness ghi vào `apps/eval/results/ours/<run_id>/<task_id>.json`.
+
+> **Cảnh báo về chi phí (bắt buộc ghi trong `EVAL_REPORT.md`):**
+> `cost_usd` được tính từ **bảng giá snapshot** trong `packages/shared/src/pricing.ts` (`PROVIDER_PRICING`), **không** phải hoá đơn thực tế từ provider. Vì vậy:
+> 1. Báo cáo **phải** nêu rõ giá đã dùng (provider + model + USD/1M token input/output) tại thời điểm đo.
+> 2. Nếu provider đổi giá → cập nhật `PROVIDER_PRICING` rồi **tính lại** phần chi phí (không cần chạy lại toàn bộ eval).
+> 3. So sánh **chi phí với Edge Copilot / Chrome Gemini** là **ước lượng** ở cả hai phía → phải ghi rõ phương pháp ước lượng cho từng phía, không được trình bày như số đo của provider.
+
+> **Retention 90 ngày** (`LOG_RETENTION_DAYS`) → log cũ hơn 90 ngày bị xoá tự động. Khi chốt báo cáo, **export** kết quả ra `apps/eval/results/` (bị git-ignore) trước khi bị prune.
+
 ---
 
 ## 6. Quy trình thu thập dữ liệu
@@ -417,6 +450,9 @@ apps/eval/
 │  ├─ tasks.json              # task định nghĩa (đã version)
 │  ├─ dataset_meta.json       # version, ngày, người soạn, checksum
 │  └─ snapshots/              # nội dung trang snapshot cho từng task
+├─ src/
+│  ├─ cli.ts                  # CLI (có subcommand `logs` đọc request_logs — T-M1-14)
+│  └─ logs.ts                 # fetchLogs() + fetchUsage() + summarizeLogs() (T-M1-14)
 ├─ runners/
 │  ├─ ours.ts                 # gọi BFF của nhóm
 │  ├─ import_manual.ts        # chuẩn hoá transcript thủ công → JSON
@@ -442,6 +478,9 @@ apps/eval/
 ### 7.1 Lệnh vận hành
 
 ```bash
+# 0. Đọc log đã ghi (metadata) — dùng để đối chiếu metric
+pnpm eval:run logs -- --limit 20
+
 # 1. Hạ dataset + chạy hệ thống của nhóm
 pnpm eval:run -- --tasks apps/eval/dataset/tasks.json --runs 3
 

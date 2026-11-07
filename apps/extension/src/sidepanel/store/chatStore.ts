@@ -102,6 +102,13 @@ export interface ChatMessage {
   errorRetryable?: boolean | undefined
   /** So giay user phai cho truoc khi thu lai (429). */
   errorRetryAfterSeconds?: number | undefined
+  /**
+   * Request-id cua luot chat (T-M1-14 — NFR-MAINT-04).
+   *
+   * Dung de doi chieu message tren man hinh voi dong `request_logs` trong DB
+   * (hiển thị 6 ky tu dau trong meta line — trust-by-transparency).
+   */
+  requestId?: string | undefined
 }
 
 export interface ChatState {

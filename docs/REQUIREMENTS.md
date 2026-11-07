@@ -224,7 +224,7 @@ Quy ước ưu tiên: **M** = Must (bắt buộc cho M1) · **S** = Should (bắ
 | FR-CONTEXT-09 | Lịch sử duyệt web tùy chọn (opt-in) làm context | S | Mặc định TẮT; bật thì có cảnh báo rõ; có thể xoá |
 | FR-CONTEXT-10 | Chỉ dẫn trích dẫn nguồn trong câu trả lời | M | Mỗi claim quan trọng gắn [1], [2] → hover/click xem đoạn nguồn. **Đã implement (T-M1-08):** LLM tự sinh marker `[N]` trong câu trả lời (server chèn chỉ dẫn vào system prompt khi **có** context) → server đánh số nguồn context `[1]`, `[2]` theo thứ tự ưu tiên tier, parse marker → phát SSE event `citation` + ghi bảng `citations` → extension render **chip inline** thay `[N]` trong Markdown; bấm chip → popover hiện tiêu đề · domain · đoạn nguồn + nút "Mở trang gốc"; dưới bubble có **dòng tóm tắt nguồn**. Marker vượt số nguồn → bỏ qua (không tạo chip tre); code block / inline code **không** bị biến đổi |
 | FR-CONTEXT-11 | Chế độ "chỉ dùng trang" (không dùng lịch sử chat) | S | Toggle per-request — *hỗ trợ một phần bởi T-M1-23: `trimHistory()` đã cắt lịch sử theo ngân sách còn lại, nhưng chưa có toggle per-request* |
-| FR-CONTEXT-12 | Snapshot context để tái lập (reproducibility) | S | Lưu hash + nội dung context vào log phục vụ eval. **Đã implement (T-M1-06):** `request_logs.context_hash` luôn ghi (hash FNV-1a 32-bit của **context đã gửi**, đã cắt ngân sách — không phải hash của toàn bộ prompt); `request_logs.context_snapshot` (jsonb) ghi **theo setting `LOG_CONTEXT_SNAPSHOT`, mặc định TẮT** vì chứa nội dung trang |
+| FR-CONTEXT-12 | Snapshot context để tái lập (reproducibility) | S | Lưu hash + nội dung context vào log phục vụ eval. **Đã implement (T-M1-06):** `request_logs.context_hash` luôn ghi (hash FNV-1a 32-bit của **context đã gửi**, đã cắt ngân sách — không phải hash của toàn bộ prompt); `request_logs.context_snapshot` (jsonb) ghi **theo setting `LOG_CONTEXT_SNAPSHOT`, mặc định TẮT** vì chứa nội dung trang. **Bổ sung (T-M1-14):** log đầy đủ (mọi lượt chat, kể cả lượt lỗi) + `cost_usd` thật + `tool_calls` đã wire + `GET /api/logs` · `GET /api/usage` chỉ trả **metadata** cho eval harness |
 | FR-CONTEXT-13 | Chat không cần context — đính kèm là hành động chủ động | M | Tab hiện tại **không** tự vào context; không đính kèm gì (hoặc toggle TẮT) → request **không** có payload `context` → model trả lời bằng kiến thức có sẵn + lịch sử hội thoại; đính kèm (nút "Thêm trang này" / `@` / selection / file) → item vào `context.items[]` với `tier` ưu tiên; web search tự động **chưa có** ở M1 (FR-TOOLS-03, M2) |
 
 > **Mô hình context — quyết định sản phẩm (T-M1-23, 2026-11-04):**
@@ -320,7 +320,7 @@ Quy ước ưu tiên: **M** = Must (bắt buộc cho M1) · **S** = Should (bắ
 | FR-PROVIDER-02 | Lưu API key (BYOK) mã hoá trong storage phía server | M | Key không bao giờ render ra UI sau khi lưu; hiện dạng `sk-…abcd` |
 | FR-PROVIDER-03 | Chuyển model trong lúc chat (dropdown ở header) | M | Đổi model giữa cuộc trò chuyện không mất lịch sử |
 | FR-PROVIDER-04 | Fallback khi provider lỗi (429/5xx) sang provider dự phòng | S | Có log; người dùng được thông báo "đã chuyển sang provider X" |
-| FR-PROVIDER-05 | Hiển thị token in/out + chi phí ước tính theo lượt | S | Cập nhật sau mỗi lượt; tổng theo ngày trong Settings |
+| FR-PROVIDER-05 | Hiển thị token in/out + chi phí ước tính theo lượt | S | Cập nhật sau mỗi lượt; tổng theo ngày trong Settings — **phần server đã implement (T-M1-14):** `cost_usd` thật trong `request_logs` (tính từ `PROVIDER_PRICING`) + SSE `usage` mang `costUsd` thật + `GET /api/usage` tổng hợp theo ngày; **UI hiển thị** (UsageBadge) → T-M2-03 |
 | FR-PROVIDER-06 | Budget cap: cảnh báo khi vượt ngưỡng, tuỳ chọn chặn | C | |
 | FR-PROVIDER-07 | Chế độ offline: dùng Ollama/local model, không gọi cloud | S | Tự phát hiện provider local khả dụng |
 | FR-PROVIDER-08 | Team key (shared key) cấu hình qua biến môi trường server | S | Không có key team → extension tự chuyển sang chế độ BYOK/direct và báo rõ |
@@ -584,7 +584,7 @@ Acceptance criteria:
 | NFR-MAINT-01 | TypeScript strict, ESLint + Prettier, CI chạy lint + typecheck + unit test |
 | NFR-MAINT-02 | Unit test coverage ≥ 70% cho core logic (context builder, provider adapter, skill engine, RAG retriever) |
 | NFR-MAINT-03 | Provider/tool/skill đều đăng ký qua interface → thêm mới không sửa code UI |
-| NFR-MAINT-04 | Logging có cấu trúc (JSON) với request-id xuyên suốt client → BFF → provider |
+| NFR-MAINT-04 | Logging có cấu trúc (JSON) với request-id xuyên suốt client → BFF → provider — **T-M1-14 ✅**: log HTTP JSON 1 dòng/request (`{ ts, level, event, requestId, method, path, status, durationMs }`) · `X-Request-Id` xuyên suốt client → BFF → provider (echo response + SSE `meta`) · **mọi** lượt chat (thành công **và** thất bại) ghi 1 dòng `request_logs` với `cost_usd` thật · `GET /api/logs` + `GET /api/usage` chỉ trả **metadata** (T-M1-14) |
 | NFR-MAINT-05 | Tài liệu kiến trúc (ADR) cho các quyết định lớn (streaming qua BFF, lựa chọn Postgres, chiến lược RAG) |
 
 ---
@@ -851,22 +851,22 @@ workflow_step_runs
   started_at    timestamptz
   finished_at   timestamptz
 
-request_logs              -- nguồn dữ liệu cho eval
+request_logs              -- nguồn dữ liệu cho eval (T-M1-14: mọi lượt chat đều ghi 1 dòng)
   id             uuid pk
-  request_id     text unique
+  request_id     text unique     -- X-Request-Id xuyên suốt client → BFF → provider
   conversation_id uuid
   provider       text
   model          text
-  prompt_text    text
-  context_hash   text
-  context_snapshot jsonb  -- snapshot nội dung context (bật/tắt theo setting)
-  response_text  text
+  prompt_text    text            -- CHỈ ghi khi LOG_FULL_CONTENT=true (mặc định TẮT)
+  context_hash   text            -- hash của context đã gửi (luôn ghi)
+  context_snapshot jsonb  -- snapshot nội dung context (LOG_CONTEXT_SNAPSHOT, mặc định TẮT)
+  response_text  text            -- CHỈ ghi khi LOG_FULL_CONTENT=true (mặc định TẮT)
   tokens_in      int
   tokens_out     int
-  cost_usd       numeric(10,6)
+  cost_usd       numeric(10,6)   -- T-M1-14: chi phí THẬT (tính từ PROVIDER_PRICING)
   ttft_ms        int
   latency_ms     int
-  tool_calls     jsonb
+  tool_calls     jsonb           -- T-M1-14: đã wire (null khi không có tool call — tool thật ở M2)
   error          text
   created_at     timestamptz
 
@@ -1064,7 +1064,7 @@ Chỉ bắt đầu M4 khi **đồng thời** thỏa:
 | FR-CONTEXT-09 | S | **T-M2-19** | M2 |
 | FR-CONTEXT-10 | M | **T-M1-08 ✅** | M1 |
 | FR-CONTEXT-11 | S | **T-M2-19** | M2 |
-| FR-CONTEXT-12 | S | **T-M1-06 ✅** | M1 |
+| FR-CONTEXT-12 | S | **T-M1-06 ✅** · **T-M1-14 ✅** (log đầy đủ + API đọc metadata-only) | M1 |
 | FR-CONTEXT-13 | M | **T-M1-23 ✅** | M1 |
 
 #### FR-VISION — Ảnh & thị giác
@@ -1190,5 +1190,5 @@ Chỉ bắt đầu M4 khi **đồng thời** thỏa:
 | NFR-MAINT-01 (strict TS + CI) | T-M0-02 ✅ | M0 |
 | NFR-MAINT-02 (coverage ≥70%) | T-M2-13 · T-M3-03 | M2→M3 |
 | NFR-MAINT-03 (interface registry) | T-M0-07 ✅ · T-M2-04 · T-M2-07 | M0→M2 |
-| NFR-MAINT-04 (logging có cấu trúc) | T-M0-10 ✅ · T-M1-14 · T-M2-12..17 · T-M4-09 | M0→M4 |
+| NFR-MAINT-04 (logging có cấu trúc) | T-M0-10 ✅ · T-M1-14 ✅ · T-M2-12..17 · T-M4-09 | M0→M4 |
 | NFR-MAINT-05 (ADR) | **T-M3-11** | M3 |

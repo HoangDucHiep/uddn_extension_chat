@@ -94,7 +94,9 @@ export function createCorsOptions(allowedOrigins: string[]) {
     },
     credentials: false,
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Accept', 'Authorization', CLIENT_HEADER],
+    // `X-Request-Id` phai duoc allow de client gui request-id xuyen suot
+    // (NFR-MAINT-04 — T-M1-14).
+    allowedHeaders: ['Content-Type', 'Accept', 'Authorization', CLIENT_HEADER, 'X-Request-Id'],
     exposedHeaders: ['X-Request-Id'],
     maxAge: 600,
   }

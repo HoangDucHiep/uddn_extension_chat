@@ -1,7 +1,7 @@
 # Documentation Index — Sidekick AI (Chrome Extension Chat Sidebar)
 
 **Dự án:** Extension chat-bot sidebar cho trình duyệt, cạnh tranh với Edge Copilot Sidebar và Chrome Gemini Sidebar.
-**Giai đoạn hiện tại:** **M0 (Foundation) đã implement xong** (tag `v0.1`) · đang làm **M1 (Parity)** — 18/25 task (T-M1-01, T-M1-04 ✅ hấp thụ, T-M1-05, T-M1-21, T-M1-22, T-M1-23, T-M1-02, T-M1-24, T-M1-25, T-M1-06 ✅, T-M1-07 ✅, T-M1-08 ✅, T-M1-09 ✅, T-M1-10 ✅, T-M1-11 ✅, T-M1-03 ✅, T-M1-12 ✅, T-M1-19 ✅) · 1165 unit test + 69 E2E.
+**Giai đoạn hiện tại:** **M0 (Foundation) đã implement xong** (tag `v0.1`) · đang làm **M1 (Parity)** — 19/25 task (T-M1-01, T-M1-04 ✅ hấp thụ, T-M1-05, T-M1-21, T-M1-22, T-M1-23, T-M1-02, T-M1-24, T-M1-25, T-M1-06 ✅, T-M1-07 ✅, T-M1-08 ✅, T-M1-09 ✅, T-M1-10 ✅, T-M1-11 ✅, T-M1-03 ✅, T-M1-12 ✅, T-M1-19 ✅, T-M1-14 ✅) · 1243 unit test + 71 E2E.
 **Entry point cho agent:** [`../AGENTS.md`](../AGENTS.md) · [`HANDOFF.md`](HANDOFF.md)
 
 ---
@@ -99,13 +99,13 @@ Chi tiết lý do & hệ quả: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §2 (12 A
 
 | Tài liệu | Phiên bản | Ngày | Trạng thái |
 |---|---|---|---|
-| REQUIREMENTS.md | v1.9 | 2026-11-07 | ✅ Đã cập nhật — FR-CHAT-14 + FR-UX-08 + NFR-REL-02/04 ✅ — T-M1-19 |
-| COMPARISON_MATRIX.md | v1.9 | 2026-11-07 | ✅ Đã cập nhật — thêm dòng parity "Error / loading / empty states + retry + trạng thái kết nối" → ✅ T-M1-19 |
-| EVAL_PLAN.md | v1.2 | 2026-11-05 | ✅ Đã cập nhật — §3.4.1 `context_hash` là khoá tái lập lượt chat — T-M1-06 |
-| DESIGN_SYSTEM_BRIEF.md | v1.8 | 2026-11-07 | ✅ Đã cập nhật — §3.9 spec 4 component states + token + a11y — T-M1-19 |
-| SYSTEM_DESIGN.md | v2.0 | 2026-11-07 | ✅ Đã cập nhật — §7.15 states · retry · connection status — T-M1-19 |
-| IMPLEMENTATION_PLAN.md | v1.9 | 2026-11-07 | ✅ Đã cập nhật — T-M1-19 ✅ + §3.1p bảng verify — T-M1-19 |
-| HANDOFF.md | v2.0 | 2026-11-07 | ✅ Đã cập nhật — T-M1-19 states/retry/connection (M1: 18/25) |
+| REQUIREMENTS.md | v1.9 | 2026-11-07 | ✅ Đã cập nhật — FR-CHAT-14 + FR-UX-08 + NFR-REL-02/04 ✅ — T-M1-19 · FR-CONTEXT-12 ✅ — T-M1-14 |
+| COMPARISON_MATRIX.md | v1.9 | 2026-11-07 | ✅ Đã cập nhật — dòng parity "Error / loading / empty states" → ✅ T-M1-19 · dòng "Log request đầy đủ vào DB" → ✅ T-M1-14 |
+| EVAL_PLAN.md | v1.3 | 2026-11-07 | ✅ Đã cập nhật — §5.3.1 metric lấy từ `request_logs` + cảnh báo giá snapshot — T-M1-14 |
+| DESIGN_SYSTEM_BRIEF.md | v1.8 | 2026-11-07 | ✅ Đã cập nhật — §3.9 spec 4 component states — T-M1-19 · §3.10 request-id chip — T-M1-14 |
+| SYSTEM_DESIGN.md | v2.0 | 2026-11-07 | ✅ Đã cập nhật — §7.15 states — T-M1-19 · §7.16 request logging — T-M1-14 |
+| IMPLEMENTATION_PLAN.md | v1.9 | 2026-11-07 | ✅ Đã cập nhật — T-M1-19 ✅ + §3.1p — T-M1-19 · T-M1-14 ✅ + §3.1q — T-M1-14 |
+| HANDOFF.md | v2.0 | 2026-11-07 | ✅ Đã cập nhật — T-M1-14 request logging (M1: 19/25) |
 | CHANGELOG.md | v2.0 | 2026-11-07 | ✅ Đang theo dõi |
 
 ## Trạng thái milestone
@@ -113,7 +113,7 @@ Chi tiết lý do & hệ quả: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §2 (12 A
 | Milestone | Nội dung | Trạng thái |
 |---|---|---|
 | **M0 — Foundation** (2 tuần) | Monorepo, shared types, Docker/Postgres, Drizzle, BFF skeleton, provider Gemini, SSE, side panel shell | ✅ Xong (tag `v0.1`) |
-| **M1 — Parity** (3 tuần) | Content extraction (HTML + PDF + YouTube transcript), context đính kèm chủ động + ngân sách token, `@` multi-tab, selection, citations, markdown/code, conversation CRUD, chat actions (regenerate/edit-resend/stop/continue), gợi ý theo trang + tóm tắt 1-click, toggle panel + context menu + phím tắt, settings, upload ảnh, onboarding, **error/loading/empty states + retry + connection status**, logging, K2/K3 | 🚧 Đang làm — 18/25 task (T-M1-01, T-M1-04 ✅ hấp thụ, T-M1-05, T-M1-21, T-M1-22, T-M1-23, T-M1-02, T-M1-24, T-M1-25, T-M1-06 ✅, T-M1-07 ✅, T-M1-08 ✅, T-M1-09 ✅, T-M1-10 ✅, T-M1-11 ✅, T-M1-03 ✅, T-M1-12 ✅, T-M1-19 ✅) |
+| **M1 — Parity** (3 tuần) | Content extraction (HTML + PDF + YouTube transcript), context đính kèm chủ động + ngân sách token, `@` multi-tab, selection, citations, markdown/code, conversation CRUD, chat actions (regenerate/edit-resend/stop/continue), gợi ý theo trang + tóm tắt 1-click, toggle panel + context menu + phím tắt, settings, upload ảnh, onboarding, **error/loading/empty states + retry + connection status**, **request logging đầy đủ vào `request_logs`** (request-id xuyên suốt · cost thật · retention 90 ngày · API đọc metadata cho eval), K2/K3 | 🚧 Đang làm — 19/25 task (T-M1-01, T-M1-04 ✅ hấp thụ, T-M1-05, T-M1-21, T-M1-22, T-M1-23, T-M1-02, T-M1-24, T-M1-25, T-M1-06 ✅, T-M1-07 ✅, T-M1-08 ✅, T-M1-09 ✅, T-M1-10 ✅, T-M1-11 ✅, T-M1-03 ✅, T-M1-12 ✅, T-M1-19 ✅, T-M1-14 ✅) |
 | **M2 — Advanced & Eval** (3 tuần) | Multi-provider, skills, tool registry + MCP, RAG, token/cost UI, **EVAL_REPORT** | ⬜ Chưa bắt đầu |
 | **M3 — Polish & Deliverable** (1 tuần) | Design system, states, a11y audit, i18n, demo video, slide, README, backup DB, ADR | ⬜ Chưa bắt đầu |
 | **M4 — Workflow** (tuỳ chọn, 2 tuần) | Scheduler, workflow CRUD, run log, import/export, notification | ⬜ Ngoài đường găng |

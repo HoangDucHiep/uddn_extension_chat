@@ -192,7 +192,7 @@ Dùng làm acceptance checklist cho M1.
 - [ ] Xoá dữ liệu / quyền riêng tư (NFR-SEC-07) — ✅ **T-M1-12** ("Xoá lịch sử chat" → `DELETE /api/conversations` · "Xoá dữ liệu cục bộ" → xoá khoa `sidekick.*` trong `chrome.storage.local`, **giữ** trạng thái onboarding · telemetry + history OFF mặc định)
 - [ ] Token/cost hiển thị — ⬜ T-M2-03
 - [ ] Keyboard shortcuts cấu hình được — ⬜ T-M1-18
-- [ ] Log request đầy đủ vào DB — ⬜ T-M1-14
+- [ ] Log request đầy đủ vào DB — ✅ **T-M1-14** (mọi lượt chat — thành công **và** thất bại — đều ghi 1 dòng `request_logs` với provider · model · token in/out · `cost_usd` **thật** (tính từ `PROVIDER_PRICING`) · `ttft_ms` · `latency_ms` · `tool_calls` · `context_hash` · error code · `request_id` xuyên suốt client → BFF → provider · log HTTP dạng **JSON** 1 dòng/request · **retention 90 ngày** được enforce (startup + mỗi 24 h) · `GET /api/logs` · `GET /api/usage` trả **chỉ metadata** cho eval harness · *UI hiển thị token/cost → T-M2-03 · tool/MCP thật → M2*)
 - [ ] Direct/BYOK fallback khi BFF down — ⬜ T-M1-15
 
 ### E.2 Checklist M4 — Workflow (ngoài đường găng, chỉ làm sau khi M0–M3 xong)

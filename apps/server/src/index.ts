@@ -7,6 +7,7 @@ import { createApp } from './app.js'
 import { getAllowedOrigins, getGeminiFallbackModels, getProviderFallbacks, loadEnv } from './config/env.js'
 import { createDatabase } from './db/index.js'
 import { ProviderRegistry } from './providers/registry.js'
+import { pruneRequestLogs } from './services/requestLogService.js'
 import type { ProviderId } from '@sidekick/shared'
 
 const VERSION = '0.1.0'
@@ -38,9 +39,10 @@ async function main(): Promise<void> {
     },
     masterKey: env.MASTER_KEY,
     ollamaBaseUrl: env.OLLAMA_BASE_URL,
-    logFullContent: false,
+    logFullContent: env.LOG_FULL_CONTENT,
     logRequests: env.LOG_REQUESTS,
     logContextSnapshot: env.LOG_CONTEXT_SNAPSHOT,
+    logRetentionDays: env.LOG_RETENTION_DAYS,
     version: VERSION,
     allowedOrigins,
     logLevel: env.LOG_LEVEL,
@@ -53,9 +55,35 @@ async function main(): Promise<void> {
     console.log(`Provider chain: ${registry.getFallbackChain().join(' -> ')}`)
   })
 
+  // Retention policy `request_logs` (§5.2): xoa dong cu hon 90 ngay.
+  // Chay 1 lan luc khoi dong + lap lai moi 24h (T-M1-14).
+  const PRUNE_INTERVAL_MS = 24 * 60 * 60 * 1000
+
+  const pruneLogs = (): void => {
+    void pruneRequestLogs(db, env.LOG_RETENTION_DAYS)
+      .then((deleted) => {
+        if (deleted > 0) {
+          console.log(`[retention] Da xoa ${deleted} dong request_logs qua han.`)
+        }
+      })
+      .catch((error: unknown) => {
+        // Xoa that bai khong duoc lam server chet.
+        console.error(
+          '[retention] khong xoa duoc request_logs cu:',
+          error instanceof Error ? error.message : error,
+        )
+      })
+  }
+
+  pruneLogs()
+  const pruneTimer = setInterval(pruneLogs, PRUNE_INTERVAL_MS)
+  // Khong chan process ket thuc.
+  pruneTimer.unref()
+
   // Tat sach: dong server truoc, dong pool sau.
   const shutdown = (signal: string): void => {
     console.log(`\nNhan ${signal}, dang tat server...`)
+    clearInterval(pruneTimer)
     server.close(() => {
       void pool.end().then(() => {
         console.log('Da dong ket noi DB.')

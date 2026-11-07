@@ -89,7 +89,7 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | T-M1-11 | Prompt gợi ý theo trang + Summarize 1-click | FR-UX-03/04 | `packages/shared/src/pageProfile.ts`, `sidepanel/components/chat/PromptGallery.tsx`, `chat/SummarizeButton.tsx` | Gợi ý đổi theo loại trang (docs/bài báo/forum) | M | ✅ *(2026-11-07)* |
 | T-M1-12 | Settings: theme, cỡ chữ, chiều rộng, quản lý dữ liệu, endpoint BFF | FR-SETTINGS-01/02/03/04/05/06/07, FR-UX-06, NFR-SEC-07 | `sidepanel/components/settings/*` | Áp dụng ngay, persist qua reload; xoá dữ liệu có confirm; telemetry/history mặc định OFF | M | ✅ *(2026-11-07)* |
 | T-M1-13 | Export conversation (Markdown / JSON) | FR-CHAT-10 | `lib/export.ts` | Xuất đúng nội dung, mở được bằng Notepad/Markdown viewer | S | ⬜ |
-| T-M1-14 | Request logging đầy đủ vào `request_logs` | NFR-MAINT-04, FR-CONTEXT-12, NFR-REL-01, §7.2 | `apps/server/src/lib/requestLogger.ts` | Mỗi lượt chat có 1 dòng log: provider, model, token, cost, ttft, latency; snapshot context hash để tái lập | M | ⬜ |
+| T-M1-14 | Request logging đầy đủ vào `request_logs` | NFR-MAINT-04, FR-CONTEXT-12, NFR-REL-01, §7.2 | `packages/shared/src/pricing.ts`, `packages/shared/src/schemas/logs.ts`, `apps/server/src/middleware/requestId.ts`, `apps/server/src/services/requestLogService.ts`, `apps/server/src/routes/logs.ts` | Mỗi lượt chat có 1 dòng log: provider, model, token, cost, ttft, latency; snapshot context hash để tái lập | M | ✅ *(2026-11-07)* |
 | T-M1-15 | K3 direct mode (BYOK không cần BFF) | FR-PROVIDER-08/09, NFR-REL-03, NFR-SEC-01 | `lib/crypto.ts`, `lib/directProvider.ts`, `state/keyStore.ts` | Tắt Docker → vẫn chat được với key nhập tay; key mã hoá local | L | ⬜ |
 | T-M1-16 | K2 BYOK qua BFF: UI quản lý key | FR-PROVIDER-02, NFR-SEC-01 | `settings/ProviderSettings.tsx`, `POST /providers/keys` | Thêm key → test thành công; list key chỉ hiện 4 ký tự cuối | M | ⬜ |
 | T-M1-17 | i18n VI/EN | FR-SETTINGS-06 | `apps/extension/src/i18n/{vi.ts,en.ts,index.ts}` | Đổi ngôn ngữ → toàn bộ UI đổi | M | ⬜ |
@@ -793,6 +793,50 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 
 > **Hạn chế đã biết:** (1) `ConnectionBadge` chỉ phản ánh BFF, **không** phản ánh provider có sống hay không → lỗi provider hiện ở card lỗi của lượt chat; (2) Đếm ngược 429 dùng header `Retry-After` của provider — provider không gửi header thì dùng mặc định 60 s; (3) Chưa có **K3 direct mode** khi BFF chết (NFR-REL-03) → thuộc T-M1-15.
 
+### 3.1q Kết quả T-M1-14 — Request logging đầy đủ vào `request_logs` (NFR-MAINT-04 + FR-CONTEXT-12 + NFR-REL-01) (2026-11-07)
+
+> Chi tiết kiến trúc: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.16 · AC: [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.1 (FR-CONTEXT-12) · §5.2 (retention).
+
+**Không có migration DB mới (mọi cột đã tồn tại), không dependency mới, không permission mới, không đổi manifest.**
+
+| Hạng mục | Kết quả |
+|---|---|
+| `packages/shared/src/pricing.ts` | ✅ **Mới** — `PROVIDER_PRICING` (snapshot giá USD / 1M token input·output) · `resolveModelPricing()` (model lạ → giá mặc định của provider) · `calculateCostUsd()` (làm tròn 6 chữ số — khớp `numeric(12,6)`) · `mock`/`ollama` → `0` |
+| `packages/shared/src/schemas/logs.ts` | ✅ **Mới** — `requestLogSummarySchema` (**metadata only**: không `promptText`/`responseText`/`contextSnapshot`) · `logsResponseSchema` (`{ items, total }`) · `usageResponseSchema` (`{ totalTokens, totalCostUsd, byDay[] }`) · `logsQuerySchema` · `usageQuerySchema` |
+| `packages/shared/src/schemas/provider.ts` | ✅ **Sửa** — `providerStreamRequestSchema` += `requestId?: string` |
+| `packages/shared/src/constants.ts` | ✅ **Sửa** — `API_ROUTES.logs` + `API_ROUTES.usage` |
+| `apps/server/src/middleware/requestId.ts` | ✅ **Mới** — đọc `X-Request-Id` (charset an toàn, ≤ 200 ký tự) hoặc `randomUUID()` → `req.sidekickRequestId` (Express type augmentation, **không** `any`) → echo header `X-Request-Id` |
+| `apps/server/src/types/express.d.ts` | ✅ **Mới** — `declare global { namespace Express { interface Request { sidekickRequestId?: string } } }` |
+| `apps/server/src/middleware/requestLogger.ts` | ✅ **Sửa** — 1 dòng JSON mỗi request: `{ ts, level, event: 'http_request', requestId, method, path, status, durationMs }` — **không** log body/key |
+| `apps/server/src/middleware/origin.ts` | ✅ **Sửa** — `X-Request-Id` vào `allowedHeaders` (`exposedHeaders` đã có sẵn) |
+| `apps/server/src/config/env.ts` | ✅ **Sửa** — `LOG_REQUESTS` mặc định `'true'` · **mới** `LOG_FULL_CONTENT` (mặc định `'false'`) · **mới** `LOG_RETENTION_DAYS` (mặc định `'90'`) |
+| `apps/server/src/services/requestLogService.ts` | ✅ **Mới** — `insertRequestLog()` · `buildContextSnapshot()` · `toRequestLogSummary()` · `listRequestLogs()` (filter + phân trang) · `aggregateUsage()` (tổng token + cost + theo ngày) · `pruneRequestLogs()` (xoá dòng cũ hơn `LOG_RETENTION_DAYS`) |
+| `apps/server/src/services/chatService.ts` | ✅ **Sửa** — `options.requestId` (param 4 **optional**) · log **cả lượt lỗi** (`MISSING_API_KEY` / `PROVIDER_VISION_UNSUPPORTED` / lỗi stream) với `error` = error code + `latencyMs` · ghi `costUsd` **thật** (từ `calculateCostUsd`) · ghi `toolCalls` (jsonb; `null` khi rỗng — tool thật ở M2) · SSE `usage` mang `costUsd` thật (thay vì `0`) · `keySource` trả về giá trị đã resolve (thay vì hardcode `'K1'`) |
+| `apps/server/src/routes/logs.ts` | ✅ **Mới** — `GET /api/logs` (`limit`/`offset`/`provider`/`from`/`to`/`conversationId`) → `{ items, total }` · `GET /api/usage` (`from`/`to`) → `{ totalTokens, totalCostUsd, byDay[] }` — validate Zod ở biên, **chỉ metadata** |
+| `apps/server/src/providers/{openaiCompatible,gemini}.ts` | ✅ **Sửa** — forward header `X-Request-Id` xuống provider khi có (best-effort correlation) |
+| `apps/server/src/index.ts` | ✅ **Sửa** — truyền `logFullContent` + `logRetentionDays` · hẹn `pruneRequestLogs()` lúc khởi động + **mỗi 24 h** |
+| `apps/server/src/app.ts` | ✅ **Sửa** — đăng ký `createRequestIdMiddleware()` + `createLogsRouter()` |
+| `apps/extension/src/lib/sseClient.ts` | ✅ **Sửa** — `generateRequestId()` · gửi header `X-Request-Id` · ưu tiên header echo từ server |
+| `apps/extension/src/sidepanel/hooks/useChat.ts` | ✅ **Sửa** — sinh `requestId` → truyền `streamChat` → lưu vào assistant message khi nhận SSE `meta` |
+| `apps/extension/src/sidepanel/store/chatStore.ts` | ✅ **Sửa** — `ChatMessage` += `requestId?: string` |
+| `apps/extension/src/sidepanel/components/MessageBubble.tsx` | ✅ **Sửa** — hiển thị **short id (6 ký tự)** trong dòng meta (cùng slot chip provider/model) — chỉ design token, không hardcode màu |
+| `apps/eval/src/logs.ts` | ✅ **Mới** — `fetchLogs()` + `fetchUsage()` dùng schema shared · `summarizeLogs()` |
+| `apps/eval/src/cli.ts` | ✅ **Sửa** — subcommand `pnpm eval:run logs` (in dòng log gần đây + tổng) |
+| Unit test | ✅ **Mới** — shared `pricing.test.ts` (**14**) · server `requestLogService.test.ts` (**26**) · `requestLogger.test.ts` (**21**) · `logsRoute.test.ts` (**11**) · extension `sseClient.test.ts` (**12**, cập nhật) · `useChat.test.ts` + `useChatOperations.test.ts` (cập nhật) · **Mới** `apps/server/tests/helpers/fakeRequestLogDb.ts` |
+| E2E | ✅ **Mới** `e2e/requestLog.spec.ts` — **2** kịch bản: gửi prompt → `GET /api/logs?limit=1` có dòng khớp `requestId` · `ttftMs`/`latencyMs` > 0 · `tokensOut` > 0 · `costUsd >= 0` |
+| `pnpm typecheck` | ✅ pass (shared · server · extension · eval) |
+| `pnpm lint` | ✅ pass (0 error, 0 warning) |
+| `pnpm test` | ✅ pass — shared **243** · server **377** · extension **623** (tổng **1243**, trước 1165 → **+78**) |
+| `pnpm build` | ✅ pass |
+| `pnpm db:migrate` | ✅ pass — **không có migration mới** (no drift) |
+| `pnpm test:e2e` | ✅ pass — `requestLog.spec.ts` **2/2** · tổng **71/71** |
+
+> **Mutation spot-check:** 6/6 mutation bị bắt — (1) `chatService` bỏ ghi `costUsd` → 1 unit fail · (2) `buildContextSnapshot` dùng hash của prompt thay vì context → 1 unit fail · (3) bỏ nhánh log lượt lỗi → 1 unit fail + E2E fail · (4) `routes/logs.ts` trả `promptText` → 1 unit fail (assert metadata-only) · (5) `pruneRequestLogs` sai cutoff → 1 unit fail · (6) `requestId` middleware bỏ qua header đầu vào → 1 unit fail.
+
+> **Quyết định kỹ thuật:** (1) **Không migration** — mọi cột (`request_id` · `cost_usd` · `tool_calls`) đã có sẵn từ M0 → chỉ là code + contract; (2) **`LOG_REQUESTS` mặc định `true`** — log chỉ chứa **metadata**, không phải nội dung → an toàn theo mặc dữ liệu; nội dung đầy đủ vẫn **TẮT** qua `LOG_FULL_CONTENT=false`; (3) **`X-Request-Id` là trục tương quan** client → BFF → provider → DB → eval, do client tự sinh (uuid) để log HTTP của BFF và provider cũng mang cùng id; (4) **Giá là snapshot** (`PROVIDER_PRICING`) — không gọi API giá của provider → chi phí là **ước lượng ổn định** cho eval, không phải hoá đơn thực tế (ghi rõ trong `EVAL_PLAN.md`); (5) **Endpoint log chỉ trả metadata** — `prompt_text` / `response_text` / `context_snapshot` **không** bao giờ ra khỏi server → an toàn khi chia sẻ log eval; (6) **Retention 90 ngày** thực thi thật (startup + 24 h) — trước đó §5.2 chỉ là lời hứa; (7) **`tool_calls` đã wire nhưng M1 không phát sinh tool call** → giá trị `null`, tool/MCP thật ở M2 (T-M2-07..11); (8) **Chip short id trong dòng meta** — trust-by-transparency, giống slot chip provider/model, dùng design token sẵn có.
+
+> **Hạn chế đã biết:** (1) `cost_usd` là **ước lượng** theo bảng giá snapshot — nếu giá provider đổi thì cần cập nhật `PROVIDER_PRICING`; (2) `tool_calls` luôn `null` ở M1 (tool thật ở M2) → chưa dùng được cho đo chi phí tool; (3) `X-Request-Id` forward xuống provider là **best-effort** — không phải mọi provider đều log header này; (4) `GET /api/logs` **không** phân trang keyset (đang `limit`/`offset`) — dataset eval M2 có thể cần cursor; (5) Chưa có **UI usage/cost** → thuộc T-M2-03 (`UsageBadge`).
+
 ### 3.2 Traceability FR → Task
 
 > Bảng đầy đủ FR → Task (kèm milestone) nằm ở [`REQUIREMENTS.md`](REQUIREMENTS.md) §11.1 — nơi duy nhất cần cập nhật khi thêm/bớt task.
@@ -801,7 +845,7 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | Nhóm | FR trong nhóm | Task phụ trách | Ghi chú |
 |---|---|---|---|
 | FR-CHAT-01..14 | 14 FR | T-M0-10 · T-M0-13 · **T-M1-07 ✅**/**T-M1-09 ✅**/**T-M1-10 ✅**/11/13/**19 ✅** | FR-CHAT-02/03/04 (Markdown, code block + copy, bảng) do T-M1-07 ✅ · **FR-CHAT-08/09/11 (chat CRUD: tạo/đổi tên/xoá/ghim/lưu trữ/search) do T-M1-09 ✅ (2026-11-07)** · **FR-CHAT-05/06/07/12/13 (regenerate + biến thể, edit-resend + branch, stop/continue, keyboard, draft) do T-M1-10 ✅ (2026-11-07)** · **FR-CHAT-14 (error + hành động khôi phục: 429 đếm ngược / 401 → mở Settings / 5xx → Thử lại) do T-M1-19 ✅ (2026-11-07)** |
-| FR-CONTEXT-01..13 | 13 FR | T-M1-01/02/04/05/**06 ✅**/**08 ✅**/14 · **T-M1-21/22/23** · **T-M2-19** | FR-CONTEXT-05/06 nâng lên Must (2026-11-04) · FR-CONTEXT-13 (chat không cần context) do T-M1-23 · **FR-CONTEXT-03 (`@` multi-tab) do T-M1-05 ✅** · **FR-CONTEXT-04 (selection) do T-M1-02 ✅** · **FR-CONTEXT-01 (cache URL+hash) + FR-CONTEXT-12 (snapshot) do T-M1-06 ✅** · **FR-CONTEXT-10 (citation chip + popover) do T-M1-08 ✅ (2026-11-06)** |
+| FR-CONTEXT-01..13 | 13 FR | T-M1-01/02/04/05/**06 ✅**/**08 ✅**/**14 ✅** · **T-M1-21/22/23** · **T-M2-19** | FR-CONTEXT-05/06 nâng lên Must (2026-11-04) · FR-CONTEXT-13 (chat không cần context) do T-M1-23 · **FR-CONTEXT-03 (`@` multi-tab) do T-M1-05 ✅** · **FR-CONTEXT-04 (selection) do T-M1-02 ✅** · **FR-CONTEXT-01 (cache URL+hash) + FR-CONTEXT-12 (snapshot) do T-M1-06 ✅** · **FR-CONTEXT-10 (citation chip + popover) do T-M1-08 ✅ (2026-11-06)** · **FR-CONTEXT-12 (log đầy đủ + cost thật + read API metadata-only) do T-M1-14 ✅ (2026-11-07)** |
 | FR-VISION-01..05 | 5 FR | **T-M1-24 ✅** (upload) · **T-M2-22** (mở rộng) | FR-VISION-01 nâng lên M · **T-M1-24 xong 2026-11-05** (vision đầy đủ Gemini + OpenAI-compatible, lưu Postgres, multi-turn) |
 | FR-TOOLS-01..06 | 6 FR | T-M2-07/08/09/10/11/18 · **T-M2-20** | FR-TOOLS-03 (web search) tách riêng khỏi tool registry |
 | FR-SKILL-01..07 | 7 FR | T-M2-04/05/06 · **T-M2-21** | FR-SKILL-04 (skill mẫu) + FR-SKILL-06 (điều kiện) tách task |
@@ -811,9 +855,9 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | FR-UX-01..10 | 10 FR | **T-M1-03 ✅**/10/**11 ✅**/**12 ✅**/**19 ✅**/18/20 · **T-M1-25 ✅** | FR-UX-02 (onboarding) tách task riêng T-M1-25 — **xong 2026-11-05** (3 bước, BYOK K2, Ollama, skippable) · **FR-UX-03/04 (gợi ý theo trang + tóm tắt 1-click) do T-M1-11 ✅ (2026-11-07)** · **FR-UX-01 (toggle panel · context menu · `Ctrl+Shift+K`) do T-M1-03 ✅ (2026-11-07)** · **FR-UX-06 (drawer Settings + bề rộng panel) do T-M1-12 ✅ (2026-11-07)** · **FR-UX-08 (banner trạng thái kết nối + lỗi, dismiss được) do T-M1-19 ✅ (2026-11-07)** · đổi phím tắt cấu hình được → T-M1-18 |
 | NFR-PERF-01..06 | 6 NFR | T-M0-11 · T-M1-01/07/14/20 · T-M2-13 · T-M3-02/04/09 | NFR là yêu cầu xuyên suốt |
 | NFR-SEC-01..08 | 8 NFR | T-M0-02/06/09/12 · T-M1-04/07/15/16 · **T-M2-19** | NFR-SEC-06 (domain nhạy cảm) → T-M2-19 |
-| NFR-REL-01..05 | 5 NFR | T-M1-10/14/15/**19 ✅** · **T-M3-10** | **NFR-REL-02 (retry 1 lần backoff 800 ms, không retry lỗi auth) + NFR-REL-04 (badge + banner trạng thái kết nối) do T-M1-19 ✅ (2026-11-07)** · NFR-REL-03 (K3 direct khi BFF chết) → T-M1-15 · NFR-REL-05 (backup DB) tách task M3 |
+| NFR-REL-01..05 | 5 NFR | T-M1-10/**14 ✅**/15/**19 ✅** · **T-M3-10** | **NFR-REL-02 (retry 1 lần backoff 800 ms, không retry lỗi auth) + NFR-REL-04 (badge + banner trạng thái kết nối) do T-M1-19 ✅ (2026-11-07)** · NFR-REL-03 (K3 direct khi BFF chết) → T-M1-15 · NFR-REL-05 (backup DB) tách task M3 · **NFR-REL-01 (log đầy đủ + retention 90 ngày + read API cho eval) do T-M1-14 ✅ (2026-11-07)** |
 | NFR-A11Y-01..05 | 5 NFR | T-M1-20 · T-M3-03 | A11Y pass cơ bản ở M1, audit WCAG đầy đủ ở M3 |
-| NFR-MAINT-01..05 | 5 NFR | T-M0-02/07/10 · T-M1-14 · T-M2-04/07/12..17 · **T-M3-11** | NFR-MAINT-05 (ADR) tách task M3 |
+| NFR-MAINT-01..05 | 5 NFR | T-M0-02/07/10 · **T-M1-14 ✅** · T-M2-04/07/12..17 · **T-M3-11** | NFR-MAINT-04 (request-id xuyên suốt client → BFF → provider + log JSON có cấu trúc) do **T-M1-14 ✅ (2026-11-07)** · NFR-MAINT-05 (ADR) tách task M3 |
 
 **Kết quả audit 2026-11-04:** trước đó **31 FR + 27 NFR (58 yêu cầu)** chưa được map tới task nào trong cột FR của plan, và 2 nhãn FR sai (T-M1-04, T-M1-06). Sau khi bổ sung task card (T-M1-21..25, T-M2-19..22, T-M3-10..11) và ghi bổ sung FR/NFR vào các task card cũ, **mọi FR/NFR đều có ít nhất 1 task** — trừ `FR-WORKFLOW-04` (chủ động defer sang M5).
 

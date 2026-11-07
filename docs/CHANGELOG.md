@@ -9,6 +9,21 @@
 ## [Unreleased]
 
 ### Added
+- **T-M1-14 — Request logging đầy đủ vào `request_logs` (NFR-MAINT-04 + FR-CONTEXT-12 + NFR-REL-01)**
+  - `packages/shared/src/pricing.ts` (mới) — `PROVIDER_PRICING` (USD / 1M token input·output, snapshot) · `resolveModelPricing()` (model lạ → giá mặc định của provider) · `calculateCostUsd({ provider, model, tokensIn, tokensOut })` → làm tròn **6** chữ số (khớp `numeric(12,6)`) · `mock`/`ollama` → `0`.
+  - `packages/shared/src/schemas/logs.ts` (mới) — `requestLogSummarySchema` (**metadata only** — không `promptText`/`responseText`/`contextSnapshot`) · `logsResponseSchema` (`{ items, total }`) · `usageResponseSchema` (`{ totalTokens, totalCostUsd, byDay[] }`) · `logsQuerySchema` · `usageQuerySchema`.
+  - `packages/shared/src/schemas/provider.ts` — `providerStreamRequestSchema` += `requestId?: string`.
+  - `packages/shared/src/constants.ts` — `API_ROUTES.logs` + `API_ROUTES.usage`.
+  - `packages/shared/src/index.ts` — export `./pricing.js` + `./schemas/logs.js`.
+  - `apps/server/src/middleware/requestId.ts` (mới) — đọc `X-Request-Id` (charset an toàn, ≤ 200 ký tự) hoặc `randomUUID()` → `req.sidekickRequestId` · echo header `X-Request-Id` ở response.
+  - `apps/server/src/types/express.d.ts` (mới) — augment Express `Request` với `sidekickRequestId?: string` (**không** dùng `any`).
+  - `apps/server/src/services/requestLogService.ts` (mới) — `insertRequestLog()` · `buildContextSnapshot()` · `toRequestLogSummary()` · `listRequestLogs()` (filter + `limit`/`offset`) · `aggregateUsage()` (tổng token + cost + theo ngày) · `pruneRequestLogs()` (xoá dòng cũ hơn `LOG_RETENTION_DAYS`).
+  - `apps/server/src/routes/logs.ts` (mới) — `GET /api/logs` (`limit`/`offset`/`provider`/`from`/`to`/`conversationId`) → `{ items, total }` · `GET /api/usage` (`from`/`to`) → `{ totalTokens, totalCostUsd, byDay[] }` — validate Zod ở biên, **chỉ trả metadata**.
+  - `apps/eval/src/logs.ts` (mới) — `fetchLogs()` · `fetchUsage()` · `summarizeLogs()` dùng schema shared.
+  - **Test** — `packages/shared/tests/pricing.test.ts` (mới, 14) · `apps/server/tests/requestLogService.test.ts` (mới, 26) · `apps/server/tests/requestLogger.test.ts` (mới, 21) · `apps/server/tests/logsRoute.test.ts` (mới, 11) · `apps/server/tests/helpers/fakeRequestLogDb.ts` (mới) · `apps/extension/tests/sseClient.test.ts` (cập nhật, 12) · `apps/extension/tests/useChat.test.ts` + `useChatOperations.test.ts` (cập nhật) · `apps/extension/e2e/requestLog.spec.ts` (mới, 2 kịch bản).
+    - **Số test toàn repo:** 1165 → **1243 unit** (shared 243 · server 377 · extension 623) + 69 → **71 E2E**.
+    - **Mutation spot-check:** 6/6 mutation bị bắt — `calculateCostUsd` trả `0` · `context_hash` dùng hash của prompt · bỏ nhánh log lượt lỗi · `routes/logs.ts` trả `promptText` · `pruneRequestLogs` sai cutoff · `requestId` middleware bỏ qua header đầu vào.
+    - **Migration:** **không** có migration mới (mọi cột đã có sẵn từ M0) · **không** dependency mới · **không** permission mới · **không** đổi manifest.
 - **T-M1-19 — Error / loading / empty states + retry + connection status (FR-CHAT-14 + FR-UX-08 + NFR-REL-02/04)**
   - `packages/shared/src/chatErrors.ts` (mới) — `ChatErrorKind` (`network` · `rate-limit` · `auth` · `provider` · `server` · `unknown`) · `classifyChatError(code)` · `isRetryableKind(kind)` (false cho `auth`) · `shouldAutoRetry(kind)` (true cho `network`/`server`/`unknown`) · `defaultRetryAfterSeconds(kind)` (60 cho `rate-limit`) · `AUTO_RETRY_BACKOFF_MS = 800`.
   - `packages/shared/src/events.ts` — `chatErrorEventSchema` += `retryAfterSeconds?: number` (int ≥ 0).
@@ -47,6 +62,20 @@
     - **Migration:** **không** có migration mới · **không** dependency mới · **không** có UI mới.
 
 ### Changed
+- `apps/server/src/config/env.ts` — `LOG_REQUESTS` mặc định `'false'` → **`'true'`** (log chỉ chứa metadata) · **mới** `LOG_FULL_CONTENT` (mặc định `'false'` — lưu thêm `prompt_text`/`response_text`) · **mới** `LOG_RETENTION_DAYS` (mặc định `'90'`).
+- `apps/server/src/middleware/requestLogger.ts` — log dạng text (`GET /api/health 200 12ms`) → **1 dòng JSON** mỗi request: `{ ts, level, event: 'http_request', requestId, method, path, status, durationMs }` (**không** log body/key).
+- `apps/server/src/middleware/origin.ts` — `allowedHeaders` += `X-Request-Id` (`exposedHeaders` đã có sẵn).
+- `apps/server/src/services/chatService.ts` — `createChatStream(deps, request, abortSignal, options?)` nhận `options.requestId` (param 4 **optional**) · log **cả nhánh lỗi** (`MISSING_API_KEY` / `PROVIDER_VISION_UNSUPPORTED` / lỗi stream) với `error` = error code + `latencyMs` · ghi `costUsd` **thật** (từ `calculateCostUsd`) · ghi `toolCalls` (jsonb; `null` khi rỗng) · SSE `usage` mang `costUsd` thật (thay vì `0`) · `keySource` trả về giá trị **đã resolve** (thay vì hardcode `'K1'`).
+- `apps/server/src/providers/openaiCompatible.ts` + `gemini.ts` — forward header `X-Request-Id` xuống provider khi có (best-effort correlation).
+- `apps/server/src/routes/chat.ts` — echo header `X-Request-Id` + truyền `req.sidekickRequestId` xuống `createChatStream`.
+- `apps/server/src/app.ts` — đăng ký `createRequestIdMiddleware()` + `createLogsRouter()`.
+- `apps/server/src/index.ts` — dùng `logFullContent` + `logRetentionDays` từ env · hẹn `pruneRequestLogs()` lúc khởi động + **mỗi 24 h**.
+- `apps/extension/src/lib/sseClient.ts` — `generateRequestId()` · gửi header `X-Request-Id` · ưu tiên id server echo trong response.
+- `apps/extension/src/sidepanel/hooks/useChat.ts` — sinh `requestId` → truyền `streamChat` → lưu vào assistant message khi nhận SSE `meta`.
+- `apps/extension/src/sidepanel/store/chatStore.ts` — `ChatMessage` += `requestId?: string`.
+- `apps/extension/src/sidepanel/components/MessageBubble.tsx` — dòng meta assistant thêm **short id (6 ký tự)** của `requestId` (`font-mono` · `--text-tertiary` · `title` chứa id đầy đủ).
+- `apps/eval/src/cli.ts` — thêm subcommand `pnpm eval:run logs` (in dòng log gần đây + tổng).
+- `apps/server/.env` + `apps/server/.env.example` — `LOG_REQUESTS=true` · `LOG_FULL_CONTENT=false` · `LOG_RETENTION_DAYS=90`.
 - `apps/server/src/services/chatService.ts` — SSE `error` event **không** còn hardcode `retryable: true` → `chunk.errorRetryable ?? isRetryableKind(classifyChatError(code))` · forward `retryAfterSeconds`.
 - `apps/extension/src/lib/sseClient.ts` — `throw new Error("CODE: msg")` → `export class ChatRequestError extends Error { code; status; retryable }` (lỗi network → `SERVICE_UNAVAILABLE`) → caller branch được mà không parse chuỗi.
 - `apps/extension/src/sidepanel/store/chatStore.ts` — `ChatMessage` += `serverId?` (uuid từ SSE `meta.messageId`) · `errorCode?` · `errorRetryable?` · `errorRetryAfterSeconds?` · action `setMessageError(id, patch)`.
@@ -74,6 +103,12 @@
 - `docs/COMPARISON_MATRIX.md` — §E: 3 dòng parity → ✅ (toolbar icon toggle · context menu "Ask Sidekick" · keyboard shortcut) · A25 / B19 ghi chú T-M1-03.
 
 ### Fixed
+- Bảng `request_logs` **không có dòng nào** vì `LOG_REQUESTS` mặc định `false` → mặc định đã bật (chỉ ghi metadata).
+- `cost_usd` **luôn = 0** trong DB và SSE `usage` → nay tính thật từ bảng giá token (`PROVIDER_PRICING`).
+- Lượt chat **thất bại** (thiếu API key, provider không hỗ trợ vision, lỗi stream) **không** được ghi log → nay **mọi** lượt đều có 1 dòng log với error code.
+- `request_logs.tool_calls` **luôn = null** → đã wire (shape-test), giá trị `null` khi chưa có tool call (tool thật ở M2).
+- `ChatStreamResult.keySource` **hardcode `'K1'`** dù thực tế dùng K2/K3 → nay trả về key source đã resolve.
+- Retention 90 ngày của `request_logs` (SYSTEM_DESIGN §5.2) **không được enforce** → nay `pruneRequestLogs()` chạy lúc khởi động + mỗi 24 h.
 - Lỗi chat chỉ hiện 1 dòng chữ đỏ **không có đường khôi phục** — nay là `ErrorState` với hành động đúng theo nhóm lỗi (401 → mở Settings · 429 → đếm ngược · 5xx/network → "Thử lại").
 - Server báo `retryable: true` cho **mọi** lỗi → lỗi 401 (API key sai) cũng hiện nút "Thử lại" vô ích — nay `retryable` được suy ra từ nhóm lỗi + `errorRetryable` từ provider.
 - `regenerate` / `continue` / `retry` gửi **id local** (`assistant-<timestamp>`) trong khi server yêu cầu **uuid** → 400 — nay dùng `serverId` lấy từ SSE `meta.messageId`.
@@ -82,6 +117,13 @@
 - Sửa lỗi `chrome.sidePanel.open()` chỉ mở (không toggle) khi bấm icon toolbar — nay dùng native `openPanelOnActionClick` (Chrome 114+).
 
 ### Docs
+- Cập nhật `HANDOFF.md` (M1 18/25 → **19/25**) · `docs/README.md` · `AGENTS.md` (số task / số test / tóm tắt T-M1-14 · task kế tiếp → T-M1-15).
+- `docs/REQUIREMENTS.md` — FR-CONTEXT-12 ✅ (AC chi tiết: log đầy đủ mọi lượt + `cost_usd` thật + `tool_calls` + read API metadata-only) · §5.2 ghi rõ cột `cost_usd`/`tool_calls`/`context_snapshot` · §7.2 schema note.
+- `docs/SYSTEM_DESIGN.md` — **§7.16** mới "Request logging đầy đủ vào `request_logs`" (bảng khoảng trống đã giải quyết · luồng request-id · format log JSON · mô hình chi phí · API đọc log metadata-only · biến môi trường · kiểm thử + mutation).
+- `docs/DESIGN_SYSTEM_BRIEF.md` — **§3.10** mới "Request-id chip trong dòng meta của message" (vị trí · 6 ký tự đầu · `title` chứa id đầy đủ · token · a11y) · §6 traceability.
+- `docs/IMPLEMENTATION_PLAN.md` — task card T-M1-14 → ✅ *(2026-11-07)* · **§3.1q** "Kết quả verify T-M1-14" · traceability FR-CONTEXT-12 / NFR-REL-01 / NFR-MAINT-04.
+- `docs/EVAL_PLAN.md` — **§5.3.1** mới "Nguồn sự thật của metric: bảng `request_logs`" (mapping metric → cột · lệnh đọc · **cảnh báo giá là snapshot** + retention 90 ngày) · §7 cấu trúc repo thêm `src/logs.ts` · §7.1 thêm lệnh `pnpm eval:run logs`.
+- `docs/COMPARISON_MATRIX.md` — §E: dòng "Log request đầy đủ vào DB" → ✅ (T-M1-14).
 - Cập nhật `HANDOFF.md` (M1 17/25 → **18/25**) · `docs/README.md` · `AGENTS.md` (số task / số test / tóm tắt T-M1-19).
 - `docs/REQUIREMENTS.md` — FR-CHAT-14 ✅ + FR-UX-08 ✅ + NFR-REL-02 ✅ + NFR-REL-04 ✅ (AC chi tiết) · §11.1 traceability.
 - `docs/SYSTEM_DESIGN.md` — **§7.15** mới "States · retry · connection status" (4 trạng thái · taxonomy lỗi · luồng lỗi · server báo lỗi thật · plumbing extension · probe kết nối · kiểm thử + mutation) · §4.3 shape SSE `error` (+`retryAfterSeconds`).

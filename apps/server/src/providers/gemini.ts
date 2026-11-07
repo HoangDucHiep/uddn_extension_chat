@@ -208,12 +208,15 @@ export class GeminiProvider implements ProviderAdapter {
       const response = await fetch(
         `${GEMINI_BASE_URL}/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`,
         {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'text/event-stream',
-            'x-goog-api-key': request.apiKey ?? '',
-          },
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'text/event-stream',
+          'x-goog-api-key': request.apiKey ?? '',
+          // Request-id de doi chieu log provider voi `request_logs` cua
+          // Sidekick (NFR-MAINT-04 — T-M1-14). Best-effort.
+          ...(request.requestId !== undefined ? { 'X-Request-Id': request.requestId } : {}),
+        },
           body: JSON.stringify(body),
           signal: controller.signal,
         },

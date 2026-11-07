@@ -102,14 +102,16 @@ pnpm eval:run                # chạy eval harness
 | Milestone | Trạng thái | Ghi chú |
 |---|---|---|
 | **M0 — Foundation** | ✅ Hoàn thành | 15/15 task · 91 unit test + 2 E2E · tag `v0.1` |
-| **M1 — Parity** | 🚧 Đang làm | 18/25 task (T-M1-01, T-M1-04 ✅ hấp thụ, T-M1-05, T-M1-21, T-M1-22, T-M1-23, T-M1-02, T-M1-24, T-M1-25, T-M1-06 ✅, T-M1-07 ✅, T-M1-08 ✅, T-M1-09 ✅, T-M1-10 ✅, T-M1-11 ✅, T-M1-03 ✅, T-M1-12 ✅, T-M1-19 ✅) · 1165 unit test + 69 E2E |
+| **M1 — Parity** | 🚧 Đang làm | 19/25 task (T-M1-01, T-M1-04 ✅ hấp thụ, T-M1-05, T-M1-21, T-M1-22, T-M1-23, T-M1-02, T-M1-24, T-M1-25, T-M1-06 ✅, T-M1-07 ✅, T-M1-08 ✅, T-M1-09 ✅, T-M1-10 ✅, T-M1-11 ✅, T-M1-03 ✅, T-M1-12 ✅, T-M1-19 ✅, T-M1-14 ✅) · 1243 unit test + 71 E2E |
 | **M2 — Advanced & Eval** | ⬜ Chưa bắt đầu | `EVAL_REPORT.md` là deliverable bắt buộc |
 | **M3 — Polish & Deliverable** | ⬜ Chưa bắt đầu | |
 | **M4 — Workflow** | ⬜ Tuỳ chọn | Chỉ sau M3 + đã có eval report |
 
 **Trạng thái docs:** ✅ Requirements · ✅ Design System Brief · ✅ System Design · ✅ Implementation Plan · ✅ Comparison Matrix · ✅ Eval Plan · ✅ Handoff · ✅ Changelog
 
-**Việc tiếp theo:** **T-M1-14** (Log request đầy đủ vào `request_logs`) — T-M1-13 (export) đã được user defer.
+**Việc tiếp theo:** **T-M1-15** (K3 direct mode — BYOK không cần BFF) → T-M1-16 (K2 BYOK UI) · T-M1-17 (i18n VI/EN) · T-M1-18 (shortcuts) · T-M1-20 (responsive + a11y). T-M1-13 (export) đã được user defer.
+
+> **Request logging (T-M1-14):** bảng `request_logs` **không còn là bảng chết** — **mọi** lượt chat (thành công **và** thất bại) đều ghi 1 dòng với provider · model · token in/out · `cost_usd` **thật** (tính từ `PROVIDER_PRICING` — là **ước lượng** theo bảng giá snapshot, không phải hoá đơn) · `ttft_ms` · `latency_ms` · `tool_calls` · `context_hash` · error code. `request_id` xuyên suốt **client → BFF → provider** (client sinh uuid → server sanitize → echo header) → hiện 6 ký tự ở dòng meta của bubble assistant. Log HTTP dạng **JSON** 1 dòng/request. **Retention 90 ngày** enforce thật (startup + mỗi 24 h). `GET /api/logs` · `GET /api/usage` trả **chỉ metadata** cho eval harness (`pnpm eval:run logs`). **Không** migration mới. Chi tiết: [`SYSTEM_DESIGN.md`](docs/SYSTEM_DESIGN.md) §7.16 · [`EVAL_PLAN.md`](docs/EVAL_PLAN.md) §5.3.1.
 
 > **Chat CRUD (T-M1-09):** side panel có **drawer quản lý cuộc trò chuyện** (Radix Dialog trượt từ trái) — tạo · đổi tên · xoá (confirm dialog) · ghim · lưu trữ · search theo tên. Chọn conversation → tải lại lịch sử **kèm citations đã lưu**. Backend: `GET/POST /api/conversations` · `GET /api/conversations/:id/messages` · `PATCH/DELETE /api/conversations/:id` (phân trang keyset bằng cursor). **Phạm vi chốt:** ghim ở cấp **conversation** (cột `pinned` đã có sẵn từ M0 → không có migration mới); ghim tin nhắn để task sau. Chi tiết: [`SYSTEM_DESIGN.md`](docs/SYSTEM_DESIGN.md) §7.10.
 

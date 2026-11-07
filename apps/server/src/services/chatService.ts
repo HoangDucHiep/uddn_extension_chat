@@ -16,6 +16,7 @@
 import { randomUUID } from 'node:crypto'
 import {
   applyContextBudget,
+  calculateCostUsd,
   CITATION_INSTRUCTION,
   classifyChatError,
   CONTINUE_INSTRUCTION,
@@ -23,12 +24,10 @@ import {
   CONTEXT_WINDOWS,
   DEFAULT_SYSTEM_PROMPT,
   ERROR_CODES,
-  hashContextItems,
   hashString,
   isRetryableKind,
   trimHistory,
   VISION,
-  type BudgetedContextItem,
   type ChatEvent,
   type ChatRequest,
   type ContextBudgetResult,
@@ -40,12 +39,13 @@ import {
 } from '@sidekick/shared'
 import { and, desc, eq } from 'drizzle-orm'
 import type { Database } from '../db/index.js'
-import { conversations, messages, requestLogs } from '../db/schema.js'
+import { conversations, messages } from '../db/schema.js'
 import type { ProviderRegistry } from '../providers/registry.js'
 import { resolveKey, type EnvKeys } from '../providers/keyResolver.js'
 import { loadRecentAttachments, persistAttachments } from './attachmentService.js'
 import { clearCitations, extractCitations, persistCitations } from './citationService.js'
 import { buildAutoTitle } from './conversationService.js'
+import { insertRequestLog, type RequestLogData } from './requestLogService.js'
 import {
   derivePath,
   loadMessage,
@@ -80,6 +80,14 @@ export interface ChatServiceDeps {
    * (khớp retention policy `docs/SYSTEM_DESIGN.md` §5.2).
    */
   logContextSnapshot: boolean
+  /**
+   * So ngay giu lai `request_logs` (mac dinh 90 — retention policy §5.2).
+   *
+   * `0` → giu vinh vien. Chi dung o server; xem `requestLogService.pruneRequestLogs`.
+   *
+   * **Optional** de test cu khong phai khai bao (mac dinh 90).
+   */
+  logRetentionDays?: number
 }
 
 export interface ChatStreamResult {
@@ -127,13 +135,29 @@ export function createChatStream(
   deps: ChatServiceDeps,
   request: ChatRequest,
   abortSignal: AbortSignal,
+  options?: { requestId?: string | undefined },
 ): ChatStreamResult {
-  const requestId = randomUUID()
+  // Request-id xuyen suot client → BFF → provider (NFR-MAINT-04 — T-M1-14).
+  // Client co the gui `X-Request-Id` → dung id do de ghep log 2 dau.
+  const requestId = options?.requestId ?? randomUUID()
   const messageId = randomUUID()
   const conversationId = request.conversationId ?? randomUUID()
   const operation = request.operation ?? 'send'
 
+  /**
+   * Nguon API key thuc te cua luot nay.
+   *
+   * Hoist ra ngoai generator de `ChatStreamResult` (tra ve **synchronously**)
+   * lay duoc gia tri sau khi stream chay. Ban dau la `K1`; neu khong tim
+   * duoc provider nao → `none`.
+   */
+  let resolvedKeySource = 'K1'
+
   const events = (async function* generate(): AsyncGenerator<ChatEvent, void, undefined> {
+    // Bat dau do thoi gian **truoc moi buoc** → latency do duoc ca thoi gian
+    // chuan bi turn (T-M1-14: latency phai do ca luot, khong chi stream).
+    const startedAt = Date.now()
+
     // --- 1. Chuan bi turn (T-M1-10) ---
     const plan = await prepareTurn(deps, request, operation, conversationId)
 
@@ -158,7 +182,6 @@ export function createChatStream(
 
     let resolvedProvider: ProviderId | undefined
     let resolvedModel = ''
-    let resolvedKeySource = 'K1'
     let apiKey = ''
 
     for (const providerId of chain) {
@@ -202,6 +225,32 @@ export function createChatStream(
 
     if (!resolvedProvider) {
       // Khong tim thay provider → phan biet "khong co key" vs "khong ho tro anh".
+      const errorCode =
+        imagesForProvider.length > 0
+          ? ERROR_CODES.PROVIDER_VISION_UNSUPPORTED
+          : ERROR_CODES.MISSING_API_KEY
+
+      // Van ghi `request_logs` cho luot that bai (T-M1-14) → AC "moi luot
+      // chat co 1 dong log". Khong co dong log → khong phan biet duoc "user
+      // that bai" voi "BFF hong".
+      await persistRequestLog(deps, {
+        requestId,
+        conversationId,
+        provider: request.provider ?? 'unknown',
+        model: request.model ?? 'unknown',
+        keySource: 'none',
+        promptText: '',
+        responseText: '',
+        contextItems: [],
+        tokensIn: 0,
+        tokensOut: 0,
+        ttftMs: 0,
+        latencyMs: Date.now() - startedAt,
+        error: errorCode,
+        costUsd: 0,
+        toolCalls: null,
+      })
+
       if (imagesForProvider.length > 0) {
         yield {
           type: 'error',
@@ -214,7 +263,7 @@ export function createChatStream(
       } else {
         yield {
           type: 'error',
-          code: 'MISSING_API_KEY',
+          code: ERROR_CODES.MISSING_API_KEY,
           message: 'Khong tim thay API key cho bat ky provider nao. Hay cau hinh key trong settings.',
           retryable: false,
         }
@@ -251,7 +300,7 @@ export function createChatStream(
       // Tiep tuc → them chi dan "viet phan tiep theo" (FR-CHAT-07).
       ...(operation === 'continue' ? { extraUserInstruction: CONTINUE_INSTRUCTION } : {}),
     })
-    const startedAt = Date.now()
+    const streamStartedAt = Date.now()
     let firstTokenAt: number | undefined
     let text = ''
     let tokensIn = 0
@@ -259,6 +308,13 @@ export function createChatStream(
     let finishReason: 'stop' | 'length' | 'tool' | 'aborted' | 'error' = 'stop'
     let errorMessage: string | undefined
     let tokenIndex = 0
+    /**
+     * Cac tool call phat sinh trong luot nay (T-M1-14).
+     *
+     * M1 chua co tool/MCP that → mang thuong rong → ghi `null` vao DB.
+     * M2 (T-M2-*) se yield `tool_call` / `tool_result` → day la nơi gom.
+     */
+    const toolCallRecords: Array<Record<string, unknown>> = []
 
     const provider = deps.registry.require(resolvedProvider)
 
@@ -272,6 +328,8 @@ export function createChatStream(
       temperature: request.temperature,
       maxOutputTokens,
       apiKey,
+      // Request-id → provider gui header `X-Request-Id` (NFR-MAINT-04).
+      requestId,
       signal: abortSignal,
     })) {
       if (abortSignal.aborted) {
@@ -320,12 +378,23 @@ export function createChatStream(
       }
     }
 
+    // Latency do **ca luot** (tu luc nhan request) — TTFT do phan stream
+    // (den token dau tien). T-M1-14: `latency_ms` phai bao phu ca thoi gian
+    // chuan bi turn + stream, khong chi stream.
     const latencyMs = Date.now() - startedAt
-    const ttftMs = firstTokenAt ? firstTokenAt - startedAt : latencyMs
+    const ttftMs = firstTokenAt ? firstTokenAt - streamStartedAt : latencyMs
+
+    // Chi phi thuc te cua luot nay (T-M1-14) — tinh tu bang gia token.
+    const costUsd = calculateCostUsd({
+      provider: resolvedProvider,
+      model: resolvedModel,
+      tokensIn,
+      tokensOut,
+    })
 
     // --- 5. Usage event ---
     if (tokensIn > 0 || tokensOut > 0) {
-      yield { type: 'usage', tokensIn, tokensOut, costUsd: 0 }
+      yield { type: 'usage', tokensIn, tokensOut, costUsd }
     }
 
     // --- 6. Luu assistant message + request_logs ---
@@ -403,6 +472,8 @@ export function createChatStream(
       ttftMs,
       latencyMs,
       error: errorMessage,
+      costUsd,
+      toolCalls: toolCallRecords.length > 0 ? toolCallRecords : null,
     })
 
     // --- 7. Done event (luon cuoi cung) ---
@@ -415,7 +486,7 @@ export function createChatStream(
     messageId,
     providerId: (request.provider ?? 'groq') as ProviderId,
     model: request.model ?? '',
-    keySource: 'K1',
+    keySource: resolvedKeySource,
     events,
   }
 }
@@ -942,86 +1013,23 @@ async function touchConversation(db: Database, conversationId: string): Promise<
   }
 }
 
-/** Ghi request_logs neu setting cho phep. */
-async function persistRequestLog(
-  deps: ChatServiceDeps,
-  data: {
-    requestId: string
-    conversationId: string
-    provider: string
-    model: string
-    keySource: string
-    promptText: string
-    responseText: string
-    /** Context **da cat ngan sach** — dung de tinh `context_hash` + snapshot. */
-    contextItems: readonly BudgetedContextItem[]
-    tokensIn: number
-    tokensOut: number
-    ttftMs: number
-    latencyMs: number
-    error: string | undefined
-  },
-): Promise<void> {
+/**
+ * Ghi `request_logs` neu setting cho phep.
+ *
+ * **KHONG** bao gio lam fail luong chat → loi ghi duoc log vao console.
+ *
+ * @param deps - Chat service deps.
+ * @param data - Du lieu luot chat.
+ */
+async function persistRequestLog(deps: ChatServiceDeps, data: RequestLogData): Promise<void> {
   if (!deps.logRequests) return
 
   try {
-    await db_insertRequestLog(deps.db, data, deps.logFullContent, deps.logContextSnapshot)
+    await insertRequestLog(deps.db, data, deps.logFullContent, deps.logContextSnapshot)
   } catch (error) {
     // Log that bai khong duoc lam fail chat.
     console.error('[chat] khong ghi duoc request_logs:', error instanceof Error ? error.message : error)
   }
-}
-
-/**
- * Ghi 1 dong request_logs.
- *
- * `context_hash` = hash cua **context thuc su da gui cho provider** (khong
- * phai hash cua toan bo prompt) → AC "context_hash khop voi context da gui".
- * `context_snapshot` = jsonb chua context da cat — **mac dinh TAT** (noi dung
- * trang la du lieu nhay cam) → chi bat khi setting `LOG_CONTEXT_SNAPSHOT=true`.
- */
-async function db_insertRequestLog(
-  db: Database,
-  data: {
-    requestId: string
-    conversationId: string
-    provider: string
-    model: string
-    keySource: string
-    promptText: string
-    responseText: string
-    contextItems: readonly BudgetedContextItem[]
-    tokensIn: number
-    tokensOut: number
-    ttftMs: number
-    latencyMs: number
-    error: string | undefined
-  },
-  logFullContent: boolean,
-  logContextSnapshot: boolean,
-): Promise<void> {
-  const contextHash = hashContextItems(data.contextItems)
-
-  await db.insert(requestLogs).values({
-    requestId: data.requestId,
-    conversationId: data.conversationId,
-    provider: data.provider,
-    model: data.model || 'unknown',
-    keySource: data.keySource,
-    promptText: logFullContent ? data.promptText : null,
-    responseText: logFullContent ? data.responseText : null,
-    contextHash: contextHash.length > 0 ? contextHash : null,
-    // Khong co context → `null` (dong nhat voi `context_hash = null`).
-    contextSnapshot:
-      logContextSnapshot && data.contextItems.length > 0
-        ? buildContextSnapshot(data.contextItems)
-        : null,
-    tokensIn: data.tokensIn,
-    tokensOut: data.tokensOut,
-    ttftMs: data.ttftMs,
-    latencyMs: data.latencyMs,
-    error: data.error ?? null,
-  })
 }
 
 /**
@@ -1042,23 +1050,11 @@ export function hashText(text: string): string {
  * Chi dung khi setting `LOG_CONTEXT_SNAPSHOT=true` (mac dinh TAT) vi chua
  * **noi dung trang** → du lieu nhay cam.
  *
+ * Re-export tu `requestLogService.ts` de giu back-compat voi test cu.
+ *
  * @param items - Context item da cat ngan sach.
  */
-export function buildContextSnapshot(
-  items: readonly BudgetedContextItem[],
-): Array<Record<string, unknown>> {
-  return items.map((item) => ({
-    id: item.id,
-    kind: item.kind,
-    tier: item.tier,
-    url: item.url ?? null,
-    title: item.title,
-    sourceKind: item.sourceKind ?? null,
-    text: item.text ?? null,
-    excerpt: item.excerpt ?? null,
-    truncated: item.truncated,
-  }))
-}
+export { buildContextSnapshot } from './requestLogService.js'
 
 /** Lay conversation gan nhat (phuc vu context cho lenh sau). */
 export async function findRecentConversation(

@@ -6,6 +6,18 @@ const streamChatMock = vi.fn()
 
 vi.mock('@/lib/sseClient', () => ({
   streamChat: (request: unknown, options: unknown) => streamChatMock(request, options),
+  generateRequestId: () => 'req-generated-1',
+  ChatRequestError: class ChatRequestError extends Error {
+    code: string
+    status: number
+    retryable: boolean
+    constructor(code: string, message: string, status = 0, retryable = true) {
+      super(message)
+      this.code = code
+      this.status = status
+      this.retryable = retryable
+    }
+  },
 }))
 
 const captureTabContextMock = vi.fn()
@@ -95,8 +107,7 @@ beforeEach(async () => {
 })
 
 describe('useChat', () => {
-  it('gui prompt: tao message user + assistant, nhan token', async () => {
-    streamChatMock.mockImplementation(
+  it('gui prompt: tao message user + assistant, nhan token', async () => {    streamChatMock.mockImplementation(
       (
         _request: unknown,
         options: { onEvent?: (event: ChatEvent) => void },
@@ -123,6 +134,46 @@ describe('useChat', () => {
     expect(useChatStore.getState().conversationId).toBe('conv-1')
     expect(useChatStore.getState().activeProvider).toBe('groq')
     expect(useChatStore.getState().isStreaming).toBe(false)
+  })
+
+  it('luu requestId tren message assistant (T-M1-14)', async () => {
+    streamChatMock.mockImplementation(
+      (
+        _request: unknown,
+        options: { onEvent?: (event: ChatEvent) => void },
+      ) => makeStream([metaEvent, tokenEvent('Xin chao'), doneEvent], options.onEvent),
+    )
+
+    const { result } = renderHook(() => useChat())
+
+    await act(async () => {
+      await result.current.send('Xin chao')
+    })
+
+    const messages = useChatStore.getState().messages
+    const assistant = messages.find((message) => message.role === 'assistant')
+    // `meta` event mang `requestId: 'req-1'` → gan vao message.
+    expect(assistant?.requestId).toBe('req-1')
+  })
+
+  it('gui requestId xuong `streamChat` de server nhan header `X-Request-Id`', async () => {
+    streamChatMock.mockImplementation(
+      (
+        _request: unknown,
+        options: { onEvent?: (event: ChatEvent) => void },
+      ) => makeStream([metaEvent, doneEvent], options.onEvent),
+    )
+
+    const { result } = renderHook(() => useChat())
+
+    await act(async () => {
+      await result.current.send('Xin chao')
+    })
+
+    expect(streamChatMock).toHaveBeenCalledTimes(1)
+    const options = streamChatMock.mock.calls[0]?.[1] as { requestId?: string }
+    expect(options.requestId).toBeDefined()
+    expect(options.requestId?.length).toBeGreaterThan(0)
   })
 
   it('nhan event citation → gan nguon trich dan vao message assistant', async () => {

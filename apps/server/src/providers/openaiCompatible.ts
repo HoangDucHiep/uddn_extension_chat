@@ -224,6 +224,10 @@ export class OpenAiCompatibleProvider implements ProviderAdapter {
           'Content-Type': 'application/json',
           Accept: 'text/event-stream',
           ...this.options.buildHeaders(request.apiKey ?? ''),
+          // Request-id de doi chieu log provider voi `request_logs` cua
+          // Sidekick (NFR-MAINT-04 — T-M1-14). Best-effort: provider co
+          // the bo qua header nay.
+          ...(request.requestId !== undefined ? { 'X-Request-Id': request.requestId } : {}),
         },
         body: JSON.stringify({
           model,
