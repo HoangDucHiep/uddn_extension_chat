@@ -201,11 +201,10 @@ Quy ước ưu tiên: **M** = Must (bắt buộc cho M1) · **S** = Should (bắ
 | FR-CHAT-05 | Nút "Tạo lại" (regenerate) với biến thể nhiều lần | M | Lưu các biến thể, chuyển qua lại được |
 | FR-CHAT-06 | Sửa & gửi lại (edit & resend) tin nhắn user | M | Tin nhắn sau bị replace; lịch sử cũ giữ dạng branch |
 | FR-CHAT-07 | Dừng generation (Stop) | M | Dừng ≤ 300ms; giữ nội dung dở; có nút "Tiếp tục" |
-| FR-CHAT-08 | Xoá tin nhắn / xoá cả cuộc trò chuyện | M | Xoá cả nhóm → có confirm dialog |
-| FR-CHAT-09 | Quản lý nhiều cuộc trò chuyện: tạo, đổi tên, xoá, ghim | M | List view ở sidebar trái; search theo tên |
+| FR-CHAT-08 | Xoá tin nhắn / xoá cả cuộc trò chuyện | M | Xoá cả nhóm → có confirm dialog. **Đã implement (T-M1-09):** xoá cả **cuộc trò chuyện** qua `DELETE /api/conversations/:id` (cascade xoá messages + citations + attachments) · confirm dialog `ConfirmDialog` bắt buộc trước khi xoá |
+| FR-CHAT-09 | Quản lý nhiều cuộc trò chuyện: tạo, đổi tên, xoá, ghim | M | List view ở sidebar trái; search theo tên. **Đã implement (T-M1-09):** drawer `ConversationList` (Radix Dialog trượt từ trái) · tạo / đổi tên / xoá / ghim / lưu trữ / search theo tên (debounce 250 ms) · phân trang keyset (cursor) |
 | FR-CHAT-10 | Copy toàn bộ cuộc trò chuyện / export Markdown / JSON | S | Xuất file .md và .json kèm metadata (model, token, thời gian) |
-| FR-CHAT-11 | Ghim tin nhắn (pin) để giữ | C | Pin ở đầu thread |
-| FR-CHAT-12 | Keyboard: Enter gửi, Shift+Enter xuống dòng, Esc dừng | M | Không nhập nhầm ký tự |
+| FR-CHAT-11 | Ghim tin nhắn (pin) để giữ | C | Pin ở đầu thread. **Đã implement (T-M1-09) — phạm vi đã chốt:** ghim ở cấp **cuộc trò chuyện** (`conversations.pinned`), conversation ghim luôn ở đầu danh sách (`pinned desc, updated_at desc, id desc`). Ghim **tin nhắn** để task sau || FR-CHAT-12 | Keyboard: Enter gửi, Shift+Enter xuống dòng, Esc dừng | M | Không nhập nhầm ký tự |
 | FR-CHAT-13 | Tự lưu bản nháp (draft) khi đóng panel | S | Mở lại vẫn còn draft của conversation đang mở |
 | FR-CHAT-14 | Hiển thị trạng thái lỗi với hành động khôi phục | M | 429 → "Đã đạt giới hạn, thử lại sau Ns"; 401 → "Kiểm tra API key"; 5xx → "Retry" |
 
@@ -954,10 +953,10 @@ Chỉ bắt đầu M4 khi **đồng thời** thỏa:
 | FR-CHAT-05 | M | T-M1-10 | M1 |
 | FR-CHAT-06 | M | T-M1-10 | M1 |
 | FR-CHAT-07 | M | T-M1-10 | M1 |
-| FR-CHAT-08 | M | T-M1-09 | M1 |
-| FR-CHAT-09 | M | T-M1-09 | M1 |
+| FR-CHAT-08 | M | T-M1-09 ✅ | M1 |
+| FR-CHAT-09 | M | T-M1-09 ✅ | M1 |
 | FR-CHAT-10 | S | T-M1-13 | M1 |
-| FR-CHAT-11 | C | T-M1-09 | M1 |
+| FR-CHAT-11 | C | T-M1-09 ✅ (cấp conversation) | M1 |
 | FR-CHAT-12 | M | T-M1-10 | M1 |
 | FR-CHAT-13 | S | T-M1-10 | M1 |
 | FR-CHAT-14 | M | T-M1-19 | M1 |

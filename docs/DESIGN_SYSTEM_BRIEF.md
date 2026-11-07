@@ -140,9 +140,37 @@ Nguồn sự thật: `design/tokens.json` → generate ra `design/tokens.css` (C
 |---|---|---|---|
 | `AppShell` | Khung: header / thread / composer, quản lý chiều rộng panel | FR-UX-06 | Vỡ layout ở 320px |
 | `PanelHeader` | Tên app, chip model, chip context, menu điều hướng | FR-PROVIDER-03, FR-CONTEXT-02 | Không hiện nguồn key → vi phạm DP-6 |
-| `ConversationList` | Drawer trái: danh sách chat, search, pin | FR-CHAT-09 | |
+| `ConversationList` (đã implement T-M1-09) | Drawer trái (Radix Dialog trượt từ trái): danh sách chat, search, pin, lưu trữ, đổi tên, xoá | FR-CHAT-08/09/11 | Chi tiết §3.2.1 |
 | `SettingsPanel` | Route/modal, chia section theo nhóm FR | FR-SETTINGS-* | |
 | `StatusBadge` | Chip trạng thái: online / offline / BFF down / quota | NFR-REL-03/04 | |
+
+#### 3.2.1 `ConversationList` — drawer quản lý cuộc trò chuyện (đã implement T-M1-09)
+
+> Nguồn: [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.1 (FR-CHAT-08, FR-CHAT-09, FR-CHAT-11) · kiến trúc: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.10.
+
+**Vì sao là drawer (overlay) chứ không phải sidebar thu hẹp?**
+
+DP-2 quy định thread chat chiếm ≥ 90% không gian panel (DP-1: panel hẹp 320–640 px). Thu hẹp panel để chia 2 cột sẽ phá DP-2. Drawer **overlay** giữ nguyên layout thread, chỉ phủ khi mở.
+
+**Cấu trúc:**
+
+| Phần | Nội dung |
+|---|---|
+| Header drawer | Tiêu đề "Cuộc trò chuyện" + nút đóng (Radix `DialogClose`, `aria-label="Đóng"`) |
+| "Chat mới" | Button full-width — tạo conversation mới + xoá thread |
+| Search | `Input` + icon `Search` · debounce **250 ms** · `aria-label="Tìm cuộc trò chuyện theo tên"` |
+| Tabs | "Đang dùng" (`archived=false`) / "Đã lưu trữ" (`archived=true`) — `role="tablist"` |
+| Nhóm | "Đã ghim" (conversation `pinned`) / "Gần đây" — `aria-label` = tên nhóm |
+| Dòng | Title truncate + 4 nút icon: `Pin`/`PinOff` · `Archive`/`ArchiveRestore` · `Pencil` · `Trash2` |
+| Dòng active | Nền `--color-accent-subtle` + `aria-current="true"` |
+
+**Token:** nền drawer `--surface-overlay` · viền phải `--border-default` · đổ bóng `--shadow-3` · chữ `--text-primary` / `--text-secondary` / `--text-tertiary` · focus ring `--border-focus`.
+
+**Motion:** `sidekick-drawer-in` (opacity + `translateX(-12px) → 0`) · overlay `sidekick-fade-in` · **tôn trọng `prefers-reduced-motion`** (`animation: none`).
+
+**A11y:** mọi nút icon có `aria-label` tiếng Việt · drawer đóng bằng `Escape` (Radix lo) · focus bị khoá trong dialog khi mở · `DialogTitle` dùng `sr-only` để screen reader đọc được.
+
+**Không có UI mới ngoài drawer:** không thêm tab ngang trong panel (sẽ phá DP-2) · không thêm menu chuột phải (không có UX chuẩn ở side panel).
 
 ### 3.3 Thread
 
@@ -316,12 +344,29 @@ Cache context chạy **hoàn toàn ngầm** ở tầng `lib/` (`contextCache.ts`
 | Component | Mô tả |
 |---|---|
 | `Toast` (sonner) | Thông báo không chặn nội dung |
-| `ConfirmDialog` | Xoá / hành động phá huỷ |
+| `ConfirmDialog` (đã implement T-M1-09) | Xoá / hành động phá huỷ — bọc Radix Dialog, nút nguy hiểm dùng variant `danger`, disable 2 nút khi đang xử lý (`isBusy`) — chi tiết §3.6.1 |
 | `PromptGallery` | Prompt gợi ý theo ngữ cảnh trang |
 | `Onboarding` (đã implement T-M1-25) | 3 bước lần đầu: quyền → chọn provider → thử câu hỏi — chi tiết §3.8 |
 | `ModelPicker` | Dropdown model + provider |
 | `KeySourceSelector` | Chọn K1 / K2 / K3 |
 | `WorkflowEditor` | Editor workflow (M4) |
+
+#### 3.6.1 `ConfirmDialog` (đã implement T-M1-09)
+
+> Nguồn: [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.1 (FR-CHAT-08 — "Xoá cả nhóm → có confirm dialog").
+
+| Prop | Mặc định | Ghi chú |
+|---|---|---|
+| `open` | — | Quyền kiểm soát hiển thị (Radix `Dialog.Root`) |
+| `title` | — | Bắt buộc — `DialogTitle` (a11y) |
+| `description` | — | Tuỳ chọn — `DialogDescription` |
+| `confirmLabel` / `cancelLabel` | "Xác nhận" / "Huỷ" | Text tiếng Việt |
+| `destructive` | `false` | `true` → nút xác nhận dùng variant `danger` (màu đỏ) |
+| `onConfirm` | — | Có thể là `async` → `isBusy` disable 2 nút trong lúc chờ |
+
+- Bọc Radix Dialog → overlay + focus trap + `Escape` đóng đều do Radix lo.
+- **Bắt buộc** cho mọi hành động phá huỷ dữ liệu (xoá conversation). Không dùng `window.confirm` (không style được, không nhất quán theme).
+- `data-testid`: `confirm-dialog` · `confirm-accept` · `confirm-cancel`.
 
 ### 3.7 Settings
 

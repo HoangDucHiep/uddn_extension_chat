@@ -292,3 +292,46 @@ body {
 .hljs-strong {
   font-weight: var(--font-weight-semibold);
 }
+
+/* ------------------------------------------------------------------
+ * Drawer danh sach cuoc tro chuyen (FR-CHAT-09 — T-M1-09)
+ *
+ * Radix Dialog render qua Portal → overlay + panel deu la `fixed`.
+ * Animation chi de `opacity` / `transform` → khong layout shift.
+ * ------------------------------------------------------------------ */
+
+@keyframes sidekick-drawer-in {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes sidekick-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-drawer-in {
+  animation: sidekick-drawer-in var(--duration-base) var(--ease-standard);
+}
+
+.animate-fade-in {
+  animation: sidekick-fade-in var(--duration-base) var(--ease-standard);
+}
+
+/* Ton trong `prefers-reduced-motion` (rule coding-standards.mdc). */
+@media (prefers-reduced-motion: reduce) {
+  .animate-drawer-in,
+  .animate-fade-in {
+    animation: none;
+  }
+}

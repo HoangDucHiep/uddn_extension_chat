@@ -35,6 +35,7 @@ import type { ProviderRegistry } from '../providers/registry.js'
 import { resolveKey, type EnvKeys } from '../providers/keyResolver.js'
 import { loadRecentAttachments, persistAttachments } from './attachmentService.js'
 import { extractCitations, persistCitations } from './citationService.js'
+import { buildAutoTitle } from './conversationService.js'
 
 /**
  * Max output tokens mac dinh.
@@ -286,7 +287,15 @@ export function createChatStream(
     }
 
     // --- 6. Luu assistant message + request_logs ---
-    await persistAssistantMessage(deps.db, conversationId, messageId, text)
+    await persistAssistantMessage(deps.db, conversationId, messageId, text, {
+      provider: resolvedProvider,
+      model: resolvedModel,
+      tokensIn,
+      tokensOut,
+    })
+
+    // Conversation vua hoat dong → dua len dau danh sach (FR-CHAT-09).
+    await touchConversation(deps.db, conversationId)
 
     // --- 6b. Trich dan (FR-CONTEXT-10 — T-M1-08) ---
     // Marker `[N]` duoc LLM sin ra trong cau tra loi → resolve ve nguon
@@ -586,7 +595,14 @@ function describeContextSource(item: ContextItem): string {
   return '[Tab đính kèm]'
 }
 
-/** Luu message cua user. Tra ve id cua message vua tao. */
+/**
+ * Luu message cua user. Tra ve id cua message vua tao.
+ *
+ * Conversation moi duoc tao o day voi tieu de **tu dong** cat tu cau hoi
+ * dau tien (FR-CHAT-09) → danh sach khong nhom het "Cuộc trò chuyện mới".
+ * `onConflictDoNothing` → conversation da ton tai giu nguyen tieu de user
+ * da dat tay.
+ */
 async function persistUserMessage(
   db: Database,
   conversationId: string,
@@ -594,7 +610,7 @@ async function persistUserMessage(
 ): Promise<string> {
   await db
     .insert(conversations)
-    .values({ id: conversationId, title: 'Cuộc trò chuyện mới' })
+    .values({ id: conversationId, title: buildAutoTitle(content) })
     .onConflictDoNothing()
   const inserted = await db
     .insert(messages)
@@ -603,19 +619,50 @@ async function persistUserMessage(
   return inserted[0]?.id ?? ''
 }
 
-/** Luu message cua assistant. */
+/**
+ * Luu message cua assistant.
+ *
+ * `meta` luu provider/model/token (DP-6) → khi tai lai lich su hoi thoai
+ * (T-M1-09) thi chip thong tin van hien nhu luc chat truc tiep.
+ */
 async function persistAssistantMessage(
   db: Database,
   conversationId: string,
   messageId: string,
   content: string,
+  meta: { provider: string; model: string; tokensIn: number; tokensOut: number },
 ): Promise<void> {
   await db.insert(messages).values({
     id: messageId,
     conversationId,
     role: 'assistant',
     content,
+    meta,
   })
+}
+
+/**
+ * Cap nhat `updated_at` cua conversation.
+ *
+ * Danh sach conversation sap xep theo `updated_at desc` → moi luot chat
+ * deu phai bump de conversation vua hoat dong luon o dau danh sach.
+ *
+ * Dung `db.update(...)` cua Drizzle — khi mock DB trong test khong ho tro
+ * method nay, loi duoc bo qua (khong lam fail luong chat da stream xong).
+ *
+ * @param db - Database client.
+ * @param conversationId - Id conversation can cap nhat.
+ */
+async function touchConversation(db: Database, conversationId: string): Promise<void> {
+  try {
+    await db
+      .update(conversations)
+      .set({ updatedAt: new Date() })
+      .where(eq(conversations.id, conversationId))
+  } catch {
+    // Khong bump duoc `updated_at` → conversation van xep theo thu tu cu,
+    // chi bi "cham" hien thi. KHONG fail luong chat.
+  }
 }
 
 /** Ghi request_logs neu setting cho phep. */

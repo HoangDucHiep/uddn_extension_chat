@@ -108,6 +108,16 @@ export interface ChatState {
    */
   addCitation: (id: string, citation: ChatCitation) => void
   setConversationId: (conversationId: string | undefined) => void
+  /**
+   * Nap lai lich su hoi thoai cua 1 conversation (FR-CHAT-09 — T-M1-09).
+   *
+   * Thay the toan bo `messages` — dung khi user chon conversation khac
+   * trong drawer. Citations da luu duoc gan lai vao message tuong ung.
+   *
+   * @param conversationId - Id conversation dang mo.
+   * @param messages - Lich su da lay tu BFF.
+   */
+  hydrateConversation: (conversationId: string, messages: ChatMessage[]) => void
   setStreaming: (isStreaming: boolean) => void
   setActive: (info: {
     provider?: string | undefined
@@ -190,6 +200,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
     })),
 
   setConversationId: (conversationId) => set({ conversationId }),
+
+  hydrateConversation: (conversationId, messages) =>
+    set({
+      conversationId,
+      messages,
+      isStreaming: false,
+    }),
 
   setStreaming: (isStreaming) => set({ isStreaming }),
 

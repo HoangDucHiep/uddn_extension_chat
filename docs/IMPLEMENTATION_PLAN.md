@@ -84,7 +84,7 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | T-M1-06 | Truyền context sang BFF (tab list + content) | FR-CONTEXT-01/02/03, FR-CONTEXT-07, FR-CONTEXT-12 | `packages/shared/src/contextHash.ts`, `apps/server/src/services/chatService.ts`, `apps/extension/src/lib/contextCache.ts` | Log `request_logs.context_hash` khớp với context đã gửi | M | ✅ |
 | T-M1-07 | Markdown render + code block + copy + highlight | FR-CHAT-02/03/04, NFR-SEC-04, NFR-PERF-02 | `sidepanel/components/chat/MessageContent.tsx`, `CodeBlock.tsx`, `MarkdownTable.tsx` | Render table/code; copy → "Đã sao chép"; highlight đúng ngôn ngữ; sanitize HTML (chặn XSS) | L | ✅ *(2026-11-06)* |
 | T-M1-08 | Citation chip + popover (đoạn nguồn) | FR-CONTEXT-10 | `sidepanel/components/chat/CitationChip.tsx`, `CitationPopover.tsx`, `CitationList.tsx`, `chat/citationPlugin.ts` | Click chip → popover hiện đoạn nguồn + mở tab gốc | M | ✅ *(2026-11-06)* |
-| T-M1-09 | Chat CRUD: tạo/đổi tên/xoá/ghim/archives | FR-CHAT-08/09/11 | `sidepanel/components/chat/ConversationList.tsx`, store | Thao tác CRUD phản ánh trong UI ngay | L | ⬜ |
+| T-M1-09 | Chat CRUD: tạo/đổi tên/xoá/ghim/archives | FR-CHAT-08/09/11 | `sidepanel/components/chat/ConversationList.tsx`, store | Thao tác CRUD phản ánh trong UI ngay | L | ✅ *(2026-11-07)* |
 | T-M1-10 | Regenerate / Edit-resend / Stop / Continue | FR-CHAT-05/06/07/12/13, FR-UX-05 | `hooks/useChat.ts`, `chat/MessageActions.tsx` | 4 hành vi đúng AC trong §3.1; Esc dừng; Enter gửi / Shift+Enter xuống dòng | L | ⬜ |
 | T-M1-11 | Prompt gợi ý theo trang + Summarize 1-click | FR-UX-03/04 | `sidepanel/components/chat/PromptGallery.tsx` | Gợi ý đổi theo loại trang (docs/bài báo/forum) | M | ⬜ |
 | T-M1-12 | Settings: theme, cỡ chữ, chiều rộng, quản lý dữ liệu, endpoint BFF | FR-SETTINGS-01/02/03/04/05/06/07, FR-UX-06, NFR-SEC-07 | `sidepanel/components/settings/*` | Áp dụng ngay, persist qua reload; xoá dữ liệu có confirm; telemetry/history mặc định OFF | M | ⬜ |
@@ -556,6 +556,71 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 
 > **Quyết định kỹ thuật:** dùng **marker `[N]` do LLM sinh** (không phải suy đoán vị trí câu) — server parse marker, **loại số vượt phạm vi** (LLM bịa `[9]` khi chỉ có 3 nguồn → bỏ) → chính xác hơn heuristic, và prompt chỉ thêm `CITATION_INSTRUCTION` khi thực sự có context → không ảnh hưởng chat thuần LLM (FR-CONTEXT-13).
 
+### 3.1k Kết quả T-M1-09 — Chat CRUD (FR-CHAT-08/09/11) (2026-11-07)
+
+> Chi tiết kiến trúc: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.10 · spec UI: [`DESIGN_SYSTEM_BRIEF.md`](DESIGN_SYSTEM_BRIEF.md) §3.2.1 + §3.6.1.
+
+#### Phần A — Contract shared
+
+| Hạng mục | Kết quả |
+|---|---|
+| `packages/shared/src/schemas/conversation.ts` | ✅ **Mới** `conversationSummarySchema` · `conversationListResponseSchema` · `updateConversationSchema` (refine "ít nhất 1 trường") · `conversationCitationSchema` · `conversationMessageSchema` (kèm provider/model/tokensIn/tokensOut) · `conversationMessagesResponseSchema` |
+| `packages/shared/src/schemas/chat.ts` | ✅ `conversationListQuerySchema` **+`archived`** (transform `true`/`'true'` → boolean) |
+| `packages/shared/src/types/entities.ts` | ✅ `messageSchema` **+`citations` / `provider` / `model` / `tokensIn` / `tokensOut`** → khôi phục lịch sử không mất DP-6 |
+| `packages/shared/src/constants.ts` | ✅ `API_ROUTES.conversationMessages` (template `/api/conversations/:id/messages`) |
+| `packages/shared/src/index.ts` | ✅ Export `./schemas/conversation.js` |
+
+#### Phần B — Server
+
+| Hạng mục | Kết quả |
+|---|---|
+| `apps/server/src/services/conversationService.ts` | ✅ **Mới** `listConversations()` (lọc `archived` + `q` trong SQL · `ILIKE` **escape wildcard** · sort `pinned desc, updated_at desc, id desc` · phân trang **keyset** bằng cursor base64url) · `createConversation()` · `updateConversation()` (bump `updated_at`) · `deleteConversation()` (cascade) · `getConversationMessages()` (join messages + citations) · `countMessagesByConversation()` · `buildAutoTitle()` (60 ký tự) · `escapeLikePattern()` · `encodeCursor()`/`decodeCursor()` |
+| `apps/server/src/routes/conversations.ts` | ✅ **Mới** `GET`/`POST` `/conversations` · `GET /:id/messages` · `PATCH /:id` · `DELETE /:id` (`204`) · id phải là UUID → `VALIDATION_ERROR` |
+| `apps/server/src/app.ts` | ✅ Đăng ký `createConversationsRouter({ db })` vào `API_BASE_PATH` |
+| `apps/server/src/services/chatService.ts` | ✅ `persistUserMessage()` đặt **tiêu đề tự động** từ câu hỏi đầu tiên · `persistAssistantMessage()` lưu `meta` provider/model/token · `touchConversation()` bump `updated_at` sau mỗi lượt chat |
+
+#### Phần C — Extension
+
+| Hạng mục | Kết quả |
+|---|---|
+| `apps/extension/package.json` | ✅ **+`@radix-ui/react-dialog`** (1 dependency) |
+| `apps/extension/src/components/ui/dialog.tsx` | ✅ **Mới** shadcn/ui Dialog copy từ Radix · dùng token `--surface-overlay` / `--shadow-3` / `--border-default` |
+| `apps/extension/src/lib/conversationClient.ts` | ✅ **Mới** `listConversations()` · `createConversation()` · `updateConversation()` · `deleteConversation()` · `getConversationMessages()` (qua `fetchJson` → `ApiError` chuẩn) |
+| `apps/extension/src/sidepanel/store/conversationStore.ts` | ✅ **Mới** Zustand store — `refresh()` · `loadMore()` · `create()` · `rename()` · `togglePin()` · `toggleArchive()` · `remove()` — **optimistic + rollback** |
+| `.../chat/ConversationList.tsx` | ✅ **Mới** drawer: "Chat mới" · search (debounce 250 ms) · tab "Đang dùng" / "Đã lưu trữ" · nhóm "Đã ghim" / "Gần đây" · 4 nút icon mỗi dòng (ghim / lưu trữ / đổi tên / xoá) |
+| `.../chat/ConfirmDialog.tsx` | ✅ **Mới** confirm xoá (FR-CHAT-08) — variant `danger`, disable khi `isBusy` |
+| `.../components/PanelHeader.tsx` | ✅ +nút `History` mở drawer · +tiêu đề conversation hiện tại |
+| `apps/extension/src/sidepanel/ChatWorkspace.tsx` | ✅ Mount drawer · `handleSelectConversation()` tải lịch sử + citations · `handleCreateConversation(id)` xoá thread & gán conversation |
+| `.../store/chatStore.ts` | ✅ +action `hydrateConversation(conversationId, messages)` |
+| `apps/extension/src/sidepanel/index.css` | ✅ +animation `sidekick-drawer-in` / `sidekick-fade-in` (tôn trọng `prefers-reduced-motion`) |
+
+#### Phần D — Test
+
+| Hạng mục | Kết quả |
+|---|---|
+| `packages/shared/tests/conversationSchema.test.ts` | ✅ **Mới** — validate summary / update / query `archived` |
+| `apps/server/tests/conversationService.test.ts` | ✅ **Mới 28 test** — sort `pinned` · lọc `q` · lọc `archived` · keyset không lặp dòng · `NOT_FOUND` · `escapeLikePattern` |
+| `apps/server/tests/conversationsRoute.test.ts` | ✅ **Mới 13 test** — 400 id không phải UUID · 404 không tồn tại · 204 khi xoá · 201 khi tạo |
+| `apps/server/tests/helpers/fakeConversationDb.ts` | ✅ **Mới** fake Drizzle DB phân tích **SQL chunk** (không hardcode chuỗi SQL) → test **không cần Docker** |
+| `apps/extension/tests/conversationStore.test.ts` | ✅ **Mới 15 test** — optimistic + rollback khi API lỗi |
+| `apps/extension/tests/conversationClient.test.ts` | ✅ **Mới** — query string · method · body |
+| `apps/extension/tests/conversationList.test.tsx` | ✅ **Mới** — render · search · nút ghim / archive / delete mở confirm · tab lưu trữ |
+| `apps/extension/e2e/conversation.spec.ts` | ✅ **Mới 7 kịch bản** — mở drawer · tạo · đổi tên · ghim · lưu trữ · xoá · search |
+
+#### Verify
+
+| Hạng mục | Kết quả |
+|---|---|
+| `pnpm typecheck` | ✅ pass (shared · server · extension · eval) |
+| `pnpm lint` | ✅ pass (0 error, 0 warning) |
+| `pnpm test` | ✅ pass — shared **165** · server **291** · extension **448** (tổng **904**, trước 813 → **+91**) |
+| `pnpm build` | ✅ pass — `dist/content.js` vẫn là **IIFE 1 file, không `import`** |
+| `pnpm db:migrate` | ✅ pass — **không có migration mới** (cột `pinned`/`archived`/`title`/`updated_at` đã có sẵn từ `0000`) |
+| `pnpm test:e2e` | ✅ pass — **47/47** (+7 kịch bản `conversation.spec.ts`, 40 test cũ **không regression**) |
+| Mutation spot-check | ✅ **5/5 mutation bị bắt** — đảo thứ tự `pinned` (1 test fail) · bỏ `NOT_FOUND` (2 test fail) · bỏ lọc `archived` (1 test fail) · bỏ escape `LIKE` (3 test fail) · bỏ rollback optimistic (1 test fail) |
+
+> **Quyết định kỹ thuật:** (1) **Ghim ở cấp conversation** — cột `pinned` đã có sẵn từ M0 → không cần migration, ghim tin nhắn để task sau; (2) **Drawer = Radix Dialog** (overlay) thay vì sidebar thu hẹp → giữ DP-2 "chat-centric" (thread ≥ 90% không gian); (3) **Phân trang keyset** (cursor base64url) thay OFFSET → danh sách đổi liên tục mỗi lượt chat nên OFFSET dễ lặp/sót dòng; (4) **Tiêu đề tự động** chỉ set khi *tạo mới* (`ON CONFLICT DO NOTHING`) → tên user đặt tay không bị ghi đè.
+
 ### 3.2 Traceability FR → Task
 
 > Bảng đầy đủ FR → Task (kèm milestone) nằm ở [`REQUIREMENTS.md`](REQUIREMENTS.md) §11.1 — nơi duy nhất cần cập nhật khi thêm/bớt task.
@@ -563,7 +628,7 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 
 | Nhóm | FR trong nhóm | Task phụ trách | Ghi chú |
 |---|---|---|---|
-| FR-CHAT-01..14 | 14 FR | T-M0-10 · T-M0-13 · **T-M1-07 ✅**/09/10/11/13/19 | FR-CHAT-02/03/04 (Markdown, code block + copy, bảng) do T-M1-07 ✅ |
+| FR-CHAT-01..14 | 14 FR | T-M0-10 · T-M0-13 · **T-M1-07 ✅**/**T-M1-09 ✅**/10/11/13/19 | FR-CHAT-02/03/04 (Markdown, code block + copy, bảng) do T-M1-07 ✅ · **FR-CHAT-08/09/11 (chat CRUD: tạo/đổi tên/xoá/ghim/lưu trữ/search) do T-M1-09 ✅ (2026-11-07)** |
 | FR-CONTEXT-01..13 | 13 FR | T-M1-01/02/04/05/**06 ✅**/**08 ✅**/14 · **T-M1-21/22/23** · **T-M2-19** | FR-CONTEXT-05/06 nâng lên Must (2026-11-04) · FR-CONTEXT-13 (chat không cần context) do T-M1-23 · **FR-CONTEXT-03 (`@` multi-tab) do T-M1-05 ✅** · **FR-CONTEXT-04 (selection) do T-M1-02 ✅** · **FR-CONTEXT-01 (cache URL+hash) + FR-CONTEXT-12 (snapshot) do T-M1-06 ✅** · **FR-CONTEXT-10 (citation chip + popover) do T-M1-08 ✅ (2026-11-06)** |
 | FR-VISION-01..05 | 5 FR | **T-M1-24 ✅** (upload) · **T-M2-22** (mở rộng) | FR-VISION-01 nâng lên M · **T-M1-24 xong 2026-11-05** (vision đầy đủ Gemini + OpenAI-compatible, lưu Postgres, multi-turn) |
 | FR-TOOLS-01..06 | 6 FR | T-M2-07/08/09/10/11/18 · **T-M2-20** | FR-TOOLS-03 (web search) tách riêng khỏi tool registry |

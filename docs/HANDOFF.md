@@ -24,14 +24,36 @@
 | Hạng mục | Trạng thái |
 |---|---|
 | Docs | ✅ Đầy đủ 9 file (`docs/`) + `AGENTS.md` ở root |
-| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 + T-M1-05 + T-M1-02 + T-M1-24 + T-M1-25 + T-M1-06 + T-M1-07 + T-M1-08 xong** — 4 workspace, 813 unit test + 40 E2E |
+| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 + T-M1-05 + T-M1-02 + T-M1-24 + T-M1-25 + T-M1-06 + T-M1-07 + T-M1-08 + T-M1-09 xong** — 4 workspace, 904 unit test + 47 E2E |
 | Git | ✅ Đã init (`main`) · tag `v0.1` đánh dấu M0 |
-| Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **12/25 task**) |
-| Task tiếp theo | **T-M1-09** (chat CRUD: tạo / đổi tên / xoá / ghim / archives) — theo thứ tự ưu tiên M1; **T-M1-03** (service worker: mở/toggle panel · context menu · shortcut) là ứng viên song song |
+| Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **13/25 task**) |
+| Task tiếp theo | **T-M1-03** (service worker: mở/toggle panel · context menu · keyboard shortcut) hoặc **T-M1-10** (Regenerate / Edit-resend / Stop / Continue) — theo thứ tự ưu tiên M1 |
 
 ### Đang làm dở
 
-_(Không có — T-M1-08 citation chip + popover đã commit, task kế tiếp T-M1-09)_
+_(Không có — T-M1-09 chat CRUD đã commit, task kế tiếp T-M1-03 / T-M1-10)_
+
+### Việc đã xong gần đây (T-M1-09 — Chat CRUD)
+
+- **T-M1-09 (FR-CHAT-08 / FR-CHAT-09 / FR-CHAT-11)** — side panel nay có **drawer quản lý cuộc trò chuyện**: tạo · đổi tên · xoá (có confirm dialog) · ghim · lưu trữ · search theo tên. Chọn 1 conversation → tải lại lịch sử hội thoại **kèm citations đã lưu**.
+  - **Contract** — `packages/shared/src/schemas/conversation.ts` (mới): `conversationSummarySchema` · `conversationListResponseSchema` · `updateConversationSchema` · `conversationCitationSchema` · `conversationMessageSchema` · `conversationMessagesResponseSchema`. `schemas/chat.ts` +`archived` trong query. `types/entities.ts` +`citations`/`provider`/`model`/`tokensIn`/`tokensOut` cho `messageSchema`. `constants.ts` +`API_ROUTES.conversationMessages`.
+  - **Server** — `apps/server/src/services/conversationService.ts` (mới): `listConversations()` (lọc `archived` + `q` trong SQL · `ILIKE` escape wildcard · sort `pinned desc, updated_at desc, id desc` · **phân trang keyset** bằng cursor base64url) · `createConversation()` · `updateConversation()` (bump `updated_at`) · `deleteConversation()` (cascade) · `getConversationMessages()` · `countMessagesByConversation()` · `buildAutoTitle()` · `escapeLikePattern()` · `encodeCursor()`/`decodeCursor()`. `routes/conversations.ts` (mới): `GET`/`POST` `/conversations` · `GET /:id/messages` · `PATCH /:id` · `DELETE /:id` (204) · id phải là UUID → `VALIDATION_ERROR`. `chatService.ts`: tiêu đề tự động từ câu hỏi đầu tiên · lưu `meta` provider/model/token · bump `updated_at` mỗi lượt chat.
+  - **Extension** — `components/ui/dialog.tsx` (mới, shadcn trên `@radix-ui/react-dialog` — **1 dependency mới**) · `lib/conversationClient.ts` (mới) · `store/conversationStore.ts` (mới, Zustand, optimistic + rollback) · `chat/ConversationList.tsx` (mới — drawer: search debounce 250 ms · tab "Đang dùng"/"Đã lưu trữ" · nhóm "Đã ghim"/"Gần đây") · `chat/ConfirmDialog.tsx` (mới) · `components/PanelHeader.tsx` (+nút History + tiêu đề conversation) · `ChatWorkspace.tsx` (mount drawer + `handleSelectConversation` + `handleCreateConversation`) · `store/chatStore.ts` (+`hydrateConversation`) · `index.css` (+animation drawer, tôn trọng `prefers-reduced-motion`).
+  - **Verify** — typecheck ✅ · lint ✅ · test ✅ (**904 unit** = shared 165 · server 291 · extension 448) · build ✅ (`dist/content.js` vẫn IIFE 1 file) · db:migrate ✅ (**không** có migration mới — cột `pinned`/`archived`/`title`/`updated_at` đã có sẵn từ `0000`) · **E2E 47/47** ✅ (+7 kịch bản `e2e/conversation.spec.ts`) · **mutation spot-check 5/5 bị bắt**.
+- Bằng chứng đầy đủ: `docs/IMPLEMENTATION_PLAN.md` §3.1k · `docs/SYSTEM_DESIGN.md` §7.10.
+
+### Quyết định kỹ thuật mới (T-M1-09)
+
+| Quyết định | Lý do |
+|---|---|
+| **Ghim ở cấp conversation** (`conversations.pinned`), không ghim tin nhắn | Cột `pinned` **đã có sẵn** từ migration `0000` → **không cần migration mới**. FR-CHAT-11 hiểu là "ghim cuộc trò chuyện lên đầu danh sách"; ghim tin nhắn để task sau |
+| **Drawer = Radix Dialog trượt từ trái**, không sidebar thu hẹp | DP-2 "chat-centric" (thread ≥ 90% không gian) + DP-1 (panel 320–640 px) — thu hẹp panel sẽ phá layout. Radix qua Portal → không bị `overflow` của thread cắt |
+| **Phân trang keyset** (cursor base64url), không OFFSET | Danh sách đổi liên tục (mỗi lượt chat bump `updated_at`) → OFFSET dễ lặp/sót dòng |
+| **Tiêu đề tự động** chỉ set khi *tạo mới* (`ON CONFLICT DO NOTHING`) | Tên user đặt tay không bị ghi đè bằng câu hỏi đầu tiên |
+| **`GET /:id/messages`** thay cho `GET /:id` | Hydrate thread chỉ cần **1 request** (conversation + messages + citations) |
+| **Escape wildcard** trong `ILIKE` (`%` `_` `\`) | User gõ `%` không nên tìm ra **tất cả** conversation |
+| **Optimistic update + rollback** trong store | CRUD phản ánh trong UI **ngay** (AC) nhưng không giữ trạng thái sai khi API lỗi |
+| **Fake Drizzle DB** trong test (`tests/helpers/fakeConversationDb.ts`) | Unit test server **không cần Docker** — phân tích SQL chunk thay vì hardcode chuỗi SQL |
 
 ### Việc đã xong gần đây (T-M1-08 — Citation chip + popover)
 

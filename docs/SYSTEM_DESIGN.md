@@ -322,11 +322,11 @@ X-Request-Id: <uuid v4>            // idempotency + tracing
 | GET | `/attachments/:id` | — | **binary** (`Content-Type` = mime của ảnh) | `NOT_FOUND` |
 | POST | `/extract/pdf` | `{ url }` | `{ text, title?, excerpt?, truncated, error? }` | `VALIDATION_ERROR`, `CONTEXT_PDF_NOT_READABLE`, `CONTEXT_PDF_UNREACHABLE` |
 | POST | `/extract/youtube` | `{ url }` | `{ text, title?, excerpt?, truncated, error? }` | `VALIDATION_ERROR`, `CONTEXT_TRANSCRIPT_UNAVAILABLE` |
-| GET | `/conversations` | `?q=&limit=&cursor=` | `{ items, nextCursor }` | — |
-| POST | `/conversations` | `{ title? }` | `Conversation` | — |
-| GET | `/conversations/:id` | — | `Conversation` (kèm messages) | `NOT_FOUND` |
-| PATCH | `/conversations/:id` | `{ title?, pinned?, archived? }` | `Conversation` | `NOT_FOUND` |
-| DELETE | `/conversations/:id` | — | `204` | `NOT_FOUND` |
+| GET | `/conversations` | `?q=&archived=&limit=&cursor=` ✅ | `{ items, nextCursor }` | `VALIDATION_ERROR` |
+| POST | `/conversations` | `{ title? }` ✅ | `201` + `ConversationSummary` | `VALIDATION_ERROR` |
+| GET | `/conversations/:id/messages` | — ✅ | `{ conversation, messages }` (kèm `citations[]` đã lưu) | `VALIDATION_ERROR`, `NOT_FOUND` |
+| PATCH | `/conversations/:id` | `{ title?, pinned?, archived? }` ✅ | `ConversationSummary` | `VALIDATION_ERROR`, `NOT_FOUND` |
+| DELETE | `/conversations/:id` | — ✅ | `204` | `VALIDATION_ERROR`, `NOT_FOUND` |
 | GET | `/skills` | `?scope=builtin\|user` | `Skill[]` | — |
 | POST | `/skills` | `{ name, prompt, description? }` | `Skill` | `VALIDATION_ERROR` |
 | PATCH | `/skills/:id` | `{ name?, prompt?, enabled? }` | `Skill` | `NOT_FOUND` |
@@ -354,6 +354,8 @@ X-Request-Id: <uuid v4>            // idempotency + tracing
 > Endpoint `/workflows*` chỉ tồn tại khi M4 được implement — extension phải **feature-detect** qua `GET /health` → `capabilities: { workflows: boolean }`.
 >
 > Endpoint `/extract/pdf` và `/extract/youtube` đã **implement** (T-M1-21, T-M1-22). Body request là `{ kind, url }` với `kind ∈ { 'pdf', 'youtube' }` (validate bằng `extractRequestSchema`). **Lỗi nghiệp vụ trả HTTP 200** kèm `{ error, errorMessage }` trong body — client không phân biệt theo status, chỉ 400 khi body sai schema. Chi tiết luồng & ràng buộc bảo mật ở §7.3.1.
+>
+> Endpoint `/conversations*` đã **implement** (T-M1-09). `GET /conversations/:id/messages` thay cho `GET /conversations/:id` (trả **kèm** messages + citations trong 1 response để hydrate thread chỉ cần 1 request). Chi tiết ở §7.10.
 
 ### 4.2 Shape của `ChatRequest`
 
@@ -723,16 +725,18 @@ Hệ quả nếu để nguyên:
 
 Các kịch bản E2E còn lại (offline, BFF down, stop, edit-resend, context toggle) thuộc M1.
 
-### 7.2.1 Trạng thái test hiện tại (2026-11-06)
+### 7.2.1 Trạng thái test hiện tại (2026-11-07)
 
 | Tầng | Số test | Vị trí |
 |---|---|---|
-| Unit | **813** — shared 152 · server 250 · extension 411 | `packages/shared/tests/` · `apps/server/tests/` · `apps/extension/tests/` |
-| E2E | **40** | `apps/extension/e2e/` |
+| Unit | **904** — shared 165 · server 291 · extension 448 | `packages/shared/tests/` · `apps/server/tests/` · `apps/extension/tests/` |
+| E2E | **47** | `apps/extension/e2e/` |
 
 > **T-M1-07 bổ sung:** `apps/extension/tests/messageContent.test.tsx` (25) · `tests/messageContentDefer.test.tsx` (2) · `tests/markdownSchema.test.ts` (17) · `e2e/markdown.spec.ts` (4 kịch bản).
 >
 > **T-M1-08 bổ sung:** `packages/shared/tests/citation.test.ts` (12) · `apps/server/tests/citationService.test.ts` (12) · `apps/server/tests/citationStream.test.ts` (5) · `apps/server/tests/contextPrompt.test.ts` (+7) · `apps/extension/tests/citationPlugin.test.ts` (11) · `tests/citationChip.test.tsx` (9) · `tests/messageContentCitation.test.tsx` (9) · `tests/chatStore.test.ts` (+4) · `tests/useChat.test.ts` (+2) · `e2e/citation.spec.ts` (4 kịch bản).
+>
+> **T-M1-09 bổ sung:** `packages/shared/tests/conversationSchema.test.ts` · `apps/server/tests/conversationService.test.ts` (28) · `apps/server/tests/conversationsRoute.test.ts` (13) · `apps/server/tests/helpers/fakeConversationDb.ts` (fake Drizzle DB — **không cần Docker**) · `apps/extension/tests/conversationStore.test.ts` (15) · `apps/extension/tests/conversationClient.test.ts` · `apps/extension/tests/conversationList.test.tsx` · `e2e/conversation.spec.ts` (7 kịch bản).
 
 ### 7.2.2 Audit chất lượng test bằng mutation testing (2026-11-04)
 
@@ -1528,6 +1532,85 @@ Danh sách nguồn được truyền qua React context (`CitationContext`) → k
 #### 7.9.8 Token màu
 
 Chip dùng token có sẵn trong `design/tokens.css`: `--citation-bg` · `--citation-border` · `--citation-link` · `--citation-hover` (không hardcode màu). Class `.citation-chip` trong `apps/extension/src/sidepanel/index.css`.
+
+### 7.10 Chat CRUD — quản lý nhiều cuộc trò chuyện (FR-CHAT-08/09/11 — T-M1-09)
+
+> Nguồn sự thật cho hợp đồng: [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.1 (FR-CHAT-08, FR-CHAT-09, FR-CHAT-11).
+
+#### 7.10.1 Quyết định thiết kế
+
+| Quyết định | Lý do |
+|---|---|
+| **Ghim ở cấp conversation** (`conversations.pinned`) | Cột `pinned` **đã có sẵn** từ migration `0000_adorable_sister_grimm.sql` → không cần migration mới. Ghim tin nhắn để task sau |
+| **Drawer = Radix Dialog trượt từ trái** | Đúng DP-2 "chat-centric" (thread chiếm ≥ 90% không gian) — không thu hẹp panel. Radix Dialog qua Portal → không bị `overflow` của thread cắt |
+| **Không migration mới** | `conversations` đã có `title` · `pinned` · `archived` · `updated_at` · `meta` |
+| **Tiêu đề tự động** từ câu hỏi đầu tiên | Danh sách không nhom hết "Cuộc trò chuyện mới". Chỉ set khi **tạo mới** (`onConflictDoNothing`) → tên user đặt tay không bị ghi đè |
+| **`GET /:id/messages`** thay cho `GET /:id` | Hydrate thread chỉ cần **1 request** (conversation + messages + citations) |
+| **Phân trang keyset** (cursor), không OFFSET | Danh sách thay đổi liên tục (mỗi lượt chat bump `updated_at`) → OFFSET dễ lặp/sót dòng |
+| **Optimistic update + rollback** trong store | CRUD phản ánh trong UI **ngay** (AC) nhưng không giữ trạng thái sai khi API lỗi |
+
+#### 7.10.2 Luồng dữ liệu
+
+```mermaid
+flowchart LR
+  drawer["ConversationList (drawer)"] --> store["conversationStore (Zustand)"]
+  store --> client["lib/conversationClient.ts"]
+  client -->|"fetchJson"| routes["BFF /api/conversations"]
+  routes --> service["services/conversationService.ts"]
+  service --> DB[("Postgres conversations<br/>+ messages + citations")]
+  drawer -->|"chọn conversation"| hydrate["chatStore.messages<br/>← GET /:id/messages"]
+```
+
+#### 7.10.3 Endpoint (đã implement)
+
+| Method | Path | Ghi chú |
+|---|---|---|
+| `GET` | `/api/conversations?q=&archived=&limit=&cursor=` | Sort `pinned desc, updated_at desc, id desc` · trả `{ items, nextCursor }` |
+| `POST` | `/api/conversations` | Body `{ title? }` → `201` + `ConversationSummary` |
+| `GET` | `/api/conversations/:id/messages` | `{ conversation, messages[] }` — messages kèm `citations[]` + `provider`/`model`/`tokensIn`/`tokensOut` |
+| `PATCH` | `/api/conversations/:id` | Body `{ title?, pinned?, archived? }` — chỉ cập nhật trường được gửi, **bump `updated_at`** |
+| `DELETE` | `/api/conversations/:id` | `204` — cascade xoá `messages` · `citations` · `message_attachments` (FK `onDelete: cascade`) |
+
+- Id phải là **UUID** → `VALIDATION_ERROR` (400) trước khi query DB.
+- `AppError` (`NOT_FOUND` · `VALIDATION_ERROR` · `INTERNAL_ERROR`) map qua `errorHandler` sẵn có ở `apps/server/src/middleware/error.ts`.
+
+#### 7.10.4 Phân trang keyset
+
+Cursor = `base64url("pinned|updatedAt|id")` của **dòng cuối** trang trước:
+
+```
+encodeCursor({ pinned, updatedAt, id })  →  "MXwyMDI2LTAxLTAx...|fQ"
+decodeCursor(cursor)                      →  { pinned, updatedAt, id } | undefined
+```
+
+- `decodeCursor` trả `undefined` khi cursor hỏng → coi như không có cursor (không throw 500).
+- `nextCursor` chỉ có khi **còn** trang sau → client gọi `loadMore()` khi scroll tới cuối.
+- `limit` mặc định `30`, tối đa `100` (validate bằng `conversationListQuerySchema`).
+
+#### 7.10.5 Server — `chatService` gắn với danh sách
+
+| Hàm | Vai trò |
+|---|---|
+| `buildAutoTitle(content)` | 60 ký tự đầu câu hỏi đầu tiên + `…` nếu bị cắt → tiêu đề conversation mới |
+| `persistUserMessage()` | `INSERT conversations ... ON CONFLICT DO NOTHING` với tiêu đề tự động |
+| `persistAssistantMessage()` | Lưu `meta` = `{ provider, model, tokensIn, tokensOut }` → khôi phục lịch sử **không mất** chip DP-6 |
+| `touchConversation()` | `UPDATE conversations SET updated_at = now()` sau mỗi lượt chat → conversation vừa dùng **luôn lên đầu** danh sách |
+
+#### 7.10.6 Extension — store + drawer
+
+| Thành phần | Vai trò |
+|---|---|
+| `conversationStore` (Zustand) | `items` · `isLoading` · `error` · `query` · `archivedView` · `nextCursor` · `activeConversationId` · `activeTitle` · `refresh()` · `loadMore()` · `create()` · `rename()` · `togglePin()` · `toggleArchive()` · `remove()` |
+| `ConversationList` | Nội dung drawer: "Chat mới" · search (debounce 250 ms) · tab "Đang dùng" / "Đã lưu trữ" · nhóm "Đã ghim" / "Gần đây" · mỗi dòng có nút ghim / lưu trữ / đổi tên / xoá |
+| `ConfirmDialog` | Confirm trước khi xoá (FR-CHAT-08) — nút nguy hiểm dùng variant `danger` |
+| `chatStore.hydrateConversation()` | Nạp lại lịch sử + citations vào thread khi chọn conversation |
+
+**Optimistic + rollback:** `rename` / `togglePin` / `toggleArchive` / `remove` cập nhật state **trước**, gọi API sau; nếu API lỗi → khôi phục state cũ + đặt `error` (UI hiện `role="alert"`).
+
+#### 7.10.7 Token & motion
+
+- Drawer dùng token có sẵn: `--surface-overlay` (nền panel) · `--border-default` (viền phải) · `--shadow-3` (đổ bóng) · `--text-primary` / `--text-secondary` / `--text-tertiary`.
+- Animation `sidekick-drawer-in` (translateX + opacity) & `sidekick-fade-in` (overlay) trong `apps/extension/src/sidepanel/index.css`, **tôn trọng `prefers-reduced-motion`** (`animation: none`).
 
 ---
 

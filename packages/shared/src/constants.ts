@@ -129,6 +129,8 @@ export const API_ROUTES = {
   health: `${API_BASE_PATH}/health`,
   chat: `${API_BASE_PATH}/chat`,
   conversations: `${API_BASE_PATH}/conversations`,
+  /** Lich su hoi thoai cua 1 conversation — template, thay `:id`. */
+  conversationMessages: `${API_BASE_PATH}/conversations/:id/messages`,
   providers: `${API_BASE_PATH}/providers`,
   /** API key BYOK (K2) — GET/POST/DELETE + test. */
   providerKeys: `${API_BASE_PATH}/providers/keys`,

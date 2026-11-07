@@ -173,6 +173,16 @@ export const conversationListQuerySchema = z.object({
   q: z.string().max(200).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(30),
   cursor: z.string().max(200).optional(),
+  /**
+   * Loc conversation theo trang thai luu tru (FR-CHAT-09 — T-M1-09).
+   *
+   * `true` → tra conversation da luu tru; mac dinh `false` → chi tra
+   * conversation dang dung.
+   */
+  archived: z
+    .union([z.boolean(), z.string()])
+    .optional()
+    .transform((value) => value === true || value === 'true'),
 })
 export type ConversationListQuery = z.infer<typeof conversationListQuerySchema>
 

@@ -55,6 +55,7 @@ Cột ưu tiên: **M** = Must (M1) · **S** = Should (M2) · **C** = Could (M2/M
 | A27 | Copilot Actions (Edge) | Tác vụ web **một lần** có giám sát (đặt nhà hàng, sửa trang, huỷ newsletter). Có bước xác nhận cho hành động rủi ro (mua hàng, gửi email). **Preview, trong Copilot Mode** | C |
 | A28 | Lịch chạy tự động | **Không có trong Edge.** Chỉ ở **M365 Copilot Tasks** (chạy ngay hoặc theo lịch, giới hạn 10 scheduled prompts) — cần **Copilot license**, sản phẩm khác, không nằm trong sidebar | 🟢 FR-WORKFLOW-03 (M4) |
 | A29 | Trích dẫn nguồn (citations) | Câu trả lời dựa trên nội dung trang hiện tại hiện **số nguồn** kèm trích dẫn → bấm vào xem đoạn nguồn | M (chi tiết hơn: chip + popover đoạn nguồn) |
+| A30 | Quản lý nhiều cuộc trò chuyện | Lịch sử chat trong Copilot sidebar: mở lại chat cũ, đổi tên, xoá | 🟢 FR-CHAT-08/09/11 (T-M1-09 — drawer quản lý chat + search + ghim + lưu trữ) |
 
 ---
 
@@ -91,6 +92,7 @@ Cột ưu tiên: **M** = Must (M1) · **S** = Should (M2) · **C** = Could (M2/M
 | B27 | Yêu cầu đăng nhập | Bắt buộc đăng nhập Google Account; Skills cần **Chrome ≥ 147**, ngôn ngữ **en-US**, ChromeOS/Mac/Windows; không dùng được trên managed/Enterprise account (trừ khi admin bật) | 🟢 Không cần tài khoản hãng; chạy offline được |
 | B28 | Tasks / Schedules (chạy nền theo lịch) | **Không có trong sidebar.** Nằm ở **Gemini Apps** (`gemini.google.com`) — không phải Gemini in Chrome. Hỗ trợ time-based (once/hourly/daily/weekly/monthly/yearly), Gmail monitor, topic monitor. Skill = cách làm, Schedule = khi nào chạy | 🟢 FR-WORKFLOW-03/04 (M4) |
 | B29 | Trích dẫn nguồn (citations) | Câu trả lời từ nội dung tab được share hiện **số tham chiếu** → bấm xem nguồn | M (chi tiết hơn: chip + popover đoạn nguồn) |
+| B30 | Multi-conversation | Nhiều cuộc trò chuyện cùng lúc (B18) — mở lại, đổi tên, xoá chat cũ | 🟢 FR-CHAT-08/09/11 (T-M1-09 — drawer quản lý chat + search + ghim + lưu trữ) |
 
 ---
 
@@ -129,7 +131,7 @@ Cột ưu tiên: **M** = Must (M1) · **S** = Should (M2) · **C** = Could (M2/M
 | Trích dẫn nguồn (chip + popover) | ✅ | ✅ | ✅ (T-M1-08 — chi tiết hơn: popover xem **đoạn nguồn**) | — |
 | Summarize 1-click | ✅ | ✅ | ✅ | — |
 | Prompt gợi ý theo trang | ✅ | ✅ | ✅ | — |
-| Lịch sử / nhiều conversation | ✅ | ✅ | ✅ | — |
+| Lịch sử / nhiều conversation | ✅ | ✅ | ✅ (T-M1-09 — drawer quản lý chat: tạo/đổi tên/xoá/ghim/lưu trữ/search) | — |
 | Skills | ➖ | ✅ | ✅ | — |
 | Voice | ✅ (M365) | ✅ | ➖ | C |
 | Vision / screen share | ✅ (M365) | ➖ | ⚠️ | C |
@@ -175,7 +177,7 @@ Dùng làm acceptance checklist cho M1.
 - [ ] Không trích xuất lại trang đã đọc + fallback khi trang lỗi — ✅ T-M1-06 (cache theo URL+hash trong `chrome.storage.local` · TTL 30 phút · tối đa 20 entry · **không có UI mới**)
 - [ ] Nút tóm tắt 1-click — ⬜ T-M1-11
 - [ ] Prompt gợi ý theo loại trang — ⬜ T-M1-11
-- [ ] Nhiều conversation: tạo / đổi tên / xoá / ghim — ⬜ T-M1-09
+- [ ] Nhiều conversation: tạo / đổi tên / xoá / ghim — ✅ T-M1-09 (drawer `ConversationList` (Radix Dialog trượt từ trái) · tạo / đổi tên / xoá (có confirm dialog) / ghim / lưu trữ / search theo tên · **phạm vi: ghim ở cấp conversation**, ghim tin nhắn để task sau)
 - [ ] Stop / Regenerate / Edit-resend — ⬜ T-M1-10
 - [ ] Export conversation (Markdown / JSON) — ⬜ T-M1-13
 - [ ] Skills `/` + tạo/sửa/xoá skill + library có sẵn + trang duyệt skill library — ⬜ T-M2-04/06/21

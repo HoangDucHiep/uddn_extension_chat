@@ -102,14 +102,16 @@ pnpm eval:run                # chạy eval harness
 | Milestone | Trạng thái | Ghi chú |
 |---|---|---|
 | **M0 — Foundation** | ✅ Hoàn thành | 15/15 task · 91 unit test + 2 E2E · tag `v0.1` |
-| **M1 — Parity** | 🚧 Đang làm | 12/25 task (T-M1-01, T-M1-04 ✅ hấp thụ, T-M1-05, T-M1-21, T-M1-22, T-M1-23, T-M1-02, T-M1-24, T-M1-25, T-M1-06 ✅, T-M1-07 ✅, T-M1-08 ✅) · 813 unit test + 40 E2E |
+| **M1 — Parity** | 🚧 Đang làm | 13/25 task (T-M1-01, T-M1-04 ✅ hấp thụ, T-M1-05, T-M1-21, T-M1-22, T-M1-23, T-M1-02, T-M1-24, T-M1-25, T-M1-06 ✅, T-M1-07 ✅, T-M1-08 ✅, T-M1-09 ✅) · 904 unit test + 47 E2E |
 | **M2 — Advanced & Eval** | ⬜ Chưa bắt đầu | `EVAL_REPORT.md` là deliverable bắt buộc |
 | **M3 — Polish & Deliverable** | ⬜ Chưa bắt đầu | |
 | **M4 — Workflow** | ⬜ Tuỳ chọn | Chỉ sau M3 + đã có eval report |
 
 **Trạng thái docs:** ✅ Requirements · ✅ Design System Brief · ✅ System Design · ✅ Implementation Plan · ✅ Comparison Matrix · ✅ Eval Plan · ✅ Handoff · ✅ Changelog
 
-**Việc tiếp theo:** **T-M1-09** (chat CRUD: tạo / đổi tên / xoá / ghim / archives) — theo thứ tự ưu tiên M1; **T-M1-03** (service worker: mở/toggle panel · context menu · keyboard shortcut) là ứng viên song song.
+**Việc tiếp theo:** **T-M1-03** (service worker: mở/toggle panel · context menu · keyboard shortcut) hoặc **T-M1-10** (Regenerate / Edit-resend / Stop / Continue) — theo thứ tự ưu tiên M1.
+
+> **Chat CRUD (T-M1-09):** side panel có **drawer quản lý cuộc trò chuyện** (Radix Dialog trượt từ trái) — tạo · đổi tên · xoá (confirm dialog) · ghim · lưu trữ · search theo tên. Chọn conversation → tải lại lịch sử **kèm citations đã lưu**. Backend: `GET/POST /api/conversations` · `GET /api/conversations/:id/messages` · `PATCH/DELETE /api/conversations/:id` (phân trang keyset bằng cursor). **Phạm vi chốt:** ghim ở cấp **conversation** (cột `pinned` đã có sẵn từ M0 → không có migration mới); ghim tin nhắn để task sau. Chi tiết: [`SYSTEM_DESIGN.md`](docs/SYSTEM_DESIGN.md) §7.10.
 
 > **Markdown render (T-M1-07):** nội dung assistant render qua `react-markdown` + `remark-gfm` → `rehype-highlight` → `rehype-sanitize` (allowlist thẩm: `span.hljs-*`, `code.language-*`, `href` chỉ `http/https/mailto`). Code block có **nhãn ngôn ngữ + copy 1-click** (toast "Đã sao chép", copy **source thô**); bảng GFM scroll ngang. Highlight **defer khi streaming** + `useDeferredValue` → không jank, không nhấp nháy. Chi tiết: [`SYSTEM_DESIGN.md`](docs/SYSTEM_DESIGN.md) §7.8.
 

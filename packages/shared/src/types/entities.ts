@@ -5,6 +5,7 @@
 
 import { z } from 'zod'
 import { PROVIDER_IDS } from '../constants.js'
+import { conversationCitationSchema } from '../schemas/conversation.js'
 
 /** Vai tro cua mot message trong hoi thoai. */
 export const MESSAGE_ROLES = ['user', 'assistant', 'system', 'tool'] as const
@@ -32,6 +33,18 @@ export const messageSchema = z.object({
   content: z.string(),
   meta: z.record(z.string(), z.unknown()),
   createdAt: z.string(),
+  /**
+   * Nguon trich dan cua message (FR-CONTEXT-10 — T-M1-09).
+   *
+   * Chi co khi message da duoc luu vao DB → dung khoi phuc lich su.
+   */
+  citations: z.array(conversationCitationSchema).optional(),
+  /** Provider/model da sinh message (DP-6). */
+  provider: z.string().optional(),
+  model: z.string().optional(),
+  /** Token da dung (DP-6). */
+  tokensIn: z.number().int().nonnegative().optional(),
+  tokensOut: z.number().int().nonnegative().optional(),
 })
 export type Message = z.infer<typeof messageSchema>
 

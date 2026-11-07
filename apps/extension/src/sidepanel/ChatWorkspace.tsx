@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { toast } from 'sonner'
+import type { ConversationMessage } from '@sidekick/shared'
 import { MessageBubble } from './components/MessageBubble'
 import { Composer } from './components/Composer'
 import { PanelHeader } from './components/PanelHeader'
@@ -7,11 +9,16 @@ import { ContextChips } from './components/context/ContextChips'
 import { ContextBudget } from './components/context/ContextBudget'
 import { MentionPopover } from './components/context/MentionPopover'
 import { AttachmentTray } from './components/composer/AttachmentTray'
+import { ConversationList } from './components/chat/ConversationList'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { useChat } from './hooks/useChat'
 import { useMention } from './hooks/useMention'
 import { useSelection } from './hooks/useSelection'
 import { useTabs } from './hooks/useTabs'
 import { useImageAttachments } from './hooks/useImageAttachments'
+import { useChatStore, type ChatMessage } from './store/chatStore'
+import { useConversationStore } from './store/conversationStore'
+import { getConversationMessages } from '@/lib/conversationClient'
 import type { OpenTab } from '@/lib/tabList'
 
 /**
@@ -51,12 +58,20 @@ export function ChatWorkspace({ onOpenOnboarding }: ChatWorkspaceProps) {
   } = useChat()
   const [input, setInput] = useState('')
   const [isAttaching, setIsAttaching] = useState(false)
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const threadRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
   const mention = useMention()
   const { tabs, isLoading: isLoadingTabs } = useTabs(mention.state.open)
   const imageAttachments = useImageAttachments()
+
+  // Tieu de conversation hien tai → hien thi trong header.
+  const hydrateConversation = useChatStore((state) => state.hydrateConversation)
+  const conversationTitle = useConversationStore((state) => state.activeTitle)
+  const setActiveConversationId = useConversationStore(
+    (state) => state.setActiveConversationId,
+  )
 
   // Doan text user boi den tren trang → tu dinh kem (duong A — T-M1-02).
   useSelection({
@@ -149,14 +164,49 @@ export function ChatWorkspace({ onOpenOnboarding }: ChatWorkspaceProps) {
     />
   ) : undefined
 
+  /**
+   * Chon 1 conversation → tai lai lich su hoi thoai vao thread.
+   *
+   * @param id - Id conversation can mo.
+   * @param title - Tieu de conversation (hien thi header).
+   */
+  const handleSelectConversation = async (id: string, title: string): Promise<void> => {
+    setActiveConversationId(id, title)
+    try {
+      const response = await getConversationMessages(id)
+      hydrateConversation(id, response.messages.map(toChatMessage))
+    } catch {
+      toast.error('Không tải được lịch sử cuộc trò chuyện')
+    }
+  }
+
+  /**
+   * Tao chat moi → xoa thread hien tai, gan conversation vua tao.
+   *
+   * Conversation **da** duoc tao tren server (POST `/api/conversations`) →
+   * gan `conversationId` ngay de luot chat sau ghi vao dung conversation do
+   * (khong tao rac conversation rong).
+   *
+   * @param id - Id conversation vua tao.
+   */
+  const handleCreateConversation = (id: string): void => {
+    hydrateConversation(id, [])
+    setActiveConversationId(id, 'Cuộc trò chuyện mới')
+    setIsDrawerOpen(false)
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-[var(--surface-panel)]">
       <PanelHeader
         provider={activeProvider}
         model={activeModel}
         keySource={keySource}
+        conversationTitle={conversationTitle}
         onClear={clear}
         onOpenOnboarding={onOpenOnboarding}
+        onOpenConversations={() => {
+          setIsDrawerOpen(true)
+        }}
       />
 
       <div
@@ -217,6 +267,54 @@ export function ChatWorkspace({ onOpenOnboarding }: ChatWorkspaceProps) {
         }}
         isReadingImages={imageAttachments.isReading}
       />
+
+      {/* Drawer danh sach cuoc tro chuyen (FR-CHAT-09 — T-M1-09). */}
+      <Dialog open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
+        <DialogContent aria-labelledby="conversation-drawer-title">
+          <DialogTitle id="conversation-drawer-title" className="sr-only">
+            Danh sách cuộc trò chuyện
+          </DialogTitle>
+          <ConversationList
+            onSelect={(id) => {
+              const title =
+                useConversationStore.getState().items.find((item) => item.id === id)?.title ?? ''
+              setIsDrawerOpen(false)
+              void handleSelectConversation(id, title)
+            }}
+            onCreate={handleCreateConversation}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   )
+}
+
+/**
+ * Chuyen message tu BFF (contract) sang `ChatMessage` (state UI).
+ *
+ * @param message - Message tu `GET /api/conversations/:id/messages`.
+ */
+function toChatMessage(message: ConversationMessage): ChatMessage {
+  return {
+    id: message.id,
+    role: message.role,
+    content: message.content,
+    createdAt: new Date(message.createdAt).getTime(),
+    status: 'done',
+    ...(message.provider !== undefined ? { provider: message.provider } : {}),
+    ...(message.model !== undefined ? { model: message.model } : {}),
+    ...(message.tokensIn !== undefined ? { tokensIn: message.tokensIn } : {}),
+    ...(message.tokensOut !== undefined ? { tokensOut: message.tokensOut } : {}),
+    ...(message.citations.length > 0
+      ? {
+          citations: message.citations.map((citation) => ({
+            index: citation.index,
+            url: citation.url,
+            title: citation.title,
+            snippet: citation.snippet,
+            ...(citation.tabId !== undefined ? { tabId: citation.tabId } : {}),
+          })),
+        }
+      : {}),
+  }
 }
