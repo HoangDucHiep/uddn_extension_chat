@@ -8,6 +8,13 @@
 
 ## [Unreleased]
 ### Added
+- **Parity "Panel giữ nguyên khi chuyển tab" — đã chứng minh bằng E2E**
+  - `apps/extension/e2e/panelPersistence.spec.ts` (mới, 3 test) — mock `chrome.tabs` + stub SSE `/api/chat`:
+    - đổi tab → gallery đổi `data-profile` theo trang mới.
+    - đổi tab **khi đã có thread** → thread giữ nguyên (user + assistant) + panel **vẫn đọc lại tab mới** (đếm số lần `chrome.tabs.query`) → chứng minh panel thật sự phản ứng với sự kiện đổi tab, không phải "đơ" vì state đứng yên.
+    - đổi tab lần 2 → thread vẫn giữ nguyên.
+  - **Không** đổi code sản phẩm — hành vi đã đúng sẵn: side panel thuộc **cửa sổ** → Chrome giữ panel mở khi đổi tab (native) · React state của panel sống suốt (document không reload) · `useActivePage` chỉ cập nhật `page` (gợi ý theo trang), **không** đụng `chatStore` → không reset thread.
+  - Docs: `SYSTEM_DESIGN.md` §7.21 (mới) · `COMPARISON_MATRIX.md` §E (dòng "Panel giữ nguyên khi chuyển tab" → `- [x]`).
 - **T-M1-13 — Export cuộc trò chuyện (FR-CHAT-10)**
   - `apps/extension/src/lib/export.ts` (mới) — module **thuần** (không DOM / Zod / Chrome API): `buildMarkdownExport()` · `buildJsonExport()` · `buildExportFileName()`. File `.md` có metadata đầu file (thời điểm xuất ISO · conversation id · số tin nhắn) + metadata từng lượt assistant (provider · model · token in/out · request-id 6 ký tự — cùng slot với chip trong bubble) + danh sách nguồn `[N]`. File `.json` có `version` · `exportedAt` · `conversation{id,title}` · `messages[]{role,content,createdAt,provider?,model?,tokensIn?,tokensOut?,requestId?,citations?}` (field không có giá trị → **bỏ hẳn**, không để `undefined`).
   - `apps/extension/src/lib/downloadFile.ts` (mới) — `downloadTextFile()` dùng `Blob` + `URL.createObjectURL` + `<a download>`; **tái sử dụng** cho export settings (`DataSettings.tsx`) → chỉ 1 bản trong repo.

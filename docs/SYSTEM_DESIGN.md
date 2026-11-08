@@ -2852,6 +2852,48 @@ interface ExportMessage {
 
 ---
 
+### 7.21 Parity — panel giữ nguyên khi chuyển tab (COMPARISON_MATRIX §E)
+
+> Nguồn sự thật cho hành vi: [`COMPARISON_MATRIX.md`](COMPARISON_MATRIX.md) §E.
+
+#### 7.21.1 Vì sao hành vi này **không cần code riêng**
+
+Side panel thuộc **cửa sổ** (window), không thuộc **tab** → Chrome giữ panel mở khi user chuyển tab trong cùng cửa sổ. Đây là hành vi native của Chrome, giống Edge Copilot Sidebar và Chrome Gemini.
+
+Thêm vào đó, side panel là **một document React** — không bị reload khi đổi tab → toàn bộ state trong bộ nhớ của panel (Zustand store `chatStore` · `conversationStore`) sống suốt:
+
+| State | Nơi lưu | Mất khi đổi tab? |
+|---|---|---|
+| Thread (message + biến thể + đường đi active) | `useChatStore` (RAM của panel) | ❌ không |
+| Draft (bản nháp đang gõ) | `useChatStore` + `chrome.storage.local` (`sidekick.draft.<id>`) | ❌ không |
+| Context chips / ngân sách context | `useChatStore` | ❌ không |
+| Danh sách conversation | `useConversationStore` | ❌ không |
+
+#### 7.21.2 Phản ứng với sự kiện đổi tab
+
+`useActivePage` (`apps/extension/src/sidepanel/hooks/useActivePage.ts`) đăng ký 2 listener:
+
+| Listener | Điều kiện | Tác dụng |
+|---|---|---|
+| `chrome.tabs.onActivated` | luôn | đọc lại tab active → cập nhật `page` |
+| `chrome.tabs.onUpdated` | **chỉ khi `changeInfo.url` khác `undefined`** | đọc lại khi trang điều hướng (trang reload không đổi URL → không đọc lại) |
+
+`page` chỉ dùng cho **gợi ý theo trang** (`PromptGallery` — FR-UX-03) + placeholder. Nó **không** đụng vào `chatStore` → đổi tab **không** reset thread.
+
+#### 7.21.3 Kiểm thử
+
+`apps/extension/e2e/panelPersistence.spec.ts` — mock `chrome.tabs` (copy helper `mockTab` của `e2e/promptGallery.spec.ts`) + stub SSE `/api/chat`:
+
+| Test | Chứng minh |
+|---|---|
+| `đổi tab → gallery đổi gợi ý theo trang mới` | `data-profile` của gallery đổi `docs` → `forum` |
+| `đổi tab khi đã có thread → thread giữ nguyên, panel vẫn đọc tab mới` | thread giữ nguyên nội dung user + assistant · `chrome.tabs.query` được gọi lại (đếm bằng `__tabsQueryCount()`) → chứng minh panel **thật sự phản ứng**, không phải "đơ" vì state đứng yên · không quay về empty state |
+| `đổi tab lần 2 → thread vẫn giữ nguyên` | đổi tab nhiều lần → thread không mất |
+
+> **Giới hạn của E2E:** Playwright không điều khiển được side panel native của Chrome → test mô phỏng sự kiện `tabs.onActivated`. Phần "Chrome giữ panel mở khi đổi tab" là **hành vi native** (không có API nào để tắt) → không cần test code.
+
+---
+
 ## 8. Hiệu năng
 
 | Chỉ số | Mục tiêu | Cách đạt |
