@@ -102,7 +102,7 @@ pnpm eval:run                # chạy eval harness
 | Milestone | Trạng thái | Ghi chú |
 |---|---|---|
 | **M0 — Foundation** | ✅ Hoàn thành | 15/15 task · 91 unit test + 2 E2E · tag `v0.1` |
-| **M1 — Parity** | 🚧 Đang làm | 23/25 task (T-M1-01, T-M1-04 ✅ hấp thụ, T-M1-05, T-M1-21, T-M1-22, T-M1-23, T-M1-02, T-M1-24, T-M1-25, T-M1-06 ✅, T-M1-07 ✅, T-M1-08 ✅, T-M1-09 ✅, T-M1-10 ✅, T-M1-11 ✅, T-M1-03 ✅, T-M1-12 ✅, T-M1-19 ✅, T-M1-14 ✅, T-M1-17 ✅, T-M1-18 ✅, T-M1-20 ✅) · 1301 unit test + 81 E2E |
+| **M1 — Parity** | 🚧 Đang làm | 23/25 task (T-M1-01, T-M1-04 ✅ hấp thụ, T-M1-05, T-M1-21, T-M1-22, T-M1-23, T-M1-02, T-M1-24, T-M1-25, T-M1-06 ✅, T-M1-07 ✅, T-M1-08 ✅, T-M1-09 ✅, T-M1-10 ✅, T-M1-11 ✅, T-M1-03 ✅, T-M1-12 ✅, T-M1-19 ✅, T-M1-14 ✅, T-M1-17 ✅, T-M1-18 ✅, T-M1-20 ✅) · 1311 unit test + 81 E2E |
 | **M2 — Advanced & Eval** | ⬜ Chưa bắt đầu | `EVAL_REPORT.md` là deliverable bắt buộc |
 | **M3 — Polish & Deliverable** | ⬜ Chưa bắt đầu | |
 | **M4 — Workflow** | ⬜ Tuỳ chọn | Chỉ sau M3 + đã có eval report |
@@ -110,6 +110,8 @@ pnpm eval:run                # chạy eval harness
 **Trạng thái docs:** ✅ Requirements · ✅ Design System Brief · ✅ System Design · ✅ Implementation Plan · ✅ Comparison Matrix · ✅ Eval Plan · ✅ Handoff · ✅ Changelog
 
 **Việc tiếp theo:** **Đóng M1** → sang **M2 — Advanced & Eval** (`docs/EVAL_PLAN.md`). T-M1-13 (export) đã được user defer · T-M1-15 (K3 direct) + T-M1-16 (K2 BYOK UI) **⏸ tạm dừng** (2026-11-08).
+
+> **Bundle content script (fix sau T-M1-20):** `dist/content.js` đã **phình 151 kB** (T-M1-17: `lib/i18n.ts` → `lib/settings.ts` → `@sidekick/shared` barrel → **Zod**) rồi **~46 kB** (T-M1-20: kéo dictionary **đầy đủ** ~34 kB) → nay **17.27 kB** (gzip 6.65 kB). **2 tầng dictionary**: `i18n/format.ts` (thuần) · `i18n/outsidePanel.{vi,en}.ts` (**4 khoá** ngoài panel — nguồn sự thật) · `i18n/outsidePanel.ts` · `i18n/surface.ts` (union kiểu) · `lib/i18nSurface.ts` (`getSurfaceTranslator()` cho content script + SW) · `lib/storageKeys.ts` (khoá storage + đọc ngôn ngữ, **không** Zod). `i18n/vi.ts` + `en.ts` **spread** dictionary rút gọn → 1 nguồn sự thật. **Guard** `apps/extension/tests/contentBundleGuard.test.ts` duyệt **đệ quy đồ thị phụ thuộc** (grep từng file bị lọt) → chặn `@sidekick/shared` barrel · dictionary đầy đủ · `react` · `zod`; assert `dist/content.js` **≤ 40 kB**. Chi tiết: [`SYSTEM_DESIGN.md`](docs/SYSTEM_DESIGN.md) §7.5.1 + §7.5.2.
 
 > **Responsive 320–640px + a11y pass (T-M1-20):** side panel **không tràn ngang** ở 320–640px (`#root` dùng `min-width: min(var(--panel-min-width), 100%)` · drawer + chip nguồn `max-w-full` · `min-w-0` cho bubble/textarea). **Focus ring** chuẩn hoá 1 token `--border-focus` (`focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]`) — không còn `outline: none` trần. **Live region (NFR-A11Y-05)** đặt **chỉ** trên phần đang stream (`MessageContent`: `role="article"` + `aria-live="polite"` + `aria-atomic="false"`); thread `role="log"` **không** đặt `aria-live` → screen reader không đọc lại lịch sử cũ. **Skip-link** "Bỏ qua tới ô nhập" (`App.tsx` → `#sidekick-composer-input`) · **tap target ≥ 24px** (WCAG 2.2 §2.5.8) · `role="tab"`/`tabpanel` cho tab nhóm conversation · dọn 3 chuỗi literal còn sót từ T-M1-17 (`composer.hint` · `chat.oldVersions` · `chat.threadLabel` + nhãn đóng Dialog) → `useI18n` **chuyển** từ `sidepanel/hooks/` → `src/i18n/useI18n.ts`. Chi tiết: [`SYSTEM_DESIGN.md`](docs/SYSTEM_DESIGN.md) §7.19 · [`DESIGN_SYSTEM_BRIEF.md`](docs/DESIGN_SYSTEM_BRIEF.md) §5.
 

@@ -27,6 +27,9 @@
   - **Guard hồi quy** — `apps/extension/tests/contentBundleGuard.test.ts` (mới, 10 test): duyệt **đệ quy đồ thị phụ thuộc** của `src/content/contentScript.ts` → chặn `@sidekick/shared` (barrel) · dictionary đầy đủ · `react` · `zod`; kèm assert `dist/content.js` **≤ 40 kB** + không chứa marker Zod.
     - > Guard dùng **đồ thị phụ thuộc**, không phải grep từng file — bản grep lọt lưới (đổi `contentScript.ts` sang import `../lib/i18n.js` vẫn xanh).
     - > `import type` bị **xoá khi build** → không báo động giả.
+  - **Số test toàn repo:** 1301 → **1311 unit** (extension 681 → **691**) + 81 E2E (không đổi).
+  - **Kích thước bundle:** `dist/content.js` **151 kB → 17.27 kB** (gzip 6.65 kB).
+  - **Migration:** **không** có migration mới · **không** dependency mới · **không** permission mới · **không** đổi manifest.
 
 ### Removed
 - **BYOK (K2 + K3) — tạm dừng theo quyết định user 2026-11-08** (T-M1-15 ⏸ · T-M1-16 ⏸)
