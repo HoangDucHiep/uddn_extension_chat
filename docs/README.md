@@ -18,6 +18,7 @@
 | [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) | **Kế hoạch thực thi** | 82 task có mã `T-Mx-xx` theo M0–M4, DoD, timeline 13 tuần, phân công 3 thành viên, kịch bản thiếu thời gian, **bảng FR → Task rút gọn (§3.2)** | Khi bắt đầu task, cập nhật trạng thái task |
 | [`HANDOFF.md`](HANDOFF.md) | **Chuyển phiên chat** | Checklist bắt đầu chat mới (≤ 5 phút), trạng thái hiện tại, quyết định đã chốt, mẹo tiết kiệm token | **Đọc đầu tiên khi mở chat mới** |
 | [`CHANGELOG.md`](CHANGELOG.md) | **Lịch sử thay đổi** | Mọi thay đổi docs + code, mới → cũ | Xem gần đây đã làm gì |
+| [`MANUAL_TEST_GUIDE.md`](MANUAL_TEST_GUIDE.md) | **Hướng dẫn cài đặt & test tay** | Cài extension + chạy hạ tầng local · checklist test tay **từng tính năng** M1 · xử lý sự cố | **Khi bạn muốn tự dùng thử sản phẩm** |
 
 ---
 

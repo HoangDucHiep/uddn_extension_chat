@@ -33,6 +33,11 @@
 
 _(Không có — T-M1-20 responsive + a11y xong)_
 
+### Hướng dẫn test tay cho người dùng
+
+- **`docs/MANUAL_TEST_GUIDE.md`** (mới, 2026-11-08) — hướng dẫn **cài extension + chạy hạ tầng local + test tay từng tính năng M1** (18 mục checklist) + bảng "xử lý sự cố" + bảng "đã có / chưa có".
+- Đăng ký trong `docs/README.md` (bảng tài liệu) + `docs/CHANGELOG.md`.
+
 ### Việc đã xong gần đây (fix bundle content script — sau T-M1-20)
 
 - **Hồi quy bundle `dist/content.js`** — phình từ **13.87 kB** → **151 kB** (T-M1-17) → **~46 kB** (T-M1-20) → nay **17.27 kB** (gzip 6.65 kB).

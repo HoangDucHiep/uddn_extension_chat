@@ -7,6 +7,12 @@
 ---
 
 ## [Unreleased]
+### Added
+- **`docs/MANUAL_TEST_GUIDE.md`** (mới) — hướng dẫn **cài đặt + test tay toàn bộ tính năng M1** cho người dùng (không phải agent):
+  - §0 Tóm tắt nhanh (6 lệnh) · §1 Yêu cầu · §2 Cài đặt chi tiết (pnpm · Docker · migrate · `.env` K1 · build · load unpacked · dev mode).
+  - §3 Onboarding 3 bước · §4 Chat (streaming · markdown/code/bảng · 4 hành động tin nhắn · CRUD hội thoại · 6 trạng thái lỗi) · §5 Context (gợi ý theo trang · đính kèm · `@` · bôi đen · citation · ngân sách · PDF/YouTube · cache) · §6 Ảnh · §7 Settings (7 section) · §8 Phím tắt 2 lớp · §9 Mở/toggle panel + context menu · §10 Responsive + a11y · §11 Kiểm tra `request_logs` · §12 Xử lý sự cố (11 lỗi thường gặp) · §13 Chạy test tự động · §14 Bảng "đã có / chưa có" · §15 Checklist 18 mục để đánh dấu.
+  - Mọi tên nút / hành vi trong hướng dẫn đã được **đối chiếu với source thật** (`data-testid` · `i18n/vi.ts` · `manifest.json`).
+
 ### Fixed
 - **Hồi quy bundle content script** — `dist/content.js` phình từ **13.87 kB** → **151 kB** (T-M1-17) → **~46 kB** (T-M1-20) vì kéo theo **Zod** + dictionary **đầy đủ**; nay **17.27 kB** (gzip 6.65 kB).
   - **Nguyên nhân T-M1-17** — `lib/i18n.ts` → `lib/settings.ts` → `@sidekick/shared` (barrel `index`) → toàn bộ bundle `zod` (~100 kB).
