@@ -63,7 +63,7 @@ export function AttachmentTray({ images, onRemove, errorMessage }: AttachmentTra
                 type="button"
                 onClick={() => onRemove(image.id)}
                 aria-label={t('chat.removeImage', { name: image.fileName ?? '' }).trim()}
-                className="absolute right-0 top-0 rounded-[var(--radius-sm)] bg-[var(--surface-overlay)] p-[2px] text-[var(--text-tertiary)] transition-colors hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-[var(--focus-ring)]"
+                className="absolute right-0 top-0 flex h-6 w-6 items-center justify-center rounded-[var(--radius-sm)] bg-[var(--surface-overlay)] text-[var(--text-tertiary)] transition-colors hover:text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]"
               >
                 <X className="h-3 w-3" aria-hidden="true" />
               </button>

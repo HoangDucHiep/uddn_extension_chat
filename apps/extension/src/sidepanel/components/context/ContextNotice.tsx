@@ -85,7 +85,7 @@ export function ContextNotice({ errorCode, message }: ContextNoticeProps) {
         type="button"
         onClick={() => setDismissed(true)}
         aria-label={t('context.notice.dismiss')}
-        className="shrink-0 rounded-[var(--radius-sm)] p-[2px] text-[var(--text-tertiary)] transition-colors hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-[var(--focus-ring)]"
+        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--text-tertiary)] transition-colors hover:bg-[var(--surface-sunken)] hover:text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]"
       >
         <X className="h-3.5 w-3.5" aria-hidden="true" />
       </button>

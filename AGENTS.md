@@ -102,14 +102,16 @@ pnpm eval:run                # chạy eval harness
 | Milestone | Trạng thái | Ghi chú |
 |---|---|---|
 | **M0 — Foundation** | ✅ Hoàn thành | 15/15 task · 91 unit test + 2 E2E · tag `v0.1` |
-| **M1 — Parity** | 🚧 Đang làm | 22/25 task (T-M1-01, T-M1-04 ✅ hấp thụ, T-M1-05, T-M1-21, T-M1-22, T-M1-23, T-M1-02, T-M1-24, T-M1-25, T-M1-06 ✅, T-M1-07 ✅, T-M1-08 ✅, T-M1-09 ✅, T-M1-10 ✅, T-M1-11 ✅, T-M1-03 ✅, T-M1-12 ✅, T-M1-19 ✅, T-M1-14 ✅, T-M1-17 ✅, T-M1-18 ✅) · 1292 unit test + 76 E2E |
+| **M1 — Parity** | 🚧 Đang làm | 23/25 task (T-M1-01, T-M1-04 ✅ hấp thụ, T-M1-05, T-M1-21, T-M1-22, T-M1-23, T-M1-02, T-M1-24, T-M1-25, T-M1-06 ✅, T-M1-07 ✅, T-M1-08 ✅, T-M1-09 ✅, T-M1-10 ✅, T-M1-11 ✅, T-M1-03 ✅, T-M1-12 ✅, T-M1-19 ✅, T-M1-14 ✅, T-M1-17 ✅, T-M1-18 ✅, T-M1-20 ✅) · 1301 unit test + 81 E2E |
 | **M2 — Advanced & Eval** | ⬜ Chưa bắt đầu | `EVAL_REPORT.md` là deliverable bắt buộc |
 | **M3 — Polish & Deliverable** | ⬜ Chưa bắt đầu | |
 | **M4 — Workflow** | ⬜ Tuỳ chọn | Chỉ sau M3 + đã có eval report |
 
 **Trạng thái docs:** ✅ Requirements · ✅ Design System Brief · ✅ System Design · ✅ Implementation Plan · ✅ Comparison Matrix · ✅ Eval Plan · ✅ Handoff · ✅ Changelog
 
-**Việc tiếp theo:** **T-M1-20** (responsive 320–640px + a11y) → đóng M1 → sang M2. T-M1-13 (export) đã được user defer · T-M1-15 (K3 direct) + T-M1-16 (K2 BYOK UI) **⏸ tạm dừng** (2026-11-08).
+**Việc tiếp theo:** **Đóng M1** → sang **M2 — Advanced & Eval** (`docs/EVAL_PLAN.md`). T-M1-13 (export) đã được user defer · T-M1-15 (K3 direct) + T-M1-16 (K2 BYOK UI) **⏸ tạm dừng** (2026-11-08).
+
+> **Responsive 320–640px + a11y pass (T-M1-20):** side panel **không tràn ngang** ở 320–640px (`#root` dùng `min-width: min(var(--panel-min-width), 100%)` · drawer + chip nguồn `max-w-full` · `min-w-0` cho bubble/textarea). **Focus ring** chuẩn hoá 1 token `--border-focus` (`focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]`) — không còn `outline: none` trần. **Live region (NFR-A11Y-05)** đặt **chỉ** trên phần đang stream (`MessageContent`: `role="article"` + `aria-live="polite"` + `aria-atomic="false"`); thread `role="log"` **không** đặt `aria-live` → screen reader không đọc lại lịch sử cũ. **Skip-link** "Bỏ qua tới ô nhập" (`App.tsx` → `#sidekick-composer-input`) · **tap target ≥ 24px** (WCAG 2.2 §2.5.8) · `role="tab"`/`tabpanel` cho tab nhóm conversation · dọn 3 chuỗi literal còn sót từ T-M1-17 (`composer.hint` · `chat.oldVersions` · `chat.threadLabel` + nhãn đóng Dialog) → `useI18n` **chuyển** từ `sidepanel/hooks/` → `src/i18n/useI18n.ts`. Chi tiết: [`SYSTEM_DESIGN.md`](docs/SYSTEM_DESIGN.md) §7.19 · [`DESIGN_SYSTEM_BRIEF.md`](docs/DESIGN_SYSTEM_BRIEF.md) §5.
 
 > **Keyboard shortcuts cấu hình được (T-M1-18):** Settings có section "Phím tắt" với **2 lớp** — (1) **lớp native của Chrome**: đọc shortcut đang gán bằng `chrome.commands.getAll()` + nút mở `chrome://extensions/shortcuts`; (2) **lớp nhanh của Sidekick**: lưu `chrome.storage.local` key `sidekick.shortcuts`, bấm "Đổi" để bắt phím, "Về mặc định" để reset, tổ hợp trùng **deny-list** 28 phím dành riêng của trình duyệt thì báo lỗi. **Ràng buộc Chrome MV3:** Chrome **không** có `chrome.commands.update()` / `reset()` (API riêng của Firefox) → thiết kế 2 lớp thay vì giả lập API không tồn tại. Module thuần: `lib/shortcuts.ts` · `lib/shortcutStorage.ts` · `lib/shortcutProtocol.ts` (không Zod → content script IIFE không kéo React/Zod) · `lib/shortcutBridge.ts` (SW) · `content/shortcutListener.ts`. Chi tiết: [`SYSTEM_DESIGN.md`](docs/SYSTEM_DESIGN.md) §7.18 · [`DESIGN_SYSTEM_BRIEF.md`](docs/DESIGN_SYSTEM_BRIEF.md) §3.7.1.
 

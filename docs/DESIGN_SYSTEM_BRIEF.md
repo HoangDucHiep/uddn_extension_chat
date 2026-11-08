@@ -433,6 +433,7 @@ Cache context chạy **hoàn toàn ngầm** ở tầng `lib/` (`contextCache.ts`
 | `LanguageSettings` | FR-SETTINGS-06 | ✅ T-M1-12 — radio VI/EN (chỉ lưu lựa chọn; dịch UI → T-M1-17) |
 | `ShortcutsSettings` | FR-UX-01 | ✅ **T-M1-18** — 2 lớp phím tắt (native của Chrome + nhanh của Sidekick) · bấm "Đổi" → ô bắt phím · "Về mặc định" · "Mở trang phím tắt" |
 | `SettingsControls` | (dùng chung) | ✅ T-M1-12 — `RadioGroup` · `ToggleRow` · `SettingsSection` |
+| `SkipLink` | FR-UX-07, NFR-A11Y-04 | ✅ **T-M1-20** — anchor `#sidekick-composer-input` · `sr-only focus:not-sr-only` |
 | `ProviderSettings` | FR-PROVIDER-01/02/08 | ⏸ **tạm dừng** *(BYOK — quyết định user 2026-11-08)* |
 | `ModelPicker` | FR-PROVIDER-03 | ⬜ T-M2-02 |
 | `ToolsSettings` | FR-TOOLS-01 | ⬜ T-M2-05 |
@@ -616,18 +617,30 @@ Folder `apps/extension/src/sidepanel/components/states/` — **4 trạng thái**
 
 ## 5. Accessibility checklist (WCAG 2.2 AA)
 
-- [ ] Tương phản text ≥ 4.5:1, UI component/icon ≥ 3:1 — kiểm chứng ở **cả** light và dark theme
-- [ ] Focus ring rõ ở mọi interactive element; **không** dùng `outline: none` mà không thay thế
-- [ ] Mọi icon-button có `aria-label` (tiếng Việt)
-- [ ] Streaming dùng `aria-live="polite"` ở cấp **đoạn**, không theo từng token
-- [ ] Tab order: header → thread → composer → actions
-- [ ] Skip-link "Bỏ qua tới ô nhập"
-- [ ] Popover/Dialog đóng bằng `Esc`, trả focus về trigger, focus bị kẹt bên trong khi mở
-- [ ] `prefers-reduced-motion` được tôn trọng
-- [ ] Zoom 200% không mất chức năng (FR-UX-09)
-- [ ] Target size ≥ 24×24px (khuyến nghị 44×44)
-- [ ] Không dùng màu là tín hiệu duy nhất (trạng thái có icon + text)
-- [ ] Form control có `<label>` liên kết, không chỉ placeholder
+> **Trạng thái T-M1-20 (2026-11-08):** các mục dưới đây đã **được kiểm chứng bằng test** (`apps/extension/tests/a11y.test.tsx` + `apps/extension/e2e/responsive.spec.ts`) trừ khi còn ghi "T-M3-03".
+
+- [x] Focus ring rõ ở mọi interactive element; **không** dùng `outline: none` mà không thay thế — ✅ **T-M1-20**: chuẩn hoá 12 chỗ về `focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]`; unit test quét source đảm bảo **không còn** `focus-visible:outline-none` trần ở `src/sidepanel` + `src/components/ui`
+- [x] Mọi icon-button có `aria-label` (tiếng Việt) — ✅ **T-M1-20**: unit test assert `PanelHeader` + `ContextChips`; mọi nút đóng Dialog dùng `t('common.close')`
+- [x] Streaming dùng `aria-live="polite"` ở cấp **đoạn**, không theo từng token — ✅ **T-M1-20**: `MessageContent` có `role="article"` + `aria-live="polite"` + `aria-atomic="false"` + `aria-relevant="additions text"` **chỉ khi** đang stream; thread (`role="log"`) **không** đặt `aria-live` → không đọc lại lịch sử cũ
+- [x] Skip-link "Bỏ qua tới ô nhập" — ✅ **T-M1-20**: `<SkipLink />` trong `App.tsx` → anchor `#sidekick-composer-input`, `sr-only focus:not-sr-only`
+- [x] Popover/Dialog đóng bằng `Esc`, trả focus về trigger, focus bị kẹt bên trong khi mở — Radix `Dialog` / `Popover` xử lý sẵn (`focus trap` + `Escape` + `onCloseAutoFocus`)
+- [x] `prefers-reduced-motion` được tôn trọng — ✅ **T-M1-20**: `@media (prefers-reduced-motion: reduce)` trong `index.css` tắt toàn bộ animation (`animate-drawer-in` · `animate-drawer-in-right` · `animate-fade-in`); animation chỉ dùng `opacity`/`transform` → không gây layout shift
+- [x] Target size ≥ 24×24px (khuyến nghị 44×44) — ✅ **T-M1-20** cho ngưỡng **24px** (44×44 còn ở T-M3-03): mọi icon-button ≥ `h-6 w-6`; chip/nút nhỏ ≥ `min-h-[24px]`; unit test quét source đảm bảo icon-only button có class kích thước
+- [x] Không dùng màu là tín hiệu duy nhất (trạng thái có icon + text) — ✅ đã có từ M0/T-M1-19 (`ContextBudget` dùng `--success`/`--warning`/`--danger` **kèm** text)
+- [x] Form control có `<label>` liên kết, không chỉ placeholder — ✅ `Composer` (`aria-label={t('composer.inputLabel')}`) · `Input` trong `ConversationList` (`aria-label={t('conversation.searchLabel')}`) · `EndpointSettings` · `DataSettings`
+
+> **Còn lại cho T-M3-03 (Polish):** đối chiếu tương phản thực tế ở **cả** light + dark theme (NFR-A11Y-02) — cần công cụ đo tương phản, không làm được bằng unit test jsdom.
+
+### 5.1 Quy ước a11y bắt buộc khi viết component (T-M1-20)
+
+| Quy tắc | Pattern | Lý do |
+|---|---|---|
+| Focus ring | `focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]` | 1 token, đồng bộ `Button`/`Input`/`Textarea`; tránh 2 vòng focus chồng |
+| Icon-button | `h-6 w-6` + `flex items-center justify-center` + `aria-label` | ≥ 24px (WCAG 2.2 §2.5.8) |
+| Icon trang trí | `aria-hidden="true"` trên mọi icon lucide | Screen reader không đọc icon |
+| Live region streaming | Chỉ trên **phần vừa stream**, `aria-atomic="false"` | Không spam từng token (NFR-A11Y-05) |
+| Bề rộng cứng | `max-w-[min(Xpx,100%)]` thay vì `max-w-[Xpx]` | Co theo container ở 320px |
+| Flex child | `min-w-0` + `truncate` | Không phình ngang |
 
 ---
 
@@ -659,6 +672,7 @@ Folder `apps/extension/src/sidepanel/components/states/` — **4 trạng thái**
 | `UsageBadge`, `ProviderBadge` | FR-PROVIDER-05/09 | Bảng 3 "năng lực hệ thống" |
 | Request-id chip trong dòng meta của `MessageBubble` | NFR-MAINT-04, FR-CONTEXT-12 | Minh bạch kỹ thuật · hỗ trợ điều tra lỗi khi chấm eval |
 | **Không có component mới** — i18n chỉ thay chuỗi literal bằng `t('key')` | FR-SETTINGS-06 | Parity i18n (B14) — đổi ngôn ngữ **ngay**, không reload |
+| `SkipLink` + focus ring chuẩn hoá + live region streaming + tap target 24px | FR-UX-07/09, NFR-A11Y-03/04/05 | Rubric R6 (UX) · WCAG 2.2 AA |
 
 ---
 

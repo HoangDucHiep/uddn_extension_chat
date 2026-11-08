@@ -70,7 +70,9 @@ export function SettingsDrawer({
       <DialogContent
         className={[
           'left-auto right-0 border-l border-r-0',
-          'w-[min(360px,92vw)] max-w-[min(360px,92vw)]',
+          // `min()` + `max-w-full` → drawer khong tran ngang khi panel
+          // be 320px (FR-UX-06 — T-M1-20).
+          'w-[min(360px,92vw)] max-w-full',
           'data-[state=open]:animate-drawer-in-right',
         ].join(' ')}
         data-testid="settings-drawer"

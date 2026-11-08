@@ -95,7 +95,7 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | T-M1-17 | i18n VI/EN | FR-SETTINGS-06 | `apps/extension/src/i18n/{vi.ts,en.ts,index.ts,context.ts}`, `lib/i18n.ts`, `sidepanel/hooks/useI18n.ts` | Đổi ngôn ngữ → toàn bộ UI đổi | M | ✅ *(2026-11-08)* |
 | T-M1-18 | Keyboard shortcuts cấu hình được | FR-UX-01 | `lib/shortcuts.ts`, `lib/shortcutStorage.ts`, `lib/shortcutBridge.ts`, `lib/shortcutProtocol.ts`, `content/shortcutListener.ts`, `settings/ShortcutsSettings.tsx` | Đổi được phím tắt; tránh xung đột với Chrome mặc định | M | ✅ *(2026-11-08)* |
 | T-M1-19 | Empty / loading / error states | FR-UX-03/04/08, FR-CHAT-14, NFR-REL-02/04 | `sidepanel/components/states/*` | 4 trạng thái có UI riêng, không màn hình trắng; retry 1 lần khi lỗi mạng | M | ✅ *(2026-11-07)* |
-| T-M1-20 | Responsive 320–640px + a11y pass cơ bản | FR-UX-06/07/09/10, NFR-A11Y-01..05, NFR-PERF-03 | style fixes | Không tràn ngang ở 320px; focus ring đủ; icon có aria-label; streaming OK với screen reader | M | ⬜ |
+| T-M1-20 | Responsive 320–640px + a11y pass cơ bản | FR-UX-06/07/09/10, NFR-A11Y-01..05, NFR-PERF-03 | `sidepanel/App.tsx`, `sidepanel/ChatWorkspace.tsx`, `sidepanel/components/Composer.tsx`, `sidepanel/components/chat/*`, `components/ui/dialog.tsx`, `sidepanel/index.css` | Không tràn ngang ở 320px; focus ring đủ; icon có aria-label; streaming OK với screen reader | M | ✅ *(2026-11-08)* |
 | T-M1-21 | Trích xuất PDF (text-based) | FR-CONTEXT-05 | `apps/server/src/routes/extract.ts`, `apps/server/src/lib/pdfExtractor.ts`, `apps/server/src/lib/safeFetch.ts`, `apps/extension/src/lib/pageContext.ts` | Detect URL PDF → BFF fetch bytes + parse → `context.text`; PDF scan → báo "không đọc được, hãy upload ảnh"; `file://`/PDF nội bộ → báo rõ | L | ✅ |
 | T-M1-22 | Transcript YouTube | FR-CONTEXT-06 | `apps/server/src/routes/extract.ts`, `apps/server/src/lib/youtubeExtractor.ts` | Lấy `captionTracks` → `timedtext` → `context.text`; không có caption / geo-block / consent → báo rõ; không crash chat | M | ✅ |
 | T-M1-23 | Ngân sách context & cắt bớt thông minh | FR-CONTEXT-07, FR-CONTEXT-13 | `packages/shared/src/contextBudget.ts`, `apps/extension/src/lib/contextAttach.ts`, `sidepanel/components/context/{ContextChips,ContextBudget}.tsx` | Cắt theo thứ tự selection > tab đính kèm > tab hiện tại > lịch sử chat; UI hiện "đã dùng X/Y token"; không đính kèm gì → chat thuần LLM | M | ✅ |
@@ -910,6 +910,36 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 >
 > **Hạn chế đã biết:** (1) Lớp nhanh **chỉ hoạt động khi side panel đang focus** (bắt phim ở content script thường **không** mang user gesture → `sidePanel.open()` thất bại → im lặng, người dùng dùng lớp native); (2) Không có shortcut dành riêng cho "gửi tin nhắn" / "chèn context" — có thể thêm sau; (3) Deny-list không bao phủ hết shortcut của từng hệ điều hành (Chrome **tự ưu tiên** shortcut quản lý cửa sổ → không ghi đè được dù đã cho phép).
 
+### 3.1t Kết quả T-M1-20 — Responsive 320–640px + a11y pass cơ bản (FR-UX-06/07/09/10, NFR-A11Y-01..05) (2026-11-08)
+
+> Chi tiết kiến trúc: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.19 · AC: [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.9.5 · checklist a11y: [`DESIGN_SYSTEM_BRIEF.md`](DESIGN_SYSTEM_BRIEF.md) §5.
+
+**Không có migration DB mới, không dependency mới, không permission mới, không đổi manifest.**
+
+| Hạng mục | Kết quả |
+|---|---|
+| `apps/extension/src/sidepanel/App.tsx` | ✅ **Sửa** — thêm `<SkipLink />` (anchor `#sidekick-composer-input`, `sr-only focus:not-sr-only`) — WCAG 2.4.1 Bypass Blocks |
+| `apps/extension/src/sidepanel/ChatWorkspace.tsx` | ✅ **Sửa** — thread `role="log"` + `aria-label` (**không** đặt `aria-live` → screen reader không đọc lại lịch sử cũ) · `overflow-x-hidden` · dịch `chat.oldVersions` |
+| `apps/extension/src/sidepanel/components/Composer.tsx` | ✅ **Sửa** — `id="sidekick-composer-input"` · `t('composer.hint')` (bỏ literal sót từ T-M1-17) · `aria-hidden="true"` cho icon trang trí · `min-w-0` |
+| `apps/extension/src/sidepanel/components/chat/MessageContent.tsx` | ✅ **Sửa** — `role="article"` + `aria-live="polite"` + `aria-atomic="false"` + `aria-relevant="additions text"` **chỉ khi** đang stream |
+| `apps/extension/src/sidepanel/components/chat/ConversationList.tsx` | ✅ **Sửa** — tab nhóm conversation có `id` + `aria-controls="conversation-panel"` + roving `tabIndex`; panel có `role="tabpanel"` |
+| `apps/extension/src/sidepanel/components/MessageBubble.tsx` | ✅ **Sửa** — dòng "Đang tạo câu trả lời..." dùng `role="status"` · `min-w-0` · focus ring chuẩn hoá |
+| `apps/extension/src/components/ui/dialog.tsx` | ✅ **Sửa** — nút đóng `h-6 w-6` + `aria-label={t('common.close')}` + `max-w-full` |
+| `apps/extension/src/sidepanel/components/context/{ContextChips,ContextNotice}.tsx` · `chat/PromptGallery.tsx` · `composer/AttachmentTray.tsx` | ✅ **Sửa** — icon-button lên `h-6 w-6` (≥ 24px) · focus ring chuẩn hoá · `max-w-[min(180px,100%)]` |
+| `apps/extension/src/sidepanel/index.css` | ✅ **Sửa** — `#root` dùng `min-width: min(var(--panel-min-width), 100%)` → không tràn ngang khi viewport < 320px |
+| `apps/extension/src/i18n/useI18n.ts` | ✅ **Mới** — hook dùng chung (component `components/ui/dialog.tsx` không import ngược tầng `sidepanel/`); `sidepanel/hooks/useI18n.ts` re-export |
+| `apps/extension/src/i18n/{vi,en}.ts` | ✅ **Sửa** — thêm key `composer.hint` · `a11y.skipToComposer` · `chat.oldVersions` · `chat.threadLabel` |
+| Unit test | ✅ **Mới** — `tests/a11y.test.tsx` (**9**) |
+| E2E | ✅ **Mới** — `e2e/responsive.spec.ts` (**5** kịch bản: 320/480/640px + drawer × 2 + composer trong khung nhìn) |
+| `pnpm typecheck` | ✅ pass |
+| `pnpm lint` | ✅ pass (0 error, 0 warning) |
+| `pnpm test` | ✅ pass — extension **681** (từng 672 → **+9**) |
+| `pnpm build` | ✅ pass — `dist/content.js` vẫn IIFE 1 file, **không** chứa React runtime |
+
+> **Phát hiện quan trọng — live region phải đặt ở *phần vừa stream*, không đặt ở thread.** Đặt `aria-live="polite"` trên container thread (`role="log"`) → mỗi lần stream, screen reader đọc lại **toàn bộ lịch sử chat** (spam). Pattern đúng: `MessageContent` có `role="article"` + `aria-live="polite"` + `aria-atomic="false"` + `aria-relevant="additions text"` — **chỉ** khi `isStreaming`; thread chỉ có `role="log"` **không** `aria-live`.
+>
+> **Quyết định kỹ thuật:** (1) **Focus ring 1 token** — 12 chỗ dùng `focus-visible:outline-none focus-visible:ring-[var(--focus-ring)]` (shadow 2 vòng) → chuyển hết sang `focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]` (đồng bộ `Button`/`Input`/`Textarea`); (2) **"Responsive" của side panel = không tràn ngang**, không phải breakpoint — panel là 1 cột do user kéo → mọi bề rộng cứng phải `min(..., 100%)`; (3) **Tap target 24px** (WCAG 2.2 §2.5.8) — icon-button `p-[2px]` (~18px) → `h-6 w-6`; (4) **`useI18n` đặt ở `src/i18n/`** để `components/ui/dialog.tsx` (component dùng chung) dịch được mà không vi phạm layering; (5) **Test a11y kiểm source-level** (quét class) cho focus ring + tap target — jsdom không tính kích thước hiển thị → bắt được hồi quy về `outline-none`; (6) **Không** dùng `chrome.commands`/permission mới — task là UI + CSS.
+
 ### 3.2 Traceability FR → Task
 
 > Bảng đầy đủ FR → Task (kèm milestone) nằm ở [`REQUIREMENTS.md`](REQUIREMENTS.md) §11.1 — nơi duy nhất cần cập nhật khi thêm/bớt task.
@@ -925,11 +955,11 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | FR-PROVIDER-01..09 | 9 FR | T-M0-07/08 · T-M1-15/16 · T-M2-01/02/03 | FR-PROVIDER-04 (fallback) nằm trong T-M2-02 |
 | FR-WORKFLOW-01..13 | 13 FR | T-M4-01..08 · `FR-WORKFLOW-04` → **M5** | FR-WORKFLOW-04 deferred (rủi ro MV3 `tabs.onUpdated`) |
 | FR-SETTINGS-01..07 | 7 FR | T-M0-14 · **T-M1-12 ✅**/17 ✅ · **T-M2-19** (FR-SETTINGS-04) | **FR-SETTINGS-01/02/03/05/06/07 do T-M1-12 ✅ (2026-11-07)** (theme · cỡ chữ/mật độ/bề rộng · xoá lịch sử + xoá local + import/export · endpoint BFF có validate · lưu lựa chọn VI/EN) · FR-SETTINGS-04 (cờ telemetry/history, OFF mặc định) cũng do T-M1-12 ✅ — hành vi telemetry thật → T-M2-19 · **dịch UI VI/EN do T-M1-17 ✅ (2026-11-08)** (dictionary có kiểu → thiếu key = lỗi typecheck; đổi ngôn ngữ áp dụng ngay, không reload) |
-| FR-UX-01..10 | 10 FR | **T-M1-03 ✅**/10/**11 ✅**/**12 ✅**/**19 ✅**/**18 ✅**/20 · **T-M1-25 ✅** | FR-UX-02 (onboarding) tách task riêng T-M1-25 — **xong 2026-11-05** (3 bước, BYOK K2, Ollama, skippable) · **FR-UX-03/04 (gợi ý theo trang + tóm tắt 1-click) do T-M1-11 ✅ (2026-11-07)** · **FR-UX-01 (toggle panel · context menu · `Ctrl+Shift+K`) do T-M1-03 ✅ (2026-11-07)** · **FR-UX-01 (phím tắt cấu hình được) do T-M1-18 ✅ (2026-11-08)** — 2 lớp: native của Chrome + nhanh của Sidekick (Chrome **không** có `commands.update()` → xem SYSTEM_DESIGN §7.18) · **FR-UX-06 (drawer Settings + bề rộng panel) do T-M1-12 ✅ (2026-11-07)** · **FR-UX-08 (banner trạng thái kết nối + lỗi, dismiss được) do T-M1-19 ✅ (2026-11-07)** |
+| FR-UX-01..10 | 10 FR | **T-M1-03 ✅**/10/**11 ✅**/**12 ✅**/**19 ✅**/**18 ✅**/**20 ✅** · **T-M1-25 ✅** | FR-UX-02 (onboarding) tách task riêng T-M1-25 — **xong 2026-11-05** (3 bước, BYOK K2, Ollama, skippable) · **FR-UX-03/04 (gợi ý theo trang + tóm tắt 1-click) do T-M1-11 ✅ (2026-11-07)** · **FR-UX-01 (toggle panel · context menu · `Ctrl+Shift+K`) do T-M1-03 ✅ (2026-11-07)** · **FR-UX-01 (phím tắt cấu hình được) do T-M1-18 ✅ (2026-11-08)** — 2 lớp: native của Chrome + nhanh của Sidekick (Chrome **không** có `commands.update()` → xem SYSTEM_DESIGN §7.18) · **FR-UX-06 (drawer Settings + bề rộng panel) do T-M1-12 ✅ (2026-11-07)** · **FR-UX-08 (banner trạng thái kết nối + lỗi, dismiss được) do T-M1-19 ✅ (2026-11-07)** · **FR-UX-06/07/09/10 + NFR-A11Y-01..05 do T-M1-20 ✅ (2026-11-08)** — responsive 320–640px + focus ring chuẩn hoá + live region streaming + skip-link + tap target 24px (xem SYSTEM_DESIGN §7.19) |
 | NFR-PERF-01..06 | 6 NFR | T-M0-11 · T-M1-01/07/14/20 · T-M2-13 · T-M3-02/04/09 | NFR là yêu cầu xuyên suốt |
 | NFR-SEC-01..08 | 8 NFR | T-M0-02/06/09/12 · T-M1-04/07/15/16 · **T-M2-19** | NFR-SEC-06 (domain nhạy cảm) → T-M2-19 |
 | NFR-REL-01..05 | 5 NFR | T-M1-10/**14 ✅**/15/**19 ✅** · **T-M3-10** | **NFR-REL-02 (retry 1 lần backoff 800 ms, không retry lỗi auth) + NFR-REL-04 (badge + banner trạng thái kết nối) do T-M1-19 ✅ (2026-11-07)** · NFR-REL-03 (K3 direct khi BFF chết) → T-M1-15 · NFR-REL-05 (backup DB) tách task M3 · **NFR-REL-01 (log đầy đủ + retention 90 ngày + read API cho eval) do T-M1-14 ✅ (2026-11-07)** |
-| NFR-A11Y-01..05 | 5 NFR | T-M1-20 · T-M3-03 | A11Y pass cơ bản ở M1, audit WCAG đầy đủ ở M3 |
+| NFR-A11Y-01..05 | 5 NFR | **T-M1-20 ✅** · T-M3-03 | A11Y pass cơ bản ở M1 (**T-M1-20 ✅ 2026-11-08** — focus ring chuẩn hoá · aria-label cho icon-button · live region chỉ trên phần stream · skip-link · tap target 24px · tab/tabpanel) — audit WCAG đầy đủ + độ tương phản ở M3 |
 | NFR-MAINT-01..05 | 5 NFR | T-M0-02/07/10 · **T-M1-14 ✅** · T-M2-04/07/12..17 · **T-M3-11** | NFR-MAINT-04 (request-id xuyên suốt client → BFF → provider + log JSON có cấu trúc) do **T-M1-14 ✅ (2026-11-07)** · NFR-MAINT-05 (ADR) tách task M3 |
 
 **Kết quả audit 2026-11-04:** trước đó **31 FR + 27 NFR (58 yêu cầu)** chưa được map tới task nào trong cột FR của plan, và 2 nhãn FR sai (T-M1-04, T-M1-06). Sau khi bổ sung task card (T-M1-21..25, T-M2-19..22, T-M3-10..11) và ghi bổ sung FR/NFR vào các task card cũ, **mọi FR/NFR đều có ít nhất 1 task** — trừ `FR-WORKFLOW-04` (chủ động defer sang M5).

@@ -34,6 +34,8 @@ export const enDictionary: Dictionary = {
   'composer.stop': 'Stop generating',
   'composer.send': 'Send question',
   'composer.mentionLabel': 'Choose a tab to attach',
+  'composer.hint': 'Enter to send · Shift+Enter for a new line · @ to attach a tab',
+  'a11y.skipToComposer': 'Skip to question input',
 
   // --- chat / message bubble ---
   'chat.imageAttachment': 'Attached image',
@@ -56,6 +58,8 @@ export const enDictionary: Dictionary = {
   'chat.citationViewSource': 'View source {index}: {title}',
   'chat.citationList': 'Citation sources',
   'chat.scrollToBottom': 'Scroll to bottom of conversation',
+  'chat.oldVersions': 'Older versions ({count})',
+  'chat.threadLabel': 'Conversation history',
   'chat.summarizePage': 'Summarize this page',
   'chat.removeImage': 'Remove attached image {name}',
   'chat.attachmentTokenEstimate': '{count} images · ~{tokens} tokens',

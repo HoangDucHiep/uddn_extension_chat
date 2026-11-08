@@ -180,10 +180,13 @@ export function ConversationList({ onSelect, onCreate }: ConversationListProps) 
           <button
             type="button"
             role="tab"
+            id="conversation-tab-active"
+            aria-controls="conversation-panel"
             aria-selected={!archivedView}
+            tabIndex={archivedView ? -1 : 0}
             onClick={() => setArchivedView(false)}
             className={[
-              'rounded-[var(--radius-sm)] px-2 py-1 text-[length:var(--font-size-xs)]',
+              'min-h-[24px] rounded-[var(--radius-sm)] px-2 py-1 text-[length:var(--font-size-xs)]',
               'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]',
               archivedView
                 ? 'text-[var(--text-secondary)]'
@@ -196,10 +199,13 @@ export function ConversationList({ onSelect, onCreate }: ConversationListProps) 
           <button
             type="button"
             role="tab"
+            id="conversation-tab-archived"
+            aria-controls="conversation-panel"
             aria-selected={archivedView}
+            tabIndex={archivedView ? 0 : -1}
             onClick={() => setArchivedView(true)}
             className={[
-              'rounded-[var(--radius-sm)] px-2 py-1 text-[length:var(--font-size-xs)]',
+              'min-h-[24px] rounded-[var(--radius-sm)] px-2 py-1 text-[length:var(--font-size-xs)]',
               'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]',
               archivedView
                 ? 'bg-[var(--color-accent-subtle)] text-[var(--color-accent-hover)] font-semibold'
@@ -222,7 +228,14 @@ export function ConversationList({ onSelect, onCreate }: ConversationListProps) 
         </p>
       ) : null}
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-[var(--space-2)] pb-[var(--space-3)]">
+      <div
+        id="conversation-panel"
+        role="tabpanel"
+        aria-labelledby={
+          archivedView ? 'conversation-tab-archived' : 'conversation-tab-active'
+        }
+        className="min-h-0 flex-1 overflow-y-auto px-[var(--space-2)] pb-[var(--space-3)]"
+      >
         {archivedView ? (
           <ConversationGroup
             title={t('conversation.archived')}

@@ -155,10 +155,11 @@ export function Composer({
       onDrop={handleDrop}
     >
       <div className="flex items-end gap-2">
-        <div className="relative flex-1">
+        <div className="relative min-w-0 flex-1">
           {mentionPopover}
           <Textarea
             ref={inputRef}
+            id="sidekick-composer-input"
             value={value}
             onChange={handleAutoGrow}
             onKeyDown={handleKeyDown}
@@ -194,9 +195,9 @@ export function Composer({
               data-testid="composer-image-button"
             >
               {isReadingImages ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
               ) : (
-                <ImagePlus className="h-4 w-4" />
+                <ImagePlus className="h-4 w-4" aria-hidden="true" />
               )}
             </Button>
           </>
@@ -210,7 +211,7 @@ export function Composer({
             aria-label={t('composer.stop')}
             data-testid="composer-stop"
           >
-            <Square className="h-4 w-4" />
+            <Square className="h-4 w-4" aria-hidden="true" />
           </Button>
         ) : (
           <Button
@@ -221,16 +222,16 @@ export function Composer({
             data-testid="composer-send"
           >
             {disabled ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
             ) : (
-              <Send className="h-4 w-4" />
+              <Send className="h-4 w-4" aria-hidden="true" />
             )}
           </Button>
         )}
       </div>
 
       <p className="mt-2 text-[length:var(--font-size-xs)] text-[var(--text-tertiary)]">
-        Enter de gui · Shift+Enter de xuong dong · @ de dinh kem tab
+        {t('composer.hint')}
       </p>
     </div>
   )

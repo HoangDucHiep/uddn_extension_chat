@@ -35,6 +35,8 @@ export const viDictionary = {
   'composer.stop': 'Dung tao cau tra loi',
   'composer.send': 'Gui cau hoi',
   'composer.mentionLabel': 'Chon tab de dinh kem',
+  'composer.hint': 'Enter de gui · Shift+Enter de xuong dong · @ de dinh kem tab',
+  'a11y.skipToComposer': 'Bo qua toi o nhap cau hoi',
 
   // --- chat / message bubble ---
   'chat.imageAttachment': 'Ảnh đính kèm',
@@ -57,6 +59,8 @@ export const viDictionary = {
   'chat.citationViewSource': 'Xem nguồn {index}: {title}',
   'chat.citationList': 'Nguồn trích dẫn',
   'chat.scrollToBottom': 'Cuon xuong cuoi hoi thoai',
+  'chat.oldVersions': 'Phien ban cu ({count})',
+  'chat.threadLabel': 'Lich su hoi thoai',
   'chat.summarizePage': 'Tóm tắt trang này',
   'chat.removeImage': 'Xoá ảnh đính kèm {name}',
   'chat.attachmentTokenEstimate': '{count} ảnh · ~{tokens} token',

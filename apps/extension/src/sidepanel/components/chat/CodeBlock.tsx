@@ -88,7 +88,7 @@ export function CodeBlock({ code, language, children }: CodeBlockProps) {
             void handleCopy()
           }}
           aria-label={t('chat.copyCode')}
-          className="flex h-6 w-6 items-center justify-center rounded-[var(--radius-sm)] text-[var(--text-tertiary)] transition-colors duration-[var(--duration-fast)] hover:bg-[var(--surface-sunken)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-[var(--focus-ring)]"
+          className="flex h-6 w-6 items-center justify-center rounded-[var(--radius-sm)] text-[var(--text-tertiary)] transition-colors duration-[var(--duration-fast)] hover:bg-[var(--surface-sunken)] hover:text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]"
           data-testid="code-block-copy"
         >
           {copied ? (

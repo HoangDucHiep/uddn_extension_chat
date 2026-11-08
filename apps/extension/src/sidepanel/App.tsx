@@ -5,6 +5,7 @@ import { Onboarding } from './components/onboarding/Onboarding'
 import { I18nProvider } from './components/I18nProvider'
 import { useOnboarding } from './hooks/useOnboarding'
 import { useSettings } from './hooks/useSettings'
+import { useI18n } from './hooks/useI18n'
 
 /**
  * App shell cua side panel.
@@ -58,6 +59,9 @@ export function App() {
 
   return (
     <I18nProvider language={settings.uiLanguage}>
+      {/* Skip-link (FR-UX-09 — T-M1-20).
+          An cho toi khi focus → nguoi dung ban phim di thang toi o nhap. */}
+      <SkipLink />
       <ChatWorkspace
         settings={settings}
         onSettingsChange={(patch) => {
@@ -70,5 +74,24 @@ export function App() {
       />
       <Toaster position="bottom-center" />
     </I18nProvider>
+  )
+}
+
+/**
+ * Skip-link "Bỏ qua tới ô nhập" (FR-UX-09 — T-M1-20).
+ *
+ * Anchor toi `sidekick-composer-input` (id cua textarea trong `Composer`).
+ * Dùng `sr-only` → chi lo khi focus (WCAG 2.4.1 Bypass Blocks).
+ */
+function SkipLink() {
+  const { t } = useI18n()
+  return (
+    <a
+      href="#sidekick-composer-input"
+      className="sr-only z-50 focus:not-sr-only focus:absolute focus:left-[var(--space-2)] focus:top-[var(--space-2)] focus:rounded-[var(--radius-sm)] focus:bg-[var(--surface-overlay)] focus:px-3 focus:py-2 focus:text-[length:var(--font-size-sm)] focus:text-[var(--text-primary)] focus:shadow-[var(--shadow-2)] focus:outline-2 focus:outline-offset-2 focus:outline-[var(--border-focus)]"
+      data-testid="skip-link"
+    >
+      {t('a11y.skipToComposer')}
+    </a>
   )
 }

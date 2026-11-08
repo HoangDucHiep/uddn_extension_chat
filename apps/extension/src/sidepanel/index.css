@@ -36,7 +36,9 @@ body,
    Noi dung can giua trong khoang rong con lai. */
 #root {
   max-width: var(--panel-max-width);
-  min-width: var(--panel-min-width);
+  /* `min()` → panel khong bao gio duong cua viewport khi user thu nho
+     panel duoi 320px (FR-UX-06 — T-M1-20). */
+  min-width: min(var(--panel-min-width), 100%);
   margin-inline: auto;
 }
 

@@ -44,7 +44,7 @@ export function CitationList({ citations }: CitationListProps) {
               {citation.index}
             </span>
             <span
-              className="max-w-[180px] truncate"
+              className="max-w-[min(180px,100%)] truncate"
               data-testid={`citation-source-${citation.index}`}
               title={citation.title}
             >

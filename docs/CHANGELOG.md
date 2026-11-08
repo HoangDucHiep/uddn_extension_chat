@@ -16,6 +16,35 @@
   - **Không** đổi schema · **không** dependency mới · **không** permission mới.
 
 ### Added
+- **T-M1-20 — Responsive 320–640px + a11y pass cơ bản (FR-UX-06/07/09/10, NFR-A11Y-01..05)**
+  - `apps/extension/src/sidepanel/App.tsx` — thêm `<SkipLink />` (anchor `#sidekick-composer-input`, `sr-only focus:not-sr-only`).
+  - `apps/extension/src/sidepanel/ChatWorkspace.tsx` — thread dùng `role="log"` + `aria-label` (**không** đặt `aria-live` → screen reader không đọc lại lịch sử cũ) · `overflow-x-hidden` · dịch chuỗi `chat.oldVersions`.
+  - `apps/extension/src/sidepanel/components/Composer.tsx` — `id="sidekick-composer-input"` · `t('composer.hint')` (bỏ literal sót từ T-M1-17) · `aria-hidden="true"` cho icon trang trí · `min-w-0`.
+  - `apps/extension/src/sidepanel/components/chat/MessageContent.tsx` — `role="article"` + `aria-live="polite"` + `aria-atomic="false"` + `aria-relevant="additions text"` **chỉ khi** đang stream.
+  - `apps/extension/src/sidepanel/components/chat/ConversationList.tsx` — tab nhóm conversation có `id` + `aria-controls="conversation-panel"` + roving `tabIndex`; panel có `role="tabpanel"`.
+  - `apps/extension/src/sidepanel/components/MessageBubble.tsx` — dòng "Đang tạo câu trả lời..." dùng `role="status"` · `min-w-0` · focus ring chuẩn hoá.
+  - `apps/extension/src/components/ui/dialog.tsx` — nút đóng `h-6 w-6` + `aria-label={t('common.close')}` + `max-w-full`.
+  - `apps/extension/src/sidepanel/components/context/{ContextChips,ContextNotice}.tsx` · `chat/PromptGallery.tsx` · `composer/AttachmentTray.tsx` — icon-button lên `h-6 w-6` (≥ 24px, WCAG 2.2 §2.5.8) · focus ring chuẩn hoá.
+  - `apps/extension/src/sidepanel/index.css` — `#root` dùng `min-width: min(var(--panel-min-width), 100%)` → không tràn ngang khi viewport < 320px.
+  - `apps/extension/src/i18n/useI18n.ts` (mới) — hook dùng chung để `components/ui/dialog.tsx` dịch được mà không phụ thuộc tầng `sidepanel/`; `sidepanel/hooks/useI18n.ts` re-export.
+  - `apps/extension/src/i18n/vi.ts` + `en.ts` — thêm key `composer.hint` · `a11y.skipToComposer` · `chat.oldVersions` · `chat.threadLabel`.
+  - **Test** — `apps/extension/tests/a11y.test.tsx` (mới, 9 test) · `apps/extension/e2e/responsive.spec.ts` (mới, 5 kịch bản 320/480/640px).
+  - **Số test toàn repo:** 1292 → **1301 unit** (extension 672 → **681**) + 76 → **81 E2E**.
+  - **Migration:** **không** có migration mới · **không** dependency mới · **không** permission mới · **không** đổi manifest.
+
+### Fixed
+- **Chuỗi literal còn sót sau T-M1-17** — `composer.hint` ("Enter để gửi · Shift+Enter để xuống dòng · @ để đính kèm tab") trong `Composer.tsx` chưa được dịch → nay lấy từ `t('composer.hint')`.
+- `chat.oldVersions` ("Phien ban cu") + nhãn thread (`role="log"`) → chuyển sang i18n (`chat.oldVersions` · `chat.threadLabel`).
+- `aria-label="Đóng"` cứng của nút đóng Dialog → `t('common.close')`.
+- **Panel tràn ngang khi bề rộng < 320px** — `#root` có `min-width: 320px` cứng → nay `min(var(--panel-min-width), 100%)`; drawer + chip nguồn thêm `max-w-full` / `max-w-[min(180px,100%)]`.
+- **Icon-button < 24px** (`p-[2px]` + icon `h-3` ≈ 18px, dưới WCAG 2.2 §2.5.8) → mọi icon-button lên `h-6 w-6` (≥ 24px).
+- **Focus ring không đồng nhất** — 12 chỗ dùng `focus-visible:outline-none focus-visible:ring-[var(--focus-ring)]` → chuẩn hoá về `focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]`.
+- **Screen reader đọc lại toàn bộ lịch sử chat khi streaming** → live region chỉ đặt trên phần **vừa** stream (`MessageContent`: `role="article"` + `aria-live="polite"` + `aria-atomic="false"` + `aria-relevant="additions text"`); thread (`role="log"`) không đặt `aria-live`.
+
+### Docs
+- **T-M1-20** — `docs/SYSTEM_DESIGN.md` thêm **§7.19** (ràng buộc layout · focus ring 1 pattern · live region đúng chỗ · skip-link · roving tabindex · tap target 24px · dọn literal i18n) · `docs/REQUIREMENTS.md` FR-UX-06/07/09/10 + NFR-A11Y-01..05 ✅ + **§4.9.5** (AC chi tiết) + bảng traceability §11.1 · `docs/DESIGN_SYSTEM_BRIEF.md` **§5** (checklist a11y → đã tick) + **§5.1** (quy ước a11y bắt buộc) + bảng traceability §6 · `docs/IMPLEMENTATION_PLAN.md` T-M1-20 ✅ (2026-11-08) + **§3.1t** (bảng kết quả) · `docs/COMPARISON_MATRIX.md` checklist §E: responsive + a11y ✅ T-M1-20 · `docs/HANDOFF.md` · `AGENTS.md` §6.
+
+### Added
 - **T-M1-18 — Keyboard shortcuts cấu hình được (FR-UX-01)**
   - `apps/extension/src/lib/shortcuts.ts` (mới) — hàm thuần: `normalizeShortcut()` · `isReservedShortcut()` · `parseShortcut()` · `shortcutFromKeyboardEvent()` · `matchesShortcut()` · `formatShortcutLabel()` · `RESERVED_CHROME_SHORTCUTS` (**28** tổ hợp dành riêng của trình duyệt) · `DEFAULT_SHORTCUTS` · `SHORTCUT_COMMANDS`.
   - `apps/extension/src/lib/shortcutStorage.ts` (mới) — đọc/ghi `chrome.storage.local` key `sidekick.shortcuts`: `readShortcuts()` · `writeShortcut()` · `clearShortcut()` · `resolveShortcut()`.

@@ -236,7 +236,19 @@ export function MessageContent({
   const deferredContent = useDeferredValue(content)
 
   return (
-    <div className="markdown-body break-words" data-testid="message-content">
+    <div
+      className="markdown-body break-words"
+      data-testid="message-content"
+      // Live region CHI khi dang stream (FR-UX-09 — T-M1-20).
+      //
+      // `aria-live="polite"` + `aria-relevant="additions text"` de trinh
+      // doc doc phan **vua stream** ma khong doc lai ca luoi chuyen
+      // (thread khong dat live de tranh spam).
+      role="article"
+      aria-live={isStreaming ? 'polite' : undefined}
+      aria-atomic={isStreaming ? 'false' : undefined}
+      aria-relevant={isStreaming ? 'additions text' : undefined}
+    >
       <CitationContext.Provider value={citations}>
         <ReactMarkdown
           remarkPlugins={REMARK_PLUGINS}

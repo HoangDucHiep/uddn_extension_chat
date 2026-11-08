@@ -2,6 +2,7 @@ import * as React from 'react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/i18n/useI18n'
 
 /**
  * Dialog — shadcn/ui (copy vao repo).
@@ -38,35 +39,40 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
-  <DialogPortal>
-    <DialogOverlay />
-    <DialogPrimitive.Content
-      ref={ref}
-      className={cn(
-        'fixed left-0 top-0 z-50 flex h-full w-[min(320px,85vw)] flex-col',
-        'border-r border-[var(--border-default)] bg-[var(--surface-overlay)]',
-        'text-[var(--text-primary)] shadow-[var(--shadow-3)]',
-        'focus:outline-none data-[state=open]:animate-drawer-in',
-        className,
-      )}
-      {...props}
-    >
-      {children}
-      <DialogPrimitive.Close
+>(({ className, children, ...props }, ref) => {
+  // Nhan nut dong phai dich theo ngon ngu UI (T-M1-17 — FR-SETTINGS-06).
+  const { t } = useI18n()
+
+  return (
+    <DialogPortal>
+      <DialogOverlay />
+      <DialogPrimitive.Content
+        ref={ref}
         className={cn(
-          'absolute right-2 top-2 rounded-[var(--radius-sm)] p-1',
-          'text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-sunken)]',
-          'hover:text-[var(--text-primary)] focus-visible:outline-2',
-          'focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]',
+          'fixed left-0 top-0 z-50 flex h-full w-[min(320px,85vw)] max-w-full flex-col',
+          'border-r border-[var(--border-default)] bg-[var(--surface-overlay)]',
+          'text-[var(--text-primary)] shadow-[var(--shadow-3)]',
+          'focus:outline-none data-[state=open]:animate-drawer-in',
+          className,
         )}
-        aria-label="Đóng"
+        {...props}
       >
-        <X className="h-4 w-4" aria-hidden="true" />
-      </DialogPrimitive.Close>
-    </DialogPrimitive.Content>
-  </DialogPortal>
-))
+        {children}
+        <DialogPrimitive.Close
+          className={cn(
+            'absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-[var(--radius-sm)]',
+            'text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-sunken)]',
+            'hover:text-[var(--text-primary)] focus-visible:outline-2',
+            'focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]',
+          )}
+          aria-label={t('common.close')}
+        >
+          <X className="h-4 w-4" aria-hidden="true" />
+        </DialogPrimitive.Close>
+      </DialogPrimitive.Content>
+    </DialogPortal>
+  )
+})
 DialogContent.displayName = DialogPrimitive.Content.displayName
 
 const DialogHeader = ({

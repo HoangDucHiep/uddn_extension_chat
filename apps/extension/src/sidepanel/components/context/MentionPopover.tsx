@@ -92,7 +92,7 @@ export function MentionPopover({
             onClick={() => onSelect(tab)}
             data-testid="mention-tab"
             data-tab-id={tab.id}
-            className="flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-2 py-1.5 text-left transition-colors hover:bg-[var(--surface-sunken)] focus-visible:outline-none focus-visible:ring-[var(--focus-ring)]"
+            className="flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-2 py-1.5 text-left transition-colors hover:bg-[var(--surface-sunken)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]"
           >
             {tab.favIconUrl !== undefined && tab.favIconUrl.length > 0 ? (
               <img

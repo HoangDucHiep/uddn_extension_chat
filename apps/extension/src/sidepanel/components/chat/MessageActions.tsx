@@ -141,8 +141,8 @@ export function MessageActions({
                       className={
                         'w-full rounded-[var(--radius-sm)] px-[var(--space-2)] py-[var(--space-1)] ' +
                         'text-left text-[length:var(--font-size-sm)] text-[var(--text-primary)] ' +
-                        'hover:bg-[var(--surface-sunken)] focus-visible:outline-none ' +
-                        'focus-visible:ring-[var(--focus-ring)]'
+                        'hover:bg-[var(--surface-sunken)] focus-visible:outline-2 ' +
+                        'focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]'
                       }
                     >
                       <span className="font-medium">

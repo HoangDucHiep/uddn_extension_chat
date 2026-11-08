@@ -1,22 +1,11 @@
-import { useContext } from 'react'
-import { I18nContext, type I18nContextValue } from '@/i18n/context'
+import { useI18n } from '@/i18n/useI18n'
 
 /**
  * Hook `useI18n` — lay ham dich cua panel.
  *
- * Dung trong **moi** component can hien thi chuoi da dich:
- *
- * ```tsx
- * const { t } = useI18n()
- * return <button aria-label={t('composer.send')}>…</button>
- * ```
- *
- * Do `I18nProvider` lay `settings.uiLanguage` tu `useSettings()` (da lang
- * nghe `chrome.storage.onChanged`) → doi ngon ngu trong Settings **ap dung
- * ngay**, khong can reload panel.
+ * Re-export tu `src/i18n/useI18n.ts` de component dung chung
+ * (`components/ui/dialog.tsx`) khong phai import nguoc tu `sidepanel/`.
  *
  * Docs: docs/SYSTEM_DESIGN.md §7.17
  */
-export function useI18n(): I18nContextValue {
-  return useContext(I18nContext)
-}
+export { useI18n }

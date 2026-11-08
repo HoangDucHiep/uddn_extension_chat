@@ -73,7 +73,7 @@ export function ContextChips({
         aria-label={enabled ? t('context.toggleOff') : t('context.toggleOn')}
         onClick={() => onToggle(!enabled)}
         data-testid="context-toggle"
-        className={`inline-flex items-center gap-1 rounded-[var(--radius-full)] border px-2 py-[2px] text-[length:var(--font-size-xs)] transition-colors focus-visible:outline-none focus-visible:ring-[var(--focus-ring)] ${
+        className={`inline-flex min-h-[24px] items-center gap-1 rounded-[var(--radius-full)] border px-2 py-[2px] text-[length:var(--font-size-xs)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)] ${
           enabled
             ? 'border-[var(--color-accent)] bg-[var(--color-accent-subtle)] text-[var(--color-accent)]'
             : 'border-[var(--border-default)] bg-[var(--surface-raised)] text-[var(--text-tertiary)]'
@@ -93,7 +93,7 @@ export function ContextChips({
         return (
           <span
             key={item.id}
-            className="inline-flex max-w-[180px] items-center gap-1 rounded-[var(--radius-full)] border border-[var(--border-default)] bg-[var(--surface-raised)] px-2 py-[2px] text-[length:var(--font-size-xs)] text-[var(--text-secondary)]"
+            className="inline-flex max-w-[min(180px,100%)] items-center gap-1 rounded-[var(--radius-full)] border border-[var(--border-default)] bg-[var(--surface-raised)] px-2 py-[2px] text-[length:var(--font-size-xs)] text-[var(--text-secondary)]"
             data-testid="context-chip"
             data-item-id={item.id}
             data-tier={item.tier}
@@ -105,7 +105,7 @@ export function ContextChips({
               type="button"
               onClick={() => onRemove(item.id)}
               aria-label={t('context.remove', { title: item.title })}
-              className="shrink-0 rounded-[var(--radius-sm)] p-[2px] text-[var(--text-tertiary)] transition-colors hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-[var(--focus-ring)]"
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--text-tertiary)] transition-colors hover:bg-[var(--surface-sunken)] hover:text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]"
             >
               <X className="h-3 w-3" aria-hidden="true" />
             </button>
@@ -119,7 +119,7 @@ export function ContextChips({
         disabled={isAttaching}
         aria-label={t('context.addCurrentTab')}
         data-testid="context-add-tab"
-        className="inline-flex items-center gap-1 rounded-[var(--radius-full)] border border-dashed border-[var(--border-strong)] px-2 py-[2px] text-[length:var(--font-size-xs)] text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-sunken)] focus-visible:outline-none focus-visible:ring-[var(--focus-ring)] disabled:cursor-not-allowed disabled:opacity-50"
+        className="inline-flex min-h-[24px] items-center gap-1 rounded-[var(--radius-full)] border border-dashed border-[var(--border-strong)] px-2 py-[2px] text-[length:var(--font-size-xs)] text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-sunken)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)] disabled:cursor-not-allowed disabled:opacity-50"
       >
         <Plus className="h-3 w-3" aria-hidden="true" />
         {t('context.addCurrentTabLabel')}
@@ -132,7 +132,7 @@ export function ContextChips({
           disabled={isAttaching}
           aria-label={t('context.attachSelection')}
           data-testid="context-add-selection"
-          className="inline-flex items-center gap-1 rounded-[var(--radius-full)] border border-dashed border-[var(--border-strong)] px-2 py-[2px] text-[length:var(--font-size-xs)] text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-sunken)] focus-visible:outline-none focus-visible:ring-[var(--focus-ring)] disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex min-h-[24px] items-center gap-1 rounded-[var(--radius-full)] border border-dashed border-[var(--border-strong)] px-2 py-[2px] text-[length:var(--font-size-xs)] text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-sunken)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)] disabled:cursor-not-allowed disabled:opacity-50"
         >
           <MousePointer2 className="h-3 w-3" aria-hidden="true" />
           {t('context.attachSelectionLabel')}

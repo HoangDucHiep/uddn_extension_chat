@@ -483,7 +483,7 @@ export function ChatWorkspace({
           <button
             type="button"
             onClick={connection.retry}
-            className="rounded-[var(--radius-sm)] px-2 py-0.5 text-[length:var(--font-size-xs)] underline focus-visible:outline-none focus-visible:ring-[var(--focus-ring)]"
+            className="rounded-[var(--radius-sm)] px-2 py-0.5 text-[length:var(--font-size-xs)] underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]"
             data-testid="offline-banner-retry"
           >
             {t('state.offline.retry')}
@@ -495,8 +495,15 @@ export function ChatWorkspace({
         <div
           ref={threadRef}
           onScroll={handleScroll}
-          className="flex-1 space-y-3 overflow-y-auto px-[var(--space-3)] py-[var(--space-3)]"
+          className="flex-1 space-y-3 overflow-y-auto overflow-x-hidden px-[var(--space-3)] py-[var(--space-3)]"
           data-testid="message-list"
+          // `role="log"` — semantic container cho lịch sử hội thoại.
+          //
+          // KHÔNG đặt `aria-live` ở đây: container chứa cả token stream →
+          // screen reader đọc lại toàn bộ lịch sử cũ (spam). Live region
+          // chỉ nằm ở phần **vừa stream** (`MessageContent` — T-M1-20).
+          role="log"
+          aria-label={t('chat.threadLabel')}
         >
           {isHydrating ? (
             <LoadingState />
@@ -559,7 +566,7 @@ export function ChatWorkspace({
               data-testid="off-path-turns"
             >
               <summary className="cursor-pointer text-[length:var(--font-size-sm)] text-[var(--text-secondary)]">
-                Phien ban cu ({offPath.length})
+                {t('chat.oldVersions', { count: offPath.length })}
               </summary>
               <ul className="mt-2 space-y-2">
                 {offPath.map((group) => (

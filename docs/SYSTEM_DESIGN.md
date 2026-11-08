@@ -2571,6 +2571,108 @@ Chrome **không** cho extension truy xuất danh sách shortcut mặc định c�
 
 ---
 
+### 7.19 Responsive 320–640px + a11y pass (FR-UX-06/07/09/10, NFR-A11Y-01..05 — T-M1-20)
+
+> Nguồn sự thật cho hành vi: [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.9.5.
+
+#### 7.19.1 Ràng buộc layout của side panel
+
+Side panel là **1 cột** do người dùng kéo → không có breakpoint ngang như web app. Vì vậy "responsive" ở đây = **không tràn ngang** + **giữ được chức năng** ở mọi bề rộng.
+
+| Vấn đề | Trước | Sau |
+|---|---|---|
+| `#root` có `min-width` cứng | `320px` → tràn ngang khi panel < 320px | `min(var(--panel-min-width), 100%)` → **không bao giờ** rộng hơn viewport |
+| Drawer Settings | `w-[min(360px,92vw)] max-w-[min(360px,92vw)]` | `w-[min(360px,92vw)] max-w-full` |
+| Drawer conversation / confirm dialog | `w-[min(320px,85vw)]` / `w-[min(320px,90vw)]` | + `max-w-full` |
+| Chip / nguồn trích dẫn | `max-w-[180px]` cứng | `max-w-[min(180px,100%)]` → co theo container |
+| Flex child (bubble, textarea) | thiếu `min-w-0` → phình ngang | `min-w-0` + `truncate` + `overflow-x-hidden` ở thread |
+
+#### 7.19.2 Focus ring — 1 pattern duy nhất
+
+Mọi interactive element dùng **đúng 1** pattern (không dùng `outline: none` trần):
+
+```
+focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]
+```
+
+| Trước | Sau |
+|---|---|
+| `focus-visible:outline-none focus-visible:ring-[var(--focus-ring)]` (12 chỗ) | pattern chuẩn ở trên |
+
+> Vì sao đổi? `--focus-ring` là **box-shadow** (`0 0 0 2px surface, 0 0 0 4px border-focus`) → cần `outline: none` để tránh 2 vòng focus chồng nhau. Pattern `outline-*` dùng **1 token** (`--border-focus`) → đồng bộ với `Button` / `Input` / `Textarea` (đã đúng từ M0).
+
+Ngoài ra: `index.css` có rule global `:focus-visible { outline: 2px solid var(--border-focus) }` → phủ cho mọi phần tử **kể cả** phần tử không có class Tailwind.
+
+#### 7.19.3 Live region — đặt đúng chỗ để không spam
+
+```mermaid
+flowchart LR
+  ML["message-list<br/>role=log<br/>KHONG aria-live"] --> B1["MessageBubble<br/>user"]
+  ML --> B2["MessageBubble<br/>assistant"]
+  B2 --> MC["MessageContent<br/>role=article<br/>aria-live=polite<br/>aria-atomic=false<br/>aria-relevant='additions text'"]
+  B2 --> ST["span 'Đang tạo...'<br/>role=status"]
+```
+
+| Vị trí | `aria-live` | Lý do |
+|---|---|---|
+| `message-list` (thread) | ❌ **không** | Chứa cả lịch sử cũ → screen reader đọc lại toàn bộ khi bất kỳ thay đổi nào |
+| `MessageContent` (assistant đang stream) | ✅ `polite` | Chỉ phần **vừa** stream → đọc đúng nội dung mới |
+| span "Đang tạo câu trả lời..." | `role="status"` | Trạng thái, không phải nội dung luồng |
+| `LoadingState` | `role="status"` + `aria-live="polite"` | (đã có từ T-M1-19) |
+
+> `aria-atomic="false"` → chỉ đọc phần **thêm mới**, không đọc lại toàn bộ bubble.
+
+#### 7.19.4 Skip-link
+
+- `App.tsx` render `<SkipLink />` **trong** `I18nProvider` (dùng `t('a11y.skipToComposer')`).
+- Anchor `#sidekick-composer-input` → `id` đặt trên `<Textarea>` trong `Composer`.
+- Class: `sr-only focus:not-sr-only focus:absolute …` → ẩn cho tới khi nhận focus (WCAG 2.4.1 Bypass Blocks).
+
+#### 7.19.5 Tab nhóm conversation — roving tabindex
+
+| Phần tử | Thuộc tính |
+|---|---|
+| Tab "Đang hoạt động" | `role="tab"` · `id="conversation-tab-active"` · `aria-controls="conversation-panel"` · `aria-selected` · `tabIndex={active ? 0 : -1}` |
+| Tab "Đã lưu trữ" | `role="tab"` · `id="conversation-tab-archived"` · `aria-controls="conversation-panel"` · `aria-selected` · `tabIndex={active ? 0 : -1}` |
+| Panel danh sách | `role="tabpanel"` · `id="conversation-panel"` · `aria-labelledby={tab đang active}` |
+
+> **Roving tabindex** (chỉ 1 tab trong tablist được focus) là pattern chuẩn của WAI-ARIA cho tablist.
+
+#### 7.19.6 Tap target ≥ 24px (WCAG 2.2 §2.5.8)
+
+Icon-button trước đây dùng `p-[2px]` + icon `h-3`/`h-3.5` → kích thước thực ~18–20px (dưới ngưỡng 24px).
+
+| File | Trước | Sau |
+|---|---|---|
+| `ContextChips.tsx` (nút xoá chip) | `p-[2px]` + `h-3 w-3` | `h-6 w-6` + `flex items-center justify-center` |
+| `ContextNotice.tsx` (nút dismiss) | `p-[2px]` + `h-3.5 w-3.5` | `h-6 w-6` |
+| `PromptGallery.tsx` (nút refresh) | `p-[2px]` + `h-3.5 w-3.5` | `h-6 w-6` |
+| `AttachmentTray.tsx` (nút xoá ảnh) | `p-[2px]` + `h-3 w-3` | `h-6 w-6` |
+| `ContextChips.tsx` (chip toggle / thêm tab) | `py-[2px]` | + `min-h-[24px]` |
+| `dialog.tsx` (nút đóng) | `p-1` + `h-4 w-4` | `h-6 w-6` |
+
+#### 7.19.7 i18n — dọn chuỗi literal còn sót từ T-M1-17
+
+| Chuỗi | Nơi | Key mới |
+|---|---|---|
+| "Enter để gửi · Shift+Enter để xuống dòng · @ để đính kèm tab" | `Composer.tsx` | `composer.hint` |
+| "Phien ban cu ({count})" | `ChatWorkspace.tsx` | `chat.oldVersions` |
+| (nhãn thread) | `ChatWorkspace.tsx` (`role="log"`) | `chat.threadLabel` |
+| `aria-label="Đóng"` | `components/ui/dialog.tsx` | `common.close` |
+
+> `useI18n` được **chuyển** từ `src/sidepanel/hooks/useI18n.ts` → `src/i18n/useI18n.ts` (file cũ re-export) → `components/ui/dialog.tsx` (component dùng chung) dùng được mà **không** import nguược từ `sidepanel/`.
+
+#### 7.19.8 Kiểm thử
+
+| Tầng | File | Phạm vi |
+|---|---|---|
+| Unit | `apps/extension/tests/a11y.test.tsx` | icon-button có `aria-label` · live region khi/không streaming · `role="status"` · `composer.hint` đã dịch · **source-level**: không còn `focus-visible:outline-none` / `focus-visible:ring-[var(--focus-ring)]` · icon-only button ≥ 24px |
+| E2E | `apps/extension/e2e/responsive.spec.ts` | `scrollWidth <= clientWidth` ở 320 / 480 / 640px · drawer Settings + drawer conversation ở 320px · composer nằm trong khung nhìn |
+
+> **Mutation spot-check:** đổi `focus-visible:outline-2 …` của `ContextNotice` về `focus-visible:outline-none` → **1 test fail** (đã kiểm chứng).
+
+---
+
 ## 8. Hiệu năng
 
 | Chỉ số | Mục tiêu | Cách đạt |

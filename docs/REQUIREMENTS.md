@@ -438,11 +438,11 @@ Settings nằm trong **drawer** (Radix `Dialog` trượt từ phải), mở bằ
 | FR-UX-03 | Empty state với prompt gợi ý theo ngữ cảnh trang | M | ✅ T-M1-11 — xem AC chi tiết §4.9.2. ≥ 3 gợi ý; refresh theo loại trang |
 | FR-UX-04 | Empty state khi chưa có context: gợi ý câu hỏi chung | M | ✅ T-M1-11 — xem AC chi tiết §4.9.2. Có nút "Tóm tắt trang này" 1-click |
 | FR-UX-05 | Scroll: tự cuộn theo stream; dừng auto-scroll khi user cuộn lên | M | Có nút "Cuộn xuống" khi đang lệch. **Đã implement (T-M1-10):** `ChatWorkspace` theo dõi `scrollHeight - scrollTop - clientHeight` → chỉ auto-scroll khi ≤ 80 px từ đáy; lệch → hiện nút tròn "Cuộn xuống" (`ScrollToBottomButton`), bấm → cuộn về đáy |
-| FR-UX-06 | Panel chịu được chiều rộng 320–640px; không vỡ layout | M | ✅ T-M1-12 — nút gear trong header → drawer Settings trượt từ phải (giữ ≥ 90% context chat, DP-2). Bề rộng điều chỉnh được 400/640/960px (`--panel-max-width`); layout không vỡ ở cả 3 mức |
-| FR-UX-07 | Focus ring rõ, điều hướng bằng bàn phím đầy đủ | M | Tab order hợp lý, focus không bị kẹt |
+| FR-UX-06 | Panel chịu được chiều rộng 320–640px; không vỡ layout | M | ✅ T-M1-12 — nút gear trong header → drawer Settings trượt từ phải (giữ ≥ 90% context chat, DP-2). Bề rộng điều chỉnh được 400/640/960px (`--panel-max-width`); layout không vỡ ở cả 3 mức · **✅ T-M1-20** — xem AC chi tiết §4.9.5 |
+| FR-UX-07 | Focus ring rõ, điều hướng bằng bàn phím đầy đủ | M | ✅ **T-M1-20** — focus ring chuẩn hoá về `focus-visible:outline-2 outline-offset-2 outline-[var(--border-focus)]` (không còn `outline-none` trần) · skip-link "Bỏ qua tới ô nhập" · `role="tab"` + `aria-controls` + `role="tabpanel"` cho tab nhóm conversation · xem AC chi tiết §4.9.5 |
 | FR-UX-08 | Toast / banner thông báo lỗi & trạng thái, không che nội dung | M | Auto-dismiss 5s, có dismiss thủ công. **Đã implement (T-M1-19):** lỗi trong thread → card inline `ErrorState` (không che nội dung, có ✕ dismiss thủ công) · lỗi **kết nối BFF** → **banner offline** ngay dưới header (`offline-banner`) kèm nút "Thử lại" (không tự ẩn — lỗi kết nối là trạng thái kéo dài, không phải toast 5 s) · trạng thái kết nối tức thời hiện ở **badge trong header** (`ConnectionBadge`). Toast 5 s (`sonner`) vẫn dùng cho thao tác one-shot (xoá lịch sử, đổi biến thể…) |
-| FR-UX-09 | Responsive: hỗ trợ zoom 200%, font nhỏ không vỡ | M | |
-| FR-UX-10 | Hoạt ảnh tối giản, tôn trọng `prefers-reduced-motion` | M | |
+| FR-UX-09 | Responsive: hỗ trợ zoom 200%, font nhỏ không vỡ | M | ✅ **T-M1-20** — xem AC chi tiết §4.9.5 |
+| FR-UX-10 | Hoạt ảnh tối giản, tôn trọng `prefers-reduced-motion` | M | ✅ **T-M1-20** (audit + xác nhận) — animation chỉ dùng `opacity`/`transform`, đã có rule `@media (prefers-reduced-motion: reduce)` tắt toàn bộ animation · **T-M3-04** còn lại (polish) |
 
 #### 4.9.1 FR-UX-02 — Onboarding 3 bước (AC chi tiết — T-M1-25 ✅)
 
@@ -563,6 +563,48 @@ Acceptance criteria:
 > **Không** dùng `chrome.commands.update()` / `chrome.commands.reset()` → không tồn tại trong Chrome.
 >
 > Chi tiết kỹ thuật: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.18.
+
+#### 4.9.5 FR-UX-06/07/09/10 + NFR-A11Y-01..05 — Responsive 320–640px & a11y pass (AC chi tiết — T-M1-20 ✅)
+
+**Bug còn sót từ T-M1-17 (i18n):**
+
+- `composer.hint` ("Enter để gửi · Shift+Enter để xuống dòng · @ để đính kèm tab") là chuỗi literal **chưa được dịch** → nay lấy từ `t('composer.hint')`.
+- Rà thêm toàn panel → phát hiện 3 chuỗi literal còn sót: `chat.oldVersions` ("Phien ban cu") · `chat.threadLabel` (nhãn `role="log"`) · `aria-label="Đóng"` của nút đóng Dialog → **tất cả** đã chuyển sang `t()`.
+
+**Responsive (FR-UX-06 / FR-UX-09):**
+
+- `#root` dùng `min-width: min(var(--panel-min-width), 100%)` → panel **không bao giờ** rộng hơn viewport (trước: cứng `320px` → tràn ngang khi user thu hẹp dưới 320px).
+- Drawer Settings: `w-[min(360px,92vw)] max-w-full` · drawer conversation + confirm dialog: `max-w-full` → không tràn ở 320px.
+- `max-w-[180px]` cứng (`CitationList` ×2 · `ContextChips` ×1) → `max-w-[min(180px,100%)]` → co theo container.
+- `min-w-0` thêm vào bubble message + textarea composer + `overflow-x-hidden` cho thread → flex child không phình ngang.
+- Bề rộng điều chỉnh được (`--panel-max-width` 400/640/960px) vẫn hoạt động như T-M1-12.
+
+**a11y (FR-UX-07 / FR-UX-09 / FR-UX-10 + NFR-A11Y-01..05):**
+
+- **Focus ring chuẩn hoá** — 12 chỗ dùng `focus-visible:outline-none focus-visible:ring-[var(--focus-ring)]` → chuyển hết sang pattern đang dùng ở `Button`/`Input`: `focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]`. **Không còn** `outline: none` trần ở bất kỳ component nào.
+- **Live region cho streaming (NFR-A11Y-05)** — `role="article"` + `aria-live="polite"` + `aria-atomic="false"` + `aria-relevant="additions text"` đặt trên **phần nội dung assistant vừa stream** (`MessageContent`). Thread (`message-list`) chỉ có `role="log"` (**không** đặt `aria-live`) → screen reader không đọc lại lịch sử cũ. Dòng "Đang tạo câu trả lời..." → `role="status"`.
+- **Skip-link (FR-UX-07)** — "Bỏ qua tới ô nhập" ở `App.tsx`, anchor `#sidekick-composer-input`, `sr-only focus:not-sr-only` → hiện khi focus.
+- **Tap target ≥ 24px (WCAG 2.2 §2.5.8)** — các icon-button `p-[2px]` (~18px) ở `ContextChips` · `ContextNotice` · `PromptGallery` · `AttachmentTray` → `h-6 w-6`; chip/nút nhỏ khác → `min-h-[24px]`.
+- **`aria-hidden`** cho icon lucide trong `Composer` (4 chỗ) → screen reader không đọc icon trang trí.
+- **`role="tab"` hoàn chỉnh** — tab nhóm conversation có `id` + `aria-controls="conversation-panel"` + `tabIndex` quản lý (roving tabindex); panel có `role="tabpanel"` + `aria-labelledby`.
+- **`prefers-reduced-motion` (FR-UX-10)** — xác nhận animation chỉ dùng `opacity`/`transform` + đã có rule tắt toàn bộ ở `index.css`.
+
+Acceptance criteria:
+
+| # | AC |
+|---|---|
+| 1 | Panel **không tràn ngang** ở 320 / 480 / 640px: `document.documentElement.scrollWidth <= clientWidth` (E2E `e2e/responsive.spec.ts`) |
+| 2 | Drawer Settings + drawer danh sách cuộc trò chuyện **không tràn ngang** ở 320px (E2E) |
+| 3 | Ô nhập vẫn **nằm trong khung nhìn** ở 320px (E2E) |
+| 4 | **Không còn** `focus-visible:outline-none` thiếu ring thay thế trong `src/sidepanel` + `src/components/ui` (unit test `tests/a11y.test.tsx`) |
+| 5 | Icon-only button có kích thước ≥ 24px (unit test `tests/a11y.test.tsx` quét source) |
+| 6 | `MessageContent` có `aria-live="polite"` **khi** streaming và **không** có khi đã xong (unit test) |
+| 7 | Icon-button ở `PanelHeader` + `ContextChips` đều có `aria-label` (unit test) |
+| 8 | Skip-link tồn tại và trỏ tới `#sidekick-composer-input` |
+| 9 | `composer.hint` + `chat.oldVersions` + `chat.threadLabel` + nhãn đóng Dialog đều lấy từ i18n (không còn literal) |
+| 10 | Không thêm dependency mới · không đổi manifest · không migration |
+
+> Chi tiết kỹ thuật: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.19 · [`DESIGN_SYSTEM_BRIEF.md`](DESIGN_SYSTEM_BRIEF.md) §5.
 
 ---
 
@@ -1195,11 +1237,11 @@ Chỉ bắt đầu M4 khi **đồng thời** thỏa:
 | FR-UX-03 | M | **T-M1-11 ✅** · T-M1-19 ✅ | M1 |
 | FR-UX-04 | M | **T-M1-11 ✅** · T-M1-19 ✅ | M1 |
 | FR-UX-05 | M | T-M1-10 | M1 |
-| FR-UX-06 | M | **T-M1-12 ✅** (drawer Settings + bề rộng) · T-M1-20 | M1 |
-| FR-UX-07 | M | T-M1-20 | M1 |
+| FR-UX-06 | M | **T-M1-12 ✅** (drawer Settings + bề rộng) · **T-M1-20 ✅** (responsive 320–640px) | M1 |
+| FR-UX-07 | M | **T-M1-20 ✅** | M1 |
 | FR-UX-08 | M | T-M1-19 ✅ | M1 |
-| FR-UX-09 | M | T-M1-20 | M1 |
-| FR-UX-10 | M | T-M1-20 · T-M3-04 | M1→M3 |
+| FR-UX-09 | M | **T-M1-20 ✅** | M1 |
+| FR-UX-10 | M | **T-M1-20 ✅** · T-M3-04 | M1→M3 |
 
 #### NFR — Hiệu năng, an toàn, độ tin cậy, a11y, bảo trì
 
@@ -1224,11 +1266,11 @@ Chỉ bắt đầu M4 khi **đồng thời** thỏa:
 | NFR-REL-03 (BFF down → direct) | T-M1-15 | M1 |
 | NFR-REL-04 (trạng thái kết nối) | T-M1-19 ✅ | M1 |
 | NFR-REL-05 (backup DB) | **T-M3-10** | M3 |
-| NFR-A11Y-01 (WCAG 2.2 AA) | T-M1-20 · T-M3-03 | M1→M3 |
+| NFR-A11Y-01 (WCAG 2.2 AA) | **T-M1-20 ✅** · T-M3-03 | M1→M3 |
 | NFR-A11Y-02 (độ tương phản) | T-M1-20 · T-M3-03 | M1→M3 |
-| NFR-A11Y-03 (aria-label / aria-live) | T-M1-20 · T-M3-03 | M1→M3 |
-| NFR-A11Y-04 (bàn phím + focus) | T-M1-20 · T-M3-03 | M1→M3 |
-| NFR-A11Y-05 (screen reader streaming) | T-M1-20 | M1 |
+| NFR-A11Y-03 (aria-label / aria-live) | **T-M1-20 ✅** · T-M3-03 | M1→M3 |
+| NFR-A11Y-04 (bàn phím + focus) | **T-M1-20 ✅** · T-M3-03 | M1→M3 |
+| NFR-A11Y-05 (screen reader streaming) | **T-M1-20 ✅** | M1 |
 | NFR-MAINT-01 (strict TS + CI) | T-M0-02 ✅ | M0 |
 | NFR-MAINT-02 (coverage ≥70%) | T-M2-13 · T-M3-03 | M2→M3 |
 | NFR-MAINT-03 (interface registry) | T-M0-07 ✅ · T-M2-04 · T-M2-07 | M0→M2 |

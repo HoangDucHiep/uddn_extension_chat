@@ -79,13 +79,13 @@ export function MessageBubble({
 
   return (
     <div
-      className={isUser ? 'flex justify-end' : 'flex justify-start'}
+      className={isUser ? 'flex min-w-0 justify-end' : 'flex min-w-0 justify-start'}
       data-testid={isUser ? 'message-user' : 'message-assistant'}
       data-role={message.role}
     >
       <div
         className={[
-          'max-w-[var(--message-max-width)] rounded-[var(--radius-lg)] px-[var(--space-3)] py-[var(--space-2)]',
+          'min-w-0 max-w-[var(--message-max-width)] rounded-[var(--radius-lg)] px-[var(--space-3)] py-[var(--space-2)]',
           'text-[length:var(--font-size-md)] leading-[var(--line-height-base)]',
           isUser
             ? 'bg-[var(--color-accent)] text-[var(--color-accent-fg)]'
@@ -106,7 +106,7 @@ export function MessageBubble({
                   aria-label={t('chat.openImage', {
                     name: image.fileName ?? t('chat.imageAttachment'),
                   })}
-                  className="block overflow-hidden rounded-[var(--radius-md)] border border-[var(--border-default)] focus-visible:outline-none focus-visible:ring-[var(--focus-ring)]"
+                  className="block overflow-hidden rounded-[var(--radius-md)] border border-[var(--border-default)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]"
                 >
                   <img
                     src={image.dataUrl}
@@ -143,7 +143,9 @@ export function MessageBubble({
             />
           )
         ) : message.status === 'streaming' ? (
-          <span className="text-[var(--text-tertiary)]">{t('chat.streaming')}</span>
+          <span className="text-[var(--text-tertiary)]" role="status">
+            {t('chat.streaming')}
+          </span>
         ) : null}
 
         {/* Card loi voi hau dong khoi phuc (FR-CHAT-14 — T-M1-19). */}

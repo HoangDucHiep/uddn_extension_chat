@@ -63,7 +63,7 @@ export function ConfirmDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="left-1/2 top-1/2 h-auto w-[min(320px,90vw)] -translate-x-1/2 -translate-y-1/2 rounded-[var(--radius-lg)] border border-[var(--border-default)]"
+        className="left-1/2 top-1/2 h-auto w-[min(320px,90vw)] max-w-full -translate-x-1/2 -translate-y-1/2 rounded-[var(--radius-lg)] border border-[var(--border-default)]"
         data-testid="confirm-dialog"
       >
         <DialogHeader>

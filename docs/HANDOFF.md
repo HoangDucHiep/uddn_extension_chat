@@ -24,14 +24,38 @@
 | Hạng mục | Trạng thái |
 |---|---|
 | Docs | ✅ Đầy đủ 9 file (`docs/`) + `AGENTS.md` ở root |
-| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 + T-M1-05 + T-M1-02 + T-M1-24 + T-M1-25 + T-M1-06 + T-M1-07 + T-M1-08 + T-M1-09 + T-M1-10 + T-M1-11 + T-M1-03 + T-M1-12 + T-M1-19 + T-M1-14 + T-M1-17 + T-M1-18 xong** — 4 workspace, 1292 unit test + 76 E2E |
+| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 + T-M1-05 + T-M1-02 + T-M1-24 + T-M1-25 + T-M1-06 + T-M1-07 + T-M1-08 + T-M1-09 + T-M1-10 + T-M1-11 + T-M1-03 + T-M1-12 + T-M1-19 + T-M1-14 + T-M1-17 + T-M1-18 + T-M1-20 xong** — 4 workspace, 1301 unit test + 81 E2E |
 | Git | ✅ Đã init (`main`) · tag `v0.1` đánh dấu M0 |
-| Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **22/25 task** — T-M1-15 + T-M1-16 ⏸ tạm dừng, T-M1-13 defer) |
-| Task tiếp theo | **T-M1-20** (responsive 320–640px + a11y) → đóng M1 → sang M2 — T-M1-13 (export) đã được user **defer** |
+| Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **23/25 task** — T-M1-15 + T-M1-16 ⏸ tạm dừng, T-M1-13 defer) |
+| Task tiếp theo | **Đóng M1** → sang **M2 — Advanced & Eval** (`docs/EVAL_PLAN.md`) — T-M1-13 (export) đã được user **defer** |
 
 ### Đang làm dở
 
-_(Không có — T-M1-18 keyboard shortcuts cấu hình được xong)_
+_(Không có — T-M1-20 responsive + a11y xong)_
+
+### Việc đã xong gần đây (T-M1-20 — Responsive 320–640px + a11y pass cơ bản)
+
+- **T-M1-20 (FR-UX-06/07/09/10 + NFR-A11Y-01..05)** — side panel nay **không tràn ngang** ở 320–640px và đạt a11y cơ bản (WCAG 2.2 AA).
+  - **Responsive** — `#root` dùng `min-width: min(var(--panel-min-width), 100%)` (trước: cứng `320px` → tràn khi panel < 320px) · drawer Settings `w-[min(360px,92vw)] max-w-full` · drawer conversation + confirm dialog `max-w-full` · chip/nguồn `max-w-[min(180px,100%)]` · `min-w-0` cho bubble + textarea · `overflow-x-hidden` cho thread.
+  - **Focus ring** — 12 chỗ `focus-visible:outline-none focus-visible:ring-[var(--focus-ring)]` → chuẩn hoá `focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]` (1 token, đồng bộ `Button`/`Input`/`Textarea`).
+  - **Live region (NFR-A11Y-05)** — `role="article"` + `aria-live="polite"` + `aria-atomic="false"` + `aria-relevant="additions text"` **chỉ** trên `MessageContent` khi đang stream; thread `role="log"` **không** đặt `aria-live` → screen reader không đọc lại lịch sử cũ. Dòng "Đang tạo câu trả lời..." → `role="status"`.
+  - **Skip-link** — `<SkipLink />` trong `App.tsx` → anchor `#sidekick-composer-input` (`id` đặt trên `<Textarea>`), `sr-only focus:not-sr-only`.
+  - **Tap target ≥ 24px** (WCAG 2.2 §2.5.8) — icon-button `p-[2px]` (~18px) ở `ContextChips` · `ContextNotice` · `PromptGallery` · `AttachmentTray` · nút đóng `Dialog` → `h-6 w-6`.
+  - **`role="tab"`** — tab nhóm conversation có `id` + `aria-controls="conversation-panel"` + roving `tabIndex`; panel có `role="tabpanel"`.
+  - **i18n dọn sót** — `composer.hint` · `chat.oldVersions` · `chat.threadLabel` + nhãn đóng Dialog → `t()`. `useI18n` **chuyển** từ `sidepanel/hooks/` → `src/i18n/useI18n.ts` (file cũ re-export) để `components/ui/dialog.tsx` dịch được mà không import ngược tầng.
+  - **Verify** — typecheck ✅ · lint ✅ · test ✅ (extension **681** unit = 672 + 9 test mới) · build ✅ · E2E `e2e/responsive.spec.ts` (5 kịch bản 320/480/640px) ✅.
+- Bằng chứng đầy đủ: `docs/IMPLEMENTATION_PLAN.md` §3.1t · `docs/SYSTEM_DESIGN.md` §7.19 · `docs/DESIGN_SYSTEM_BRIEF.md` §5.
+
+### Quyết định kỹ thuật mới (T-M1-20)
+
+| Quyết định | Lý do |
+|---|---|
+| Live region đặt trên **`MessageContent`**, **không** đặt trên thread | Thread chứa cả lịch sử cũ → `aria-live` ở đó khiến screen reader đọc lại **toàn bộ** chat mỗi lần stream. Pattern đúng: chỉ đánh dấu phần **vừa** thay đổi, `aria-atomic="false"` |
+| Focus ring dùng **outline 1 token**, không dùng `box-shadow` (`--focus-ring`) | `--focus-ring` là shadow 2 vòng → phải `outline: none` để tránh chồng; outline chỉ cần **1** token `--border-focus` → đồng bộ toàn bộ component, không còn `outline: none` trần |
+| "Responsive" của side panel = **không tràn ngang**, không phải breakpoint | Side panel là 1 cột do user kéo → không có viewport ngang như web app → mọi bề rộng cứng phải `min(..., 100%)` |
+| `useI18n` đặt ở **`src/i18n/`** (không phải `sidepanel/hooks/`) | `components/ui/dialog.tsx` là component dùng chung → không được import ngược từ tầng `sidepanel/` (vi phạm layering) |
+| Test a11y kiểm **source-level** (quét class trong file) cho focus ring + tap target | jsdom không tính kích thước hiển thị → chỉ assert được bằng cách đọc class → bắt được hồi quy "đổi lại về `outline-none`" |
+| Không thêm dependency / permission / migration | Task là **UI + CSS** — không cần chạm schema DB hay manifest |
 
 ### Việc đã xong gần đây (T-M1-18 — keyboard shortcuts cấu hình được)
 
