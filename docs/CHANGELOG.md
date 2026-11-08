@@ -7,6 +7,27 @@
 ---
 
 ## [Unreleased]
+### Fixed
+- **Hồi quy bundle content script** — `dist/content.js` phình từ **13.87 kB** → **151 kB** (T-M1-17) → **~46 kB** (T-M1-20) vì kéo theo **Zod** + dictionary **đầy đủ**; nay **17.27 kB** (gzip 6.65 kB).
+  - **Nguyên nhân T-M1-17** — `lib/i18n.ts` → `lib/settings.ts` → `@sidekick/shared` (barrel `index`) → toàn bộ bundle `zod` (~100 kB).
+  - **Nguyên nhân T-M1-20** — `lib/i18n.ts` → `i18n/index.ts` → `i18n/vi.ts` + `i18n/en.ts` (dictionary đầy đủ ~34 kB).
+  - **Cách sửa** — tách **2 tầng dictionary**:
+    - `apps/extension/src/i18n/format.ts` (mới) — `formatMessage()` + `resolveLanguage()`, **không** import dictionary.
+    - `apps/extension/src/i18n/outsidePanel.vi.ts` (mới) — **nguồn sự thật** của 4 khoá ngoài panel (`content.selectionButton` · `content.selectionButtonLabel` · `background.menu.open` · `background.menu.askSelection`).
+    - `apps/extension/src/i18n/outsidePanel.en.ts` (mới) — bản EN (kiểu ràng buộc key).
+    - `apps/extension/src/i18n/outsidePanel.ts` (mới) — `createOutsidePanelTranslator(language)`.
+    - `apps/extension/src/i18n/surface.ts` (mới) — union kiểu `OutsidePanelKey` (suy ra từ `outsidePanel.vi.ts`).
+    - `apps/extension/src/lib/i18nSurface.ts` (mới) — `getSurfaceTranslator()` cho content script + service worker.
+    - `apps/extension/src/lib/storageKeys.ts` (mới) — khoá storage + `readStoredUiLanguage()` đọc **thuộc tính** trực tiếp, **không** validate bằng Zod.
+    - `apps/extension/src/i18n/vi.ts` + `en.ts` — spread `outsidePanelViDictionary` / `outsidePanelEnDictionary` vào dictionary đầy đủ → **nguồn sự thật** vẫn là 1 chỗ.
+    - `apps/extension/src/lib/i18n.ts` — dùng `readStoredUiLanguage()` (không Zod) + `createTranslator()` từ `@/i18n`.
+    - `apps/extension/src/content/contentScript.ts` — dùng `getSurfaceTranslator()` thay `getTranslator()`.
+    - `apps/extension/src/background/contextMenus.ts` — dùng `getSurfaceTranslator()`.
+    - `apps/extension/src/lib/settings.ts` — re-export hằng khoá storage từ `storageKeys.ts` (giữ 1 nguồn sự thật).
+  - **Guard hồi quy** — `apps/extension/tests/contentBundleGuard.test.ts` (mới, 10 test): duyệt **đệ quy đồ thị phụ thuộc** của `src/content/contentScript.ts` → chặn `@sidekick/shared` (barrel) · dictionary đầy đủ · `react` · `zod`; kèm assert `dist/content.js` **≤ 40 kB** + không chứa marker Zod.
+    - > Guard dùng **đồ thị phụ thuộc**, không phải grep từng file — bản grep lọt lưới (đổi `contentScript.ts` sang import `../lib/i18n.js` vẫn xanh).
+    - > `import type` bị **xoá khi build** → không báo động giả.
+
 ### Removed
 - **BYOK (K2 + K3) — tạm dừng theo quyết định user 2026-11-08** (T-M1-15 ⏸ · T-M1-16 ⏸)
   - `apps/extension/src/sidepanel/components/onboarding/StepProvider.tsx` — **gỡ ô nhập API key** + nút "Lưu & kiểm tra" → provider cần key mà chưa có **K1** chỉ hiện thông báo hướng dẫn (`data-testid="onboarding-key-required"`); luồng chọn provider + `onSelect` giữ nguyên.

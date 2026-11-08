@@ -17,7 +17,7 @@ import { normalizeSelectionText } from '../content/selection.js'
 import { isMeaningfulSelection } from '../content/selection.js'
 import { selectionItemId, type PendingSelection } from '../lib/selectionProtocol.js'
 import { writePendingSelection } from '../lib/storage.js'
-import { getTranslator } from '../lib/i18n.js'
+import { getSurfaceTranslator } from '../lib/i18nSurface.js'
 import { openSidePanel } from './panelController.js'
 
 /** Id cua muc menu "Mo Sidekick AI". */
@@ -42,7 +42,7 @@ export async function registerContextMenus(): Promise<void> {
   }
 
   // Nhan menu theo ngon ngu UI (T-M1-17) → doc storage truoc khi tao.
-  const t = await getTranslator()
+  const t = await getSurfaceTranslator()
 
   try {
     chrome.contextMenus.create({

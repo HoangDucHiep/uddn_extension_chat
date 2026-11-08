@@ -24,7 +24,7 @@
 | Hạng mục | Trạng thái |
 |---|---|
 | Docs | ✅ Đầy đủ 9 file (`docs/`) + `AGENTS.md` ở root |
-| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 + T-M1-05 + T-M1-02 + T-M1-24 + T-M1-25 + T-M1-06 + T-M1-07 + T-M1-08 + T-M1-09 + T-M1-10 + T-M1-11 + T-M1-03 + T-M1-12 + T-M1-19 + T-M1-14 + T-M1-17 + T-M1-18 + T-M1-20 xong** — 4 workspace, 1301 unit test + 81 E2E |
+| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 + T-M1-05 + T-M1-02 + T-M1-24 + T-M1-25 + T-M1-06 + T-M1-07 + T-M1-08 + T-M1-09 + T-M1-10 + T-M1-11 + T-M1-03 + T-M1-12 + T-M1-19 + T-M1-14 + T-M1-17 + T-M1-18 + T-M1-20 xong** — 4 workspace, 1311 unit test + 81 E2E |
 | Git | ✅ Đã init (`main`) · tag `v0.1` đánh dấu M0 |
 | Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **23/25 task** — T-M1-15 + T-M1-16 ⏸ tạm dừng, T-M1-13 defer) |
 | Task tiếp theo | **Đóng M1** → sang **M2 — Advanced & Eval** (`docs/EVAL_PLAN.md`) — T-M1-13 (export) đã được user **defer** |
@@ -32,6 +32,34 @@
 ### Đang làm dở
 
 _(Không có — T-M1-20 responsive + a11y xong)_
+
+### Việc đã xong gần đây (fix bundle content script — sau T-M1-20)
+
+- **Hồi quy bundle `dist/content.js`** — phình từ **13.87 kB** → **151 kB** (T-M1-17) → **~46 kB** (T-M1-20) → nay **17.27 kB** (gzip 6.65 kB).
+  - **Nguyên nhân 1 (T-M1-17)** — `lib/i18n.ts` → `lib/settings.ts` → `@sidekick/shared` (barrel `index`) → toàn bộ bundle **Zod** (~100 kB).
+  - **Nguyên nhân 2 (T-M1-20)** — `lib/i18n.ts` → `i18n/index.ts` → `i18n/vi.ts` + `i18n/en.ts` (dictionary **đầy đủ** ~34 kB).
+  - **Cách sửa** — tách **2 tầng dictionary**:
+    - `i18n/format.ts` (mới) — `formatMessage()` + `resolveLanguage()`, **không** import dictionary.
+    - `i18n/outsidePanel.vi.ts` (mới) — **nguồn sự thật** của **4** khoá ngoài panel (`content.selectionButton` · `content.selectionButtonLabel` · `background.menu.open` · `background.menu.askSelection`).
+    - `i18n/outsidePanel.en.ts` (mới) — bản EN (kiểu ràng buộc key) · `i18n/outsidePanel.ts` (mới) — `createOutsidePanelTranslator()` · `i18n/surface.ts` (mới) — union `OutsidePanelKey`.
+    - `lib/i18nSurface.ts` (mới) — `getSurfaceTranslator()` cho content script + service worker.
+    - `lib/storageKeys.ts` (mới) — khoá storage + `readStoredUiLanguage()` đọc **thuộc tính** trực tiếp, **không** validate bằng Zod.
+    - `i18n/vi.ts` + `en.ts` — spread dictionary rút gọn vào dictionary đầy đủ → **nguồn sự thật** vẫn 1 chỗ.
+    - `content/contentScript.ts` + `background/contextMenus.ts` — dùng `getSurfaceTranslator()`.
+  - **Guard hồi quy** — `apps/extension/tests/contentBundleGuard.test.ts` (mới, **10 test**): duyệt **đệ quy đồ thị phụ thuộc** của `src/content/contentScript.ts` → chặn `@sidekick/shared` (barrel) · dictionary đầy đủ · `react` · `zod`; kèm assert `dist/content.js` **≤ 40 kB** + không chứa marker Zod.
+  - **Verify** — typecheck ✅ · lint ✅ · test ✅ (**1311 unit** = shared 243 · server 377 · extension 691) · build ✅ (`dist/content.js` 17.27 kB).
+- Bằng chứng đầy đủ: `docs/SYSTEM_DESIGN.md` §7.5.1 + §7.5.2 · `docs/CHANGELOG.md`.
+
+### Quyết định kỹ thuật mới (fix bundle content script)
+
+| Quyết định | Lý do |
+|---|---|
+| Tách **2 tầng dictionary** (đầy đủ / rút gọn 4 khoá) thay vì 1 | Content script chạy ở **mọi** trang → bundle phình ảnh hưởng tốc độ load trang; ngoài panel chỉ cần **4** khoá |
+| `lib/storageKeys.ts` tách riêng, **không** validate bằng Zod | Zod là thứ làm bundle phình; đọc **thuộc tính** trực tiếp + kiểm tra `vi`/`en` bằng so sánh chuỗi là đủ |
+| `i18n/vi.ts` + `en.ts` **spread** dictionary rút gọn vào | Giữ **1 nguồn sự thật** cho danh sách khoá — không phải khai báo lại 4 khoá ở 2 nơi |
+| Guard dựa trên **đồ thị phụ thuộc**, không grep từng file | Bản grep **lọt lưới**: đổi `contentScript.ts` sang import `../lib/i18n.js` vẫn xanh, dù kéo theo dictionary đầy full — đã kiểm chứng bằng mutation spot-check |
+| `import type` **không** bị guard báo động | Bị **xoá khi build** → không ảnh hưởng bundle; báo động giả làm guard mất uy tín |
+| Resolver của guard phải bỏ đuôi `.js` | Quy ước import nội bộ: `from '../lib/i18nSurface.js'` → file nguồn là `.ts` |
 
 ### Việc đã xong gần đây (T-M1-20 — Responsive 320–640px + a11y pass cơ bản)
 

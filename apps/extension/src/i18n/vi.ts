@@ -1,3 +1,5 @@
+import { outsidePanelViDictionary } from './outsidePanel.vi.js'
+
 /**
  * Khoa dich (translation keys) — mot nguon su that duy nhat cho UI.
  *
@@ -5,11 +7,19 @@
  * `en.ts` kieu `Dictionary` → **thieu key se loi typecheck** (khong can
  * test runtime de bat).
  *
+ * > **Khoa "ngoai side panel"** (content script + context menu) nam o
+ * > `outsidePanel.vi.ts` → `vi.ts` **spread** file do nen van chi co **mot**
+ * > nguon su that. Tach rieng de bundle ngoai panel khong keo dictionary
+ * > day du (~17 kB).
+ *
  * Docs: docs/SYSTEM_DESIGN.md §7.17
  */
 
 /** Dictionary tieng Viet — nguon su that cua danh sach key. */
 export const viDictionary = {
+  // --- content script / background (ngoai side panel) ---
+  ...outsidePanelViDictionary,
+
   // --- common ---
   'common.cancel': 'Huỷ',
   'common.confirm': 'Xác nhận',
@@ -298,12 +308,6 @@ export const viDictionary = {
   'toast.serverUnreachable': 'Không kết nối được (HTTP {status})',
   'toast.serverSaved': 'Đã lưu endpoint BFF',
   'toast.serverUnreachableGeneric': 'Không kết nối được tới BFF',
-
-  // --- content script / background ---
-  'content.selectionButton': 'Hoi Sidekick',
-  'content.selectionButtonLabel': '{label} về đoạn văn bản đã bôi đen',
-  'background.menu.open': 'Mo Sidekick AI',
-  'background.menu.askSelection': 'Hoi Sidekick voi doan da chon',
 } as const
 
 /** Union cua tat ca khoa dich hop le. */

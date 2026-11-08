@@ -1,3 +1,4 @@
+import { outsidePanelEnDictionary } from './outsidePanel.en.js'
 import type { Dictionary } from './vi.js'
 
 /**
@@ -9,6 +10,9 @@ import type { Dictionary } from './vi.js'
  * Docs: docs/SYSTEM_DESIGN.md §7.17
  */
 export const enDictionary: Dictionary = {
+  // --- content script / background (ngoai side panel) ---
+  ...outsidePanelEnDictionary,
+
   // --- common ---
   'common.cancel': 'Cancel',
   'common.confirm': 'Confirm',
@@ -290,10 +294,4 @@ export const enDictionary: Dictionary = {
   'toast.serverUnreachable': 'Cannot connect (HTTP {status})',
   'toast.serverSaved': 'BFF endpoint saved',
   'toast.serverUnreachableGeneric': 'Cannot connect to the BFF',
-
-  // --- content script / background ---
-  'content.selectionButton': 'Ask Sidekick',
-  'content.selectionButtonLabel': '{label} about the selected text',
-  'background.menu.open': 'Open Sidekick AI',
-  'background.menu.askSelection': 'Ask Sidekick about the selection',
 }

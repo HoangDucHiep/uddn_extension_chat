@@ -16,7 +16,7 @@ import { createSelectionButton, SELECTION_BUTTON_HOST_ID } from './selectionButt
 import { createSelectionWatcher } from './selectionWatcher.js'
 import { normalizeSelectionText } from './selection.js'
 import { SELECTION_ACTION, selectionItemId, type PendingSelection } from '../lib/selectionProtocol.js'
-import { getTranslator } from '../lib/i18n.js'
+import { getSurfaceTranslator } from '../lib/i18nSurface.js'
 import { startShortcutListener } from './shortcutListener.js'
 
 /** Metadata trang, gui ve panel khi duoc hoi. */
@@ -150,7 +150,7 @@ function startSelectionWatcher(): void {
  */
 async function localizeSelectionButton(): Promise<void> {
   try {
-    const t = await getTranslator()
+    const t = await getSurfaceTranslator()
     const host = document.getElementById(SELECTION_BUTTON_HOST_ID)
     const shadow = host?.shadowRoot
     if (shadow === null || shadow === undefined) return

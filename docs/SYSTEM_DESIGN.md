@@ -1279,9 +1279,47 @@ Kích thước `dist/content.js`:
 |---|---|---|
 | M0 (chỉ metadata) | ≈ 4.7 kB | — |
 | T-M1-01 (extractor) | 4.81 kB | Readability-lite + tokens |
-| **T-M1-02 (selection)** | **13.9 kB** | + watcher · + nút nổi Shadow DOM · + CSS shadow root sinh từ `tokens.json` |
+| T-M1-02 (selection) | 13.9 kB | + watcher · + nút nổi Shadow DOM · + CSS shadow root sinh từ `tokens.json` |
+| ⚠️ T-M1-17 (i18n) | **151 kB** | **Hồi quy** — `lib/i18n.ts` → `lib/settings.ts` → `@sidekick/shared` (barrel) → **Zod** |
+| ⚠️ T-M1-20 (a11y) | **~46 kB** | **Hồi quy** — `lib/i18n.ts` → `i18n/index.ts` → dictionary **đầy đủ** (~34 kB) |
+| **Sau khi tách surface (T-M1-20)** | **17.27 kB** | + dictionary rút gọn 4 khoa · + `storageKeys.ts` không Zod |
 
 Vẫn là **IIFE 1 file, không `import`** → Chrome load được (kiểm tra sau mỗi lần build).
+
+#### 7.5.1 Ranh giới bundle: "ngoài panel" vs "trong panel"
+
+Content script chạy ở **mọi** trang web user mở → bundle phình ảnh hưởng trực tiếp tới tốc độ load trang. Vì vậy có **2 tầng dictionary**:
+
+| Tầng | Module | Dictionary | Dùng ở đâu |
+|---|---|---|---|
+| **Trong panel** | `i18n/index.ts` → `i18n/vi.ts` + `i18n/en.ts` | **đầy đủ** (~34 kB) | side panel (React) |
+| **Ngoài panel** | `i18n/outsidePanel.ts` → `i18n/outsidePanel.vi.ts` + `outsidePanel.en.ts` | **rút gọn — 4 khoa** | content script · service worker (context menu) |
+
+| Module | Vai trò | Phụ thuộc |
+|---|---|---|
+| `i18n/format.ts` | `formatMessage()` + `resolveLanguage()` — **không** import dictionary | thuần |
+| `i18n/surface.ts` | Union kiểu `OutsidePanelKey` (nguồn: `outsidePanel.vi.ts`) | thuần |
+| `i18n/outsidePanel.vi.ts` | **Nguồn sự thật** của 4 khoa ngoài panel | thuần |
+| `i18n/outsidePanel.en.ts` | Bản EN (kiểu ràng buộc key) | thuần |
+| `lib/storageKeys.ts` | Khoá storage + `readStoredUiLanguage()` — đọc **thuộc tính** trực tiếp, **không** validate bằng Zod | thuần |
+| `lib/i18nSurface.ts` | `getSurfaceTranslator()` — điểm vào cho content script + SW | thuần |
+
+> **Quy tắc:** khoá "ngoài panel" phải có **ở cả 3 nơi**: `outsidePanel.vi.ts` (nguồn sự thật) · `outsidePanel.en.ts` (kiểu ràng buộc) · `surface.ts` (danh sách khoá). Thiếu một → `pnpm typecheck` hoặc unit test bắt.
+
+#### 7.5.2 Guard hồi quy bundle (`tests/contentBundleGuard.test.ts`)
+
+Hai lần hồi quy ở trên **không** làm hỏng chức năng → test chức năng vẫn xanh → chỉ guard mới bắt được. Guard gồm 2 tầng:
+
+1. **Source-level (đồ thị phụ thuộc)** — duyệt **đệ quy** toàn bộ module mà content script kéo theo (entry = `src/content/contentScript.ts`), rồi phán quyết:
+   - không import value `@sidekick/shared` (barrel → Zod); chỉ subpath `@sidekick/shared/constants` được phép;
+   - không kéo theo dictionary **đầy đủ** (`lib/i18n.ts` · `i18n/index.ts` · `i18n/vi.ts` · `i18n/en.ts`);
+   - không kéo theo `react` hoặc `zod`.
+   - > `import type { X } from 'y'` và `import { type X } from 'y'` bị **xoá khi build** → **không** báo động giả.
+2. **Bundle-level** — nếu `dist/content.js` đã build: kích thước **≤ 40 kB** + không chứa marker của Zod (`invalid_type`).
+
+> **Vì sao là đồ thị phụ thuộc, không phải grep từng file?** Bản đầu tiên của guard chỉ grep **trực tiếp** trong `src/content/*.ts` → **lọt lưới**: đổi `contentScript.ts` sang import `../lib/i18n.js` vẫn xanh, dù `lib/i18n.js` kéo theo dictionary đầy đủ. Guard phải **duyệt đệ quy** rồi mới phán quyết.
+
+> **Quy ước import nội bộ:** dùng đuôi `.js` dù file nguồn là `.ts` (`from '../lib/i18nSurface.js'`) → resolver của guard phải bỏ đuôi `.js` trước khi tìm file nguồn.
 
 ### 7.6 Hợp đồng onboarding (FR-UX-02, T-M1-25)
 

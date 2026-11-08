@@ -24,24 +24,21 @@ import {
   type ThemeMode,
   type UiLanguage,
 } from '@sidekick/shared'
-
-/** Khoa storage luu cai dat. */
-export const SETTINGS_STORAGE_KEY = 'sidekick.settings'
+import {
+  PRESERVED_STORAGE_KEYS,
+  SETTINGS_STORAGE_KEY,
+  SIDEKICK_STORAGE_PREFIX,
+} from './storageKeys'
 
 /**
- * Tien to khoa storage cua Sidekick.
+ * Khoa storage + tien to xoa du lieu local.
  *
- * Xoá du lieu local (FR-SETTINGS-03) xoa theo prefix nay — nhung **giu**
- * `sidekick.onboarding.*` va `sidekick.preferredProvider` (xem
- * `deleteLocalSidekickData`).
+ * Re-export tu `lib/storageKeys.ts` de **mot noi** la nguon su that — nhung
+ * `lib/storageKeys.ts` **khong** import Zod → dung duoc cho content script.
+ *
+ * Docs: docs/SYSTEM_DESIGN.md §7.5
  */
-export const SIDEKICK_STORAGE_PREFIX = 'sidekick.'
-
-/** Khoa onboarding — **khong** xoa khi xoa du lieu local. */
-export const PRESERVED_STORAGE_KEYS = [
-  'sidekick.onboarding.completed',
-  'sidekick.preferredProvider',
-] as const
+export { PRESERVED_STORAGE_KEYS, SETTINGS_STORAGE_KEY, SIDEKICK_STORAGE_PREFIX }
 
 /** Cai dat mac dinh. */
 export const DEFAULT_SETTINGS: Settings = {

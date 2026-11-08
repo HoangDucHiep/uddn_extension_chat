@@ -7,8 +7,8 @@ import type { Translator } from '@/lib/i18n'
  * React context cua i18n (FR-SETTINGS-06 — T-M1-17).
  *
  * Tach rieng `i18n/context.ts` (khong JSX) de **content script + service
- * worker** khong phai import React — `i18n/index.ts` giu nguyen phien ban
- * "thuan" cho 2 noi do.
+ * worker** khong phai import React — 2 noi do dung `lib/i18nSurface.ts`
+ * (chi 4 khoa) + `i18n/outsidePanel.ts` → bundle nho.
  *
  * Docs: docs/SYSTEM_DESIGN.md §7.17
  */

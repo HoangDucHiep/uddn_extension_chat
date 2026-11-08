@@ -1,12 +1,14 @@
 import type { UiLanguage } from '@sidekick/shared'
 import { createTranslator, resolveLanguage, type TranslationKey } from '@/i18n'
-import { readSettings } from './settings'
+import { readStoredUiLanguage } from './storageKeys'
 
 /**
- * Doc ngon ngu UI hien tai tu `chrome.storage.local`.
+ * Module i18n — cho **side panel** (dictionary day du).
  *
- * File nay **thuan** (khong React) → dung cho content script + service
- * worker (noi khong the dung hook) va test duoc truc tiep trong vitest.
+ * File nay **thuan** (khong React) → test duoc truc tiep trong vitest.
+ *
+ * > **Bundle ngoai side panel** (content script + service worker) dung
+ * > `lib/i18nSurface.ts` → chi 4 khoa → `dist/content.js` nho.
  *
  * Docs: docs/SYSTEM_DESIGN.md §7.17
  */
@@ -24,28 +26,17 @@ export type Translator = (
  */
 export async function readUiLanguage(): Promise<UiLanguage> {
   try {
-    const settings = await readSettings()
-    return resolveLanguage(settings.uiLanguage) ?? 'vi'
+    return resolveLanguage(await readStoredUiLanguage()) ?? 'vi'
   } catch {
     return 'vi'
   }
 }
 
 /**
- * Tao ham dich cho 1 ngon ngu (dong bo, khong can await).
+ * Tao ham dich cho mot ngon ngu (dong bo, khong can await).
  *
  * @param language - Ngon ngu can dich.
  */
 export function translatorFor(language: UiLanguage): Translator {
   return createTranslator(language)
-}
-
-/**
- * Tao ham dich theo ngon ngu dang luu trong storage (bat dong bo).
- *
- * Dung o noi khong phai React: content script (`selectionButton`) va
- * service worker (`contextMenus`).
- */
-export async function getTranslator(): Promise<Translator> {
-  return createTranslator(await readUiLanguage())
 }
