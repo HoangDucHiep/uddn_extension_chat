@@ -26,6 +26,23 @@ const tabsGetMock = vi.fn(
 const tabsQueryMock = vi.fn(
   async (_query: chrome.tabs.QueryInfo): Promise<chrome.tabs.Tab[]> => [],
 )
+
+/** Shortcut dang gan cua cac command — dung chung cho `getAll`/`update`/`reset`. */
+const commandShortcuts = new Map<string, string>([
+  ['sidekick-toggle-panel', 'Ctrl+Shift+K'],
+])
+
+/** Mock `chrome.commands.getAll`. */
+const commandsGetAllMock = vi.fn(
+  (callback: (commands: chrome.commands.Command[]) => void): void => {
+    callback(
+      [...commandShortcuts.entries()].map(([name, shortcut]) => ({
+        name,
+        shortcut,
+      })),
+    )
+  },
+)
     const executeScriptMock = vi.fn(
   async (
     _injection: chrome.scripting.ScriptInjection<[], unknown>,
@@ -206,6 +223,7 @@ const chromeMock = {
   },
   commands: {
     onCommand: { addListener: vi.fn() },
+    getAll: commandsGetAllMock,
   },
   action: {
     onClicked: { addListener: vi.fn() },
@@ -240,4 +258,5 @@ export {
   tabsCreateMock,
   tabsQueryMock,
   windowsGetCurrentMock,
+  commandsGetAllMock,
 }

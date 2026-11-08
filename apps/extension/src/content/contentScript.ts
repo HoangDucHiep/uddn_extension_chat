@@ -17,6 +17,7 @@ import { createSelectionWatcher } from './selectionWatcher.js'
 import { normalizeSelectionText } from './selection.js'
 import { SELECTION_ACTION, selectionItemId, type PendingSelection } from '../lib/selectionProtocol.js'
 import { getTranslator } from '../lib/i18n.js'
+import { startShortcutListener } from './shortcutListener.js'
 
 /** Metadata trang, gui ve panel khi duoc hoi. */
 export interface PageMetadata {
@@ -171,5 +172,8 @@ async function localizeSelectionButton(): Promise<void> {
 
 startSelectionWatcher()
 void localizeSelectionButton()
+
+// Shortcut tu do cua Sidekick (T-M1-18) → bam phim tren trang → mo panel.
+startShortcutListener()
 
 console.warn('[sidekick] content script da san sang')

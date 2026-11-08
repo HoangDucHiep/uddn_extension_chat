@@ -147,6 +147,23 @@ export const viDictionary = {
   'settings.language.vi': 'Tiếng Việt',
   'settings.language.en': 'English',
 
+  // --- shortcuts (T-M1-18) ---
+  'settings.shortcuts.title': 'Phím tắt',
+  'settings.shortcuts.description':
+    'Đổi tổ hợp phím để mở/tìm Sidekick AI. Chrome quản lý phím tắt gốc; Sidekick có thêm phím tắt nhanh khi bạn đang ở trong panel.',
+  'settings.shortcuts.command.togglePanel': 'Mở / đóng Sidekick AI',
+  'settings.shortcuts.nativeLabel': 'Phím tắt gốc (Chrome)',
+  'settings.shortcuts.quickLabel': 'Phím tắt nhanh (trong panel)',
+  'settings.shortcuts.openChrome': 'Mở trang phím tắt',
+  'settings.shortcuts.change': 'Đổi',
+  'settings.shortcuts.reset': 'Về mặc định',
+  'settings.shortcuts.pressKeys': 'Nhấn phím…',
+  'settings.shortcuts.notSet': 'Chưa gán',
+  'settings.shortcuts.changed': 'Đã cập nhật phím tắt.',
+  'settings.shortcuts.resetDone': 'Đã đưa phím tắt về mặc định.',
+  'settings.shortcuts.invalid': 'Tổ hợp phím này không hợp lệ.',
+  'settings.shortcuts.reserved': 'Tổ hợp phím này được trình duyệt dành riêng. Hãy chọn tổ hợp khác.',
+
   // --- states ---
   'state.connection.connecting': 'Dang ket noi',
   'state.connection.connected': 'Da ket noi',

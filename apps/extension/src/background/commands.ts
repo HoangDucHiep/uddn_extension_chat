@@ -23,6 +23,18 @@ import { toggleSidePanel } from './panelController.js'
 export const COMMAND_TOGGLE_PANEL = 'sidekick-toggle-panel'
 
 /**
+ * Map id command → handler.
+ *
+ * Chi 1 command (toggle panel) — dung map de them command moi ma khong
+ * phai sua if/else.
+ */
+const COMMAND_HANDLERS: Record<string, (tab?: chrome.tabs.Tab) => Promise<void>> = {
+  [COMMAND_TOGGLE_PANEL]: async (tab) => {
+    await toggleSidePanel(tab?.windowId)
+  },
+}
+
+/**
  * Xu ly phim tat.
  *
  * @param command - Id cua command vua duoc kich hoat.
@@ -32,7 +44,8 @@ export async function handleCommand(
   command: string,
   tab?: chrome.tabs.Tab,
 ): Promise<void> {
-  if (command !== COMMAND_TOGGLE_PANEL) return
+  const handler = COMMAND_HANDLERS[command]
+  if (handler === undefined) return
 
-  await toggleSidePanel(tab?.windowId)
+  await handler(tab)
 }

@@ -14,6 +14,7 @@ import { DataSettings } from './DataSettings'
 import { EndpointSettings } from './EndpointSettings'
 import { LanguageSettings } from './LanguageSettings'
 import { PrivacySettings } from './PrivacySettings'
+import { ShortcutsSettings } from './ShortcutsSettings'
 import { ThemeSettings } from './ThemeSettings'
 
 /**
@@ -134,6 +135,9 @@ export function SettingsDrawer({
               onSettingsChange({ uiLanguage })
             }}
           />
+
+          {/* T-M1-18: phim tat — luu trong Chrome qua `chrome.commands`. */}
+          <ShortcutsSettings />
         </div>
       </DialogContent>
     </Dialog>

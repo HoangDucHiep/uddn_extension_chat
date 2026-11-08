@@ -16,6 +16,22 @@
   - **Không** đổi schema · **không** dependency mới · **không** permission mới.
 
 ### Added
+- **T-M1-18 — Keyboard shortcuts cấu hình được (FR-UX-01)**
+  - `apps/extension/src/lib/shortcuts.ts` (mới) — hàm thuần: `normalizeShortcut()` · `isReservedShortcut()` · `parseShortcut()` · `shortcutFromKeyboardEvent()` · `matchesShortcut()` · `formatShortcutLabel()` · `RESERVED_CHROME_SHORTCUTS` (**28** tổ hợp dành riêng của trình duyệt) · `DEFAULT_SHORTCUTS` · `SHORTCUT_COMMANDS`.
+  - `apps/extension/src/lib/shortcutStorage.ts` (mới) — đọc/ghi `chrome.storage.local` key `sidekick.shortcuts`: `readShortcuts()` · `writeShortcut()` · `clearShortcut()` · `resolveShortcut()`.
+  - `apps/extension/src/lib/shortcutProtocol.ts` (mới) — hằng `SHORTCUT_TOGGLE_ACTION = 'sidekick:shortcut-toggle'` + type guard `isShortcutToggleMessage()` (thuần, **không** kéo Zod vào content script).
+  - `apps/extension/src/lib/shortcutBridge.ts` (mới) — service worker nhận message toggle → thử `chrome.sidePanel.open()`.
+  - `apps/extension/src/content/shortcutListener.ts` (mới) — content script bắt `keydown` → khớp shortcut nhanh → gửi message toggle (bundle IIFE vẫn **không** chứa React).
+  - `apps/extension/src/sidepanel/components/settings/ShortcutsSettings.tsx` (mới) — section "Phím tắt" trong Settings: **2 lớp** (native của Chrome đọc bằng `chrome.commands.getAll()` + nút mở `chrome://extensions/shortcuts` · nhanh của Sidekick bấm để bắt phím + "Về mặc định").
+  - `apps/extension/src/sidepanel/components/settings/SettingsDrawer.tsx` — thêm `<ShortcutsSettings />` (7 section thay vì 6).
+  - `apps/extension/src/i18n/vi.ts` + `en.ts` — thêm **14** key `settings.shortcuts.*`.
+  - `apps/extension/tests/shortcuts.test.ts` (mới, 18 test) · `apps/extension/tests/shortcutStorage.test.ts` (mới, 7 test) · `apps/extension/tests/shortcutsSettings.test.tsx` (mới, 5 test).
+  - `apps/extension/e2e/shortcuts.spec.ts` (mới) — 3 kịch bản E2E: hiển thị · đổi & persist · về mặc định.
+  - **Ràng buộc Chrome MV3:** Chrome **không** có `chrome.commands.update()` / `reset()` (API riêng của Firefox) → thiết kế 2 lớp thay vì giả lập API không tồn tại. Chi tiết: `SYSTEM_DESIGN.md` §7.18.
+  - **Số test toàn repo:** 1263 → **1292 unit** (extension 643 → **672**) + 73 → **76 E2E**.
+  - **Migration:** **không** có migration mới · **không** dependency mới · **không** permission mới · **không** đổi manifest.
+
+### Added
 - **T-M1-17 — i18n VI/EN (FR-SETTINGS-06)**
   - `apps/extension/src/i18n/vi.ts` (mới) — `viDictionary` là **nguồn sự thật** của danh sách key (`const` object) → `TranslationKey = keyof typeof viDictionary` · `Dictionary = Record<TranslationKey, string>`.
   - `apps/extension/src/i18n/en.ts` (mới) — `enDictionary: Dictionary` → **thiếu/thừa key = lỗi `pnpm typecheck`** (không cần test runtime để bắt).
@@ -50,6 +66,9 @@
 - `docs/DESIGN_SYSTEM_BRIEF.md` — thêm **§3.11** (i18n VI/EN — không component mới, chỉ thay chuỗi literal) + cập nhật traceability §6.
 - `docs/IMPLEMENTATION_PLAN.md` — T-M1-17 ✅ (2026-11-08) + thêm **§3.1r** (bảng kết quả) + cập nhật traceability.
 - `docs/COMPARISON_MATRIX.md` — checklist §E: i18n VI/EN ✅ T-M1-17.
+
+### Docs
+- **T-M1-18** — `docs/SYSTEM_DESIGN.md` thêm **§7.18** (2 lớp phím tắt · ràng buộc Chrome MV3 `commands.update` không tồn tại · deny-list · luồng lưu trữ) · `docs/REQUIREMENTS.md` FR-UX-01 ✅ + **§4.9.4** (AC chi tiết) · `docs/DESIGN_SYSTEM_BRIEF.md` thêm **§3.7.1** (spec `ShortcutsSettings`) + cập nhật bảng traceability §3.7 · `docs/IMPLEMENTATION_PLAN.md` T-M1-18 ✅ (2026-11-08) + **§3.1s** (bảng kết quả) · `docs/COMPARISON_MATRIX.md` checklist §E: phím tắt cấu hình được ✅ T-M1-18 · `docs/HANDOFF.md` · `AGENTS.md` §6.
 
 ### Added
 - **T-M1-14 — Request logging đầy đủ vào `request_logs` (NFR-MAINT-04 + FR-CONTEXT-12 + NFR-REL-01)**

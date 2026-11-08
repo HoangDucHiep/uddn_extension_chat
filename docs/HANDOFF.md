@@ -24,14 +24,34 @@
 | Hạng mục | Trạng thái |
 |---|---|
 | Docs | ✅ Đầy đủ 9 file (`docs/`) + `AGENTS.md` ở root |
-| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 + T-M1-05 + T-M1-02 + T-M1-24 + T-M1-25 + T-M1-06 + T-M1-07 + T-M1-08 + T-M1-09 + T-M1-10 + T-M1-11 + T-M1-03 + T-M1-12 + T-M1-19 + T-M1-14 + T-M1-17 xong** — 4 workspace, 1263 unit test + 73 E2E |
+| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 + T-M1-05 + T-M1-02 + T-M1-24 + T-M1-25 + T-M1-06 + T-M1-07 + T-M1-08 + T-M1-09 + T-M1-10 + T-M1-11 + T-M1-03 + T-M1-12 + T-M1-19 + T-M1-14 + T-M1-17 + T-M1-18 xong** — 4 workspace, 1292 unit test + 76 E2E |
 | Git | ✅ Đã init (`main`) · tag `v0.1` đánh dấu M0 |
-| Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **21/25 task** — T-M1-15 + T-M1-16 ⏸ tạm dừng, T-M1-13 defer) |
-| Task tiếp theo | **T-M1-18** (keyboard shortcuts cấu hình được) → **T-M1-20** (responsive 320–640px + a11y) → đóng M1 → sang M2 — T-M1-13 (export) đã được user **defer** |
+| Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **22/25 task** — T-M1-15 + T-M1-16 ⏸ tạm dừng, T-M1-13 defer) |
+| Task tiếp theo | **T-M1-20** (responsive 320–640px + a11y) → đóng M1 → sang M2 — T-M1-13 (export) đã được user **defer** |
 
 ### Đang làm dở
 
-_(Không có — T-M1-17 i18n VI/EN xong)_
+_(Không có — T-M1-18 keyboard shortcuts cấu hình được xong)_
+
+### Việc đã xong gần đây (T-M1-18 — keyboard shortcuts cấu hình được)
+
+- **T-M1-18 (FR-UX-01)** — Settings có section "Phím tắt" với **2 lớp**:
+  - **Lớp 1 — native của Chrome** — đọc shortcut đang gán bằng `chrome.commands.getAll()` + nút mở `chrome://extensions/shortcuts` (Chrome **không** cho extension tự đổi shortcut gốc).
+  - **Lớp 2 — nhanh của Sidekick** — lưu `chrome.storage.local` key `sidekick.shortcuts` · bấm "Đổi" → ô bắt phím · nút "Về mặc định" · tổ hợp bị **deny-list** (28 tổ hợp dành riêng của trình duyệt) thì báo lỗi `reserved`; tổ hợp sai → lỗi `invalid`.
+  - **Kiến trúc** — `lib/shortcuts.ts` (thuần: `normalizeShortcut` · `isReservedShortcut` · `parseShortcut` · `shortcutFromKeyboardEvent` · `matchesShortcut` · `formatShortcutLabel` · `RESERVED_CHROME_SHORTCUTS` · `DEFAULT_SHORTCUTS` · `SHORTCUT_COMMANDS`) · `lib/shortcutStorage.ts` (`readShortcuts` · `writeShortcut` · `clearShortcut` · `resolveShortcut`) · `lib/shortcutProtocol.ts` (hằng + type guard, **không** Zod) · `lib/shortcutBridge.ts` (SW → `chrome.sidePanel.open()`) · `content/shortcutListener.ts` (bắt `keydown` trong content script, bundle IIFE **không** chứa React) · `sidepanel/components/settings/ShortcutsSettings.tsx`.
+  - **Verify** — typecheck ✅ · lint ✅ · test ✅ (extension **672** unit = 643 + 29 test mới) · build ✅ · E2E `e2e/shortcuts.spec.ts` (3 kịch bản) ✅.
+- Bằng chứng đầy đủ: `docs/IMPLEMENTATION_PLAN.md` §3.1s · `docs/SYSTEM_DESIGN.md` §7.18 · `docs/DESIGN_SYSTEM_BRIEF.md` §3.7.1.
+
+### Quyết định kỹ thuật mới (T-M1-18)
+
+| Quyết định | Lý do |
+|---|---|
+| **Không** dùng `chrome.commands.update()` / `reset()` | **Chrome MV3 không có** 2 API này (chỉ Firefox WebExtensions mới có) — đã probe trong Chromium: `chrome.commands` chỉ có `['onCommand', 'getAll']`. Giả lập API không tồn tại → UI "chết" khi chạy thật |
+| **2 lớp** thay vì 1 | Lớp native cho shortcut mở/toggle panel (Chrome quản lý) · lớp nhanh cho lệnh chạy trong panel/trang — cả 2 đều **thực sự chạy được** |
+| Deny-list **28** tổ hợp dành riêng của trình duyệt | Tránh user gán phím đã bị Chrome chiếm (`Ctrl+T`, `Ctrl+W`, `Ctrl+N`, …) → gán xong không ăn |
+| Chuẩn hoá tổ hợp **trước** khi lưu | `Ctrl+shift+k` và `Ctrl+Shift+K` phải là 1 giá trị → so sánh deterministic |
+| `shortcutProtocol.ts` **không** dùng Zod | Content script phải là IIFE nhỏ — tránh kéo Zod vào bundle trang |
+| Lưu `chrome.storage.local` (không `session`) | Người dùng cấu hình phím tắt là cài đặt lâu dài → phải còn sau khi đóng browser |
 
 ### Quyết định mới trong phiên này (2026-11-08) — BYOK tạm dừng
 

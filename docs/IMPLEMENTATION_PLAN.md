@@ -93,7 +93,7 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | T-M1-15 | K3 direct mode (BYOK không cần BFF) | FR-PROVIDER-08/09, NFR-REL-03, NFR-SEC-01 | `lib/crypto.ts`, `lib/directProvider.ts`, `state/keyStore.ts` | Tắt Docker → vẫn chat được với key nhập tay; key mã hoá local | L | ⏸ tạm dừng *(BYOK — quyết định user 2026-11-08)* |
 | T-M1-16 | K2 BYOK qua BFF: UI quản lý key | FR-PROVIDER-02, NFR-SEC-01 | `settings/ProviderSettings.tsx`, `POST /providers/keys` | Thêm key → test thành công; list key chỉ hiện 4 ký tự cuối | M | ⏸ tạm dừng *(BYOK — quyết định user 2026-11-08)* |
 | T-M1-17 | i18n VI/EN | FR-SETTINGS-06 | `apps/extension/src/i18n/{vi.ts,en.ts,index.ts,context.ts}`, `lib/i18n.ts`, `sidepanel/hooks/useI18n.ts` | Đổi ngôn ngữ → toàn bộ UI đổi | M | ✅ *(2026-11-08)* |
-| T-M1-18 | Keyboard shortcuts cấu hình được | FR-UX-01 | `settings/ShortcutsSettings.tsx`, `background/commands.ts` | Đổi được phím tắt; tránh xung đột với Chrome mặc định | M | ⬜ |
+| T-M1-18 | Keyboard shortcuts cấu hình được | FR-UX-01 | `lib/shortcuts.ts`, `lib/shortcutStorage.ts`, `lib/shortcutBridge.ts`, `lib/shortcutProtocol.ts`, `content/shortcutListener.ts`, `settings/ShortcutsSettings.tsx` | Đổi được phím tắt; tránh xung đột với Chrome mặc định | M | ✅ *(2026-11-08)* |
 | T-M1-19 | Empty / loading / error states | FR-UX-03/04/08, FR-CHAT-14, NFR-REL-02/04 | `sidepanel/components/states/*` | 4 trạng thái có UI riêng, không màn hình trắng; retry 1 lần khi lỗi mạng | M | ✅ *(2026-11-07)* |
 | T-M1-20 | Responsive 320–640px + a11y pass cơ bản | FR-UX-06/07/09/10, NFR-A11Y-01..05, NFR-PERF-03 | style fixes | Không tràn ngang ở 320px; focus ring đủ; icon có aria-label; streaming OK với screen reader | M | ⬜ |
 | T-M1-21 | Trích xuất PDF (text-based) | FR-CONTEXT-05 | `apps/server/src/routes/extract.ts`, `apps/server/src/lib/pdfExtractor.ts`, `apps/server/src/lib/safeFetch.ts`, `apps/extension/src/lib/pageContext.ts` | Detect URL PDF → BFF fetch bytes + parse → `context.text`; PDF scan → báo "không đọc được, hãy upload ảnh"; `file://`/PDF nội bộ → báo rõ | L | ✅ |
@@ -877,6 +877,39 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 
 > **Hạn chế đã biết:** (1) Chỉ hỗ trợ **VI / EN** — không có cơ chế nạp thêm locale file; (2) Nút nổi content script chỉ cập nhật nhãn **khi trang được nạp lại** (đọc storage 1 lần lúc inject) — đổi ngôn ngữ từ panel không cập nhật nút nổi của các tab đang mở; (3) Thông điệp lỗi trả về từ **server** vẫn hiển thị nguyên tiếng Việt/Anh của BFF — không thuộc phạm vi extension; (4) Chưa có **định dạng ngày/giờ theo locale** (`Intl.DateTimeFormat`) → mốc thời gian hiện ở dạng ISO.
 
+### 3.1s Kết quả T-M1-18 — Keyboard shortcuts cấu hình được (FR-UX-01) (2026-11-08)
+
+> Chi tiết kiến trúc: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.18 · AC: [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.9.4.
+
+**Không có migration DB mới, không dependency mới, không permission mới, không đổi manifest.**
+
+| Hạng mục | Kết quả |
+|---|---|
+| `apps/extension/src/lib/shortcuts.ts` | ✅ **Mới** — thuần (test được trong jsdom): `normalizeShortcut` (thứ tự modifier cố định Ctrl → Alt → Shift → Meta) · `isReservedShortcut` · `parseShortcut` · `shortcutFromKeyboardEvent` · `matchesShortcut` · `formatShortcutLabel` · `RESERVED_CHROME_SHORTCUTS` (28 tổ hợp dành riêng) · `DEFAULT_SHORTCUTS` · `SHORTCUT_COMMANDS` |
+| `apps/extension/src/lib/shortcutStorage.ts` | ✅ **Mới** — khoá storage riêng `sidekick.shortcuts`: `readShortcuts` · `writeShortcut` · `clearShortcut` (xoá khoá khi rỗng) · `resolveShortcut` (ưu tiên tu do → fallback mặc định) |
+| `apps/extension/src/lib/shortcutProtocol.ts` | ✅ **Mới** — `SHORTCUT_TOGGLE_ACTION` + type guard (không import Zod → content script giữ IIFE nhỏ) |
+| `apps/extension/src/lib/shortcutBridge.ts` | ✅ **Mới** — nhận message từ content script → **thử** `sidePanel.open()` → bỏ qua nếu thiếu user gesture (không throw) |
+| `apps/extension/src/content/shortcutListener.ts` | ✅ **Mới** — bắt `keydown` trên trang → so khớp shortcut đã lưu → `runtime.sendMessage`; nghe `storage.onChanged` → đổi shortcut **không cần reload trang** |
+| `apps/extension/src/content/contentScript.ts` | ✅ **Sửa** — gọi `startShortcutListener()` |
+| `apps/extension/src/background/serviceWorker.ts` | ✅ **Sửa** — `handleShortcutRuntimeMessage()` trong `runtime.onMessage` |
+| `apps/extension/src/background/commands.ts` | ✅ **Sửa** — `if/else` → map `COMMAND_HANDLERS` (dễ thêm command sau) |
+| `apps/extension/src/sidepanel/components/settings/ShortcutsSettings.tsx` | ✅ **Mới** — section "Phím tắt" trong drawer Settings: hiển thị **2 lớp** (native của Chrome + nhanh của Sidekick) · bấm "Đổi" → ô bắt phím · nút "Về mặc định" (disable khi đang ở mặc định) · nút "Mở trang phím tắt" (`chrome://extensions/shortcuts`) |
+| `apps/extension/src/sidepanel/components/settings/SettingsDrawer.tsx` | ✅ **Sửa** — thêm `<ShortcutsSettings />` sau `LanguageSettings` |
+| `apps/extension/src/i18n/{vi,en}.ts` | ✅ **Sửa** — thêm 12 key `settings.shortcuts.*` (title · description · nativeLabel · quickLabel · openChrome · command.togglePanel · change · reset · pressKeys · notSet · changed · resetDone · invalid · reserved) |
+| `apps/extension/tests/setup.ts` | ✅ **Sửa** — thêm mock `chrome.commands.getAll` |
+| Unit test | ✅ **Mới** — `tests/shortcuts.test.ts` (**18**) · `tests/shortcutStorage.test.ts` (**7**) · `tests/shortcutsSettings.test.tsx` (**5**) |
+| E2E | ✅ **Mới** — `e2e/shortcuts.spec.ts` (**3** kịch bản) |
+| `pnpm typecheck` | ✅ pass |
+| `pnpm lint` | ✅ pass (0 error, 0 warning) |
+| `pnpm test` | ✅ pass — extension **672** (từng 643 → **+29**) |
+| `pnpm build` | ✅ pass — kiểm chứng `dist/content.js` **không** chứa React runtime |
+
+> **Phát hiện quan trọng — Chrome KHÔNG có `chrome.commands.update()` / `reset()`.** Đây là API riêng của **Firefox**. Kiểm chứng: (1) tài liệu Chrome 156 chỉ liệt kê `getAll()` + `onCommand`; (2) runtime probe trên Chrome 156 → `Object.keys(chrome.commands)` = `['onCommand', 'getAll']`. Hệ quả → thiết kế **2 lớp**: lớp native của Chrome (user tự đổi ở `chrome://extensions/shortcuts`) + lớp nhanh của Sidekick (lưu `chrome.storage.local`, tự bắt phim). Plan ban đầu giả định Chrome có `update()` → **đã sửa** sang thiết kế đúng với Chrome.
+>
+> **Quyết định kỹ thuật:** (1) **Không** thêm field vào `settingsSchema` → shortcut là *hành vi* chứ không phải *hiển thị* → khoá storage riêng; (2) **Deny-list thủ công** vì Chrome không cho truy xuất shortcut mặc định của trình duyệt; (3) **Chuẩn hoá trước khi lưu** → `ctrl+shift+k` và `Ctrl+Shift+K` là cùng một tổ hợp; (4) **Bất phím trực tiếp** (không gõ tay) → không sai phím; (5) **E2E assert lưu + phản chiếu + persist**, không assert key-press (Playwright headless không kích hoạt được accelerator của trình duyệt); (6) **Không** dùng `chrome.commands.update()` → không tồn tại trong Chrome.
+>
+> **Hạn chế đã biết:** (1) Lớp nhanh **chỉ hoạt động khi side panel đang focus** (bắt phim ở content script thường **không** mang user gesture → `sidePanel.open()` thất bại → im lặng, người dùng dùng lớp native); (2) Không có shortcut dành riêng cho "gửi tin nhắn" / "chèn context" — có thể thêm sau; (3) Deny-list không bao phủ hết shortcut của từng hệ điều hành (Chrome **tự ưu tiên** shortcut quản lý cửa sổ → không ghi đè được dù đã cho phép).
+
 ### 3.2 Traceability FR → Task
 
 > Bảng đầy đủ FR → Task (kèm milestone) nằm ở [`REQUIREMENTS.md`](REQUIREMENTS.md) §11.1 — nơi duy nhất cần cập nhật khi thêm/bớt task.
@@ -892,7 +925,7 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | FR-PROVIDER-01..09 | 9 FR | T-M0-07/08 · T-M1-15/16 · T-M2-01/02/03 | FR-PROVIDER-04 (fallback) nằm trong T-M2-02 |
 | FR-WORKFLOW-01..13 | 13 FR | T-M4-01..08 · `FR-WORKFLOW-04` → **M5** | FR-WORKFLOW-04 deferred (rủi ro MV3 `tabs.onUpdated`) |
 | FR-SETTINGS-01..07 | 7 FR | T-M0-14 · **T-M1-12 ✅**/17 ✅ · **T-M2-19** (FR-SETTINGS-04) | **FR-SETTINGS-01/02/03/05/06/07 do T-M1-12 ✅ (2026-11-07)** (theme · cỡ chữ/mật độ/bề rộng · xoá lịch sử + xoá local + import/export · endpoint BFF có validate · lưu lựa chọn VI/EN) · FR-SETTINGS-04 (cờ telemetry/history, OFF mặc định) cũng do T-M1-12 ✅ — hành vi telemetry thật → T-M2-19 · **dịch UI VI/EN do T-M1-17 ✅ (2026-11-08)** (dictionary có kiểu → thiếu key = lỗi typecheck; đổi ngôn ngữ áp dụng ngay, không reload) |
-| FR-UX-01..10 | 10 FR | **T-M1-03 ✅**/10/**11 ✅**/**12 ✅**/**19 ✅**/18/20 · **T-M1-25 ✅** | FR-UX-02 (onboarding) tách task riêng T-M1-25 — **xong 2026-11-05** (3 bước, BYOK K2, Ollama, skippable) · **FR-UX-03/04 (gợi ý theo trang + tóm tắt 1-click) do T-M1-11 ✅ (2026-11-07)** · **FR-UX-01 (toggle panel · context menu · `Ctrl+Shift+K`) do T-M1-03 ✅ (2026-11-07)** · **FR-UX-06 (drawer Settings + bề rộng panel) do T-M1-12 ✅ (2026-11-07)** · **FR-UX-08 (banner trạng thái kết nối + lỗi, dismiss được) do T-M1-19 ✅ (2026-11-07)** · đổi phím tắt cấu hình được → T-M1-18 |
+| FR-UX-01..10 | 10 FR | **T-M1-03 ✅**/10/**11 ✅**/**12 ✅**/**19 ✅**/**18 ✅**/20 · **T-M1-25 ✅** | FR-UX-02 (onboarding) tách task riêng T-M1-25 — **xong 2026-11-05** (3 bước, BYOK K2, Ollama, skippable) · **FR-UX-03/04 (gợi ý theo trang + tóm tắt 1-click) do T-M1-11 ✅ (2026-11-07)** · **FR-UX-01 (toggle panel · context menu · `Ctrl+Shift+K`) do T-M1-03 ✅ (2026-11-07)** · **FR-UX-01 (phím tắt cấu hình được) do T-M1-18 ✅ (2026-11-08)** — 2 lớp: native của Chrome + nhanh của Sidekick (Chrome **không** có `commands.update()` → xem SYSTEM_DESIGN §7.18) · **FR-UX-06 (drawer Settings + bề rộng panel) do T-M1-12 ✅ (2026-11-07)** · **FR-UX-08 (banner trạng thái kết nối + lỗi, dismiss được) do T-M1-19 ✅ (2026-11-07)** |
 | NFR-PERF-01..06 | 6 NFR | T-M0-11 · T-M1-01/07/14/20 · T-M2-13 · T-M3-02/04/09 | NFR là yêu cầu xuyên suốt |
 | NFR-SEC-01..08 | 8 NFR | T-M0-02/06/09/12 · T-M1-04/07/15/16 · **T-M2-19** | NFR-SEC-06 (domain nhạy cảm) → T-M2-19 |
 | NFR-REL-01..05 | 5 NFR | T-M1-10/**14 ✅**/15/**19 ✅** · **T-M3-10** | **NFR-REL-02 (retry 1 lần backoff 800 ms, không retry lỗi auth) + NFR-REL-04 (badge + banner trạng thái kết nối) do T-M1-19 ✅ (2026-11-07)** · NFR-REL-03 (K3 direct khi BFF chết) → T-M1-15 · NFR-REL-05 (backup DB) tách task M3 · **NFR-REL-01 (log đầy đủ + retention 90 ngày + read API cho eval) do T-M1-14 ✅ (2026-11-07)** |

@@ -433,7 +433,7 @@ Settings nằm trong **drawer** (Radix `Dialog` trượt từ phải), mở bằ
 
 | ID | Requirement | Priority | Acceptance criteria |
 |---|---|---|---|
-| FR-UX-01 | Mở/toggle panel bằng icon toolbar + phím tắt tự cấu hình | M | ✅ T-M1-03 — xem AC chi tiết §4.9.3. `chrome.sidePanel.open()` chỉ trong user gesture; native toggle `openPanelOnActionClick` + context menu + `Ctrl+Shift+K` |
+| FR-UX-01 | Mở/toggle panel bằng icon toolbar + phím tắt tự cấu hình | M | ✅ T-M1-03 — xem AC chi tiết §4.9.3. `chrome.sidePanel.open()` chỉ trong user gesture; native toggle `openPanelOnActionClick` + context menu + `Ctrl+Shift+K` · ✅ **T-M1-18** — xem AC chi tiết §4.9.4 (phím tắt cấu hình được: 2 lớp native + nhanh) |
 | FR-UX-02 | Onboarding lần đầu (3 bước: quyền, chọn provider, thử câu hỏi) | M | ✅ T-M1-25 — xem AC chi tiết §4.9.1 |
 | FR-UX-03 | Empty state với prompt gợi ý theo ngữ cảnh trang | M | ✅ T-M1-11 — xem AC chi tiết §4.9.2. ≥ 3 gợi ý; refresh theo loại trang |
 | FR-UX-04 | Empty state khi chưa có context: gợi ý câu hỏi chung | M | ✅ T-M1-11 — xem AC chi tiết §4.9.2. Có nút "Tóm tắt trang này" 1-click |
@@ -527,7 +527,42 @@ Acceptance criteria:
 - **Không** có UI mới trong task này — đổi phím tắt là **T-M1-18** (`settings/ShortcutsSettings.tsx`).
 - Vòng đời: mở panel → `sidekick.panelOpen = true`; đóng → `false` (quan sát được qua `chrome.storage.session`).
 
-> Không nằm trong scope T-M1-03: cho user **tự cấu hình** phím tắt (T-M1-18) · hiển thị trạng thái panel trong UI (T-M1-12) · chặn theo domain (T-M2-19).
+> Không nằm trong scope T-M1-03: cho user **tự cấu hình** phím tắt (T-M1-18 ✅ — xem §4.9.4) · hiển thị trạng thái panel trong UI (T-M1-12) · chặn theo domain (T-M2-19).
+
+#### 4.9.4 FR-UX-01 — Phím tắt cấu hình được (AC chi tiết — T-M1-18 ✅)
+
+> **Ràng buộc Chrome:** `chrome.commands` của Chrome **chỉ** có `getAll()` + `onCommand`. `chrome.commands.update()` / `chrome.commands.reset()` là API riêng của **Firefox** → **không tồn tại** trong Chrome (kiểm chứng: runtime probe trên Chrome 156). Vì vậy Sidekick dùng **2 lớp phím tắt**.
+
+**Lớp 1 — Phím tắt gốc của Chrome (native):**
+
+- Nguồn: `suggested_key` trong `manifest.json` (`Ctrl+Shift+K` · macOS `Command+Shift+K`).
+- Đọc trạng thái: `chrome.commands.getAll()` → hiển thị trong Settings.
+- Đổi: **người dùng** tự đổi tại `chrome://extensions/shortcuts` → Settings có nút "Mở trang phím tắt" dẫn thẳng tới đó.
+- Phạm vi: toàn trình duyệt (kể cả khi side panel đang đóng) → đây là đường **chính** để mở panel.
+
+**Lớp 2 — Phím tắt nhanh của Sidekick:**
+
+- Nguồn: `chrome.storage.local` key `sidekick.shortcuts` (khoá **riêng**, không thêm vào `settingsSchema`).
+- Đổi: ngay trong Settings → bấm "Đổi" → **bấm tổ hợp phím** (không gõ tay) → validate → lưu.
+- Bắt phim: content script (`shortcutListener.ts`) trên trang + side panel khi đang focus.
+- Phạm vi: **trong side panel** → mở/toggle nhanh mà không cần rời bàn phím.
+
+Acceptance criteria:
+
+| # | AC |
+|---|---|
+| 1 | Settings có section **"Phím tắt"** hiển thị 2 lớp: native (đọc từ `getAll()`) + nhanh (đọc từ storage) |
+| 2 | Bấm "Đổi" → hiện ô bắt phím → bấm tổ hợp → hiển thị + lưu → **persist qua reload** |
+| 3 | Tổ hợp **trùng shortcut hệ thống** (`Ctrl+T`, `Ctrl+W`, `F5`, `Ctrl+1`…`Ctrl+9`, `Alt+F4`, …) → **từ chối** kèm thông báo rõ ràng, không crash |
+| 4 | Tổ hợp không hợp lệ (thiếu modifier, nhiều phím chính, ký tự lạ) → từ chối kèm thông báo |
+| 5 | Bấm "Về mặc định" → xoá shortcut nhanh → quay về `Ctrl+Shift+K`; nút bị **disable** khi đang ở mặc định |
+| 6 | Shortcut **được chuẩn hoá** trước khi lưu (thứ tự modifier cố định) → `ctrl+shift+k` và `Ctrl+Shift+K` là **cùng** một tổ hợp |
+| 7 | Nút "Mở trang phím tắt" mở `chrome://extensions/shortcuts` |
+| 8 | Không thêm permission mới · không thêm dependency mới · không đổi manifest · không migration |
+
+> **Không** dùng `chrome.commands.update()` / `chrome.commands.reset()` → không tồn tại trong Chrome.
+>
+> Chi tiết kỹ thuật: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.18.
 
 ---
 
@@ -1155,7 +1190,7 @@ Chỉ bắt đầu M4 khi **đồng thời** thỏa:
 
 | FR | Priority | Task | Milestone |
 |---|---|---|---|
-| FR-UX-01 | M | **T-M1-03 ✅** · T-M1-18 | M1 |
+| FR-UX-01 | M | **T-M1-03 ✅** · T-M1-18 ✅ | M1 |
 | FR-UX-02 | M | **T-M1-25 ✅** | M1 |
 | FR-UX-03 | M | **T-M1-11 ✅** · T-M1-19 ✅ | M1 |
 | FR-UX-04 | M | **T-M1-11 ✅** · T-M1-19 ✅ | M1 |

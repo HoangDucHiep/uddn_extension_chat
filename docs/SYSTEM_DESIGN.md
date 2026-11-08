@@ -2491,6 +2491,86 @@ sequenceDiagram
 
 ---
 
+### 7.18 Phím tắt cấu hình được (FR-UX-01 — T-M1-18)
+
+> Nguồn sự thật cho hành vi: [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.9.3 (FR-UX-01).
+
+#### 7.18.1 Ràng buộc MV3 / Chrome — `chrome.commands` **không** cho đổi shortcut
+
+| API | Chrome | Firefox | Ghi chú |
+|---|---|---|---|
+| `chrome.commands.getAll()` | ✅ | ✅ | Đọc shortcut đang gán |
+| `chrome.commands.onCommand` | ✅ | ✅ | Nhận sự kiện kích hoạt |
+| `chrome.commands.update()` | ❌ **không tồn tại** | ✅ | Kiểm chứng: runtime probe trên Chrome 156 → `chrome.commands` chỉ có `onCommand` + `getAll` |
+| `chrome.commands.reset()` | ❌ **không tồn tại** | ✅ | Như trên |
+
+**Hệ quả:** Chrome chỉ cho người dùng đổi shortcut tại `chrome://extensions/shortcuts` → extension **không thể** tự gán lại `suggested_key` lúc chạy.
+
+#### 7.18.2 Kiến trúc 2 lớp phím tắt
+
+```mermaid
+flowchart TD
+  U["Người dùng"] --> S["Settings → Phím tắt"]
+
+  S -->|"lớp 1: đọc"| CG["chrome.commands.getAll()<br/>(shortcut native của Chrome)"]
+  S -->|"lớp 2: ghi"| SS["chrome.storage.local<br/>key: sidekick.shortcuts"]
+
+  SS -->|"đọc"| SL["content/shortcutListener.ts<br/>bắt keydown trên trang"]
+  SS -->|"đọc"| SS2["side panel<br/>bắt keydown khi panel focus"]
+
+  SL -->|"runtime.sendMessage"| SW["service worker"]
+  SW -->|"thử"| SP["chrome.sidePanel.open()"]
+  SP -->|"thất bại (thiếu gesture)"| FALL["bỏ qua — user dùng shortcut native"]
+```
+
+| Lớp | Nguồn lưu | Ai đổi được | Phạm vi | Mục đích |
+|---|---|---|---|---|
+| **Lớp 1 — native** | Chrome tự quản lý | User tại `chrome://extensions/shortcuts` | Toàn trình duyệt (kể cả khi panel đang đóng) | Mở/toggle panel từ bất kỳ trang nào |
+| **Lớp 2 — nhanh** | `chrome.storage.local` (`sidekick.shortcuts`) | Người dùng ngay trong Settings | Side panel đang focus | Mở/toggle nhanh, không cần rời panel |
+
+> **Vì sao cần lớp 2?** Chrome không cho extension tự đổi shortcut native, nhưng người dùng vẫn muốn **một tổ hợp riêng cho Sidekick** mà đổi được ngay trong sản phẩm. Lớp 2 lưu tổ hợp đó và tự bắt phím.
+
+#### 7.18.3 Module map
+
+| File | Vai trò | Thuần? |
+|---|---|---|
+| `apps/extension/src/lib/shortcuts.ts` | `normalizeShortcut` · `isReservedShortcut` · `parseShortcut` · `shortcutFromKeyboardEvent` · `matchesShortcut` · `RESERVED_CHROME_SHORTCUTS` · `DEFAULT_SHORTCUTS` · `SHORTCUT_COMMANDS` | ✅ thuần (test được trong jsdom) |
+| `apps/extension/src/lib/shortcutStorage.ts` | `readShortcuts` · `writeShortcut` · `clearShortcut` · `resolveShortcut` | ✅ chỉ `chrome.storage.local` |
+| `apps/extension/src/lib/shortcutProtocol.ts` | `SHORTCUT_TOGGLE_ACTION` + type guard (không import Zod → content script IIFE nhỏ) | ✅ thuần |
+| `apps/extension/src/lib/shortcutBridge.ts` | Nhận message từ content script → thử `sidePanel.open()` | ⚠️ dùng `chrome.*` |
+| `apps/extension/src/content/shortcutListener.ts` | Bắt `keydown` trên trang → so khớp shortcut → `runtime.sendMessage` | ⚠️ dùng `chrome.*` |
+| `apps/extension/src/sidepanel/components/settings/ShortcutsSettings.tsx` | UI section trong drawer Settings | ⚠️ React |
+
+#### 7.18.4 Deny-list shortcut của trình duyệt
+
+Chrome **không** cho extension truy xuất danh sách shortcut mặc định của trình duyệt → phải **deny-list thủ công** (`RESERVED_CHROME_SHORTCUTS`):
+
+`Ctrl+T` · `Ctrl+N` · `Ctrl+W` · `Ctrl+Shift+N` · `Ctrl+Shift+T` · `Ctrl+Shift+W` · `Ctrl+Shift+Q` · `F5` · `Ctrl+Shift+Delete` · `Ctrl+L` · `Ctrl+D` · `Ctrl+P` · `Ctrl+S` · `Ctrl+O` · `Alt+F4` · `F11` · `F12` · `Ctrl+Tab` · `Ctrl+Shift+Tab` · `Ctrl+1`…`Ctrl+9`
+
+> Chrome cũng **tự ưu tiên** shortcut hệ thống (quản lý cửa sổ) → các tổ hợp đó không thể ghi đè dù đã cho phép.
+
+#### 7.18.5 Quy tắc bắt buộc
+
+1. **Không thêm field vào `settingsSchema`** → shortcut nằm ở khoá storage riêng (`sidekick.shortcuts`) vì nó **không** phải "hiển thị" mà là "hành vi".
+2. **Shortcut phải chuẩn hoá** qua `normalizeShortcut()` trước khi lưu → so sánh được, không phụ thuộc thứ tự modifier user gõ.
+3. **Tổ hợp trong deny-list → từ chối** với thông báo rõ ràng (`settings.shortcuts.reserved`), không crash.
+4. **`chrome.commands.getAll()` fail âm thầm** → luôn kiểm tra `chrome.runtime.lastError` sau khi gọi.
+5. **Nút "Về mặc định"** xoá shortcut tu do khỏi storage → quay về `DEFAULT_SHORTCUTS`.
+6. **Không** dùng `chrome.commands.update()` / `chrome.commands.reset()` → không tồn tại trong Chrome.
+
+#### 7.18.6 Kiểm thử
+
+| Tầng | File | Phạm vi |
+|---|---|---|
+| Unit | `apps/extension/tests/shortcuts.test.ts` | `normalizeShortcut` (thứ tự modifier · alias · viết hoà · input sai) · `isReservedShortcut` · `parseShortcut` · `shortcutFromKeyboardEvent` · `matchesShortcut` · `formatShortcutLabel` |
+| Unit | `apps/extension/tests/shortcutStorage.test.ts` | đọc/ghi/xoá shortcut · xoá khoá khi rỗng · `resolveShortcut` (ưu tiên tu do → fallback mặc định) |
+| Unit | `apps/extension/tests/shortcutsSettings.test.tsx` | đọc shortcut native · lưu shortcut nhanh · từ chối tổ hợp reserved · reset · disable nút reset khi đang mặc định |
+| E2E | `apps/extension/e2e/shortcuts.spec.ts` | section hiển thị · phản chiếu `getAll()` · đổi → lưu storage → persist qua reload · reset → về mặc định |
+
+> **E2E không assert key-press:** Playwright headless **không** kích hoạt được accelerator của trình duyệt (đã ghi trong §7.13) → assert **đăng ký + phản chiếu + persist**.
+
+---
+
 ## 8. Hiệu năng
 
 | Chỉ số | Mục tiêu | Cách đạt |

@@ -146,6 +146,23 @@ export const enDictionary: Dictionary = {
   'settings.language.vi': 'Tiếng Việt',
   'settings.language.en': 'English',
 
+  // --- shortcuts (T-M1-18) ---
+  'settings.shortcuts.title': 'Keyboard shortcuts',
+  'settings.shortcuts.description':
+    'Change the key combination that opens Sidekick AI. Chrome manages the native shortcut; Sidekick adds a quick shortcut that works while the panel is focused.',
+  'settings.shortcuts.command.togglePanel': 'Open / close Sidekick AI',
+  'settings.shortcuts.nativeLabel': 'Native shortcut (Chrome)',
+  'settings.shortcuts.quickLabel': 'Quick shortcut (in panel)',
+  'settings.shortcuts.openChrome': 'Open shortcuts page',
+  'settings.shortcuts.change': 'Change',
+  'settings.shortcuts.reset': 'Reset to default',
+  'settings.shortcuts.pressKeys': 'Press keys…',
+  'settings.shortcuts.notSet': 'Not set',
+  'settings.shortcuts.changed': 'Shortcut updated.',
+  'settings.shortcuts.resetDone': 'Shortcut reset to default.',
+  'settings.shortcuts.invalid': 'This key combination is not valid.',
+  'settings.shortcuts.reserved': 'This key combination is reserved by the browser. Please choose another one.',
+
   // --- states ---
   'state.connection.connecting': 'Connecting',
   'state.connection.connected': 'Connected',

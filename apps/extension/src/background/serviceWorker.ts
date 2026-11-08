@@ -11,6 +11,7 @@
  */
 
 import { handleRuntimeMessage } from '@/lib/selectionBridge'
+import { handleShortcutRuntimeMessage } from '@/lib/shortcutBridge'
 import { SETTINGS_STORAGE_KEY } from '@/lib/settings'
 import { handleCommand } from './commands'
 import { handleContextMenuClick, registerContextMenus } from './contextMenus'
@@ -82,4 +83,5 @@ if (typeof chrome.sidePanel.onClosed !== 'undefined') {
 // + thu mo panel. Panel dang dong van nhan duoc doan chon (storage).
 chrome.runtime.onMessage.addListener((message: unknown, sender) => {
   void handleRuntimeMessage(message, sender)
+  void handleShortcutRuntimeMessage(message, sender)
 })

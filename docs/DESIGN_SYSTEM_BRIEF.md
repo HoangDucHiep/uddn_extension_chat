@@ -424,20 +424,37 @@ Cache context chạy **hoàn toàn ngầm** ở tầng `lib/` (`contextCache.ts`
 
 | Component | FR liên quan | Trạng thái |
 |---|---|---|
-| `SettingsDrawer` | FR-SETTINGS-01..07 | ✅ T-M1-12 — orchestrator, 6 section |
+| `SettingsDrawer` | FR-SETTINGS-01..07 | ✅ T-M1-12 — orchestrator, 6 section · **T-M1-18** thêm section "Phím tắt" (7 section) |
 | `ThemeSettings` | FR-SETTINGS-01/02 | ✅ T-M1-12 — radio `Sáng` / `Tối` / `Theo hệ điều hành` |
 | `AppearanceSettings` | FR-SETTINGS-02 + FR-UX-06 | ✅ T-M1-12 — cỡ chữ (4 mức) · mật độ (3 mức) · bề rộng (3 mức) |
 | `PrivacySettings` | FR-CONTEXT-08, FR-SETTINGS-04 | ✅ T-M1-12 — toggle telemetry (OFF mặc định) · toggle history (OFF mặc định) |
 | `DataSettings` | FR-SETTINGS-03, FR-SETTINGS-07, NFR-SEC-07 | ✅ T-M1-12 — xoá lịch sử chat · xoá dữ liệu cục bộ · export/import JSON |
 | `EndpointSettings` | FR-SETTINGS-05 | ✅ T-M1-12 — input URL + "Kiểm tra & lưu" (`GET <url>/api/health`) |
 | `LanguageSettings` | FR-SETTINGS-06 | ✅ T-M1-12 — radio VI/EN (chỉ lưu lựa chọn; dịch UI → T-M1-17) |
+| `ShortcutsSettings` | FR-UX-01 | ✅ **T-M1-18** — 2 lớp phím tắt (native của Chrome + nhanh của Sidekick) · bấm "Đổi" → ô bắt phím · "Về mặc định" · "Mở trang phím tắt" |
 | `SettingsControls` | (dùng chung) | ✅ T-M1-12 — `RadioGroup` · `ToggleRow` · `SettingsSection` |
-| `ProviderSettings` | FR-PROVIDER-01/02/08 | ⬜ T-M1-13 |
-| `ModelPicker` | FR-PROVIDER-03 | ⬜ T-M1-13 |
-| `ToolsSettings` | FR-TOOLS-01 | ⬜ T-M1-13 |
-| `SkillsSettings` | FR-SKILL-03, FR-SKILL-07 | ⬜ T-M1-13 |
-| `ShortcutsSettings` | FR-UX-01 | ⬜ **T-M1-18**; T-M1-03 chỉ chốt phím tắt mặc định `Ctrl+Shift+K` + context menu, **không có UI mới** |
+| `ProviderSettings` | FR-PROVIDER-01/02/08 | ⏸ **tạm dừng** *(BYOK — quyết định user 2026-11-08)* |
+| `ModelPicker` | FR-PROVIDER-03 | ⬜ T-M2-02 |
+| `ToolsSettings` | FR-TOOLS-01 | ⬜ T-M2-05 |
+| `SkillsSettings` | FR-SKILL-03, FR-SKILL-07 | ⬜ T-M2-04 |
 | `WorkflowSettings` | FR-WORKFLOW-08 (M4) | ⬜ M4 |
+
+#### 3.7.1 Section "Phím tắt" (đã implement T-M1-18)
+
+**2 lớp phím tắt** — vì Chrome **không** có `chrome.commands.update()` / `reset()` (API riêng của Firefox):
+
+| Lớp | Nhãn | Nội dung | Nguồn |
+|---|---|---|---|
+| 1 — native | "Phím tắt gốc (Chrome)" | shortcut đang gán + nút **"Mở trang phím tắt"** (`chrome://extensions/shortcuts`) | `chrome.commands.getAll()` |
+| 2 — nhanh | "Phím tắt nhanh (trong panel)" | tổ hợp + nút **"Đổi"** (bấm để bắt phím) + nút **"Về mặc định"** (icon `RotateCcw`, disable khi đang ở mặc định) | `chrome.storage.local` key `sidekick.shortcuts` |
+
+- **Bố cục:** mỗi command là 1 khối `rounded-[var(--radius-md)] border border-[var(--border-subtle)]`, 2 hàng bên trong (lớp 1 · lớp 2).
+- **Shortcut hiển thị** bằng class `font-mono` + `--text-secondary` → phân biệt được với nhãn.
+- **Ô bắt phím** = `<button>` có `border-[var(--color-accent)]` + `focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]` → nhấn phím để gán, `Esc` để huỷ.
+- **Lỗi** hiển thị trong `<p role="alert">` màu `--danger` (`shortcut-error`) — 2 nghĩa: `invalid` (tổ hợp sai) · `reserved` (trùng shortcut hệ thống).
+- **Tap target:** nút "Về mặc định" là icon-button → `aria-label` tiếng Việt ("Về mặc định") + kích thước ≥ 24px.
+- **Token dùng:** `--radius-md` · `--radius-sm` · `--border-subtle` · `--color-accent` · `--text-primary` · `--text-secondary` · `--text-tertiary` · `--danger` · `--font-size-xs` · `--font-size-sm`.
+- Chi tiết kỹ thuật: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.18.
 
 **Token dùng** (không hardcode màu): `--surface-overlay` · `--surface-sunken` · `--text-primary` · `--text-secondary` · `--text-tertiary` · `--border-subtle` · `--color-accent` · `--danger` · `--space-*` · `--radius-*`.
 
