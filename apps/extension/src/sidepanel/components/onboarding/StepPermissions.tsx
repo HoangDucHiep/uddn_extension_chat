@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { ExternalLink, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useI18n } from '@/sidepanel/hooks/useI18n'
+import type { TranslationKey } from '@/i18n'
 
 /**
  * Buoc 1 cua onboarding — giai thich cac quyen extension dung (FR-UX-02).
@@ -16,35 +18,35 @@ import { Button } from '@/components/ui/button'
 interface PermissionItem {
   /** Ten quyen trong manifest. */
   name: string
-  /** Giai thich ngan bang tieng Viet. */
-  reason: string
+  /** Key dich cho ly do dung. */
+  reasonKey: TranslationKey
 }
 
 /** Danh sach quyen cua Sidekick AI. */
 const PERMISSIONS: PermissionItem[] = [
   {
     name: 'sidePanel',
-    reason: 'Hien thi khung tro chuyen ben canh trang web.',
+    reasonKey: 'onboarding.permissions.sidePanel',
   },
   {
     name: 'scripting',
-    reason: 'Doc noi dung trang web khi ban dinh kem tab vao cua hoi.',
+    reasonKey: 'onboarding.permissions.tabRead',
   },
   {
     name: 'tabs',
-    reason: 'Biet tab dang mo de dinh kem nguyen canh dung.',
+    reasonKey: 'onboarding.permissions.tabs',
   },
   {
     name: 'storage',
-    reason: 'Luu cai dat, khoa API key va lich su cua ban tren may nay.',
+    reasonKey: 'onboarding.permissions.storage',
   },
   {
     name: 'contextMenus',
-    reason: 'Them muc "Hoi Sidekick" khi ban chon mot doan van ban.',
+    reasonKey: 'onboarding.permissions.contextMenus',
   },
   {
     name: '<all_urls>',
-    reason: 'Doc noi dung cua trang web ban muon hoi ve.',
+    reasonKey: 'onboarding.permissions.hostPermissions',
   },
 ]
 
@@ -54,13 +56,14 @@ export interface StepPermissionsProps {
 }
 
 export function StepPermissions({ onNext }: StepPermissionsProps) {
+  const { t } = useI18n()
   const [extensionId, setExtensionId] = useState<string | undefined>(undefined)
 
   /**
    * Mo trang chi tiet extension trong `chrome://extensions`.
    *
    * `chrome.tabs.create` **tu choi** mo URL `chrome://` (promise reject) →
-   * bọc try/catch va fallback hien extension id de user tu mo.
+   * boc try/catch va fallback hien extension id de user tu mo.
    */
   const handleOpenSettings = async (): Promise<void> => {
     let id: string
@@ -71,7 +74,7 @@ export function StepPermissions({ onNext }: StepPermissionsProps) {
     }
 
     if (id.length === 0) {
-      setExtensionId('Khong lay duoc extension id')
+      setExtensionId(t('onboarding.permissions.extensionIdError'))
       return
     }
 
@@ -92,11 +95,10 @@ export function StepPermissions({ onNext }: StepPermissionsProps) {
         />
         <div className="min-w-0">
           <h2 className="text-[length:var(--font-size-lg)] font-semibold text-[var(--text-primary)]">
-            Sidekick AI can mot so quyen
+            {t('onboarding.permissions.title')}
           </h2>
           <p className="mt-1 text-[length:var(--font-size-sm)] text-[var(--text-secondary)]">
-            Cac quyen duoc xin luc cai dat va chi dung de lam cac chuc nang duoi day. Ban
-            co the xem lai va bat/tat trong trang cai dat trinh duyet.
+            {t('onboarding.permissions.description')}
           </p>
         </div>
       </header>
@@ -111,7 +113,7 @@ export function StepPermissions({ onNext }: StepPermissionsProps) {
               {permission.name}
             </code>
             <p className="mt-0.5 text-[length:var(--font-size-sm)] text-[var(--text-secondary)]">
-              {permission.reason}
+              {t(permission.reasonKey)}
             </p>
           </li>
         ))}
@@ -122,8 +124,8 @@ export function StepPermissions({ onNext }: StepPermissionsProps) {
           className="rounded-[var(--radius-md)] bg-[var(--warning-subtle)] px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--font-size-sm)] text-[var(--text-secondary)]"
           data-testid="onboarding-extension-id"
         >
-          Mo trinh duyet va vao <code>chrome://extensions</code> de xem chi tiet. Extension
-          id: <code>{extensionId}</code>
+          {t('onboarding.permissions.openBrowserHint')}{' '}
+          <code>{extensionId}</code>
         </p>
       )}
 
@@ -136,10 +138,10 @@ export function StepPermissions({ onNext }: StepPermissionsProps) {
           data-testid="onboarding-open-settings"
         >
           <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-          Mo cai dat trinh duyet
+          {t('onboarding.permissions.openSettings')}
         </Button>
         <Button onClick={onNext} data-testid="onboarding-next">
-          Tiep tuc
+          {t('onboarding.next')}
         </Button>
       </div>
     </section>

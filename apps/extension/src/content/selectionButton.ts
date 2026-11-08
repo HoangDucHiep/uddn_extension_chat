@@ -17,9 +17,6 @@ import { buildSelectionButtonCss } from './selectionStyles.js'
 /** Id cua host element trong trang web. */
 export const SELECTION_BUTTON_HOST_ID = 'sidekick-selection-button'
 
-/** Nhan cua nut (tieng Viet). */
-const BUTTON_LABEL = 'Hoi Sidekick'
-
 /** SVG path cua icon "sparkle" — viet tay de khong keo thu vien UI. */
 const ICON_PATH =
   'M12 2.5l1.9 5.1a3 3 0 0 0 1.7 1.7l5.1 1.9-5.1 1.9a3 3 0 0 0-1.7 1.7L12 19.9l-1.9-5.1a3 3 0 0 0-1.7-1.7L3.3 11.2l5.1-1.9a3 3 0 0 0 1.7-1.7L12 2.5z'
@@ -30,6 +27,10 @@ export interface SelectionButtonOptions {
   onSelect: () => void
   /** Document dung de gan host element (mac dinh `document`). */
   doc?: Document
+  /** Nhan hien thi tren nut (da dich theo ngon ngu UI). */
+  label: string
+  /** Aria-label cua nut (da dich theo ngon ngu UI). */
+  ariaLabel: string
 }
 
 /** Handle dieu khien nut nobi. */
@@ -72,7 +73,7 @@ export function createSelectionButton(options: SelectionButtonOptions): Selectio
   const button = doc.createElement('button')
   button.type = 'button'
   button.setAttribute('data-testid', 'selection-affordance')
-  button.setAttribute('aria-label', `${BUTTON_LABEL} về đoạn văn bản đã bôi đen`)
+  button.setAttribute('aria-label', options.ariaLabel)
 
   // Icon + nhan tach biet (khong dung innerHTML de tranh injection).
   const svg = doc.createElementNS('http://www.w3.org/2000/svg', 'svg')
@@ -85,7 +86,7 @@ export function createSelectionButton(options: SelectionButtonOptions): Selectio
   svg.appendChild(path)
 
   const label = doc.createElement('span')
-  label.textContent = BUTTON_LABEL
+  label.textContent = options.label
 
   button.appendChild(svg)
   button.appendChild(label)

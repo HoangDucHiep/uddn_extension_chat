@@ -8,11 +8,14 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { useI18n } from '@/sidepanel/hooks/useI18n'
 
 /**
  * Confirm dialog (FR-CHAT-08 — "Xoá cả nhóm → có confirm dialog").
  *
  * Dung chung cho xoa cuoc tro chuyen / hanh dong pha huy.
+ * Nhan mac dinh lay tu `useI18n()` (T-M1-17) → da ngon ngu.
+ *
  * Docs: docs/DESIGN_SYSTEM_BRIEF.md §3.6
  */
 export interface ConfirmDialogProps {
@@ -22,9 +25,9 @@ export interface ConfirmDialogProps {
   title: string
   /** Mo ta them cho nguoi dung. */
   description?: string
-  /** Nhan nut xac nhan. */
+  /** Nhan nut xac nhan (mac dinh: "Xác nhận"). */
   confirmLabel?: string
-  /** Nhan nut huy. */
+  /** Nhan nut huy (mac dinh: "Huỷ"). */
   cancelLabel?: string
   /** Co dung nut nguy hiem (mau do) hay khong. */
   destructive?: boolean
@@ -38,12 +41,13 @@ export function ConfirmDialog({
   open,
   title,
   description,
-  confirmLabel = 'Xác nhận',
-  cancelLabel = 'Huỷ',
+  confirmLabel,
+  cancelLabel,
   destructive = false,
   onOpenChange,
   onConfirm,
 }: ConfirmDialogProps) {
+  const { t } = useI18n()
   const [isBusy, setIsBusy] = useState(false)
 
   const handleConfirm = async (): Promise<void> => {
@@ -77,7 +81,7 @@ export function ConfirmDialog({
             disabled={isBusy}
             data-testid="confirm-cancel"
           >
-            {cancelLabel}
+            {cancelLabel ?? t('common.cancel')}
           </Button>
           <Button
             variant={destructive ? 'danger' : 'default'}
@@ -88,7 +92,7 @@ export function ConfirmDialog({
             disabled={isBusy}
             data-testid="confirm-accept"
           >
-            {confirmLabel}
+            {confirmLabel ?? t('common.confirm')}
           </Button>
         </DialogFooter>
       </DialogContent>

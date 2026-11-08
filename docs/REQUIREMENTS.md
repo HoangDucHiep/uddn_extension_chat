@@ -403,7 +403,7 @@ BYOK trả lời câu *"key của ai?"*, không trả lời *"key nằm ở đâ
 | FR-SETTINGS-03 | Quản lý dữ liệu: xoá lịch sử, export toàn bộ, xoá cache index | M | ✅ T-M1-12 — xem AC chi tiết §4.8.1. Xoá có confirm; export → file JSON |
 | FR-SETTINGS-04 | Bật/tắt telemetry, chia sẻ context, dùng history | M | ✅ T-M1-12 (cờ) — xem AC chi tiết §4.8.1. Mặc định: telemetry OFF, history OFF. *Hành vi telemetry thật → T-M2-19* |
 | FR-SETTINGS-05 | Đổi endpoint BFF (cho dev / self-host) | S | ✅ T-M1-12 — xem AC chi tiết §4.8.1. Validate endpoint khi lưu |
-| FR-SETTINGS-06 | Ngôn ngữ UI: VI / EN | M | ✅ T-M1-12 (lưu lựa chọn) — xem AC chi tiết §4.8.1. *Dịch toàn bộ UI → T-M1-17* |
+| FR-SETTINGS-06 | Ngôn ngữ UI: VI / EN | M | ✅ T-M1-12 (lưu lựa chọn) · ✅ **T-M1-17** (dịch toàn bộ UI) — xem AC chi tiết §4.8.1 |
 | FR-SETTINGS-07 | Import/export toàn bộ settings | C | ✅ T-M1-12 — xem AC chi tiết §4.8.1 |
 
 #### 4.8.1 FR-SETTINGS — AC chi tiết (T-M1-12 ✅)
@@ -417,7 +417,7 @@ Settings nằm trong **drawer** (Radix `Dialog` trượt từ phải), mở bằ
 | FR-SETTINGS-03 | 2 hành động, đều **có confirm dialog** (`destructive`): (1) "Xoá lịch sử chat" → `DELETE /api/conversations` (server, cascade messages/citations); (2) "Xoá dữ liệu cục bộ" → xoá mọi khoa `sidekick.*` trong `chrome.storage.local`, **giữ** `sidekick.onboarding.completed` + `sidekick.preferredProvider` (không bắt user làm lại onboarding). Export → file JSON (`sidekick-settings.json`) |
 | FR-SETTINGS-04 | 2 toggle: telemetry + history. **Mặc định OFF** (AC đạt). Task này chỉ **lưu cờ** — hành vi telemetry thật thuộc T-M2-19 (M2) → UI ghi rõ "chưa dùng trong phiên bản này" để không nói dối user |
 | FR-SETTINGS-05 | Input URL + nút "Kiểm tra & lưu" → gọi `GET <url>/api/health`; chỉ khi HTTP 2xx mới ghi vào `sidekick.bffUrl` (khoá dùng bởi `apiClient`) **và** `sidekick.settings.bffUrl`. URL không phải http/https → báo lỗi, không lưu |
-| FR-SETTINGS-06 | Radio `Tiếng Việt` / `English` → lựa chọn được lưu & persist ngay. **Không** dịch chuỗi UI ở task này (tránh scope creep) → ghi TODO(T-M1-17) cho i18n đầy đủ |
+| FR-SETTINGS-06 | Radio `Tiếng Việt` / `English` → lựa chọn được lưu & persist ngay. **T-M1-17**: chọn ngôn ngữ → **toàn bộ UI side panel đổi ngay** (không reload) + context menu extension + nút nổi content script đổi theo. Dictionary có **kiểu** (`vi.ts` là nguồn sự thật) → thiếu/thừa key = lỗi `pnpm typecheck`. Chi tiết: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.17 |
 | FR-SETTINGS-07 | "Xuất cài đặt" → tải file JSON chứa toàn bộ settings. "Nhập cài đặt" → đọc file, validate qua `settingsSchema` (Zod) của `packages/shared`; JSON sai / thiếu field → thông báo lỗi rõ ràng, **không** crash |
 
 > **Giới hạn đã biết (ghi rõ trong UI):** chiều rộng panel do người dùng kéo trong Chrome → extension chỉ đặt thêm `max-width`. Không thể cưỡng chế bề rộng tuyệt đối.
@@ -1141,7 +1141,7 @@ Chỉ bắt đầu M4 khi **đồng thời** thỏa:
 | FR-SETTINGS-03 | M | **T-M1-12 ✅** | M1 |
 | FR-SETTINGS-04 | M | **T-M1-12 ✅** (cờ) · **T-M2-19** (hành vi thật) | M1→M2 |
 | FR-SETTINGS-05 | S | **T-M1-12 ✅** | M1 |
-| FR-SETTINGS-06 | M | T-M0-14 ✅ · **T-M1-12 ✅** (lưu lựa chọn) · T-M1-17 (dịch UI) | M0→M1 |
+| FR-SETTINGS-06 | M | T-M0-14 ✅ · **T-M1-12 ✅** (lưu lựa chọn) · **T-M1-17 ✅** (dịch UI) | M0→M1 |
 | FR-SETTINGS-07 | C | **T-M1-12 ✅** | M1 |
 
 #### FR-UX — Trải nghiệm người dùng

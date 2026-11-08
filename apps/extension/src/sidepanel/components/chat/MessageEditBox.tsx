@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { useI18n } from '@/sidepanel/hooks/useI18n'
 
 export interface MessageEditBoxProps {
   /** Noi dung ban dau cua message (de sua). */
@@ -25,6 +26,7 @@ export function MessageEditBox({
   onCancel,
   isBusy = false,
 }: MessageEditBoxProps) {
+  const { t } = useI18n()
   const [content, setContent] = useState(initialContent)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -63,7 +65,7 @@ export function MessageEditBox({
         }}
         onKeyDown={handleKeyDown}
         disabled={isBusy}
-        aria-label="Sua noi dung tin nhan"
+        aria-label={t('chat.editInputLabel')}
         data-testid="message-edit-input"
         className="min-h-[var(--composer-min-height)] w-full"
       />
@@ -73,10 +75,10 @@ export function MessageEditBox({
           size="sm"
           onClick={onCancel}
           disabled={isBusy}
-          aria-label="Huy sua tin nhan"
+          aria-label={t('chat.cancelEdit')}
           data-testid="message-edit-cancel"
         >
-          Huy
+          {t('common.cancel')}
         </Button>
         <Button
           size="sm"
@@ -88,7 +90,7 @@ export function MessageEditBox({
           disabled={isBusy || content.trim().length === 0}
           data-testid="message-edit-submit"
         >
-          Gui lai
+          {t('chat.resend')}
         </Button>
       </div>
     </div>

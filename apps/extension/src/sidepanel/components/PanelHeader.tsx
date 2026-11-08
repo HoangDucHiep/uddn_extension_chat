@@ -1,5 +1,6 @@
 import { CircleHelp, History, Settings, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useI18n } from '@/sidepanel/hooks/useI18n'
 import { ConnectionBadge } from './states/ConnectionBadge'
 import type { ConnectionStatus } from '@/lib/connectionStatus'
 
@@ -35,6 +36,8 @@ export function PanelHeader({
   conversationTitle,
   connectionStatus,
 }: PanelHeaderProps) {
+  const { t } = useI18n()
+
   return (
     <header
       className="flex h-[var(--header-height)] items-center justify-between gap-2 border-b border-[var(--border-default)] bg-[var(--surface-panel)] px-[var(--space-3)]"
@@ -42,7 +45,7 @@ export function PanelHeader({
     >
       <div className="flex min-w-0 items-center gap-2">
         <span className="text-[length:var(--font-size-md)] font-semibold text-[var(--text-primary)]">
-          Sidekick AI
+          {t('header.title')}
         </span>
         {conversationTitle !== undefined && conversationTitle.length > 0 ? (
           <span
@@ -72,7 +75,7 @@ export function PanelHeader({
             variant="ghost"
             size="icon-sm"
             onClick={onOpenConversations}
-            aria-label="Xem lich su cuoc tro chuyen"
+            aria-label={t('header.openConversations')}
             data-testid="conversations-button"
           >
             <History className="h-3.5 w-3.5" aria-hidden="true" />
@@ -84,7 +87,7 @@ export function PanelHeader({
             variant="ghost"
             size="icon-sm"
             onClick={onOpenOnboarding}
-            aria-label="Mo huong dan"
+            aria-label={t('header.openGuide')}
             data-testid="help-button"
           >
             <CircleHelp className="h-3.5 w-3.5" aria-hidden="true" />
@@ -96,7 +99,7 @@ export function PanelHeader({
             variant="ghost"
             size="icon-sm"
             onClick={onOpenSettings}
-            aria-label="Mở cài đặt"
+            aria-label={t('header.openSettings')}
             data-testid="settings-button"
           >
             <Settings className="h-3.5 w-3.5" aria-hidden="true" />
@@ -107,7 +110,7 @@ export function PanelHeader({
           variant="ghost"
           size="icon-sm"
           onClick={onClear}
-          aria-label="Xoa cuoc tro chuyen"
+          aria-label={t('header.clearConversation')}
           data-testid="clear-button"
         >
           <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />

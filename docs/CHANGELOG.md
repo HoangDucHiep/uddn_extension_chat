@@ -7,6 +7,41 @@
 ---
 
 ## [Unreleased]
+### Added
+- **T-M1-17 — i18n VI/EN (FR-SETTINGS-06)**
+  - `apps/extension/src/i18n/vi.ts` (mới) — `viDictionary` là **nguồn sự thật** của danh sách key (`const` object) → `TranslationKey = keyof typeof viDictionary` · `Dictionary = Record<TranslationKey, string>`.
+  - `apps/extension/src/i18n/en.ts` (mới) — `enDictionary: Dictionary` → **thiếu/thừa key = lỗi `pnpm typecheck`** (không cần test runtime để bắt).
+  - `apps/extension/src/i18n/index.ts` (mới) — `getDictionary()` (fallback VI) · `resolveLanguage()` · `formatMessage()` (placeholder `{name}`) · `createTranslator()`.
+  - `apps/extension/src/i18n/context.ts` (mới) — `I18nContext` **không JSX** → content script + service worker không import React.
+  - `apps/extension/src/lib/i18n.ts` (mới) — `readUiLanguage()` (đọc storage) · `translatorFor()` · `getTranslator()` (cho nơi không phải React).
+  - `apps/extension/src/sidepanel/hooks/useI18n.ts` (mới) — trả `{ t, language }`.
+  - `apps/extension/src/sidepanel/components/I18nProvider.tsx` (mới) — bọc ở `App.tsx`; `useMemo` tạo `t` mới khi đổi ngôn ngữ → re-render toàn bộ cây.
+  - **Test** — `apps/extension/tests/i18n.test.tsx` (mới, 20) · `apps/extension/e2e/i18n.spec.ts` (mới, 2 kịch bản).
+    - **Số test toàn repo:** 1243 → **1263 unit** (shared 243 · server 377 · extension **643**) + 71 → **73 E2E**.
+    - **Migration:** **không** có migration mới · **không** dependency mới (không `i18next`) · **không** permission mới · **không** đổi manifest · **không** component UI mới.
+
+### Changed
+- **T-M1-17 — Toàn bộ side panel đã dịch VI/EN** — mọi chuỗi literal trong component → `t('key')`.
+  - `apps/extension/src/sidepanel/App.tsx` — **nâng `useSettings()`** lên đây → `settings` + `onSettingsChange` truyền xuống `ChatWorkspace` → `SettingsDrawer`; bọc `<Onboarding>` + `<ChatWorkspace>` trong `<I18nProvider language={settings.uiLanguage}>` → đổi ngôn ngữ áp dụng **ngay**, **không reload**.
+  - `apps/extension/src/sidepanel/ChatWorkspace.tsx` — nhận `settings` + `onSettingsChange` · truyền xuống `SettingsDrawer` · dịch toast + banner offline + tiêu đề drawer.
+  - `apps/extension/src/sidepanel/components/settings/SettingsDrawer.tsx` — dùng props; **fallback** về `useSettings()` khi không truyền props (test render độc lập vẫn chạy).
+  - `apps/extension/src/sidepanel/components/settings/LanguageSettings.tsx` — **xoá** dòng cảnh báo "Giao diện hiện vẫn dùng tiếng Việt…" (không còn đúng) · options dịch động.
+  - `apps/extension/src/sidepanel/components/settings/{Theme,Appearance,Privacy,Data,Endpoint}Settings.tsx` — options động qua `t()` · nhãn + toast + confirm dịch.
+  - Component khác — `PanelHeader` · `Composer` · `MessageBubble` · `MessageActions` · `MessageEditBox` · `CodeBlock` · `Citation{Chip,Popover,List}` · `PromptGallery` · `SummarizeButton` · `ConversationList` · `ConfirmDialog` · `states/{ConnectionBadge,LoadingState,ErrorState}` · `context/{ContextChips,ContextBudget,ContextNotice,MentionPopover}` · `composer/AttachmentTray` · `chat/ScrollToBottomButton` · `onboarding/{Onboarding,StepPermissions,StepProvider,StepTry}` · `hooks/useChat` · `hooks/useImageAttachments`.
+  - `apps/extension/src/content/selectionButton.ts` — nhận `label` + `ariaLabel` từ caller (bỏ hằng tiếng Việt).
+  - `apps/extension/src/content/contentScript.ts` — `localizeSelectionButton()` đọc storage → cập nhật text/aria-label nút nổi trong Shadow DOM.
+  - `apps/extension/src/background/contextMenus.ts` — 2 nhãn menu lấy từ `await getTranslator()`.
+  - `apps/extension/src/background/serviceWorker.ts` — `chrome.storage.onChanged` → đổi `sidekick.settings` → gọi lại `registerContextMenus()` (idempotent) → nhãn menu đổi theo ngôn ngữ, **không cần reload trình duyệt**.
+
+### Fixed
+- Section "Ngôn ngữ" trong Settings không còn hiện dòng cảnh báo sai ("Giao diện hiện vẫn dùng tiếng Việt…") — sau T-M1-17 toàn bộ UI **đã** dịch được.
+
+### Docs
+- `docs/SYSTEM_DESIGN.md` — thêm **§7.17** (kiến trúc module i18n · luồng đổi ngôn ngữ · phạm vi dịch · bảng kiểm thử).
+- `docs/REQUIREMENTS.md` — FR-SETTINGS-06 đánh dấu ✅ T-M1-17 + cập nhật AC chi tiết §4.8.1 + bảng traceability §11.1.
+- `docs/DESIGN_SYSTEM_BRIEF.md` — thêm **§3.11** (i18n VI/EN — không component mới, chỉ thay chuỗi literal) + cập nhật traceability §6.
+- `docs/IMPLEMENTATION_PLAN.md` — T-M1-17 ✅ (2026-11-08) + thêm **§3.1r** (bảng kết quả) + cập nhật traceability.
+- `docs/COMPARISON_MATRIX.md` — checklist §E: i18n VI/EN ✅ T-M1-17.
 
 ### Added
 - **T-M1-14 — Request logging đầy đủ vào `request_logs` (NFR-MAINT-04 + FR-CONTEXT-12 + NFR-REL-01)**

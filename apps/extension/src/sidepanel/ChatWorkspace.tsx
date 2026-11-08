@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { WifiOff } from 'lucide-react'
-import type { ConversationMessage } from '@sidekick/shared'
+import type { ConversationMessage, Settings } from '@sidekick/shared'
 import {
   classifyPage,
   detectPageKind,
@@ -27,6 +27,7 @@ import { LoadingState } from './components/states/LoadingState'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { useChat } from './hooks/useChat'
 import { useConnectionStatus } from './hooks/useConnectionStatus'
+import { useI18n } from './hooks/useI18n'
 import { useMention } from './hooks/useMention'
 import { useSelection } from './hooks/useSelection'
 import { useTabs } from './hooks/useTabs'
@@ -60,6 +61,10 @@ import type { OpenTab } from '@/lib/tabList'
 export interface ChatWorkspaceProps {
   /** Mo lai onboarding tu nut "Huong dan" trong header. */
   onOpenOnboarding: () => void
+  /** Cai dat hien tai (nguon su that cho ca panel — T-M1-17). */
+  settings: Settings
+  /** Cap nhat mot phan cai dat → luu ngay + ap dung ngay. */
+  onSettingsChange: (patch: Partial<Settings>) => Promise<void>
 }
 
 /**
@@ -69,7 +74,12 @@ export interface ChatWorkspaceProps {
  */
 const SCROLL_BOTTOM_THRESHOLD = 80
 
-export function ChatWorkspace({ onOpenOnboarding }: ChatWorkspaceProps) {
+export function ChatWorkspace({
+  onOpenOnboarding,
+  settings,
+  onSettingsChange,
+}: ChatWorkspaceProps) {
+  const { t } = useI18n()
   const {
     messages,
     isStreaming,
@@ -377,7 +387,7 @@ export function ChatWorkspace({ onOpenOnboarding }: ChatWorkspaceProps) {
       // Nap duong di active + bien the (T-M1-10).
       setConversationPath(response.path ?? [])
     } catch {
-      toast.error('Không tải được lịch sử cuộc trò chuyện')
+      toast.error(t('toast.historyLoadFailed'))
     } finally {
       setIsHydrating(false)
     }
@@ -411,7 +421,7 @@ export function ChatWorkspace({ onOpenOnboarding }: ChatWorkspaceProps) {
     activateVariant(turnId, variantIndex)
     if (conversationId === undefined) return
     void activateVariantRequest(conversationId, turnId, variantIndex).catch(() => {
-      toast.error('Không chuyển được biến thể câu trả lời')
+      toast.error(t('toast.variantSwitchFailed'))
     })
   }
 
@@ -469,14 +479,14 @@ export function ChatWorkspace({ onOpenOnboarding }: ChatWorkspaceProps) {
           data-testid="offline-banner"
         >
           <WifiOff className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-          <span className="flex-1">Không kết nối được máy chủ. Đang thử lại...</span>
+          <span className="flex-1">{t('state.offline.banner')}</span>
           <button
             type="button"
             onClick={connection.retry}
             className="rounded-[var(--radius-sm)] px-2 py-0.5 text-[length:var(--font-size-xs)] underline focus-visible:outline-none focus-visible:ring-[var(--focus-ring)]"
             data-testid="offline-banner-retry"
           >
-            Thử lại
+            {t('state.offline.retry')}
           </button>
         </div>
       ) : null}
@@ -621,7 +631,7 @@ export function ChatWorkspace({ onOpenOnboarding }: ChatWorkspaceProps) {
       <Dialog open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
         <DialogContent aria-labelledby="conversation-drawer-title">
           <DialogTitle id="conversation-drawer-title" className="sr-only">
-            Danh sách cuộc trò chuyện
+            {t('conversation.drawerTitle')}
           </DialogTitle>
           <ConversationList
             onSelect={(id) => {
@@ -639,6 +649,8 @@ export function ChatWorkspace({ onOpenOnboarding }: ChatWorkspaceProps) {
       <SettingsDrawer
         open={isSettingsOpen}
         onOpenChange={setIsSettingsOpen}
+        settings={settings}
+        onSettingsChange={onSettingsChange}
         onHistoryDeleted={() => {
           void useConversationStore.getState().refresh()
         }}

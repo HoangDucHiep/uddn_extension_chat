@@ -10,6 +10,7 @@ import {
   validateImageFile,
 } from '@/lib/imageUpload'
 import { useChatStore } from '../store/chatStore'
+import { useI18n } from './useI18n'
 
 /**
  * Hook quan ly anh cho san (FR-VISION-01 — T-M1-24).
@@ -44,6 +45,7 @@ export interface UseImageAttachmentsResult {
 }
 
 export function useImageAttachments(): UseImageAttachmentsResult {
+  const { t } = useI18n()
   const images = useChatStore((state) => state.pendingImages)
   const addPendingImages = useChatStore((state) => state.addPendingImages)
   const removePendingImage = useChatStore((state) => state.removePendingImage)
@@ -68,7 +70,7 @@ export function useImageAttachments(): UseImageAttachmentsResult {
       if (remaining <= 0) {
         setError({
           code: ERROR_CODES.VISION_TOO_MANY_IMAGES,
-          message: `Chỉ đính kèm được tối đa ${VISION.MAX_IMAGES_PER_MESSAGE} ảnh mỗi lượt.`,
+          message: t('vision.tooManyImages', { count: VISION.MAX_IMAGES_PER_MESSAGE }),
         })
         setIsReading(false)
         return
@@ -82,7 +84,7 @@ export function useImageAttachments(): UseImageAttachmentsResult {
           if (accepted.length >= remaining) {
             setError({
               code: ERROR_CODES.VISION_TOO_MANY_IMAGES,
-              message: `Chỉ đính kèm được tối đa ${VISION.MAX_IMAGES_PER_MESSAGE} ảnh mỗi lượt.`,
+              message: t('vision.tooManyImages', { count: VISION.MAX_IMAGES_PER_MESSAGE }),
             })
             break
           }
@@ -96,7 +98,7 @@ export function useImageAttachments(): UseImageAttachmentsResult {
           if (totalBytes + file.size > VISION.MAX_TOTAL_IMAGE_BYTES) {
             setError({
               code: ERROR_CODES.VISION_TOTAL_TOO_LARGE,
-              message: 'Tổng dung lượng ảnh vượt quá giới hạn cho mỗi lượt.',
+              message: t('vision.totalTooLarge'),
             })
             break
           }
@@ -114,7 +116,7 @@ export function useImageAttachments(): UseImageAttachmentsResult {
           } catch {
             setError({
               code: ERROR_CODES.VISION_UNSUPPORTED_TYPE,
-              message: `Không đọc được tệp "${file.name || 'ảnh'}".`,
+              message: t('vision.unsupportedType', { name: file.name || 'ảnh' }),
             })
           }
         }
@@ -126,7 +128,7 @@ export function useImageAttachments(): UseImageAttachmentsResult {
         addPendingImages(accepted)
       }
     },
-    [addPendingImages],
+    [addPendingImages, t],
   )
 
   const removeImage = useCallback(

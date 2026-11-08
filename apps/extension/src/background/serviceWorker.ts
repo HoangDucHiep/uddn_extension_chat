@@ -11,6 +11,7 @@
  */
 
 import { handleRuntimeMessage } from '@/lib/selectionBridge'
+import { SETTINGS_STORAGE_KEY } from '@/lib/settings'
 import { handleCommand } from './commands'
 import { handleContextMenuClick, registerContextMenus } from './contextMenus'
 import {
@@ -40,6 +41,15 @@ chrome.runtime.onInstalled.addListener(() => {
 })
 
 chrome.runtime.onStartup.addListener(() => {
+  void registerContextMenus()
+})
+
+// Doi ngon ngu UI → nhan context menu doi theo (T-M1-17).
+// `registerContextMenus` da idempotent (removeAll → create) nen goi lai
+// an toan (rule mv3-chrome.mdc §2).
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName !== 'local') return
+  if (changes[SETTINGS_STORAGE_KEY] === undefined) return
   void registerContextMenus()
 })
 

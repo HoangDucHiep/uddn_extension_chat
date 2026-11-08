@@ -1,6 +1,7 @@
 import { X } from 'lucide-react'
 import { VISION, type ImageAttachment } from '@sidekick/shared'
 import { formatBytes } from '@/lib/imageUpload'
+import { useI18n } from '@/sidepanel/hooks/useI18n'
 
 /**
  * Tray anh cho san — hien thi preview + nut xoa (FR-VISION-01 — T-M1-24).
@@ -24,6 +25,8 @@ export interface AttachmentTrayProps {
  * Khong co anh → khong render (giu panel gọn).
  */
 export function AttachmentTray({ images, onRemove, errorMessage }: AttachmentTrayProps) {
+  const { t } = useI18n()
+
   if (images.length === 0 && errorMessage === undefined) return null
 
   return (
@@ -53,13 +56,13 @@ export function AttachmentTray({ images, onRemove, errorMessage }: AttachmentTra
             >
               <img
                 src={`data:${image.mimeType};base64,${image.data}`}
-                alt={image.fileName ?? 'Ảnh đính kèm'}
+                alt={image.fileName ?? t('chat.imageAttachment')}
                 className="h-full w-full object-cover"
               />
               <button
                 type="button"
                 onClick={() => onRemove(image.id)}
-                aria-label={`Xoá ảnh đính kèm ${image.fileName ?? ''}`.trim()}
+                aria-label={t('chat.removeImage', { name: image.fileName ?? '' }).trim()}
                 className="absolute right-0 top-0 rounded-[var(--radius-sm)] bg-[var(--surface-overlay)] p-[2px] text-[var(--text-tertiary)] transition-colors hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-[var(--focus-ring)]"
               >
                 <X className="h-3 w-3" aria-hidden="true" />
@@ -71,7 +74,10 @@ export function AttachmentTray({ images, onRemove, errorMessage }: AttachmentTra
 
       {images.length > 0 ? (
         <p className="text-[length:var(--font-size-xs)] text-[var(--text-tertiary)]">
-          {images.length} ảnh · ~{images.length * VISION.TOKEN_ESTIMATE_PER_IMAGE} token
+          {t('chat.attachmentTokenEstimate', {
+            count: images.length,
+            tokens: images.length * VISION.TOKEN_ESTIMATE_PER_IMAGE,
+          })}
         </p>
       ) : null}
     </div>

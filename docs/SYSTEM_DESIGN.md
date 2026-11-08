@@ -2383,6 +2383,105 @@ Nguồn: [`packages/shared/src/pricing.ts`](../packages/shared/src/pricing.ts) �
 
 ---
 
+### 7.17 i18n VI/EN (FR-SETTINGS-06 — T-M1-17)
+
+> Nguồn sự thật cho hành vi: [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.8.1 (FR-SETTINGS-06).
+
+#### 7.17.1 Vấn đề đã giải quyết
+
+| Khoảng trống trước T-M1-17 | Sau T-M1-17 |
+|---|---|
+| Section "Ngôn ngữ" **chỉ lưu lựa chọn**, UI vẫn tiếng Việt | Toàn bộ UI panel dịch theo `settings.uiLanguage` |
+| Cảnh báo "Giao diện hiện vẫn dùng tiếng Việt…" trong Settings | Đã **xoá** (không còn đúng) |
+| Chuỗi rải rác trong component (`.tsx`), không kiểm soát được | **1 dictionary có kiểu** → thiếu key = **lỗi typecheck** |
+| Không đổi được nhãn context menu / nút nổi content script | Cả 2 đọc từ dictionary → đổi theo ngôn ngữ |
+
+#### 7.17.2 Kiến trúc module i18n
+
+```mermaid
+flowchart LR
+  vi["i18n/vi.ts<br/>viDictionary (nguồn sự thật)"] -->|"TranslationKey"| en["i18n/en.ts<br/>enDictionary: Dictionary"]
+  vi --> idx["i18n/index.ts<br/>getDictionary · formatMessage<br/>createTranslator"]
+  en --> idx
+  idx --> ctx["i18n/context.ts<br/>I18nContext (không JSX)"]
+  ctx --> prov["sidepanel/components/I18nProvider.tsx"]
+  prov --> hook["sidepanel/hooks/useI18n.ts"]
+  hook --> ui["Component dùng t('key')"]
+  idx --> lib["lib/i18n.ts<br/>readUiLanguage · getTranslator"]
+  lib --> bg["background/contextMenus.ts"]
+  lib --> cs["content/contentScript.ts"]
+```
+
+| File | Vai trò | Ghi chú |
+|---|---|---|
+| `apps/extension/src/i18n/vi.ts` | **Nguồn sự thật** của danh sách key | `viDictionary` là `const` object → `TranslationKey = keyof typeof viDictionary` |
+| `apps/extension/src/i18n/en.ts` | Dictionary tiếng Anh | Kiểu `Dictionary = Record<TranslationKey, string>` → **thừa/thiếu key = lỗi typecheck** |
+| `apps/extension/src/i18n/index.ts` | Hàm thuần | `getDictionary` · `resolveLanguage` · `formatMessage` · `createTranslator` |
+| `apps/extension/src/i18n/context.ts` | React context | **Không JSX** → content script + service worker không import React |
+| `apps/extension/src/lib/i18n.ts` | Lớp không React | `readUiLanguage()` (đọc storage) · `translatorFor()` · `getTranslator()` |
+| `apps/extension/src/sidepanel/hooks/useI18n.ts` | Hook cho component | Trả `{ t, language }` |
+| `apps/extension/src/sidepanel/components/I18nProvider.tsx` | Provider | Bọc ở `App.tsx` |
+
+#### 7.17.3 Quy tắc bắt buộc
+
+1. **Không thêm thư viện i18n** (không `i18next`, không `intl-messageformat`) → bundle nhỏ + không dependency mới. Chỉ dùng placeholder `{name}` do `formatMessage()` thay.
+2. **Key mới → phải thêm vào cả `vi.ts` và `en.ts`.** Thiếu 1 trong 2 → `pnpm typecheck` fail.
+3. **Dịch `en.ts` không được chứa dấu tiếng Việt** — trừ tên ngôn ngữ (`settings.language.vi` = "Tiếng Việt"). Có test tự động bắt.
+4. **Placeholder phải giống nhau** ở 2 dictionary — có test tự động bắt.
+5. **Comment tiếng Việt, identifier tiếng Anh.**
+
+#### 7.17.4 Luồng đổi ngôn ngữ
+
+```mermaid
+sequenceDiagram
+  participant U as User
+  participant LS as LanguageSettings
+  participant AP as App.tsx (useSettings)
+  participant IP as I18nProvider
+  participant CT as Component
+
+  U->>LS: Chọn "English"
+  LS->>AP: onSettingsChange({ uiLanguage: 'en' })
+  AP->>AP: setSettings (optimistic) + writeSettings → storage.local
+  AP->>IP: language="en" (prop mới)
+  IP->>IP: useMemo → t = translatorFor('en') (identity mới)
+  IP->>CT: context value mới → re-render
+  CT->>CT: t('common.cancel') → "Cancel"
+```
+
+- Đổi ngôn ngữ áp dụng **ngay**, **không cần reload** (AC FR-SETTINGS-06).
+- Persist qua `chrome.storage.local` key `sidekick.settings` → reload panel vẫn giữ ngôn ngữ.
+- `useSettings()` được **nâng lên `App.tsx`** → `settings` + `onSettingsChange` truyền xuống `ChatWorkspace` → `SettingsDrawer`. Lý do: `I18nProvider` phải bọc **cả** onboarding lẫn chat để đổi ngôn ngữ đồng bộ; drawer nằm trong chat nên không thể tự đọc settings (vòng lặp state).
+- `SettingsDrawer` **fallback** về `useSettings()` khi không truyền props → test render độc lập vẫn chạy được.
+
+#### 7.17.5 Ngoài side panel
+
+| Nơi | Cơ chế | Ghi chú |
+|---|---|---|
+| `background/contextMenus.ts` | `await getTranslator()` trước khi `chrome.contextMenus.create()` | `registerContextMenus()` đã idempotent (`removeAll()` → `create()`) |
+| `background/serviceWorker.ts` | `chrome.storage.onChanged` → khi `sidekick.settings` đổi → gọi lại `registerContextMenus()` | Nhãn menu đổi theo ngôn ngữ, **không cần reload trình duyệt** |
+| `content/contentScript.ts` | `localizeSelectionButton()` đọc storage → cập nhật text/aria-label của nút nổi trong Shadow DOM | Nút nổi nằm trong trang web host → không render được React |
+
+> **Content script không được import React** → `i18n/context.ts` tách riêng khỏi `i18n/index.ts` để giữ content script là IIFE nhỏ. Kiểm chứng: `dist/content.js` **không** chứa React.
+
+#### 7.17.6 Phạm vi dịch
+
+| Đã dịch | Không dịch (giữ nguyên) | Lý do |
+|---|---|---|
+| Toàn bộ side panel (header · composer · thread · drawer cuộc trò chuyện · drawer cài đặt · onboarding · toast · banner lỗi) | Gợi ý trang trong `packages/shared/src/pageProfile.ts` | Prompt đánh giá phải **nhất quán** giữa các lần chạy eval |
+| Context menu của extension (2 mục) | `SUMMARY_PROMPT` | Cùng lý do — prompt đánh giá |
+| Nhãn nút nổi content script | Thông điệp lỗi **từ server** trả về | Thuộc phía BFF, không thuộc extension |
+
+#### 7.17.7 Kiểm thử
+
+| Tầng | File | Phạm vi |
+|---|---|---|
+| Unit | `apps/extension/tests/i18n.test.tsx` | key-set parity VI/EN · không dấu tiếng Việt trong `en.ts` · placeholder giống nhau · `formatMessage` (thay / giữ nguyên / nhiều placeholder) · `resolveLanguage` · `getDictionary` fallback · `readUiLanguage` (storage rong → `vi`) · `useI18n` mặc định `vi` |
+| Unit (cũ) | `apps/extension/tests/settingsDrawer.test.tsx` · `onboardingUi.test.tsx` | Assert literal tiếng Việt vẫn pass (dictionary `vi` là mặc định) |
+| E2E | `apps/extension/e2e/i18n.spec.ts` | Mặc định VI → chọn English → UI đổi **ngay** → reload vẫn EN → chọn lại VI → đổi ngay |
+
+---
+
 ## 8. Hiệu năng
 
 | Chỉ số | Mục tiêu | Cách đạt |

@@ -1,4 +1,5 @@
 import { domainOf } from './CitationPopover'
+import { useI18n } from '@/sidepanel/hooks/useI18n'
 import type { ChatCitation } from '../../store/chatStore'
 
 /**
@@ -22,13 +23,15 @@ export interface CitationListProps {
  * @returns Element React (null neu khong co nguon).
  */
 export function CitationList({ citations }: CitationListProps) {
+  const { t } = useI18n()
+
   if (citations.length === 0) return null
 
   return (
     <ul
       className="mt-2 flex flex-wrap items-center gap-x-[var(--space-3)] gap-y-[var(--space-1)] border-t border-[var(--border-subtle)] pt-[var(--space-2)] text-[length:var(--font-size-xs)] text-[var(--text-tertiary)]"
       data-testid="citation-list"
-      aria-label="Nguồn trích dẫn"
+      aria-label={t('chat.citationList')}
     >
       {citations.map((citation) => {
         const domain = domainOf(citation.url)

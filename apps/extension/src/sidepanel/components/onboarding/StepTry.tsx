@@ -4,6 +4,7 @@ import type { ProviderId } from '@sidekick/shared'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { streamChat } from '@/lib/sseClient'
+import { useI18n } from '@/sidepanel/hooks/useI18n'
 
 /**
  * Buoc 3 cua onboarding — thu mot cau hoi that (FR-UX-02).
@@ -13,9 +14,6 @@ import { streamChat } from '@/lib/sseClient'
  *
  * Docs: docs/SYSTEM_DESIGN.md §7.6
  */
-
-/** Cau hoi mau — de user khong phai nghi. */
-const SAMPLE_QUESTION = 'Xin chao! Ban co the lam gi cho toi?'
 
 export interface StepTryProps {
   /** Provider da chon (neu co) → gui len server de dung dung model. */
@@ -27,6 +25,7 @@ export interface StepTryProps {
 }
 
 export function StepTry({ provider, onComplete, onSkip }: StepTryProps) {
+  const { t } = useI18n()
   const [input, setInput] = useState('')
   const [answer, setAnswer] = useState('')
   const [error, setError] = useState<string | undefined>(undefined)
@@ -80,19 +79,18 @@ export function StepTry({ provider, onComplete, onSkip }: StepTryProps) {
     <section className="flex flex-col gap-[var(--space-4)]" data-testid="onboarding-step-try">
       <header className="flex flex-col gap-1">
         <h2 className="text-[length:var(--font-size-lg)] font-semibold text-[var(--text-primary)]">
-          Thu mot cau hoi
+          {t('onboarding.try.title')}
         </h2>
         <p className="text-[length:var(--font-size-sm)] text-[var(--text-secondary)]">
-          Dat cau hoi bat ky de kiem tra ket noi. Cau hoi nay chay qua may chu cua ban, khong
-          luu vao lich su.
+          {t('onboarding.try.description')}
         </p>
       </header>
 
       <Textarea
         value={input}
         rows={3}
-        placeholder={SAMPLE_QUESTION}
-        aria-label="Cau hoi thu"
+        placeholder={t('onboarding.try.placeholder')}
+        aria-label={t('onboarding.try.askLabel')}
         onChange={(event) => {
           setInput(event.target.value)
         }}
@@ -123,7 +121,7 @@ export function StepTry({ provider, onComplete, onSkip }: StepTryProps) {
       <div className="flex flex-wrap items-center gap-[var(--space-2)]">
         {isStreaming ? (
           <Button variant="outline" onClick={handleStop} data-testid="onboarding-try-stop">
-            Dung
+            {t('composer.stop')}
           </Button>
         ) : (
           <Button
@@ -138,16 +136,16 @@ export function StepTry({ provider, onComplete, onSkip }: StepTryProps) {
             ) : (
               <Send className="h-3.5 w-3.5" aria-hidden="true" />
             )}
-            Thu cau hoi
+            {t('onboarding.try.send')}
           </Button>
         )}
         <Button variant="secondary" onClick={onSkip} data-testid="onboarding-skip">
-          Bo qua
+          {t('onboarding.skip')}
         </Button>
       </div>
 
       <Button onClick={onComplete} data-testid="onboarding-complete">
-        Hoan tat
+        {t('onboarding.finish')}
       </Button>
     </section>
   )

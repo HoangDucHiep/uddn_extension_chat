@@ -102,14 +102,16 @@ pnpm eval:run                # chạy eval harness
 | Milestone | Trạng thái | Ghi chú |
 |---|---|---|
 | **M0 — Foundation** | ✅ Hoàn thành | 15/15 task · 91 unit test + 2 E2E · tag `v0.1` |
-| **M1 — Parity** | 🚧 Đang làm | 19/25 task (T-M1-01, T-M1-04 ✅ hấp thụ, T-M1-05, T-M1-21, T-M1-22, T-M1-23, T-M1-02, T-M1-24, T-M1-25, T-M1-06 ✅, T-M1-07 ✅, T-M1-08 ✅, T-M1-09 ✅, T-M1-10 ✅, T-M1-11 ✅, T-M1-03 ✅, T-M1-12 ✅, T-M1-19 ✅, T-M1-14 ✅) · 1243 unit test + 71 E2E |
+| **M1 — Parity** | 🚧 Đang làm | 20/25 task (T-M1-01, T-M1-04 ✅ hấp thụ, T-M1-05, T-M1-21, T-M1-22, T-M1-23, T-M1-02, T-M1-24, T-M1-25, T-M1-06 ✅, T-M1-07 ✅, T-M1-08 ✅, T-M1-09 ✅, T-M1-10 ✅, T-M1-11 ✅, T-M1-03 ✅, T-M1-12 ✅, T-M1-19 ✅, T-M1-14 ✅, T-M1-17 ✅) · 1263 unit test + 73 E2E |
 | **M2 — Advanced & Eval** | ⬜ Chưa bắt đầu | `EVAL_REPORT.md` là deliverable bắt buộc |
 | **M3 — Polish & Deliverable** | ⬜ Chưa bắt đầu | |
 | **M4 — Workflow** | ⬜ Tuỳ chọn | Chỉ sau M3 + đã có eval report |
 
 **Trạng thái docs:** ✅ Requirements · ✅ Design System Brief · ✅ System Design · ✅ Implementation Plan · ✅ Comparison Matrix · ✅ Eval Plan · ✅ Handoff · ✅ Changelog
 
-**Việc tiếp theo:** **T-M1-15** (K3 direct mode — BYOK không cần BFF) → T-M1-16 (K2 BYOK UI) · T-M1-17 (i18n VI/EN) · T-M1-18 (shortcuts) · T-M1-20 (responsive + a11y). T-M1-13 (export) đã được user defer.
+**Việc tiếp theo:** **T-M1-15** (K3 direct mode — BYOK không cần BFF) → T-M1-16 (K2 BYOK UI) · T-M1-18 (shortcuts) · T-M1-20 (responsive + a11y). T-M1-13 (export) đã được user defer.
+
+> **i18n VI/EN (T-M1-17):** toàn bộ side panel đã dịch VI/EN — chọn ngôn ngữ trong Settings → UI đổi **ngay** (không reload) + persist qua `chrome.storage.local`. Module i18n tự viết, **không** thêm thư viện (`i18next`/`intl-messageformat`) → chỉ placeholder `{name}` qua `formatMessage()`. `apps/extension/src/i18n/vi.ts` là **nguồn sự thật** của danh sách key (`viDictionary` là `const` object → `TranslationKey = keyof typeof viDictionary`) → `en.ts` khai kiểu `Dictionary = Record<TranslationKey, string>` → **thiếu/thừa key = lỗi `pnpm typecheck`**. `useSettings()` **nâng lên `App.tsx`** → `I18nProvider` bọc **cả** onboarding lẫn chat (đổi ngôn ngữ đồng bộ); `SettingsDrawer` fallback về `useSettings()` khi không truyền props. `i18n/context.ts` **không JSX** → content script + service worker không kéo React vào bundle IIFE (kiểm chứng: `dist/content.js` không chứa React). Ngoài panel: 2 nhãn context menu lấy từ `getTranslator()` + SW nghe `storage.onChanged` → đăng ký lại menu (idempotent) → đổi nhãn **không cần reload trình duyệt**; nút nổi content script đọc storage → đổi text/aria-label. **Không** dịch gợi ý trang + `SUMMARY_PROMPT` (`packages/shared/src/pageProfile.ts`) → prompt đánh giá phải nhất quán cho eval. Chi tiết: [`SYSTEM_DESIGN.md`](docs/SYSTEM_DESIGN.md) §7.17 · [`DESIGN_SYSTEM_BRIEF.md`](docs/DESIGN_SYSTEM_BRIEF.md) §3.11.
 
 > **Request logging (T-M1-14):** bảng `request_logs` **không còn là bảng chết** — **mọi** lượt chat (thành công **và** thất bại) đều ghi 1 dòng với provider · model · token in/out · `cost_usd` **thật** (tính từ `PROVIDER_PRICING` — là **ước lượng** theo bảng giá snapshot, không phải hoá đơn) · `ttft_ms` · `latency_ms` · `tool_calls` · `context_hash` · error code. `request_id` xuyên suốt **client → BFF → provider** (client sinh uuid → server sanitize → echo header) → hiện 6 ký tự ở dòng meta của bubble assistant. Log HTTP dạng **JSON** 1 dòng/request. **Retention 90 ngày** enforce thật (startup + mỗi 24 h). `GET /api/logs` · `GET /api/usage` trả **chỉ metadata** cho eval harness (`pnpm eval:run logs`). **Không** migration mới. Chi tiết: [`SYSTEM_DESIGN.md`](docs/SYSTEM_DESIGN.md) §7.16 · [`EVAL_PLAN.md`](docs/EVAL_PLAN.md) §5.3.1.
 

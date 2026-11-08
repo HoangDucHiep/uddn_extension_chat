@@ -23,6 +23,7 @@ import { readPreferredProvider } from '@/lib/onboarding'
 import { SELECTION_EMPTY_ERROR_CODE, type PendingSelection } from '@/lib/selectionProtocol'
 import { activePathMessages, buildHistory } from '@/lib/chatTurns'
 import { useChatStore, type ChatImage, type ChatMessage } from '../store/chatStore'
+import { useI18n } from './useI18n'
 
 /**
  * Hook `useChat` — dieu khien luong chat: gui prompt, nhan stream, dung.
@@ -47,6 +48,7 @@ const FALLBACK_PROVIDER: ProviderId = 'groq'
 const RESERVED_OUTPUT_TOKENS = 2_048
 
 export function useChat() {
+  const { t } = useI18n()
   const messages = useChatStore((state) => state.messages)
   const isStreaming = useChatStore((state) => state.isStreaming)
   const conversationId = useChatStore((state) => state.conversationId)
@@ -162,7 +164,7 @@ export function useChat() {
     if (selection === undefined) {
       setContextError({
         error: SELECTION_EMPTY_ERROR_CODE,
-        message: 'Hãy bôi đen một đoạn văn bản trên trang trước khi dính.',
+        message: t('context.notice.selectionEmptyHint'),
       })
       return undefined
     }
@@ -176,7 +178,7 @@ export function useChat() {
       attachItem(result.item)
     }
     return result.item
-  }, [attachItem, setContextError])
+  }, [attachItem, setContextError, t])
 
   // Giu AbortController de "Dung" huy stream.
   const abortRef = useRef<AbortController | undefined>(undefined)

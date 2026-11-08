@@ -557,6 +557,23 @@ Folder `apps/extension/src/sidepanel/components/states/` — **4 trạng thái**
 
 ---
 
+### 3.11 i18n VI/EN (đã implement T-M1-17)
+
+- **Không có component UI mới** — task này **chỉ thay chuỗi literal** bằng `t('key')`.
+- **Nguồn sự thật:** `apps/extension/src/i18n/vi.ts` (`viDictionary` là `const` object → `TranslationKey = keyof typeof viDictionary`). `apps/extension/src/i18n/en.ts` khai báo `Dictionary = Record<TranslationKey, string>` → **thiếu/thừa key là lỗi `pnpm typecheck`**, không cần test runtime để bắt.
+- **Cơ chế:** `I18nProvider` (bọc ở `App.tsx`) → `useI18n()` trả `{ t, language }`. Component **không** nhận `t` qua props → không phải sửa call-site khi thêm key.
+- **Đổi ngôn ngữ áp dụng ngay** (không reload): `useSettings()` nâng lên `App.tsx` → `settings.uiLanguage` → `I18nProvider` → `useMemo` tạo `t` mới (identity mới) → re-render toàn bộ cây.
+- **Placeholder:** `{name}` — `formatMessage()` thay thế; thiếu tham số → giữ nguyên `{name}` (không vỡ UI).
+- **Không thêm thư viện i18n** (không `i18next` / `intl-messageformat`) → giữ bundle nhỏ, không dependency mới.
+- **A11y:** mọi chuỗi động đi qua `aria-label` / `title` cũng phải dịch (VD `aria-label="Gửi câu hỏi"` → `t('composer.send')`).
+- **Ngoài panel:** context menu extension (2 mục) + nút nổi content script cũng dịch theo → nhãn đổi **không cần reload trình duyệt**.
+
+> **Không dịch:** gợi ý trang trong `packages/shared/src/pageProfile.ts` + `SUMMARY_PROMPT` (phải nhất quán cho eval) · thông điệp lỗi trả về từ server (thuộc phía BFF).
+
+> **Liên quan:** [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.17 · [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.8.1 (FR-SETTINGS-06)
+
+---
+
 ## 4. State & hành vi UI chuẩn hoá
 
 | Trạng thái | Yêu cầu UI | FR |
@@ -624,6 +641,7 @@ Folder `apps/extension/src/sidepanel/components/states/` — **4 trạng thái**
 | `AttachmentTray`, ảnh trong `MessageBubble` | FR-VISION-01 | Đối chiếu B17 (Gemini upload ảnh) |
 | `UsageBadge`, `ProviderBadge` | FR-PROVIDER-05/09 | Bảng 3 "năng lực hệ thống" |
 | Request-id chip trong dòng meta của `MessageBubble` | NFR-MAINT-04, FR-CONTEXT-12 | Minh bạch kỹ thuật · hỗ trợ điều tra lỗi khi chấm eval |
+| **Không có component mới** — i18n chỉ thay chuỗi literal bằng `t('key')` | FR-SETTINGS-06 | Parity i18n (B14) — đổi ngôn ngữ **ngay**, không reload |
 
 ---
 

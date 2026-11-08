@@ -4,13 +4,15 @@ import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/sidepanel/components/chat/ConfirmDialog'
 import { deleteAllConversations } from '@/lib/conversationClient'
 import { deleteLocalSidekickData, exportSettings, importSettings } from '@/lib/settings'
+import { useI18n } from '@/sidepanel/hooks/useI18n'
 
 /**
- * Section quan ly du lieu (FR-SETTINGS-03/07 + NFR-SEC-07 — T-M1-12).
+ * Section quan ly du lieu (FR-SETTINGS-03/07 + NFR-SEC-07 — T-M1-12,
+ * dich UI T-M1-17).
  *
  * - Xoa lich su chat → `DELETE /api/conversations` (server, cascade).
  * - Xoa du lieu local → xoa khoa `sidekick.` trong `chrome.storage.local`
- *   (giu nguyên trang thai onboarding).
+ *   (giu nguyen trang thai onboarding).
  * - Export / import settings JSON.
  *
  * Docs: docs/DESIGN_SYSTEM_BRIEF.md §3.7
@@ -23,6 +25,7 @@ export interface DataSettingsProps {
 type PendingAction = 'history' | 'local' | null
 
 export function DataSettings({ onHistoryDeleted }: DataSettingsProps) {
+  const { t } = useI18n()
   const [pending, setPending] = useState<PendingAction>(null)
   const [isBusy, setIsBusy] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -39,9 +42,9 @@ export function DataSettings({ onHistoryDeleted }: DataSettingsProps) {
       anchor.click()
       document.body.removeChild(anchor)
       URL.revokeObjectURL(url)
-      toast.success('Đã xuất cài đặt')
+      toast.success(t('toast.settingsExported'))
     } catch {
-      toast.error('Không xuất được cài đặt')
+      toast.error(t('toast.settingsExportFailed'))
     }
   }
 
@@ -49,9 +52,9 @@ export function DataSettings({ onHistoryDeleted }: DataSettingsProps) {
     try {
       const text = await file.text()
       await importSettings(text)
-      toast.success('Đã nhập cài đặt')
+      toast.success(t('toast.settingsImported'))
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Không nhập được cài đặt')
+      toast.error(error instanceof Error ? error.message : t('toast.settingsImportFailed'))
     }
   }
 
@@ -59,10 +62,10 @@ export function DataSettings({ onHistoryDeleted }: DataSettingsProps) {
     setIsBusy(true)
     try {
       const deleted = await deleteAllConversations()
-      toast.success(`Đã xoá lịch sử (${deleted} cuộc trò chuyện)`)
+      toast.success(t('toast.historyDeleted', { count: deleted }))
       onHistoryDeleted?.()
     } catch {
-      toast.error('Không xoá được lịch sử chat')
+      toast.error(t('toast.historyDeleteFailed'))
     } finally {
       setIsBusy(false)
     }
@@ -72,9 +75,9 @@ export function DataSettings({ onHistoryDeleted }: DataSettingsProps) {
     setIsBusy(true)
     try {
       const keys = await deleteLocalSidekickData()
-      toast.success(`Đã xoá dữ liệu cục bộ (${keys.length} mục)`)
+      toast.success(t('toast.localDeleted', { count: keys.length }))
     } catch {
-      toast.error('Không xoá được dữ liệu cục bộ')
+      toast.error(t('toast.localDeleteFailed'))
     } finally {
       setIsBusy(false)
     }
@@ -95,10 +98,10 @@ export function DataSettings({ onHistoryDeleted }: DataSettingsProps) {
       <section className="space-y-2 border-b border-[var(--border-subtle)] pb-4">
         <div>
           <h3 className="text-[length:var(--font-size-sm)] font-semibold text-[var(--text-primary)]">
-            Quản lý dữ liệu
+            {t('settings.data.title')}
           </h3>
           <p className="mt-0.5 text-[length:var(--font-size-xs)] text-[var(--text-tertiary)]">
-            Xoá lịch sử chat trên máy chủ, dọn bộ nhớ tạm cục bộ, hoặc sao lưu cài đặt.
+            {t('settings.data.description')}
           </p>
         </div>
 
@@ -114,7 +117,7 @@ export function DataSettings({ onHistoryDeleted }: DataSettingsProps) {
             }}
             data-testid="settings-delete-history"
           >
-            Xoá lịch sử chat
+            {t('settings.data.deleteHistory')}
           </Button>
 
           <Button
@@ -128,7 +131,7 @@ export function DataSettings({ onHistoryDeleted }: DataSettingsProps) {
             }}
             data-testid="settings-delete-local"
           >
-            Xoá dữ liệu cục bộ
+            {t('settings.data.deleteLocal')}
           </Button>
 
           <div className="flex gap-2">
@@ -142,7 +145,7 @@ export function DataSettings({ onHistoryDeleted }: DataSettingsProps) {
               }}
               data-testid="settings-export"
             >
-              Xuất cài đặt
+              {t('settings.data.export')}
             </Button>
             <Button
               type="button"
@@ -154,7 +157,7 @@ export function DataSettings({ onHistoryDeleted }: DataSettingsProps) {
               }}
               data-testid="settings-import"
             >
-              Nhập cài đặt
+              {t('settings.data.import')}
             </Button>
           </div>
 
@@ -174,21 +177,24 @@ export function DataSettings({ onHistoryDeleted }: DataSettingsProps) {
           />
 
           <p className="text-[length:var(--font-size-xs)] text-[var(--text-tertiary)]">
-            Xoá dữ liệu cục bộ sẽ xoá cache trang, bản nháp và lựa chọn đang chờ. Trạng thái
-            onboarding và provider đã chọn vẫn được giữ.
+            {t('settings.data.localHint')}
           </p>
         </div>
       </section>
 
       <ConfirmDialog
         open={pending !== null}
-        title={pending === 'local' ? 'Xoá dữ liệu cục bộ?' : 'Xoá toàn bộ lịch sử chat?'}
+        title={
+          pending === 'local'
+            ? t('settings.data.deleteLocalTitle')
+            : t('settings.data.deleteHistoryTitle')
+        }
         description={
           pending === 'local'
-            ? 'Mọi cache trang, bản nháp và lựa chọn đang chờ sẽ bị xoá. Không thể hoàn tác.'
-            : 'Toàn bộ cuộc trò chuyện, tin nhắn và trích dẫn trên máy chủ sẽ bị xoá. Không thể hoàn tác.'
+            ? t('settings.data.deleteLocalDescription')
+            : t('settings.data.deleteHistoryDescription')
         }
-        confirmLabel="Xoá"
+        confirmLabel={t('common.delete')}
         destructive
         onOpenChange={(open) => {
           if (!open) setPending(null)

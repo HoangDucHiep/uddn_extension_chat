@@ -1,5 +1,6 @@
 import { FileText, Globe, MousePointer, MousePointer2, Plus, X } from 'lucide-react'
 import type { ContextItem } from '@sidekick/shared'
+import { useI18n } from '@/sidepanel/hooks/useI18n'
 
 /**
  * Chip context — hien thi cac item nguoi dung da dinh kem + nut them trang.
@@ -58,6 +59,8 @@ export function ContextChips({
   onRemove,
   isAttaching = false,
 }: ContextChipsProps) {
+  const { t } = useI18n()
+
   return (
     <div
       className="flex flex-wrap items-center gap-2 border-b border-[var(--border-default)] bg-[var(--surface-panel)] px-[var(--space-3)] py-[var(--space-2)]"
@@ -67,7 +70,7 @@ export function ContextChips({
         type="button"
         role="switch"
         aria-checked={enabled}
-        aria-label={enabled ? 'Tat context' : 'Bat context'}
+        aria-label={enabled ? t('context.toggleOff') : t('context.toggleOn')}
         onClick={() => onToggle(!enabled)}
         data-testid="context-toggle"
         className={`inline-flex items-center gap-1 rounded-[var(--radius-full)] border px-2 py-[2px] text-[length:var(--font-size-xs)] transition-colors focus-visible:outline-none focus-visible:ring-[var(--focus-ring)] ${
@@ -82,7 +85,7 @@ export function ContextChips({
             enabled ? 'bg-[var(--color-accent)]' : 'bg-[var(--text-tertiary)]'
           }`}
         />
-        Context
+        {t('context.label')}
       </button>
 
       {items.map((item) => {
@@ -101,7 +104,7 @@ export function ContextChips({
             <button
               type="button"
               onClick={() => onRemove(item.id)}
-              aria-label={`Xoa context ${item.title}`}
+              aria-label={t('context.remove', { title: item.title })}
               className="shrink-0 rounded-[var(--radius-sm)] p-[2px] text-[var(--text-tertiary)] transition-colors hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-[var(--focus-ring)]"
             >
               <X className="h-3 w-3" aria-hidden="true" />
@@ -114,12 +117,12 @@ export function ContextChips({
         type="button"
         onClick={onAddCurrentTab}
         disabled={isAttaching}
-        aria-label="Them trang hien tai vao context"
+        aria-label={t('context.addCurrentTab')}
         data-testid="context-add-tab"
         className="inline-flex items-center gap-1 rounded-[var(--radius-full)] border border-dashed border-[var(--border-strong)] px-2 py-[2px] text-[length:var(--font-size-xs)] text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-sunken)] focus-visible:outline-none focus-visible:ring-[var(--focus-ring)] disabled:cursor-not-allowed disabled:opacity-50"
       >
         <Plus className="h-3 w-3" aria-hidden="true" />
-        Thêm trang này
+        {t('context.addCurrentTabLabel')}
       </button>
 
       {onAttachSelection !== undefined && (
@@ -127,12 +130,12 @@ export function ContextChips({
           type="button"
           onClick={onAttachSelection}
           disabled={isAttaching}
-          aria-label="Dinh doan van ban dang boi den vao context"
+          aria-label={t('context.attachSelection')}
           data-testid="context-add-selection"
           className="inline-flex items-center gap-1 rounded-[var(--radius-full)] border border-dashed border-[var(--border-strong)] px-2 py-[2px] text-[length:var(--font-size-xs)] text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-sunken)] focus-visible:outline-none focus-visible:ring-[var(--focus-ring)] disabled:cursor-not-allowed disabled:opacity-50"
         >
           <MousePointer2 className="h-3 w-3" aria-hidden="true" />
-          Dính đoạn đã chọn
+          {t('context.attachSelectionLabel')}
         </button>
       )}
     </div>

@@ -1,3 +1,5 @@
+import { useI18n } from '@/sidepanel/hooks/useI18n'
+
 /**
  * Skeleton khi dang tai lich su hoi thoai (T-M1-19).
  *
@@ -20,15 +22,17 @@ export interface LoadingStateProps {
  * Skeleton thread.
  */
 export function LoadingState({ rows = 3 }: LoadingStateProps) {
+  const { t } = useI18n()
+
   return (
     <div
       className="flex flex-col gap-3 p-[var(--space-3)]"
       data-testid="loading-state"
       role="status"
       aria-live="polite"
-      aria-label="Dang tai cuoc tro chuyen"
+      aria-label={t('state.loading.label')}
     >
-      <span className="sr-only">Đang tải cuộc trò chuyện...</span>
+      <span className="sr-only">{t('state.loading.text')}</span>
       {Array.from({ length: rows }, (_unused, index) => (
         <div
           key={index}

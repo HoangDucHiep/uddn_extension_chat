@@ -24,16 +24,38 @@
 | Hạng mục | Trạng thái |
 |---|---|
 | Docs | ✅ Đầy đủ 9 file (`docs/`) + `AGENTS.md` ở root |
-| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 + T-M1-05 + T-M1-02 + T-M1-24 + T-M1-25 + T-M1-06 + T-M1-07 + T-M1-08 + T-M1-09 + T-M1-10 + T-M1-11 + T-M1-03 + T-M1-12 + T-M1-19 + T-M1-14 xong** — 4 workspace, 1243 unit test + 71 E2E |
+| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 + T-M1-05 + T-M1-02 + T-M1-24 + T-M1-25 + T-M1-06 + T-M1-07 + T-M1-08 + T-M1-09 + T-M1-10 + T-M1-11 + T-M1-03 + T-M1-12 + T-M1-19 + T-M1-14 + T-M1-17 xong** — 4 workspace, 1263 unit test + 73 E2E |
 | Git | ✅ Đã init (`main`) · tag `v0.1` đánh dấu M0 |
-| Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **19/25 task**) |
-| Task tiếp theo | **T-M1-15** (K3 direct mode — BYOK không cần BFF) · T-M1-16 (K2 BYOK UI) · T-M1-17 (i18n VI/EN) · T-M1-18 (shortcuts cấu hình được) · T-M1-20 (responsive 320–640px + a11y) — T-M1-13 (export) đã được user **defer** |
+| Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **20/25 task**) |
+| Task tiếp theo | **T-M1-15** (K3 direct mode — BYOK không cần BFF) · T-M1-16 (K2 BYOK UI) · T-M1-18 (shortcuts cấu hình được) · T-M1-20 (responsive 320–640px + a11y) — T-M1-13 (export) đã được user **defer** |
 
 ### Đang làm dở
 
-_(Không có — T-M1-14 request logging đầy đủ xong)_
+_(Không có — T-M1-17 i18n VI/EN xong)_
 
-### Việc đã xong gần đây (T-M1-14 — Request logging đầy đủ vào `request_logs`)
+### Việc đã xong gần đây (T-M1-17 — i18n VI/EN)
+
+- **T-M1-17 (FR-SETTINGS-06)** — toàn bộ side panel đã dịch VI/EN. Chọn ngôn ngữ trong Settings → UI đổi **ngay**, **không reload**; persist qua `chrome.storage.local`.
+  - **Kiến trúc** — `apps/extension/src/i18n/vi.ts` (`viDictionary` là **nguồn sự thật** của danh sách key → `TranslationKey = keyof typeof viDictionary`) · `i18n/en.ts` (`enDictionary: Dictionary` → **thiếu/thừa key = lỗi `pnpm typecheck`**) · `i18n/index.ts` (`getDictionary` · `resolveLanguage` · `formatMessage` với placeholder `{name}` · `createTranslator`) · `i18n/context.ts` (**không JSX** → content script + SW không import React) · `lib/i18n.ts` (`readUiLanguage` · `translatorFor` · `getTranslator`) · `sidepanel/hooks/useI18n.ts` · `sidepanel/components/I18nProvider.tsx`.
+  - **Wiring** — `useSettings()` **nâng lên `App.tsx`** → `settings` + `onSettingsChange` xuống `ChatWorkspace` → `SettingsDrawer`; `<I18nProvider language={settings.uiLanguage}>` bọc **cả** onboarding lẫn chat. `SettingsDrawer` **fallback** về `useSettings()` khi không truyền props → test render độc lập vẫn chạy.
+  - **Ngoài panel** — 2 nhãn context menu lấy từ `getTranslator()`; `serviceWorker.ts` nghe `chrome.storage.onChanged` → gọi lại `registerContextMenus()` (idempotent) → nhãn đổi theo ngôn ngữ, **không cần reload trình duyệt**. Nút nổi content script: `localizeSelectionButton()` đọc storage → cập nhật text/aria-label trong Shadow DOM.
+  - **Không dịch (có chủ đích)** — gợi ý trang + `SUMMARY_PROMPT` trong `packages/shared/src/pageProfile.ts` (prompt đánh giá phải nhất quán cho eval) · thông điệp lỗi trả về từ server (thuộc phía BFF).
+  - **Verify** — typecheck ✅ · lint ✅ · test ✅ (**1263 unit** = shared 243 · server 377 · extension **643**) · build ✅ (**kiểm chứng `dist/content.js` không chứa React**) · E2E mới `e2e/i18n.spec.ts` (2 kịch bản).
+- Bằng chứng đầy đủ: `docs/IMPLEMENTATION_PLAN.md` §3.1r · `docs/SYSTEM_DESIGN.md` §7.17 · `docs/DESIGN_SYSTEM_BRIEF.md` §3.11.
+
+### Quyết định kỹ thuật mới (T-M1-17)
+
+| Quyết định | Lý do |
+|---|---|
+| **Không** thư viện i18n (`i18next` / `intl-messageformat`) | Giữ bundle nhỏ + không dependency mới; chỉ cần placeholder `{name}` → `formatMessage()` tự làm |
+| `vi.ts` là **nguồn sự thật** của danh sách key | `en.ts` khai kiểu `Dictionary` → thiếu/thừa key bị `pnpm typecheck` bắt ngay (nhanh hơn test runtime) |
+| `useSettings()` **nâng lên `App.tsx`** | `I18nProvider` phải bọc **cả** onboarding lẫn chat để đổi ngôn ngữ đồng bộ; drawer nằm trong chat nên không thể tự đọc settings (vòng lặp state) |
+| `i18n/context.ts` tách riêng khỏi `i18n/index.ts` | Content script + service worker phải là IIFE nhỏ → **không** kéo React vào bundle |
+| Dictionary mặc định = `vi` | Component render đúng nghĩa khi thiếu provider; test cũ assert literal tiếng Việt **không** phải sửa |
+| `SettingsDrawer` fallback về `useSettings()` | Không phá test render độc lập (`settingsDrawer.test.tsx`) |
+| Không dịch prompt trong `packages/shared` | Prompt đánh giá phải nhất quán giữa các lần chạy eval |
+
+### Quyết định kỹ thuật mới (T-M1-14)
 
 - **T-M1-14 (NFR-MAINT-04 + FR-CONTEXT-12 + NFR-REL-01)** — bảng `request_logs` **không còn là bảng chết**: **mọi** lượt chat (thành công **và** thất bại) đều ghi 1 dòng, `cost_usd` **thật**, `tool_calls` đã wire, `request_id` xuyên suốt client → BFF → provider, log HTTP dạng **JSON**, retention 90 ngày **được enforce**, và có **API đọc metadata** cho eval harness.
   - **Shared (mới)** — `packages/shared/src/pricing.ts`: `PROVIDER_PRICING` (USD / 1M token) · `resolveModelPricing()` · `calculateCostUsd()` (làm tròn 6 chữ số — khớp `numeric(12,6)`) · `packages/shared/src/schemas/logs.ts`: `requestLogSummarySchema` (**metadata only**) · `logsResponseSchema` · `usageResponseSchema` · `logsQuerySchema` · `usageQuerySchema`. `providerStreamRequestSchema` += `requestId?` · `API_ROUTES.logs` / `API_ROUTES.usage`.

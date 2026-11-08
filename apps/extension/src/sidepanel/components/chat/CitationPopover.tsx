@@ -1,5 +1,6 @@
 import { ExternalLink } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { useI18n } from '@/sidepanel/hooks/useI18n'
 import type { ChatCitation } from '../../store/chatStore'
 
 /**
@@ -38,6 +39,7 @@ export function domainOf(url: string): string {
  * @returns Element React.
  */
 export function CitationPopoverContent({ citation }: { citation: ChatCitation }) {
+  const { t } = useI18n()
   const domain = domainOf(citation.url)
 
   const openSource = (): void => {
@@ -83,10 +85,10 @@ export function CitationPopoverContent({ citation }: { citation: ChatCitation })
         disabled={citation.url.length === 0}
         className="inline-flex w-fit items-center gap-[var(--space-1)] rounded-[var(--radius-sm)] border border-[var(--border-default)] px-[var(--space-2)] py-[var(--space-1)] text-[length:var(--font-size-sm)] text-[var(--text-primary)] transition-colors duration-fast ease-standard hover:bg-[var(--surface-sunken)] disabled:pointer-events-none disabled:opacity-50"
         data-testid="citation-open-source"
-        aria-label="Mở trang gốc"
+        aria-label={t('chat.citationOpenOriginal')}
       >
         <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-        <span>Mở trang gốc</span>
+        <span>{t('chat.citationOpenOriginal')}</span>
       </button>
     </div>
   )
@@ -99,6 +101,8 @@ export function CitationPopoverContent({ citation }: { citation: ChatCitation })
  * @returns Element React.
  */
 export function CitationPopover({ index, citation }: CitationPopoverProps) {
+  const { t } = useI18n()
+
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -106,7 +110,7 @@ export function CitationPopover({ index, citation }: CitationPopoverProps) {
           type="button"
           className="citation-chip"
           data-testid={`citation-chip-${index}`}
-          aria-label={`Xem nguồn ${index}: ${citation.title}`}
+          aria-label={t('chat.citationViewSource', { index, title: citation.title })}
         >
           {`[${index}]`}
         </button>

@@ -5,6 +5,7 @@ import type { ConversationSummary } from '@sidekick/shared'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useConversationStore } from '../../store/conversationStore'
+import { useI18n } from '@/sidepanel/hooks/useI18n'
 import { ConfirmDialog } from './ConfirmDialog'
 
 /**
@@ -27,6 +28,7 @@ export interface ConversationListProps {
 }
 
 export function ConversationList({ onSelect, onCreate }: ConversationListProps) {
+  const { t } = useI18n()
   const items = useConversationStore((state) => state.items)
   const isLoading = useConversationStore((state) => state.isLoading)
   const error = useConversationStore((state) => state.error)
@@ -85,9 +87,9 @@ export function ConversationList({ onSelect, onCreate }: ConversationListProps) 
     try {
       const created = await create()
       onCreate(created.id)
-      toast.success('Đã tạo cuộc trò chuyện mới')
+      toast.success(t('toast.conversationCreated'))
     } catch {
-      toast.error('Không tạo được cuộc trò chuyện mới')
+      toast.error(t('toast.conversationCreateFailed'))
     }
   }
   const startRename = (item: ConversationSummary): void => {
@@ -102,25 +104,29 @@ export function ConversationList({ onSelect, onCreate }: ConversationListProps) 
     try {
       await rename(id, title)
     } catch {
-      toast.error('Không đổi được tên cuộc trò chuyện')
+      toast.error(t('toast.conversationRenameFailed'))
     }
   }
 
   const handleTogglePin = async (item: ConversationSummary): Promise<void> => {
     try {
       await togglePin(item.id)
-      toast.success(item.pinned ? 'Đã bỏ ghim' : 'Đã ghim cuộc trò chuyện')
+      toast.success(item.pinned ? t('toast.conversationUnpinned') : t('toast.conversationPinned'))
     } catch {
-      toast.error('Không cập nhật được trạng thái ghim')
+      toast.error(t('toast.conversationPinFailed'))
     }
   }
 
   const handleToggleArchive = async (item: ConversationSummary): Promise<void> => {
     try {
       await toggleArchive(item.id)
-      toast.success(item.archived ? 'Đã khôi phục cuộc trò chuyện' : 'Đã lưu trữ cuộc trò chuyện')
+      toast.success(
+        item.archived
+          ? t('toast.conversationRestored')
+          : t('toast.conversationArchived'),
+      )
     } catch {
-      toast.error('Không lưu trữ được cuộc trò chuyện')
+      toast.error(t('toast.conversationArchiveFailed'))
     }
   }
 
@@ -129,9 +135,9 @@ export function ConversationList({ onSelect, onCreate }: ConversationListProps) 
     if (target === undefined) return
     try {
       await remove(target.id)
-      toast.success('Đã xoá cuộc trò chuyện')
+      toast.success(t('toast.conversationDeleted'))
     } catch {
-      toast.error('Không xoá được cuộc trò chuyện')
+      toast.error(t('toast.conversationDeleteFailed'))
     }
   }
 
@@ -139,7 +145,7 @@ export function ConversationList({ onSelect, onCreate }: ConversationListProps) 
     <div className="flex h-full min-h-0 flex-col" data-testid="conversation-list">
       <div className="flex flex-col gap-[var(--space-2)] px-[var(--space-3)] pb-[var(--space-2)] pt-[var(--space-3)]">
         <h2 className="text-[length:var(--font-size-lg)] font-semibold text-[var(--text-primary)]">
-          Cuộc trò chuyện
+          {t('conversation.title')}
         </h2>
 
         <Button
@@ -152,7 +158,7 @@ export function ConversationList({ onSelect, onCreate }: ConversationListProps) 
           data-testid="conversation-new"
         >
           <MessageSquarePlus className="h-3.5 w-3.5" aria-hidden="true" />
-          Chat mới
+          {t('conversation.new')}
         </Button>
 
         <div className="relative">
@@ -163,14 +169,14 @@ export function ConversationList({ onSelect, onCreate }: ConversationListProps) 
           <Input
             value={searchValue}
             onChange={(event) => setSearchValue(event.target.value)}
-            placeholder="Tìm cuộc trò chuyện…"
-            aria-label="Tìm cuộc trò chuyện theo tên"
+            placeholder={t('conversation.searchPlaceholder')}
+            aria-label={t('conversation.searchLabel')}
             className="pl-7"
             data-testid="conversation-search"
           />
         </div>
 
-        <div className="flex gap-1" role="tablist" aria-label="Nhóm cuộc trò chuyện">
+        <div className="flex gap-1" role="tablist" aria-label={t('conversation.groupLabel')}>
           <button
             type="button"
             role="tab"
@@ -185,7 +191,7 @@ export function ConversationList({ onSelect, onCreate }: ConversationListProps) 
             ].join(' ')}
             data-testid="conversation-tab-active"
           >
-            Đang dùng
+            {t('conversation.active')}
           </button>
           <button
             type="button"
@@ -201,7 +207,7 @@ export function ConversationList({ onSelect, onCreate }: ConversationListProps) 
             ].join(' ')}
             data-testid="conversation-tab-archived"
           >
-            Đã lưu trữ
+            {t('conversation.archived')}
           </button>
         </div>
       </div>
@@ -219,7 +225,7 @@ export function ConversationList({ onSelect, onCreate }: ConversationListProps) 
       <div className="min-h-0 flex-1 overflow-y-auto px-[var(--space-2)] pb-[var(--space-3)]">
         {archivedView ? (
           <ConversationGroup
-            title="Đã lưu trữ"
+            title={t('conversation.archived')}
             items={items}
             activeConversationId={activeConversationId}
             editingId={editingId}
@@ -237,7 +243,7 @@ export function ConversationList({ onSelect, onCreate }: ConversationListProps) 
         ) : (
           <>
             <ConversationGroup
-              title="Đã ghim"
+              title={t('conversation.pinned')}
               items={pinned}
               activeConversationId={activeConversationId}
               editingId={editingId}
@@ -253,7 +259,7 @@ export function ConversationList({ onSelect, onCreate }: ConversationListProps) 
               onRequestDelete={setPendingDelete}
             />
             <ConversationGroup
-              title="Gần đây"
+              title={t('conversation.recent')}
               items={recent}
               activeConversationId={activeConversationId}
               editingId={editingId}
@@ -277,19 +283,19 @@ export function ConversationList({ onSelect, onCreate }: ConversationListProps) 
             data-testid="conversation-empty"
           >
             {query.length > 0
-              ? 'Không tìm thấy cuộc trò chuyện nào.'
-              : 'Chưa có cuộc trò chuyện nào.'}
+              ? t('conversation.emptySearch')
+              : t('conversation.empty')}
           </p>
         ) : null}
       </div>
 
       <ConfirmDialog
         open={pendingDelete !== undefined}
-        title="Xoá cuộc trò chuyện?"
+        title={t('conversation.deleteTitle')}
         {...(pendingDelete !== undefined
-          ? { description: `“${pendingDelete.title}” và toàn bộ tin nhắn trong đó sẽ bị xoá vĩnh viễn.` }
+          ? { description: t('conversation.deleteDescription', { title: pendingDelete.title }) }
           : {})}
-        confirmLabel="Xoá"
+        confirmLabel={t('common.delete')}
         destructive
         onOpenChange={(open) => {
           if (!open) setPendingDelete(undefined)
@@ -337,6 +343,8 @@ function ConversationGroup({
   onToggleArchive,
   onRequestDelete,
 }: ConversationGroupProps) {
+  const { t } = useI18n()
+
   if (items.length === 0) return null
 
   return (
@@ -363,7 +371,7 @@ function ConversationGroup({
                       onCancelRename()
                     }
                   }}
-                  aria-label="Đổi tên cuộc trò chuyện"
+                  aria-label={t('conversation.renameLabel')}
                   className="h-7 text-[length:var(--font-size-sm)]"
                   data-testid="conversation-rename-input"
                 />
@@ -373,7 +381,7 @@ function ConversationGroup({
                   onClick={() => {
                     void onCommitRename(item.id)
                   }}
-                  aria-label="Lưu tên"
+                  aria-label={t('conversation.saveName')}
                   data-testid="conversation-rename-save"
                 >
                   <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
@@ -402,7 +410,7 @@ function ConversationGroup({
                   variant="ghost"
                   size="icon-sm"
                   onClick={() => onTogglePin(item)}
-                  aria-label={item.pinned ? 'Bỏ ghim cuộc trò chuyện' : 'Ghim cuộc trò chuyện'}
+                  aria-label={item.pinned ? t('conversation.unpinAction') : t('conversation.pinAction')}
                   data-testid="conversation-pin"
                 >
                   {item.pinned ? (
@@ -418,8 +426,8 @@ function ConversationGroup({
                   onClick={() => onToggleArchive(item)}
                   aria-label={
                     item.archived
-                      ? 'Khôi phục cuộc trò chuyện'
-                      : 'Lưu trữ cuộc trò chuyện'
+                      ? t('conversation.restoreAction')
+                      : t('conversation.archiveAction')
                   }
                   data-testid="conversation-archive"
                 >
@@ -434,7 +442,7 @@ function ConversationGroup({
                   variant="ghost"
                   size="icon-sm"
                   onClick={() => onStartRename(item)}
-                  aria-label="Đổi tên cuộc trò chuyện"
+                  aria-label={t('conversation.renameLabel')}
                   data-testid="conversation-rename"
                 >
                   <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
@@ -444,7 +452,7 @@ function ConversationGroup({
                   variant="ghost"
                   size="icon-sm"
                   onClick={() => onRequestDelete(item)}
-                  aria-label="Xoá cuộc trò chuyện"
+                  aria-label={t('common.delete')}
                   data-testid="conversation-delete"
                 >
                   <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />

@@ -1,5 +1,6 @@
 import { FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useI18n } from '@/sidepanel/hooks/useI18n'
 
 /**
  * Nut "Tom tat trang nay" (FR-UX-04 — T-M1-11).
@@ -18,18 +19,20 @@ export interface SummarizeButtonProps {
  * Nut chinh tom tat trang dang xem.
  */
 export function SummarizeButton({ onSummarize, disabled = false }: SummarizeButtonProps) {
+  const { t } = useI18n()
+
   return (
     <Button
       variant="default"
       size="sm"
       onClick={onSummarize}
       disabled={disabled}
-      aria-label="Tóm tắt trang này"
+      aria-label={t('chat.summarizePage')}
       data-testid="summarize-button"
       className="w-full"
     >
       <FileText className="h-3.5 w-3.5" aria-hidden="true" />
-      Tóm tắt trang này
+      {t('chat.summarizePage')}
     </Button>
   )
 }

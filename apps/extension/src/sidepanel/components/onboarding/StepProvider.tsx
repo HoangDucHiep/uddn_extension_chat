@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ApiError } from '@/lib/apiClient'
 import { listProviders, saveProviderKey, testProviderKey } from '@/lib/providerClient'
+import { useI18n } from '@/sidepanel/hooks/useI18n'
+import type { TranslationKey } from '@/i18n'
 
 /**
  * Buoc 2 cua onboarding — chon provider + nhap API key (FR-UX-02).
@@ -17,13 +19,13 @@ import { listProviders, saveProviderKey, testProviderKey } from '@/lib/providerC
  * Docs: docs/SYSTEM_DESIGN.md §7.6, FR-PROVIDER-02
  */
 
-/** Nhan hien thi cua nguon key. */
-const KEY_SOURCE_LABELS: Record<ProviderInfo['keySource'], string> = {
-  K1: 'Key do nhom cap',
-  K2: 'Key ban da luu',
-  K3: 'Key gui thang',
-  none: 'Khong can key',
-}
+/** Key nhan hien thi cua nguon key. */
+const KEY_SOURCE_LABEL_KEY = {
+  K1: 'onboarding.provider.keySource.K1',
+  K2: 'onboarding.provider.keySource.K2',
+  K3: 'onboarding.provider.keySource.K3',
+  none: 'onboarding.provider.keySource.none',
+} as const satisfies Record<ProviderInfo['keySource'], TranslationKey>
 
 export interface StepProviderProps {
   /** Provider user chon (neu co). */
@@ -35,6 +37,7 @@ export interface StepProviderProps {
 }
 
 export function StepProvider({ selectedProvider, onSelect, onNext }: StepProviderProps) {
+  const { t } = useI18n()
   const [providers, setProviders] = useState<ProviderInfo[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | undefined>(undefined)
@@ -80,7 +83,7 @@ export function StepProvider({ selectedProvider, onSelect, onNext }: StepProvide
     if (activeProvider === undefined) return
     const trimmed = apiKey.trim()
     if (trimmed.length < 8) {
-      setKeyError('API key qua ngan (it nhat 8 ky tu).')
+      setKeyError(t('onboarding.provider.keyTooShort'))
       setKeyStatus(undefined)
       return
     }
@@ -95,17 +98,24 @@ export function StepProvider({ selectedProvider, onSelect, onNext }: StepProvide
 
       const result = await testProviderKey(record.id)
       if (result.ok) {
-        setKeyStatus(`Key da luu va hoat dong (${activeProvider.name} · ${record.masked}).`)
+        setKeyStatus(
+          t('onboarding.provider.keySaved', {
+            provider: activeProvider.name,
+            masked: record.masked,
+          }),
+        )
         setApiKey('')
         // Tai lai danh sach → keySource chuyen tu "none" sang "K2".
         await load()
       } else {
         setKeyStatus(undefined)
-        setKeyError(result.error ?? 'Key khong hop le.')
+        setKeyError(result.error ?? t('onboarding.provider.keyInvalid'))
       }
     } catch (error) {
       setKeyError(
-        error instanceof ApiError ? error.message : 'Khong luu duoc API key. Thu lai sau.',
+        error instanceof ApiError
+          ? error.message
+          : t('onboarding.provider.keySaveFailed'),
       )
       setKeyStatus(undefined)
     } finally {
@@ -124,11 +134,10 @@ export function StepProvider({ selectedProvider, onSelect, onNext }: StepProvide
     <section className="flex flex-col gap-[var(--space-4)]" data-testid="onboarding-step-provider">
       <header className="flex flex-col gap-1">
         <h2 className="text-[length:var(--font-size-lg)] font-semibold text-[var(--text-primary)]">
-          Chon mo hinh AI
+          {t('onboarding.provider.title')}
         </h2>
         <p className="text-[length:var(--font-size-sm)] text-[var(--text-secondary)]">
-          Sidekick AI ho tro ca mo hinh cloud (can API key) va Ollama chay cuc bo (khong can
-          key). Ban co the doi lai sau trong phan cai dat.
+          {t('onboarding.provider.description')}
         </p>
       </header>
 
@@ -138,7 +147,7 @@ export function StepProvider({ selectedProvider, onSelect, onNext }: StepProvide
           data-testid="onboarding-providers-loading"
         >
           <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-          Dang tai danh sach mo hinh...
+          {t('onboarding.provider.loading')}
         </p>
       )}
 
@@ -149,7 +158,7 @@ export function StepProvider({ selectedProvider, onSelect, onNext }: StepProvide
         >
           <p className="flex items-center gap-2 text-[length:var(--font-size-sm)] text-[var(--text-primary)]">
             <CircleAlert className="h-3.5 w-3.5 shrink-0 text-[var(--danger)]" aria-hidden="true" />
-            Khong tai duoc danh sach mo hinh: {loadError}
+            {t('onboarding.provider.loadError', { error: loadError })}
           </p>
           <Button
             variant="outline"
@@ -159,13 +168,17 @@ export function StepProvider({ selectedProvider, onSelect, onNext }: StepProvide
               void load()
             }}
           >
-            Thu lai
+            {t('onboarding.provider.retry')}
           </Button>
         </div>
       )}
 
       {!isLoading && loadError === undefined && (
-        <ul className="flex flex-col gap-[var(--space-2)]" role="radiogroup" aria-label="Chon mo hinh AI">
+        <ul
+          className="flex flex-col gap-[var(--space-2)]"
+          role="radiogroup"
+          aria-label={t('onboarding.provider.groupLabel')}
+        >
           {providers.map((provider) => {
             const isActive = provider.id === activeProvider?.id
             return (
@@ -195,16 +208,16 @@ export function StepProvider({ selectedProvider, onSelect, onNext }: StepProvide
                       </span>
                       {provider.available ? (
                         <span className="text-[length:var(--font-size-xs)] text-[var(--success)]">
-                          san dung
+                          {t('onboarding.provider.available')}
                         </span>
                       ) : (
                         <span className="text-[length:var(--font-size-xs)] text-[var(--text-tertiary)]">
-                          chua san dung
+                          {t('onboarding.provider.unavailable')}
                         </span>
                       )}
                     </span>
                     <span className="text-[length:var(--font-size-xs)] text-[var(--text-secondary)]">
-                      {KEY_SOURCE_LABELS[provider.keySource]}
+                      {t(KEY_SOURCE_LABEL_KEY[provider.keySource])}
                       {provider.models.length > 0 ? ` · ${provider.models.join(', ')}` : ''}
                     </span>
                     {provider.note !== undefined && (
@@ -224,27 +237,28 @@ export function StepProvider({ selectedProvider, onSelect, onNext }: StepProvide
       )}
 
       {needsKey && (
-        <div className="flex flex-col gap-[var(--space-2]">
+        <div className="flex flex-col gap-[var(--space-2)]">
           <label
             className="text-[length:var(--font-size-sm)] font-medium text-[var(--text-primary)]"
             htmlFor="onboarding-api-key"
           >
-            API key cho {activeProvider?.name ?? 'mo hinh da chon'}
+            {t('onboarding.provider.keyLabel', {
+              provider: activeProvider?.name ?? 'mo hinh da chon',
+            })}
           </label>
           <Input
             id="onboarding-api-key"
             type="password"
             value={apiKey}
             autoComplete="off"
-            placeholder="Dán API key cua ban"
+            placeholder={t('onboarding.provider.keyPlaceholder')}
             onChange={(event) => {
               setApiKey(event.target.value)
             }}
             data-testid="onboarding-api-key"
           />
           <p className="text-[length:var(--font-size-xs)] text-[var(--text-tertiary)]">
-            Key duoc ma hoa AES-256-GCM truoc khi luu vao database cuc bo. Key khong bao gio
-            gui ra ngoai.
+            {t('onboarding.provider.keyHint')}
           </p>
           {keyError !== undefined && (
             <p
@@ -273,7 +287,7 @@ export function StepProvider({ selectedProvider, onSelect, onNext }: StepProvide
             data-testid="onboarding-save-key"
           >
             {isSaving && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
-            Luu & kiem tra
+            {t('onboarding.provider.saveAndTest')}
           </Button>
           {savedKeyId !== undefined && (
             <span className="sr-only" data-testid="onboarding-saved-key-id">
@@ -284,7 +298,7 @@ export function StepProvider({ selectedProvider, onSelect, onNext }: StepProvide
       )}
 
       <Button onClick={onNext} data-testid="onboarding-next">
-        Tiep tuc
+        {t('onboarding.next')}
       </Button>
     </section>
   )

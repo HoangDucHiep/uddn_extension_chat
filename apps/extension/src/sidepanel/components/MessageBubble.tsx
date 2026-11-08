@@ -6,6 +6,7 @@ import { MessageActions } from './chat/MessageActions'
 import { MessageContent } from './chat/MessageContent'
 import { MessageEditBox } from './chat/MessageEditBox'
 import { ErrorState } from './states/ErrorState'
+import { useI18n } from '@/sidepanel/hooks/useI18n'
 import type { TurnMessage } from '@/lib/chatTurns'
 import type { ChatMessage } from '../store/chatStore'
 
@@ -52,6 +53,7 @@ export function MessageBubble({
   onSelectVariant,
   isStreaming = false,
 }: MessageBubbleProps) {
+  const { t } = useI18n()
   const [copied, setCopied] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const isUser = message.role === 'user'
@@ -94,19 +96,21 @@ export function MessageBubble({
           <ul
             className="mb-2 flex flex-wrap gap-2"
             data-testid="message-images"
-            aria-label="Ảnh đính kèm"
+            aria-label={t('chat.imageAttachment')}
           >
             {message.images.map((image) => (
               <li key={image.id}>
                 <button
                   type="button"
                   onClick={() => openImage(image.dataUrl)}
-                  aria-label={`Mở ảnh ${image.fileName ?? 'đính kèm'}`}
+                  aria-label={t('chat.openImage', {
+                    name: image.fileName ?? t('chat.imageAttachment'),
+                  })}
                   className="block overflow-hidden rounded-[var(--radius-md)] border border-[var(--border-default)] focus-visible:outline-none focus-visible:ring-[var(--focus-ring)]"
                 >
                   <img
                     src={image.dataUrl}
-                    alt={image.fileName ?? 'Ảnh đính kèm'}
+                    alt={image.fileName ?? t('chat.imageAttachment')}
                     className="max-h-[160px] w-auto max-w-full object-cover"
                     data-testid="message-image"
                   />
@@ -139,7 +143,7 @@ export function MessageBubble({
             />
           )
         ) : message.status === 'streaming' ? (
-          <span className="text-[var(--text-tertiary)]">Dang tao cau tra loi...</span>
+          <span className="text-[var(--text-tertiary)]">{t('chat.streaming')}</span>
         ) : null}
 
         {/* Card loi voi hau dong khoi phuc (FR-CHAT-14 — T-M1-19). */}
@@ -167,7 +171,7 @@ export function MessageBubble({
               variant="ghost"
               size="icon-sm"
               onClick={handleCopy}
-              aria-label="Sao chep noi dung"
+              aria-label={t('chat.copyContent')}
             >
               {copied ? (
                 <Check className="h-3.5 w-3.5" aria-hidden="true" />
@@ -189,7 +193,7 @@ export function MessageBubble({
             {message.requestId !== undefined ? (
               <span
                 className="font-mono text-[length:var(--font-size-xs)] text-[var(--text-tertiary)]"
-                title={`Request ID: ${message.requestId}`}
+                title={t('chat.requestId', { id: message.requestId })}
               >
                 · {message.requestId.slice(0, 6)}
               </span>

@@ -12,10 +12,11 @@
  */
 
 import { extractPageContent, type ExtractedPage } from './extractor.js'
-import { createSelectionButton } from './selectionButton.js'
+import { createSelectionButton, SELECTION_BUTTON_HOST_ID } from './selectionButton.js'
 import { createSelectionWatcher } from './selectionWatcher.js'
 import { normalizeSelectionText } from './selection.js'
 import { SELECTION_ACTION, selectionItemId, type PendingSelection } from '../lib/selectionProtocol.js'
+import { getTranslator } from '../lib/i18n.js'
 
 /** Metadata trang, gui ve panel khi duoc hoi. */
 export interface PageMetadata {
@@ -105,6 +106,10 @@ function startSelectionWatcher(): void {
   if (isExtensionPage) return
 
   const button = createSelectionButton({
+    // Nhan nut mac dinh (tieng Viet) — duoc cap nhat ngay sau khi doc
+    // ngon ngu tu storage (T-M1-17).
+    label: 'Hoi Sidekick',
+    ariaLabel: 'Hoi Sidekick về đoạn văn bản đã bôi đen',
     onSelect: () => {
       const snapshot = getSelectionSnapshot()
       if (snapshot === null) return
@@ -135,6 +140,36 @@ function startSelectionWatcher(): void {
   watcher.start()
 }
 
+/**
+ * Cap nhat nhan nut theo ngon ngu UI (T-M1-17).
+ *
+ * Content script doc `chrome.storage.local` (co quyen nhu extension) →
+ * doi ngon ngu trong Settings → nhan nut doi theo ngay (khong can reload
+ * trang).
+ */
+async function localizeSelectionButton(): Promise<void> {
+  try {
+    const t = await getTranslator()
+    const host = document.getElementById(SELECTION_BUTTON_HOST_ID)
+    const shadow = host?.shadowRoot
+    if (shadow === null || shadow === undefined) return
+
+    const button = shadow.querySelector('button')
+    const label = shadow.querySelector('span')
+    if (button === null || label === null) return
+
+    const buttonLabel = t('content.selectionButton')
+    label.textContent = buttonLabel
+    button.setAttribute(
+      'aria-label',
+      t('content.selectionButtonLabel', { label: buttonLabel }),
+    )
+  } catch {
+    // Storage loi → giu nhan mac dinh.
+  }
+}
+
 startSelectionWatcher()
+void localizeSelectionButton()
 
 console.warn('[sidekick] content script da san sang')

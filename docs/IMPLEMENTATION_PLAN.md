@@ -92,7 +92,7 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | T-M1-14 | Request logging đầy đủ vào `request_logs` | NFR-MAINT-04, FR-CONTEXT-12, NFR-REL-01, §7.2 | `packages/shared/src/pricing.ts`, `packages/shared/src/schemas/logs.ts`, `apps/server/src/middleware/requestId.ts`, `apps/server/src/services/requestLogService.ts`, `apps/server/src/routes/logs.ts` | Mỗi lượt chat có 1 dòng log: provider, model, token, cost, ttft, latency; snapshot context hash để tái lập | M | ✅ *(2026-11-07)* |
 | T-M1-15 | K3 direct mode (BYOK không cần BFF) | FR-PROVIDER-08/09, NFR-REL-03, NFR-SEC-01 | `lib/crypto.ts`, `lib/directProvider.ts`, `state/keyStore.ts` | Tắt Docker → vẫn chat được với key nhập tay; key mã hoá local | L | ⬜ |
 | T-M1-16 | K2 BYOK qua BFF: UI quản lý key | FR-PROVIDER-02, NFR-SEC-01 | `settings/ProviderSettings.tsx`, `POST /providers/keys` | Thêm key → test thành công; list key chỉ hiện 4 ký tự cuối | M | ⬜ |
-| T-M1-17 | i18n VI/EN | FR-SETTINGS-06 | `apps/extension/src/i18n/{vi.ts,en.ts,index.ts}` | Đổi ngôn ngữ → toàn bộ UI đổi | M | ⬜ |
+| T-M1-17 | i18n VI/EN | FR-SETTINGS-06 | `apps/extension/src/i18n/{vi.ts,en.ts,index.ts,context.ts}`, `lib/i18n.ts`, `sidepanel/hooks/useI18n.ts` | Đổi ngôn ngữ → toàn bộ UI đổi | M | ✅ *(2026-11-08)* |
 | T-M1-18 | Keyboard shortcuts cấu hình được | FR-UX-01 | `settings/ShortcutsSettings.tsx`, `background/commands.ts` | Đổi được phím tắt; tránh xung đột với Chrome mặc định | M | ⬜ |
 | T-M1-19 | Empty / loading / error states | FR-UX-03/04/08, FR-CHAT-14, NFR-REL-02/04 | `sidepanel/components/states/*` | 4 trạng thái có UI riêng, không màn hình trắng; retry 1 lần khi lỗi mạng | M | ✅ *(2026-11-07)* |
 | T-M1-20 | Responsive 320–640px + a11y pass cơ bản | FR-UX-06/07/09/10, NFR-A11Y-01..05, NFR-PERF-03 | style fixes | Không tràn ngang ở 320px; focus ring đủ; icon có aria-label; streaming OK với screen reader | M | ⬜ |
@@ -837,6 +837,44 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 
 > **Hạn chế đã biết:** (1) `cost_usd` là **ước lượng** theo bảng giá snapshot — nếu giá provider đổi thì cần cập nhật `PROVIDER_PRICING`; (2) `tool_calls` luôn `null` ở M1 (tool thật ở M2) → chưa dùng được cho đo chi phí tool; (3) `X-Request-Id` forward xuống provider là **best-effort** — không phải mọi provider đều log header này; (4) `GET /api/logs` **không** phân trang keyset (đang `limit`/`offset`) — dataset eval M2 có thể cần cursor; (5) Chưa có **UI usage/cost** → thuộc T-M2-03 (`UsageBadge`).
 
+### 3.1r Kết quả T-M1-17 — i18n VI/EN (FR-SETTINGS-06) (2026-11-08)
+
+> Chi tiết kiến trúc: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.17 · spec UI: [`DESIGN_SYSTEM_BRIEF.md`](DESIGN_SYSTEM_BRIEF.md) §3.11 · AC: [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.8.1 (FR-SETTINGS-06).
+
+**Không có migration DB mới, không dependency mới, không permission mới, không đổi manifest, không component UI mới.**
+
+| Hạng mục | Kết quả |
+|---|---|
+| `apps/extension/src/i18n/vi.ts` | ✅ **Mới** — `viDictionary` là **nguồn sự thật** của danh sách key (`const` object) → `TranslationKey = keyof typeof viDictionary` · `Dictionary = Record<TranslationKey, string>` |
+| `apps/extension/src/i18n/en.ts` | ✅ **Mới** — `enDictionary: Dictionary` → **thiếu/thừa key = lỗi `pnpm typecheck`** (không cần test runtime để bắt) |
+| `apps/extension/src/i18n/index.ts` | ✅ **Mới** — `getDictionary()` (fallback VI) · `resolveLanguage()` · `formatMessage()` (placeholder `{name}`) · `createTranslator()` |
+| `apps/extension/src/i18n/context.ts` | ✅ **Mới** — `I18nContext` **không JSX** → content script + service worker không import React |
+| `apps/extension/src/lib/i18n.ts` | ✅ **Mới** — `readUiLanguage()` (đọc storage) · `translatorFor()` · `getTranslator()` (cho nơi không phải React) |
+| `apps/extension/src/sidepanel/hooks/useI18n.ts` | ✅ **Mới** — trả `{ t, language }` |
+| `apps/extension/src/sidepanel/components/I18nProvider.tsx` | ✅ **Mới** — bọc ở `App.tsx`; `useMemo` tạo `t` mới khi đổi ngôn ngữ |
+| `apps/extension/src/sidepanel/App.tsx` | ✅ **Sửa** — **nâng `useSettings()`** lên đây → `settings` + `onSettingsChange` truyền xuống `ChatWorkspace` → `SettingsDrawer`; bọc `<Onboarding>` + `<ChatWorkspace>` trong `<I18nProvider language={settings.uiLanguage}>` |
+| `apps/extension/src/sidepanel/ChatWorkspace.tsx` | ✅ **Sửa** — nhận `settings` + `onSettingsChange` · truyền xuống `SettingsDrawer` · dịch toast + banner offline + tiêu đề drawer |
+| `apps/extension/src/sidepanel/components/settings/SettingsDrawer.tsx` | ✅ **Sửa** — dùng props; **fallback** về `useSettings()` khi không truyền props (test render độc lập vẫn chạy) |
+| `apps/extension/src/sidepanel/components/settings/LanguageSettings.tsx` | ✅ **Sửa** — **xoá** dòng cảnh báo "Giao diện hiện vẫn dùng tiếng Việt…" (không còn đúng) · options dịch động |
+| `apps/extension/src/sidepanel/components/settings/{Theme,Appearance,Privacy,Data,Endpoint}Settings.tsx` | ✅ **Sửa** — options động qua `t()` · nhãn + toast + confirm dịch |
+| Component khác của side panel | ✅ **Sửa** — `PanelHeader` · `Composer` · `MessageBubble` · `MessageActions` · `MessageEditBox` · `CodeBlock` · `Citation{Chip,Popover,List}` · `PromptGallery` · `SummarizeButton` · `ConversationList` · `ConfirmDialog` · `states/{ConnectionBadge,LoadingState,ErrorState}` · `context/{ContextChips,ContextBudget,ContextNotice,MentionPopover}` · `composer/AttachmentTray` · `chat/ScrollToBottomButton` · `onboarding/{Onboarding,StepPermissions,StepProvider,StepTry}` — mọi literal → `t('key')` |
+| `apps/extension/src/sidepanel/hooks/useChat.ts` | ✅ **Sửa** — thông điệp "chưa bôi đen" dịch qua `t()` |
+| `apps/extension/src/sidepanel/hooks/useImageAttachments.ts` | ✅ **Sửa** — 3 thông điệp lỗi vision dịch qua `t()` |
+| `apps/extension/src/content/selectionButton.ts` | ✅ **Sửa** — nhận `label` + `ariaLabel` từ caller (bỏ hằng tiếng Việt) |
+| `apps/extension/src/content/contentScript.ts` | ✅ **Sửa** — `localizeSelectionButton()` đọc storage → cập nhật text/aria-label nút nổi trong Shadow DOM |
+| `apps/extension/src/background/contextMenus.ts` | ✅ **Sửa** — 2 nhãn menu lấy từ `await getTranslator()` |
+| `apps/extension/src/background/serviceWorker.ts` | ✅ **Sửa** — `chrome.storage.onChanged` → đổi `sidekick.settings` → gọi lại `registerContextMenus()` (idempotent) → nhãn menu đổi theo ngôn ngữ, **không cần reload trình duyệt** |
+| Unit test | ✅ **Mới** — `apps/extension/tests/i18n.test.tsx` (**20**) |
+| E2E | ✅ **Mới** — `apps/extension/e2e/i18n.spec.ts` (**2** kịch bản) |
+| `pnpm typecheck` | ✅ pass (shared · server · extension · eval) |
+| `pnpm lint` | ✅ pass (0 error, 0 warning) |
+| `pnpm test` | ✅ pass — extension **643** (từng 623 → **+20**); shared + server không đổi |
+| `pnpm build` | ✅ pass — kiểm chứng `dist/content.js` **không** chứa React |
+
+> **Quyết định kỹ thuật:** (1) **Không thư viện i18n** (`i18next` / `intl-messageformat`) → bundle nhỏ + không dependency mới; chỉ placeholder `{name}`; (2) **`vi.ts` là nguồn sự thật** → `en.ts` khai báo kiểu `Dictionary` → thiếu/thừa key bị `pnpm typecheck` bắt ngay (nhanh hơn test runtime); (3) **`useSettings()` nâng lên `App.tsx`** — `I18nProvider` phải bọc **cả** onboarding lẫn chat để đổi ngôn ngữ đồng bộ; drawer nằm trong chat nên không thể tự đọc settings (vòng lặp state); (4) **`i18n/context.ts` tách riêng** khỏi `i18n/index.ts` → content script + service worker không kéo React vào bundle IIFE; (5) **Fallback dictionary = `vi`** → component render đúng nghĩa khi thiếu provider, và test cũ assert literal tiếng Việt **không** phải sửa; (6) **`SettingsDrawer` fallback về `useSettings()`** → không phá test render độc lập; (7) **Không dịch gợi ý trang + `SUMMARY_PROMPT`** (trong `packages/shared`) → prompt đánh giá phải nhất quán giữa các lần chạy eval; (8) **Lỗi từ server không dịch** → thuộc phía BFF.
+
+> **Hạn chế đã biết:** (1) Chỉ hỗ trợ **VI / EN** — không có cơ chế nạp thêm locale file; (2) Nút nổi content script chỉ cập nhật nhãn **khi trang được nạp lại** (đọc storage 1 lần lúc inject) — đổi ngôn ngữ từ panel không cập nhật nút nổi của các tab đang mở; (3) Thông điệp lỗi trả về từ **server** vẫn hiển thị nguyên tiếng Việt/Anh của BFF — không thuộc phạm vi extension; (4) Chưa có **định dạng ngày/giờ theo locale** (`Intl.DateTimeFormat`) → mốc thời gian hiện ở dạng ISO.
+
 ### 3.2 Traceability FR → Task
 
 > Bảng đầy đủ FR → Task (kèm milestone) nằm ở [`REQUIREMENTS.md`](REQUIREMENTS.md) §11.1 — nơi duy nhất cần cập nhật khi thêm/bớt task.
@@ -851,7 +889,7 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | FR-SKILL-01..07 | 7 FR | T-M2-04/05/06 · **T-M2-21** | FR-SKILL-04 (skill mẫu) + FR-SKILL-06 (điều kiện) tách task |
 | FR-PROVIDER-01..09 | 9 FR | T-M0-07/08 · T-M1-15/16 · T-M2-01/02/03 | FR-PROVIDER-04 (fallback) nằm trong T-M2-02 |
 | FR-WORKFLOW-01..13 | 13 FR | T-M4-01..08 · `FR-WORKFLOW-04` → **M5** | FR-WORKFLOW-04 deferred (rủi ro MV3 `tabs.onUpdated`) |
-| FR-SETTINGS-01..07 | 7 FR | T-M0-14 · **T-M1-12 ✅**/17 · **T-M2-19** (FR-SETTINGS-04) | **FR-SETTINGS-01/02/03/05/06/07 do T-M1-12 ✅ (2026-11-07)** (theme · cỡ chữ/mật độ/bề rộng · xoá lịch sử + xoá local + import/export · endpoint BFF có validate · lưu lựa chọn VI/EN) · FR-SETTINGS-04 (cờ telemetry/history, OFF mặc định) cũng do T-M1-12 ✅ — hành vi telemetry thật → T-M2-19 · dịch UI VI/EN → T-M1-17 |
+| FR-SETTINGS-01..07 | 7 FR | T-M0-14 · **T-M1-12 ✅**/17 ✅ · **T-M2-19** (FR-SETTINGS-04) | **FR-SETTINGS-01/02/03/05/06/07 do T-M1-12 ✅ (2026-11-07)** (theme · cỡ chữ/mật độ/bề rộng · xoá lịch sử + xoá local + import/export · endpoint BFF có validate · lưu lựa chọn VI/EN) · FR-SETTINGS-04 (cờ telemetry/history, OFF mặc định) cũng do T-M1-12 ✅ — hành vi telemetry thật → T-M2-19 · **dịch UI VI/EN do T-M1-17 ✅ (2026-11-08)** (dictionary có kiểu → thiếu key = lỗi typecheck; đổi ngôn ngữ áp dụng ngay, không reload) |
 | FR-UX-01..10 | 10 FR | **T-M1-03 ✅**/10/**11 ✅**/**12 ✅**/**19 ✅**/18/20 · **T-M1-25 ✅** | FR-UX-02 (onboarding) tách task riêng T-M1-25 — **xong 2026-11-05** (3 bước, BYOK K2, Ollama, skippable) · **FR-UX-03/04 (gợi ý theo trang + tóm tắt 1-click) do T-M1-11 ✅ (2026-11-07)** · **FR-UX-01 (toggle panel · context menu · `Ctrl+Shift+K`) do T-M1-03 ✅ (2026-11-07)** · **FR-UX-06 (drawer Settings + bề rộng panel) do T-M1-12 ✅ (2026-11-07)** · **FR-UX-08 (banner trạng thái kết nối + lỗi, dismiss được) do T-M1-19 ✅ (2026-11-07)** · đổi phím tắt cấu hình được → T-M1-18 |
 | NFR-PERF-01..06 | 6 NFR | T-M0-11 · T-M1-01/07/14/20 · T-M2-13 · T-M3-02/04/09 | NFR là yêu cầu xuyên suốt |
 | NFR-SEC-01..08 | 8 NFR | T-M0-02/06/09/12 · T-M1-04/07/15/16 · **T-M2-19** | NFR-SEC-06 (domain nhạy cảm) → T-M2-19 |

@@ -1,5 +1,7 @@
 import { AlertTriangle, FileWarning, X } from 'lucide-react'
 import { useState } from 'react'
+import { useI18n } from '@/sidepanel/hooks/useI18n'
+import type { TranslationKey } from '@/i18n'
 
 /**
  * Thong bao loi trich xuat context — hien thi tren Composer.
@@ -21,34 +23,31 @@ export interface ContextNoticeProps {
   message?: string | undefined
 }
 
-/** Doi error code thanh thong diep tieng Viet + icon phu hop. */
-function describeError(errorCode: string): { message: string; icon: 'pdf' | 'warning' } {
+/** Key dich cho tung error code. */
+const ERROR_MESSAGE_KEY: Record<string, TranslationKey> = {
+  CONTEXT_PDF_NOT_READABLE: 'context.notice.pdfNotReadable',
+  CONTEXT_PDF_UNREACHABLE: 'context.notice.pdfUnreachable',
+  CONTEXT_TRANSCRIPT_UNAVAILABLE: 'context.notice.transcriptUnavailable',
+  CONTEXT_SELECTION_EMPTY: 'context.notice.selectionEmpty',
+}
+
+/**
+ * Doi error code thanh key dich + icon phu hop.
+ *
+ * @param errorCode - Error code tu BFF.
+ */
+function describeError(errorCode: string): { key: TranslationKey; icon: 'pdf' | 'warning' } {
   switch (errorCode) {
     case 'CONTEXT_PDF_NOT_READABLE':
-      return {
-        message: 'PDF nay la ban scan (khong co text layer) — hay tai len anh de Sidekick AI doc.',
-        icon: 'pdf',
-      }
+      return { key: 'context.notice.pdfNotReadable', icon: 'pdf' }
     case 'CONTEXT_PDF_UNREACHABLE':
-      return {
-        message: 'Khong tai duoc file PDF (link noi bo, may chu chan hoac het quyen).',
-        icon: 'pdf',
-      }
+      return { key: 'context.notice.pdfUnreachable', icon: 'pdf' }
     case 'CONTEXT_TRANSCRIPT_UNAVAILABLE':
-      return {
-        message: 'Video nay khong co phu de (caption) — Sidekick AI chua co transcript.',
-        icon: 'warning',
-      }
+      return { key: 'context.notice.transcriptUnavailable', icon: 'warning' }
     case 'CONTEXT_SELECTION_EMPTY':
-      return {
-        message: 'Chua co doan van ban nao duoc boi den — hay boi den mot doan tren trang truoc.',
-        icon: 'warning',
-      }
+      return { key: 'context.notice.selectionEmpty', icon: 'warning' }
     default:
-      return {
-        message: 'Khong trich duoc noi dung trang nay — ban van chat binh thuong.',
-        icon: 'warning',
-      }
+      return { key: ERROR_MESSAGE_KEY[errorCode] ?? 'context.notice.generic', icon: 'warning' }
   }
 }
 
@@ -58,6 +57,7 @@ function describeError(errorCode: string): { message: string; icon: 'pdf' | 'war
  * Co nut dismiss de nguoi dung tat thu cong (khong tu dong mat).
  */
 export function ContextNotice({ errorCode, message }: ContextNoticeProps) {
+  const { t } = useI18n()
   const [dismissed, setDismissed] = useState(false)
 
   if (dismissed) return null
@@ -78,13 +78,13 @@ export function ContextNotice({ errorCode, message }: ContextNoticeProps) {
         aria-hidden="true"
       />
       <p className="flex-1 text-[length:var(--font-size-sm)] text-[var(--text-secondary)]">
-        {described.message}
+        {t(described.key)}
         {message !== undefined && message.length > 0 ? ` (${message})` : ''}
       </p>
       <button
         type="button"
         onClick={() => setDismissed(true)}
-        aria-label="Dong thong bao"
+        aria-label={t('context.notice.dismiss')}
         className="shrink-0 rounded-[var(--radius-sm)] p-[2px] text-[var(--text-tertiary)] transition-colors hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-[var(--focus-ring)]"
       >
         <X className="h-3.5 w-3.5" aria-hidden="true" />

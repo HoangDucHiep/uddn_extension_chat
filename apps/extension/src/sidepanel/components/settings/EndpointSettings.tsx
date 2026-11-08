@@ -2,10 +2,11 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { getBffUrl, setBffUrl } from '@/lib/apiClient'
+import { useI18n } from '@/sidepanel/hooks/useI18n'
 import { SettingsSection } from './SettingsControls'
 
 /**
- * Section endpoint BFF (FR-SETTINGS-05 — T-M1-12).
+ * Section endpoint BFF (FR-SETTINGS-05 — T-M1-12, dich UI T-M1-17).
  *
  * AC: "validate endpoint khi luu" → goi `GET <url>/api/health` truoc khi
  * ghi. Khong dung `fetchJson` cua `apiClient` vi no luon doc URL tu storage
@@ -40,6 +41,7 @@ function isHttpUrl(value: string): boolean {
  * @param props - Props cua section.
  */
 export function EndpointSettings({ bffUrl, onSave, onSuccess, onError }: EndpointSettingsProps) {
+  const { t } = useI18n()
   const [draft, setDraft] = useState(bffUrl)
   const [isChecking, setIsChecking] = useState(false)
 
@@ -47,7 +49,7 @@ export function EndpointSettings({ bffUrl, onSave, onSuccess, onError }: Endpoin
     const candidate = draft.trim().replace(/\/$/, '')
 
     if (!isHttpUrl(candidate)) {
-      onError('Endpoint phải là URL http:// hoặc https://')
+      onError(t('toast.serverUrlInvalid'))
       return
     }
 
@@ -57,7 +59,7 @@ export function EndpointSettings({ bffUrl, onSave, onSuccess, onError }: Endpoin
         headers: { Accept: 'application/json' },
       })
       if (!response.ok) {
-        onError(`Không kết nối được (HTTP ${response.status})`)
+        onError(t('toast.serverUnreachable', { status: response.status }))
         return
       }
 
@@ -65,9 +67,9 @@ export function EndpointSettings({ bffUrl, onSave, onSuccess, onError }: Endpoin
       await setBffUrl(candidate)
       await onSave(candidate)
       setDraft(candidate)
-      onSuccess('Đã lưu endpoint BFF')
+      onSuccess(t('toast.serverSaved'))
     } catch {
-      onError('Không kết nối được tới BFF')
+      onError(t('toast.serverUnreachableGeneric'))
     } finally {
       setIsChecking(false)
     }
@@ -79,16 +81,13 @@ export function EndpointSettings({ bffUrl, onSave, onSuccess, onError }: Endpoin
   }
 
   return (
-    <SettingsSection
-      title="Máy chủ (BFF)"
-      description="Địa chỉ máy chủ xử lý mà side panel gửi câu hỏi đến."
-    >
+    <SettingsSection title={t('settings.server.title')} description={t('settings.server.description')}>
       <div className="space-y-2 px-2">
         <label
           htmlFor="settings-bff-url"
           className="block text-[length:var(--font-size-xs)] font-medium uppercase tracking-wide text-[var(--text-secondary)]"
         >
-          Endpoint
+          {t('settings.server.endpointLabel')}
         </label>
         <Input
           id="settings-bff-url"
@@ -111,7 +110,7 @@ export function EndpointSettings({ bffUrl, onSave, onSuccess, onError }: Endpoin
             disabled={isChecking}
             data-testid="settings-bff-check"
           >
-            {isChecking ? 'Đang kiểm tra…' : 'Kiểm tra & lưu'}
+            {isChecking ? t('settings.server.checking') : t('settings.server.checkSave')}
           </Button>
           <Button
             type="button"
@@ -122,7 +121,7 @@ export function EndpointSettings({ bffUrl, onSave, onSuccess, onError }: Endpoin
             }}
             data-testid="settings-bff-reset"
           >
-            Mặc định
+            {t('settings.server.reset')}
           </Button>
         </div>
       </div>

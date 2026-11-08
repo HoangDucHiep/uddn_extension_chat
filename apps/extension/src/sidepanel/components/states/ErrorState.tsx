@@ -6,6 +6,7 @@ import {
   type ChatErrorKind,
 } from '@sidekick/shared'
 import { Button } from '@/components/ui/button'
+import { useI18n } from '@/sidepanel/hooks/useI18n'
 
 /**
  * Card loi trong thread (FR-CHAT-14 — T-M1-19).
@@ -68,6 +69,7 @@ export function ErrorState({
   onDismiss,
   isBusy = false,
 }: ErrorStateProps) {
+  const { t } = useI18n()
   const kind: ChatErrorKind = classifyChatError(code ?? '')
   const countdown = resolveCountdownSeconds(code, retryAfterSeconds)
   const isRateLimit = kind === 'rate-limit'
@@ -113,7 +115,7 @@ export function ErrorState({
             variant="ghost"
             size="icon-sm"
             onClick={onDismiss}
-            aria-label="Dong thong bao loi"
+            aria-label={t('state.error.dismiss')}
             data-testid="error-state-dismiss"
           >
             <X className="h-3.5 w-3.5" aria-hidden="true" />
@@ -131,7 +133,7 @@ export function ErrorState({
             data-testid="error-state-check-key"
           >
             <KeyRound className="h-3.5 w-3.5" aria-hidden="true" />
-            Kiem tra API key
+            {t('state.error.checkKey')}
           </Button>
         ) : null}
 
@@ -145,8 +147,8 @@ export function ErrorState({
           >
             <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
             {isRateLimit && remaining > 0
-              ? `Thu lai sau ${remaining}s`
-              : 'Thu lai'}
+              ? t('state.error.retryIn', { seconds: remaining })
+              : t('common.retry')}
           </Button>
         ) : null}
 
@@ -155,7 +157,7 @@ export function ErrorState({
             className="text-[length:var(--font-size-xs)] text-[var(--text-tertiary)]"
             data-testid="error-state-hint"
           >
-            Kiem tra API key trong Settings → may chu.
+            {t('state.error.hint')}
           </span>
         ) : null}
       </div>

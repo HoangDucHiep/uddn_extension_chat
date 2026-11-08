@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { ONBOARDING_STEPS, type OnboardingStep, type ProviderId } from '@sidekick/shared'
+import { useI18n } from '@/sidepanel/hooks/useI18n'
+import type { TranslationKey } from '@/i18n'
 import { StepPermissions } from './StepPermissions'
 import { StepProvider } from './StepProvider'
 import { StepTry } from './StepTry'
@@ -13,12 +15,12 @@ import { StepTry } from './StepTry'
  * Docs: docs/SYSTEM_DESIGN.md §7.6
  */
 
-/** Nhan tieu de cho tung buoc. */
-const STEP_TITLES: Record<OnboardingStep, string> = {
-  permissions: 'Quyen',
-  provider: 'Mo hinh AI',
-  try: 'Thu cau hoi',
-}
+/** Key nhan tieu de cho tung buoc. */
+const STEP_TITLE_KEY = {
+  permissions: 'onboarding.step.permissions',
+  provider: 'onboarding.step.provider',
+  try: 'onboarding.step.try',
+} as const satisfies Record<OnboardingStep, TranslationKey>
 
 export interface OnboardingProps {
   /** Provider user chon (neu co). */
@@ -34,6 +36,7 @@ export function Onboarding({
   onSelectProvider,
   onComplete,
 }: OnboardingProps) {
+  const { t } = useI18n()
   const [stepIndex, setStepIndex] = useState(0)
   const [selectedProvider, setSelectedProvider] = useState<ProviderId | undefined>(
     preferredProvider,
@@ -72,13 +75,17 @@ export function Onboarding({
       <header className="border-b border-[var(--border-default)] px-[var(--space-3)] py-[var(--space-2)]">
         <div className="flex items-center justify-between gap-[var(--space-2)]">
           <h1 className="text-[length:var(--font-size-md)] font-semibold text-[var(--text-primary)]">
-            Chao ban! Setup nhanh
+            {t('onboarding.title')}
           </h1>
           <span
             className="text-[length:var(--font-size-xs)] text-[var(--text-secondary)]"
             data-testid="onboarding-step-counter"
           >
-            Buoc {stepIndex + 1}/{ONBOARDING_STEPS.length} · {STEP_TITLES[step]}
+            {t('onboarding.stepCounter', {
+              current: stepIndex + 1,
+              total: ONBOARDING_STEPS.length,
+            })}{' '}
+            · {t(STEP_TITLE_KEY[step])}
           </span>
         </div>
 
@@ -124,7 +131,7 @@ export function Onboarding({
           className="text-[length:var(--font-size-sm)] text-[var(--text-secondary)] underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]"
           data-testid="onboarding-skip"
         >
-          Bo qua
+          {t('onboarding.skip')}
         </button>
         {stepIndex > 0 && (
           <button
@@ -133,7 +140,7 @@ export function Onboarding({
             className="text-[length:var(--font-size-sm)] text-[var(--text-secondary)] underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]"
             data-testid="onboarding-back"
           >
-            Quay lai
+            {t('onboarding.back')}
           </button>
         )}
       </footer>

@@ -1,5 +1,7 @@
 import { RefreshCw } from 'lucide-react'
 import type { PageProfile, PromptSuggestion } from '@sidekick/shared'
+import { useI18n } from '@/sidepanel/hooks/useI18n'
+import type { TranslationKey } from '@/i18n'
 import { SummarizeButton } from './SummarizeButton'
 
 /**
@@ -38,16 +40,16 @@ export interface PromptGalleryProps {
   canAttachPage: boolean
 }
 
-/** Nhan ngan theo loai trang — hien thi tren tieu de gallery. */
-const PROFILE_LABELS: Record<PageProfile, string> = {
-  docs: 'Gợi ý cho tài liệu',
-  article: 'Gợi ý cho bài viết',
-  forum: 'Gợi ý cho thảo luận',
-  video: 'Gợi ý cho video',
-  pdf: 'Gợi ý cho tài liệu PDF',
-  shopping: 'Gợi ý cho trang mua sắm',
-  general: 'Gợi ý câu hỏi',
-}
+/** Key cua nhan ngan theo loai trang — hien thi tren tieu de gallery. */
+const PROFILE_LABEL_KEY = {
+  docs: 'prompt.gallery.docs',
+  article: 'prompt.gallery.article',
+  forum: 'prompt.gallery.forum',
+  video: 'prompt.gallery.video',
+  pdf: 'prompt.gallery.pdf',
+  shopping: 'prompt.gallery.shopping',
+  general: 'prompt.gallery.general',
+} as const satisfies Record<PageProfile, TranslationKey>
 
 /**
  * Gallery goi y.
@@ -62,6 +64,8 @@ export function PromptGallery({
   isSending = false,
   canAttachPage,
 }: PromptGalleryProps) {
+  const { t } = useI18n()
+
   return (
     <div
       className="flex h-full flex-col items-center gap-4 px-[var(--space-2)] text-center"
@@ -70,21 +74,21 @@ export function PromptGallery({
     >
       <div className="flex w-full flex-col items-center gap-1">
         <p className="text-[length:var(--font-size-lg)] font-medium text-[var(--text-primary)]">
-          Chào bạn!
+          {t('prompt.gallery.greeting')}
         </p>
         <div className="flex items-center gap-1.5">
           <p
             className="text-[length:var(--font-size-sm)] text-[var(--text-secondary)]"
             data-testid="prompt-gallery-title"
           >
-            {PROFILE_LABELS[profile]}
+            {t(PROFILE_LABEL_KEY[profile])}
             {pageTitle.length > 0 ? `: ${pageTitle}` : ''}
           </p>
           <button
             type="button"
             onClick={onRefresh}
             disabled={isSending}
-            aria-label="Làm mới gợi ý"
+            aria-label={t('prompt.gallery.refresh')}
             data-testid="prompt-gallery-refresh"
             className="rounded-[var(--radius-sm)] p-[2px] text-[var(--text-tertiary)] transition-colors hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-[var(--focus-ring)] disabled:cursor-not-allowed disabled:opacity-50"
           >
@@ -126,7 +130,7 @@ export function PromptGallery({
             className="text-[length:var(--font-size-xs)] text-[var(--text-tertiary)]"
             data-testid="prompt-gallery-notice"
           >
-            Sẽ tự đính kèm trang này khi bạn chọn gợi ý
+            {t('prompt.gallery.autoAttachNotice')}
           </p>
         </div>
       ) : null}

@@ -1,4 +1,5 @@
 import type { ContextBudgetResult } from '@sidekick/shared'
+import { useI18n } from '@/sidepanel/hooks/useI18n'
 
 /**
  * Meter ngan sach context — "Da dung X / Y token".
@@ -44,6 +45,8 @@ function toneFor(ratio: number): { fg: string; bg: string } {
  * Khong render khi khong co context (khong co item dinh kem).
  */
 export function ContextBudget({ budget }: ContextBudgetProps) {
+  const { t } = useI18n()
+
   if (budget === undefined) return null
 
   const ratio = budget.maxTokens === 0 ? 0 : budget.usedTokens / budget.maxTokens
@@ -63,7 +66,10 @@ export function ContextBudget({ budget }: ContextBudgetProps) {
         style={{ color: tone.fg, backgroundColor: tone.bg }}
       >
         <span aria-hidden="true">●</span>
-        Đã dùng {formatTokens(budget.usedTokens)} / {formatTokens(budget.maxTokens)} token
+        {t('context.budgetUsed', {
+          used: formatTokens(budget.usedTokens),
+          total: formatTokens(budget.maxTokens),
+        })}
       </span>
 
       {budget.droppedItems > 0 && (
@@ -71,7 +77,7 @@ export function ContextBudget({ budget }: ContextBudgetProps) {
           className="text-[var(--text-tertiary)]"
           data-testid="context-budget-dropped"
         >
-          {budget.droppedItems} nguồn bị cắt khỏi context
+          {t('context.budgetDropped', { count: budget.droppedItems })}
         </span>
       )}
 
@@ -80,7 +86,7 @@ export function ContextBudget({ budget }: ContextBudgetProps) {
           className="text-[var(--text-tertiary)]"
           data-testid="context-budget-truncated"
         >
-          Một số nguồn bị rút gọn
+          {t('context.budgetTruncated')}
         </span>
       )}
     </div>

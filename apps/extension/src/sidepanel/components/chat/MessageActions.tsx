@@ -2,6 +2,7 @@ import { Pencil, RefreshCw, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { variantLabel, type TurnMessage } from '@/lib/chatTurns'
+import { useI18n } from '@/sidepanel/hooks/useI18n'
 
 export interface MessageActionsProps {
   /** Message dang hien thi. */
@@ -41,6 +42,7 @@ export function MessageActions({
   onSelectVariant,
   isStreaming = false,
 }: MessageActionsProps) {
+  const { t } = useI18n()
   const isUser = message.role === 'user'
   const label = variantLabel(variants, activeVariant)
   const canSwitch = variants.length > 1 && message.turnId !== undefined
@@ -56,7 +58,7 @@ export function MessageActions({
           onClick={() => {
             onEdit(message.id)
           }}
-          aria-label="Sua tin nhan"
+          aria-label={t('chat.editMessage')}
           data-testid="message-edit-button"
         >
           <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
@@ -83,7 +85,7 @@ export function MessageActions({
             onRegenerate(message.id)
           }}
           disabled={isStreaming}
-          aria-label="Tao lai cau tra loi"
+          aria-label={t('chat.regenerate')}
           data-testid="message-regenerate-button"
         >
           <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
@@ -98,7 +100,7 @@ export function MessageActions({
             onContinue(message.id)
           }}
           disabled={isStreaming}
-          aria-label="Tiep tuc cau tra loi"
+          aria-label={t('chat.continue')}
           data-testid="message-continue-button"
         >
           <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
@@ -112,7 +114,7 @@ export function MessageActions({
               variant="ghost"
               size="sm"
               className="h-7 px-2 text-[length:var(--font-size-xs)]"
-              aria-label={`Chon bien the cau tra loi, hien tai ${label}`}
+              aria-label={t('chat.selectVariant', { label })}
               data-testid="message-variant-trigger"
             >
               {label}
@@ -133,7 +135,7 @@ export function MessageActions({
                       onClick={() => {
                         onSelectVariant(variant.turnId ?? message.turnId ?? '', variant.variantIndex ?? index)
                       }}
-                      aria-label={`Bien the ${index + 1}`}
+                      aria-label={t('chat.variant', { index: index + 1 })}
                       aria-current={isActive ? 'true' : undefined}
                       data-testid={`message-variant-${index}`}
                       className={
@@ -143,9 +145,13 @@ export function MessageActions({
                         'focus-visible:ring-[var(--focus-ring)]'
                       }
                     >
-                      <span className="font-medium">Bien the {index + 1}</span>
+                      <span className="font-medium">
+                        {t('chat.variant', { index: index + 1 })}
+                      </span>
                       {isActive ? (
-                        <span className="ml-1 text-[var(--text-tertiary)]">(dang dung)</span>
+                        <span className="ml-1 text-[var(--text-tertiary)]">
+                          {t('chat.variantActive')}
+                        </span>
                       ) : null}
                     </button>
                   </li>

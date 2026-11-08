@@ -1,6 +1,7 @@
 import { Check, Copy } from 'lucide-react'
 import { createContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
+import { useI18n } from '@/sidepanel/hooks/useI18n'
 
 /**
  * Code block cua Markdown (FR-CHAT-03 — T-M1-07).
@@ -36,6 +37,7 @@ export interface CodeBlockProps {
 const COPIED_FEEDBACK_MS = 1_500
 
 export function CodeBlock({ code, language, children }: CodeBlockProps) {
+  const { t } = useI18n()
   const [copied, setCopied] = useState(false)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
@@ -55,7 +57,7 @@ export function CodeBlock({ code, language, children }: CodeBlockProps) {
       }
       await navigator.clipboard.writeText(code)
       setCopied(true)
-      toast.success('Đã sao chép')
+      toast.success(t('toast.copied'))
       if (timeoutRef.current !== undefined) {
         clearTimeout(timeoutRef.current)
       }
@@ -63,7 +65,7 @@ export function CodeBlock({ code, language, children }: CodeBlockProps) {
         setCopied(false)
       }, COPIED_FEEDBACK_MS)
     } catch {
-      toast.error('Không sao chép được')
+      toast.error(t('toast.copyFailed'))
     }
   }
 
@@ -85,7 +87,7 @@ export function CodeBlock({ code, language, children }: CodeBlockProps) {
           onClick={() => {
             void handleCopy()
           }}
-          aria-label="Sao chep code"
+          aria-label={t('chat.copyCode')}
           className="flex h-6 w-6 items-center justify-center rounded-[var(--radius-sm)] text-[var(--text-tertiary)] transition-colors duration-[var(--duration-fast)] hover:bg-[var(--surface-sunken)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-[var(--focus-ring)]"
           data-testid="code-block-copy"
         >

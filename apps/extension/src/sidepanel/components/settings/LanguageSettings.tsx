@@ -1,11 +1,12 @@
 import type { UiLanguage } from '@sidekick/shared'
+import { useI18n } from '@/sidepanel/hooks/useI18n'
 import { RadioGroup, SettingsSection, type RadioOption } from './SettingsControls'
 
 /**
- * Section ngon ngu (FR-SETTINGS-06 — T-M1-12).
+ * Section ngon ngu (FR-SETTINGS-06 — T-M1-12, dich UI T-M1-17).
  *
- * Task nay chi **luu lua chon**; viec dich toan bo UI la T-M1-17 (i18n)
- * → ghi ro trong UI de khong nham la da hoan tat.
+ * T-M1-17 xong: chon ngon ngu → **toan bo UI doi ngay**, khong can reload
+ * (`I18nProvider` boc ca panel, doc `settings.uiLanguage`).
  *
  * Docs: docs/DESIGN_SYSTEM_BRIEF.md §3.7
  */
@@ -16,24 +17,25 @@ export interface LanguageSettingsProps {
   onChange: (language: UiLanguage) => void
 }
 
-const OPTIONS: readonly RadioOption<UiLanguage>[] = [
-  { value: 'vi', label: 'Tiếng Việt' },
-  { value: 'en', label: 'English' },
-]
-
 export function LanguageSettings({ uiLanguage, onChange }: LanguageSettingsProps) {
+  const { t } = useI18n()
+
+  // Ten ngon ngu giu nguyen tieng goc ("Tiếng Việt" / "English") — quy uoc
+  // chung cua moi UI da nua, dung khi ca 2 deu la bang chu Latin.
+  const options: readonly RadioOption<UiLanguage>[] = [
+    { value: 'vi', label: t('settings.language.vi') },
+    { value: 'en', label: t('settings.language.en') },
+  ]
+
   return (
-    <SettingsSection title="Ngôn ngữ" description="Ngôn ngữ hiển thị của giao diện.">
+    <SettingsSection title={t('settings.language.title')} description={t('settings.language.description')}>
       <RadioGroup
-        label="Ngôn ngữ"
+        label={t('settings.language.label')}
         value={uiLanguage}
-        options={OPTIONS}
+        options={options}
         onChange={onChange}
         testId="settings-language"
       />
-      <p className="px-2 text-[length:var(--font-size-xs)] text-[var(--text-tertiary)]">
-        Giao diện hiện vẫn dùng tiếng Việt. Chuyển ngôn ngữ toàn diện sẽ có ở bản cập nhật sau.
-      </p>
     </SettingsSection>
   )
 }

@@ -11,6 +11,7 @@ import {
 } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { useI18n } from '@/sidepanel/hooks/useI18n'
 
 export interface ComposerProps {
   value: string
@@ -67,6 +68,7 @@ export function Composer({
   onImagesSelected,
   isReadingImages = false,
 }: ComposerProps) {
+  const { t } = useI18n()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>): void => {
@@ -163,9 +165,9 @@ export function Composer({
             onSelect={handleSelect}
             onClick={handleSelect}
             onPaste={handlePaste}
-            placeholder="Hoi Sidekick AI ve trang dang mo... (go @ de dinh kem tab)"
+            placeholder={t('composer.placeholder')}
             disabled={disabled}
-            aria-label="Nhap cau hoi"
+            aria-label={t('composer.inputLabel')}
             data-testid="composer-input"
             className="max-h-[var(--composer-max-height)] min-h-[var(--composer-min-height)] w-full"
           />
@@ -181,14 +183,14 @@ export function Composer({
               className="hidden"
               onChange={handleFileInput}
               data-testid="composer-file-input"
-              aria-label="Chon anh de dinh kem"
+              aria-label={t('composer.pickImage')}
             />
             <Button
               variant="outline"
               size="icon"
               onClick={openFilePicker}
               disabled={disabled || isReadingImages}
-              aria-label="Dinh kem anh"
+              aria-label={t('composer.attachImage')}
               data-testid="composer-image-button"
             >
               {isReadingImages ? (
@@ -205,7 +207,7 @@ export function Composer({
             variant="outline"
             size="icon"
             onClick={onStop}
-            aria-label="Dung tao cau tra loi"
+            aria-label={t('composer.stop')}
             data-testid="composer-stop"
           >
             <Square className="h-4 w-4" />
@@ -215,7 +217,7 @@ export function Composer({
             size="icon"
             onClick={onSend}
             disabled={disabled || value.trim().length === 0}
-            aria-label="Gui cau hoi"
+            aria-label={t('composer.send')}
             data-testid="composer-send"
           >
             {disabled ? (

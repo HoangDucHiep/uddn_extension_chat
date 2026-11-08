@@ -1,5 +1,6 @@
 import { Check, Globe, Loader2 } from 'lucide-react'
 import type { OpenTab } from '@/lib/tabList'
+import { useI18n } from '@/sidepanel/hooks/useI18n'
 
 /**
  * Popover `@` — chon tab de dinh kem vao context (T-M1-05, FR-CONTEXT-03).
@@ -38,17 +39,19 @@ export function MentionPopover({
   isLoading = false,
   onSelect,
 }: MentionPopoverProps) {
+  const { t } = useI18n()
+
   if (isLoading && tabs.length === 0) {
     return (
       <div
         className="absolute bottom-full left-0 right-0 z-10 mb-1 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--surface-overlay)] p-2 shadow-[var(--shadow-2)]"
         data-testid="mention-popover"
         role="listbox"
-        aria-label="Chon tab de dinh kem"
+        aria-label={t('composer.mentionLabel')}
       >
         <p className="flex items-center gap-2 px-2 py-1 text-[length:var(--font-size-sm)] text-[var(--text-tertiary)]">
           <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
-          Dang tai danh sach tab...
+          {t('context.mentionLoading')}
         </p>
       </div>
     )
@@ -60,10 +63,10 @@ export function MentionPopover({
         className="absolute bottom-full left-0 right-0 z-10 mb-1 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--surface-overlay)] p-2 shadow-[var(--shadow-2)]"
         data-testid="mention-popover"
         role="listbox"
-        aria-label="Chon tab de dinh kem"
+        aria-label={t('composer.mentionLabel')}
       >
         <p className="px-2 py-1 text-[length:var(--font-size-sm)] text-[var(--text-tertiary)]">
-          Khong co tab nao de dinh kem.
+          {t('context.mentionEmpty')}
         </p>
       </div>
     )
@@ -74,7 +77,7 @@ export function MentionPopover({
       className="absolute bottom-full left-0 right-0 z-10 mb-1 max-h-[240px] overflow-y-auto rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--surface-overlay)] p-1 shadow-[var(--shadow-2)]"
       data-testid="mention-popover"
       role="listbox"
-      aria-label="Chon tab de dinh kem"
+      aria-label={t('composer.mentionLabel')}
     >
       {tabs.map((tab) => {
         const attached = attachedTabIds.includes(tab.id)
@@ -117,12 +120,12 @@ export function MentionPopover({
             {attached ? (
               <Check
                 className="h-3.5 w-3.5 shrink-0 text-[var(--color-accent)]"
-                aria-label="Da dinh kem"
+                aria-label={t('context.mentionAttached')}
               />
             ) : isActive ? (
               <span
                 className="h-3.5 w-0.5 shrink-0 rounded-[var(--radius-full)] bg-[var(--color-accent)]"
-                aria-label="Tab dang mo"
+                aria-label={t('context.mentionOpen')}
               />
             ) : null}
           </button>

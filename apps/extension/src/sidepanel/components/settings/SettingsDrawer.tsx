@@ -1,4 +1,5 @@
 import { toast } from 'sonner'
+import type { Settings } from '@sidekick/shared'
 import {
   Dialog,
   DialogContent,
@@ -6,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { useI18n } from '@/sidepanel/hooks/useI18n'
 import { useSettings } from '@/sidepanel/hooks/useSettings'
 import { AppearanceSettings } from './AppearanceSettings'
 import { DataSettings } from './DataSettings'
@@ -21,6 +23,10 @@ import { ThemeSettings } from './ThemeSettings'
  * (DP-2: thread >= 90%). Moi thay doi ap dung **ngay** (khong can reload)
  * qua `useSettings()`.
  *
+ * T-M1-17: `settings` / `onSettingsChange` nhan tu `App.tsx` (vi tri cao
+ * hon) de **ngon ngu** la nguon su that duy nhat cho ca panel — drawer
+ * va thread doi ngon nung cung luc, khong phai 2 vung state doc lap.
+ *
  * Docs: docs/SYSTEM_DESIGN.md §7.14 · docs/DESIGN_SYSTEM_BRIEF.md §3.7
  */
 export interface SettingsDrawerProps {
@@ -28,12 +34,35 @@ export interface SettingsDrawerProps {
   open: boolean
   /** Dong / mo drawer. */
   onOpenChange: (open: boolean) => void
+  /**
+   * Cai dat hien tai.
+   *
+   * Bo trong → drawer tu doc `useSettings()` (dung cho test/doc lap).
+   */
+  settings?: Settings
+  /**
+   * Cap nhat mot phan cai dat → luu ngay + ap dung ngay.
+   *
+   * Bo trong → drawer tu ghi qua `useSettings()`.
+   */
+  onSettingsChange?: (patch: Partial<Settings>) => Promise<void>
   /** Callback sau khi xoa lich su chat (lam moi danh sach conversation). */
   onHistoryDeleted?: () => void
 }
 
-export function SettingsDrawer({ open, onOpenChange, onHistoryDeleted }: SettingsDrawerProps) {
-  const { settings, update } = useSettings()
+export function SettingsDrawer({
+  open,
+  onOpenChange,
+  settings: settingsProp,
+  onSettingsChange: onSettingsChangeProp,
+  onHistoryDeleted,
+}: SettingsDrawerProps) {
+  const { t } = useI18n()
+
+  // Fallback khi khong truyen props → drawer van dung lap doc lap.
+  const local = useSettings()
+  const settings = settingsProp ?? local.settings
+  const onSettingsChange = onSettingsChangeProp ?? local.update
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -46,17 +75,15 @@ export function SettingsDrawer({ open, onOpenChange, onHistoryDeleted }: Setting
         data-testid="settings-drawer"
       >
         <DialogHeader>
-          <DialogTitle>Cài đặt</DialogTitle>
-          <DialogDescription>
-            Thay đổi có hiệu lực ngay và được giữ khi bạn đóng panel.
-          </DialogDescription>
+          <DialogTitle>{t('settings.title')}</DialogTitle>
+          <DialogDescription>{t('settings.description')}</DialogDescription>
         </DialogHeader>
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-[var(--space-3)] pb-[var(--space-4)] pt-[var(--space-2)]">
           <ThemeSettings
             theme={settings.theme}
             onChange={(theme) => {
-              void update({ theme })
+              onSettingsChange({ theme })
             }}
           />
 
@@ -65,13 +92,13 @@ export function SettingsDrawer({ open, onOpenChange, onHistoryDeleted }: Setting
             density={settings.density}
             panelWidth={settings.panelWidth}
             onFontScaleChange={(fontScale) => {
-              void update({ fontScale })
+              onSettingsChange({ fontScale })
             }}
             onDensityChange={(density) => {
-              void update({ density })
+              onSettingsChange({ density })
             }}
             onPanelWidthChange={(panelWidth) => {
-              void update({ panelWidth })
+              onSettingsChange({ panelWidth })
             }}
           />
 
@@ -79,10 +106,10 @@ export function SettingsDrawer({ open, onOpenChange, onHistoryDeleted }: Setting
             telemetryEnabled={settings.telemetryEnabled}
             historyEnabled={settings.historyEnabled}
             onTelemetryChange={(telemetryEnabled) => {
-              void update({ telemetryEnabled })
+              onSettingsChange({ telemetryEnabled })
             }}
             onHistoryChange={(historyEnabled) => {
-              void update({ historyEnabled })
+              onSettingsChange({ historyEnabled })
             }}
           />
 
@@ -91,7 +118,7 @@ export function SettingsDrawer({ open, onOpenChange, onHistoryDeleted }: Setting
           <EndpointSettings
             bffUrl={settings.bffUrl}
             onSave={async (bffUrl) => {
-              await update({ bffUrl })
+              await onSettingsChange({ bffUrl })
             }}
             onSuccess={(message) => {
               toast.success(message)
@@ -104,7 +131,7 @@ export function SettingsDrawer({ open, onOpenChange, onHistoryDeleted }: Setting
           <LanguageSettings
             uiLanguage={settings.uiLanguage}
             onChange={(uiLanguage) => {
-              void update({ uiLanguage })
+              onSettingsChange({ uiLanguage })
             }}
           />
         </div>
