@@ -317,16 +317,23 @@ Quy ước ưu tiên: **M** = Must (bắt buộc cho M1) · **S** = Should (bắ
 | ID | Requirement | Priority | Acceptance criteria |
 |---|---|---|---|
 | FR-PROVIDER-01 | Multi-provider adapter (OpenAI, Gemini, Anthropic, OpenRouter, Groq, Ollama) | M | Interface chung: `stream(messages, tools, options)`; thêm provider mới không sửa UI |
-| FR-PROVIDER-02 | Lưu API key (BYOK) mã hoá trong storage phía server | M | Key không bao giờ render ra UI sau khi lưu; hiện dạng `sk-…abcd` |
+| FR-PROVIDER-02 | Lưu API key (BYOK) mã hoá trong storage phía server | ~~M~~ ⏸ | Key không bao giờ render ra UI sau khi lưu; hiện dạng `sk-…abcd` — **⏸ TẠM DỪNG 2026-11-08** (quyết định user: bỏ BYOK). Server giữ nguyên `POST /api/providers/keys` + bảng `provider_keys`; UI nhập key đã gỡ khỏi onboarding. Mở lại = thêm ô nhập key + section Settings |
 | FR-PROVIDER-03 | Chuyển model trong lúc chat (dropdown ở header) | M | Đổi model giữa cuộc trò chuyện không mất lịch sử |
 | FR-PROVIDER-04 | Fallback khi provider lỗi (429/5xx) sang provider dự phòng | S | Có log; người dùng được thông báo "đã chuyển sang provider X" |
 | FR-PROVIDER-05 | Hiển thị token in/out + chi phí ước tính theo lượt | S | Cập nhật sau mỗi lượt; tổng theo ngày trong Settings — **phần server đã implement (T-M1-14):** `cost_usd` thật trong `request_logs` (tính từ `PROVIDER_PRICING`) + SSE `usage` mang `costUsd` thật + `GET /api/usage` tổng hợp theo ngày; **UI hiển thị** (UsageBadge) → T-M2-03 |
 | FR-PROVIDER-06 | Budget cap: cảnh báo khi vượt ngưỡng, tuỳ chọn chặn | C | |
 | FR-PROVIDER-07 | Chế độ offline: dùng Ollama/local model, không gọi cloud | S | Tự phát hiện provider local khả dụng |
-| FR-PROVIDER-08 | Team key (shared key) cấu hình qua biến môi trường server | S | Không có key team → extension tự chuyển sang chế độ BYOK/direct và báo rõ |
-| FR-PROVIDER-09 | Chọn được "key source" cho mỗi conversation: Team key / BYOK của user | S | Hiển thị nguồn đang dùng ở header; đổi được giữa chừng |
+| FR-PROVIDER-08 | Team key (shared key) cấu hình qua biến môi trường server | S | Không có key team → extension tự chuyển sang chế độ BYOK/direct và báo rõ — **⏸ phần "BYOK/direct" TẠM DỪNG 2026-11-08**; phần **K1 (team key trong `.env` BFF) vẫn hoạt động** và là nguồn key duy nhất ở M1 |
+| FR-PROVIDER-09 | Chọn được "key source" cho mỗi conversation: Team key / BYOK của user | S | Hiển thị nguồn đang dùng ở header; đổi được giữa chừng — **⏸ TẠM DỪNG 2026-11-08**; ở M1 chỉ có **K1**, chip ở header hiện nguồn key đang dùng |
 
 #### 4.6.1 Ba nguồn API key (không mâu thuẫn với việc có backend)
+
+> ⏸ **TRẠNG THÁI 2026-11-08 — BYOK tạm dừng.** Theo quyết định của user, toàn bộ tính năng BYOK (K2 + K3) bị **đánh dấu tạm dừng** và **gỡ khỏi UI sản phẩm**:
+> - Ô nhập API key đã **gỡ khỏi onboarding** (bước 2) → provider cần key mà chưa có K1 chỉ hiện thông báo "cần API key, liên hệ admin" thay vì cho nhập.
+> - Server **giữ nguyên** `POST /api/providers/keys` · `GET/DELETE /api/providers/keys/:id` · `POST /api/providers/keys/:id/test` + bảng `provider_keys` (AES-256-GCM) → mở lại được bằng cách thêm lại UI, **không** cần migration.
+> - Ở M1 nguồn key duy nhất là **K1** (team key trong `.env` của BFF). Ollama local không cần key.
+>
+> Bảng dưới đây giữ lại để **giữ tầm nhìn sản phẩm** và để mở lại được nhanh khi cần.
 
 BYOK trả lời câu *"key của ai?"*, không trả lời *"key nằm ở đâu?"*. Hệ thống hỗ trợ 3 nguồn key độc lập:
 
@@ -1105,14 +1112,14 @@ Chỉ bắt đầu M4 khi **đồng thời** thỏa:
 | FR | Priority | Task | Milestone |
 |---|---|---|---|
 | FR-PROVIDER-01 | M | T-M0-07 ✅ · T-M0-08 ✅ · T-M2-01 | M0→M2 |
-| FR-PROVIDER-02 | M | T-M1-16 | M1 |
+| FR-PROVIDER-02 | M ⏸ | T-M1-16 ⏸ | M1 (tạm dừng) |
 | FR-PROVIDER-03 | M | T-M0-08 ✅ · T-M2-01 · T-M2-02 | M0→M2 |
 | FR-PROVIDER-04 | S | T-M2-02 | M2 |
 | FR-PROVIDER-05 | S | T-M2-03 | M2 |
 | FR-PROVIDER-06 | C | T-M2-03 | M2 |
 | FR-PROVIDER-07 | S | T-M2-01 | M2 |
-| FR-PROVIDER-08 | S | T-M1-15 | M1 |
-| FR-PROVIDER-09 | S | T-M1-15 | M1 |
+| FR-PROVIDER-08 | S ⏸ | T-M1-15 ⏸ | M1 (tạm dừng) |
+| FR-PROVIDER-09 | S ⏸ | T-M1-15 ⏸ | M1 (tạm dừng) |
 
 #### FR-WORKFLOW — Workflow & Automation
 

@@ -107,6 +107,14 @@ flowchart TB
 - **Hệ quả:** Cần cơ chế "pending sync" cho conversation tạo ở chế độ K3 → queue trong `chrome.storage.local`, flush khi BFF lên.
 
 ### ADR-9 — Ba nguồn API key: K1 / K2 / K3
+
+> ⏸ **Cập nhật 2026-11-08 — K2 + K3 tạm dừng.** Theo quyết định của user, toàn bộ BYOK bị đánh dấu tạm dừng và gỡ khỏi UI:
+> - **M1 chỉ dùng K1** (team key trong `.env` của BFF) + Ollama local (không cần key).
+> - UI nhập API key đã gỡ khỏi onboarding (bước 2) → provider cần key mà chưa có K1 chỉ hiện thông báo hướng dẫn.
+> - **Server giữ nguyên** toàn bộ K2 code: `POST /api/providers/keys` · `GET/DELETE /api/providers/keys/:id` · `POST /api/providers/keys/:id/test` + bảng `provider_keys` (AES-256-GCM). Mở lại = thêm lại UI, **không** migration.
+> - K3 (client-side provider pipeline) **chưa** implement — không có file nào trong `apps/extension/src/lib/` cho direct provider.
+> - Bảng dưới đây giữ nguyên để giữ tầm nhìn sản phẩm và mở lại nhanh khi cần.
+
 - **Bối cảnh:** Nhóm cần demo nhanh (không ai nhập key), nhưng người dùng thật cần BYOK an toàn, và demo có thể chạy khi Docker chưa bật.
 - **Quyết định:**
 
@@ -136,6 +144,7 @@ flowchart TB
 - **Quyết định:** K1 và K2 **chỉ** tồn tại ở BFF. Extension không bao giờ nhận key dạng rõ trừ chế độ K3 (user tự nhập, mã hoá local, và đây là lựa chọn của chính user).
 - **Lý do:** An toàn mặc định.
 - **Hệ quả:** BFF là single point of failure → ADR-9 K3 là đường lùi.
+- **Cập nhật 2026-11-08:** K3 **tạm dừng** → BFF **là** single point of failure thực tế ở M1. Người dùng không thể tự mang key; khi BFF chết, panel báo offline (NFR-REL-04) và không chat được.
 
 ---
 

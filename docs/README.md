@@ -54,7 +54,7 @@ flowchart LR
 | Database | **PostgreSQL 16 + Drizzle ORM + pgvector** |
 | Repo | **Monorepo pnpm workspace**: `apps/extension` · `apps/server` · `apps/eval` · `packages/shared` |
 | LLM | Multi-provider adapter (Gemini, OpenAI, Anthropic, OpenRouter, Groq, Ollama); free tier trước |
-| Chế độ dự phòng | 3 nguồn key: **K1** team key (`.env`) · **K2** BYOK qua BFF (mã hoá trong Postgres) · **K3** BYOK direct (`chrome.storage.local`, khi BFF tắt) — xem `REQUIREMENTS.md` §4.6.1 |
+| Chế độ dự phòng | 3 nguồn key: **K1** team key (`.env`) · **K2** BYOK qua BFF (mã hoá trong Postgres) · **K3** BYOK direct (`chrome.storage.local`, khi BFF tắt) — xem `REQUIREMENTS.md` §4.6.1 — **⏸ K2/K3 tạm dừng 2026-11-08**, M1 chỉ dùng **K1** + Ollama local |
 | Phạm vi | Full parity 2 hệ thống + tính năng nâng cao (MCP, RAG, Skills, multi-provider, log). **Workflow automation = M4, implement cuối cùng** |
 | Đánh giá | Offline benchmark (LLM-as-judge) **+** live manual test (rubric con người) |
 | Streaming | Trực tiếp Side Panel → BFF (không qua service worker — MV3 SW bị kill ~30s) |
@@ -65,7 +65,7 @@ Chi tiết lý do & hệ quả: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §2 (12 A
 
 ## Tóm tắt các điểm khác biệt so với 2 hệ thống có sẵn
 
-1. **Multi-provider + BYOK** — không phụ thuộc model của hãng.
+1. **Multi-provider + BYOK** — không phụ thuộc model của hãng. *(BYOK ⏸ tạm dừng 2026-11-08 — hiện chỉ còn K1 team key + Ollama local)*
 2. **Self-hostable** — toàn bộ server chạy local, dữ liệu không rời máy.
 3. **MCP-native** — mở rộng tool bất kỳ qua Model Context Protocol.
 4. **Traceable** — log request đầy đủ, phục vụ audit và eval.

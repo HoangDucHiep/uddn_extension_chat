@@ -1,22 +1,23 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Check, CircleAlert, Loader2 } from 'lucide-react'
+import { CircleAlert, Loader2 } from 'lucide-react'
 import type { ProviderId, ProviderInfo } from '@sidekick/shared'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { ApiError } from '@/lib/apiClient'
-import { listProviders, saveProviderKey, testProviderKey } from '@/lib/providerClient'
+import { listProviders } from '@/lib/providerClient'
 import { useI18n } from '@/sidepanel/hooks/useI18n'
 import type { TranslationKey } from '@/i18n'
 
 /**
- * Buoc 2 cua onboarding — chon provider + nhap API key (FR-UX-02).
+ * Buoc 2 cua onboarding — chon provider (FR-UX-02).
  *
  * Provider khong can key (mock, ollama local) → chi can chon.
- * Provider can key → nhap key → `POST /api/providers/keys` (luu K2 trong
- * Postgres, ma hoa AES-256-GCM) → `POST /api/providers/keys/:id/test` de
- * xac nhan key thuc su hoat dong.
+ * Provider can key → dung **key cua nhom (K1)** trong `.env` cua BFF.
  *
- * Docs: docs/SYSTEM_DESIGN.md §7.6, FR-PROVIDER-02
+ * T-M1-15 (K3 direct) + T-M1-16 (K2 BYOK UI) **tam dung** (quyet dinh
+ * user 2026-11-08) → o nhap API key bi go khoi UI. Server van giu endpoint
+ * `POST /api/providers/keys` va bang `provider_keys` de mo lai duoc sau
+ * (chi can bo o nhap key + them section Settings).
+ *
+ * Docs: docs/SYSTEM_DESIGN.md §7.6, ADR-9
  */
 
 /** Key nhan hien thi cua nguon key. */
@@ -42,12 +43,6 @@ export function StepProvider({ selectedProvider, onSelect, onNext }: StepProvide
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | undefined>(undefined)
 
-  const [apiKey, setApiKey] = useState('')
-  const [isSaving, setIsSaving] = useState(false)
-  const [keyError, setKeyError] = useState<string | undefined>(undefined)
-  const [keyStatus, setKeyStatus] = useState<string | undefined>(undefined)
-  const [savedKeyId, setSavedKeyId] = useState<string | undefined>(undefined)
-
   const load = useCallback(async (): Promise<void> => {
     setIsLoading(true)
     setLoadError(undefined)
@@ -69,65 +64,15 @@ export function StepProvider({ selectedProvider, onSelect, onNext }: StepProvide
     providers.find((provider) => provider.id === selectedProvider) ??
     providers.find((provider) => provider.available)
 
-  /** Provider da chon co can key chua? */
+  /** Provider da chon co can key nhung **chua** co key nao san dung. */
   const needsKey =
     activeProvider !== undefined &&
     activeProvider.requiresKey &&
     activeProvider.keySource !== 'K1' &&
     activeProvider.keySource !== 'K2'
 
-  /**
-   * Luu key vao BFF (K2) roi kiem tra key co hoat dong khong.
-   */
-  const handleSaveKey = async (): Promise<void> => {
-    if (activeProvider === undefined) return
-    const trimmed = apiKey.trim()
-    if (trimmed.length < 8) {
-      setKeyError(t('onboarding.provider.keyTooShort'))
-      setKeyStatus(undefined)
-      return
-    }
-
-    setIsSaving(true)
-    setKeyError(undefined)
-    setKeyStatus(undefined)
-
-    try {
-      const record = await saveProviderKey(activeProvider.id, trimmed)
-      setSavedKeyId(record.id)
-
-      const result = await testProviderKey(record.id)
-      if (result.ok) {
-        setKeyStatus(
-          t('onboarding.provider.keySaved', {
-            provider: activeProvider.name,
-            masked: record.masked,
-          }),
-        )
-        setApiKey('')
-        // Tai lai danh sach → keySource chuyen tu "none" sang "K2".
-        await load()
-      } else {
-        setKeyStatus(undefined)
-        setKeyError(result.error ?? t('onboarding.provider.keyInvalid'))
-      }
-    } catch (error) {
-      setKeyError(
-        error instanceof ApiError
-          ? error.message
-          : t('onboarding.provider.keySaveFailed'),
-      )
-      setKeyStatus(undefined)
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
   const handleSelect = (provider: ProviderInfo): void => {
     onSelect(provider.id)
-    setKeyError(undefined)
-    setKeyStatus(undefined)
-    setSavedKeyId(undefined)
   }
 
   return (
@@ -237,63 +182,19 @@ export function StepProvider({ selectedProvider, onSelect, onNext }: StepProvide
       )}
 
       {needsKey && (
-        <div className="flex flex-col gap-[var(--space-2)]">
-          <label
-            className="text-[length:var(--font-size-sm)] font-medium text-[var(--text-primary)]"
-            htmlFor="onboarding-api-key"
-          >
-            {t('onboarding.provider.keyLabel', {
-              provider: activeProvider?.name ?? 'mo hinh da chon',
-            })}
-          </label>
-          <Input
-            id="onboarding-api-key"
-            type="password"
-            value={apiKey}
-            autoComplete="off"
-            placeholder={t('onboarding.provider.keyPlaceholder')}
-            onChange={(event) => {
-              setApiKey(event.target.value)
-            }}
-            data-testid="onboarding-api-key"
+        <div
+          className="flex items-start gap-2 rounded-[var(--radius-md)] bg-[var(--warning-subtle)] px-[var(--space-3)] py-[var(--space-2)]"
+          data-testid="onboarding-key-required"
+        >
+          <CircleAlert
+            className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--warning)]"
+            aria-hidden="true"
           />
-          <p className="text-[length:var(--font-size-xs)] text-[var(--text-tertiary)]">
-            {t('onboarding.provider.keyHint')}
+          <p className="text-[length:var(--font-size-sm)] text-[var(--text-primary)]">
+            {t('onboarding.provider.keyRequired', {
+              provider: activeProvider?.name ?? '',
+            })}
           </p>
-          {keyError !== undefined && (
-            <p
-              className="flex items-center gap-2 text-[length:var(--font-size-sm)] text-[var(--danger)]"
-              data-testid="onboarding-key-error"
-            >
-              <CircleAlert className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-              {keyError}
-            </p>
-          )}
-          {keyStatus !== undefined && (
-            <p
-              className="flex items-center gap-2 text-[length:var(--font-size-sm)] text-[var(--success)]"
-              data-testid="onboarding-key-success"
-            >
-              <Check className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-              {keyStatus}
-            </p>
-          )}
-          <Button
-            variant="outline"
-            onClick={() => {
-              void handleSaveKey()
-            }}
-            disabled={isSaving}
-            data-testid="onboarding-save-key"
-          >
-            {isSaving && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
-            {t('onboarding.provider.saveAndTest')}
-          </Button>
-          {savedKeyId !== undefined && (
-            <span className="sr-only" data-testid="onboarding-saved-key-id">
-              {savedKeyId}
-            </span>
-          )}
         </div>
       )}
 

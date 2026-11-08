@@ -101,7 +101,7 @@ Cột ưu tiên: **M** = Must (M1) · **S** = Should (M2) · **C** = Could (M2/M
 | # | Tính năng | Requirement | Giá trị đối chiếu |
 |---|---|---|---|
 | C1 | **Multi-provider + model picker** (OpenAI, Gemini, Anthropic, OpenRouter, Groq, Ollama) | FR-PROVIDER-01/03 | Đánh trực tiếp A22, B21 |
-| C2 | **BYOK** — tự mang API key, key mã hoá phía server | FR-PROVIDER-02 | Đánh trực tiếp A23, B22 |
+| C2 | **BYOK** — tự mang API key, key mã hoá phía server | FR-PROVIDER-02 ⏸ | Đánh trực tiếp A23, B22 — **⏸ tạm dừng 2026-11-08** (BYOK bị gỡ khỏi sản phẩm; server giữ nguyên `provider_keys` để mở lại sau) |
 | C3 | **Self-host BFF** qua Docker Compose, chạy hoàn toàn local | §6, FR-PROVIDER-07 | Đánh trực tiếp B25 |
 | C4 | **MCP-native tool integration** | FR-TOOLS-01/02 | Đánh trực tiếp B13 (thay thế bằng chuẩn mở) |
 | C5 | **Log request đầy đủ có cấu trúc** (prompt, context hash, token, cost, latency, tool call) | NFR-MAINT-04, §7.2 | Đánh trực tiếp B24; **đây là nền tảng cho eval** — T-M1-06 đã sửa `context_hash` thành hash của **context thật đã gửi** (trước đó là hash toàn bộ prompt) + thêm `context_snapshot` theo setting |
@@ -110,8 +110,8 @@ Cột ưu tiên: **M** = Must (M1) · **S** = Should (M2) · **C** = Could (M2/M
 | C8 | **Allowlist/denylist context theo domain** | FR-CONTEXT-08 | Mạnh hơn A2 (chỉ bật/tắt toàn cục) |
 | C9 | **Công cụ eval tích hợp** (dataset, judge, dashboard) | `EVAL_PLAN.md` | Không có ở A/B |
 | C10 | **Skill import/export JSON** | FR-SKILL-05 | Mở hơn B6 (phụ thuộc tài khoản Google) |
-| C11 | **Direct/BYOK fallback mode** khi BFF không chạy | NFR-REL-03, FR-PROVIDER-08/09 | Resilience — không hệ thống nào cần |
-| C11b | **3 nguồn key** (team key / BYOK qua BFF / BYOK direct) — linh hoạt cho demo lẫn production | FR-PROVIDER-08/09, §4.6.1 | Quota tách theo người dùng, không bị lock-in |
+| C11 | **Direct/BYOK fallback mode** khi BFF không chạy | NFR-REL-03, FR-PROVIDER-08/09 ⏸ | Resilience — không hệ thống nào cần — **⏸ tạm dừng 2026-11-08** |
+| C11b | **3 nguồn key** (team key / BYOK qua BFF / BYOK direct) — linh hoạt cho demo lẫn production | FR-PROVIDER-08/09, §4.6.1 ⏸ | Quota tách theo người dùng, không bị lock-in — **⏸ tạm dừng 2026-11-08**; M1 chỉ dùng **K1** (team key trong `.env` BFF) |
 | C12 | **Agentic action có bước xác nhận + diff** | FR-TOOLS-04 | An toàn hơn A14/B12 (chưa thấy yêu cầu xác nhận chi tiết) |
 | C13 | **Không cần tài khoản hãng** (không Microsoft / không Google), chạy được trên managed/Enterprise browser | FR-PROVIDER-02, FR-PROVIDER-07 | Đánh trực tiếp A26, B27 |
 | C14 | **Skill library browser nội bộ** (xem/lọc skill) | FR-SKILL-07 | Tương đương `chrome://skills/browse` nhưng không phụ thuộc Google |
@@ -184,16 +184,16 @@ Dùng làm acceptance checklist cho M1.
 - [ ] Export conversation (Markdown / JSON) — ⬜ T-M1-13
 - [ ] **Error / loading / empty states + retry + trạng thái kết nối** — ✅ **T-M1-19** (4 trạng thái có UI riêng trong `sidepanel/components/states/`: `LoadingState` skeleton · `EmptyState` (wrapper `PromptGallery`) · `ErrorState` card inline · `ConnectionBadge` + banner offline · **hành động khôi phục theo nhóm lỗi**: 401 → "Kiểm tra API key" (mở Settings) · 429 → đếm ngược rồi "Thử lại" · 5xx/network → "Thử lại" · retry tự động **1 lần** backoff 800 ms, **không** retry lỗi auth)
 - [ ] Skills `/` + tạo/sửa/xoá skill + library có sẵn + trang duyệt skill library — ⬜ T-M2-04/06/21
-- [ ] Onboarding lần đầu 3 bước — ✅ T-M1-25 (bước 1 giải thích quyền · bước 2 chọn provider + nhập API key (BYOK K2) hoặc dùng Ollama không cần key · bước 3 thử câu hỏi bằng SSE thật · skippable ở mọi bước · mở lại được từ nút "Hướng dẫn" trong header)
-- [ ] Không bắt buộc đăng nhập tài khoản Microsoft/Google (BYOK hoặc local model) — ✅ T-M1-25 (BYOK K2 qua onboarding + Ollama local không cần key)
-- [ ] Settings: theme, cỡ chữ, chiều rộng, provider/key, quản lý dữ liệu, i18n VI/EN — ✅ **T-M1-12** (drawer Settings trượt từ phải · theme light/dark/system theo `prefers-color-scheme` · cỡ chữ 4 mức + mật độ 3 mức + bề rộng 3 mức · quản lý dữ liệu: xoá lịch sử chat + xoá dữ liệu cục bộ (đều có confirm) + import/export JSON · endpoint BFF có validate qua `/api/health` · telemetry/history OFF mặc định · *provider/key → T-M1-13/15/16*) · ✅ **T-M1-17** (i18n đầy đủ — dictionary có kiểu `vi.ts` là nguồn sự thật → thiếu key = lỗi `pnpm typecheck` · đổi ngôn ngữ áp dụng **ngay**, không reload · context menu extension + nút nổi content script cũng đổi theo)
+- [ ] Onboarding lần đầu 3 bước — ✅ T-M1-25 (bước 1 giải thích quyền · bước 2 chọn provider + nhập API key (BYOK K2) hoặc dùng Ollama không cần key · bước 3 thử câu hỏi bằng SSE thật · skippable ở mọi bước · mở lại được từ nút "Hướng dẫn" trong header) — *2026-11-08: ô nhập API key đã **gỡ** khỏi bước 2 (BYOK tạm dừng); provider cần key mà chưa có K1 hiện thông báo hướng dẫn*
+- [ ] Không bắt buộc đăng nhập tài khoản Microsoft/Google (BYOK hoặc local model) — ✅ T-M1-25 (BYOK K2 qua onboarding + Ollama local không cần key) — *2026-11-08: nhánh BYOK ⏸ tạm dừng; còn nhánh Ollama local không cần key (FR-PROVIDER-07)*
+- [ ] Settings: theme, cỡ chữ, chiều rộng, quản lý dữ liệu, i18n VI/EN — ✅ **T-M1-12** (drawer Settings trượt từ phải · theme light/dark/system theo `prefers-color-scheme` · cỡ chữ 4 mức + mật độ 3 mức + bề rộng 3 mức · quản lý dữ liệu: xoá lịch sử chat + xoá dữ liệu cục bộ (đều có confirm) + import/export JSON · endpoint BFF có validate qua `/api/health` · telemetry/history OFF mặc định · *provider/key → ⏸ T-M1-16*) · ✅ **T-M1-17** (i18n đầy đủ — dictionary có kiểu `vi.ts` là nguồn sự thật → thiếu key = lỗi `pnpm typecheck` · đổi ngôn ngữ áp dụng **ngay**, không reload · context menu extension + nút nổi content script cũng đổi theo)
 - [ ] Theme sáng/tối (đối chiếu Edge Copilot A24 · Chrome Gemini B12) — ✅ **T-M1-12** (class `.dark` + `data-theme` trên `<html>` → dùng token sẵn có, **không** hardcode màu · theme `system` nghe `prefers-color-scheme` → đổi nền OS là panel đổi ngay · áp dụng tức thì, không reload)
 - [ ] Chỉnh cỡ chữ / bề rộng panel — ✅ **T-M1-12** (`--font-scale` 0.9–1.2 · `--density-scale` 0.85–1.15 · `--panel-max-width` 400/640/960px · **không** sửa component nào, chỉ set biến CSS trên `<html>` · persist qua reload qua `chrome.storage.local` key `sidekick.settings`) — *giới hạn: bề rộng do user kéo trong Chrome → extension chỉ đặt thêm `max-width`*
 - [ ] Xoá dữ liệu / quyền riêng tư (NFR-SEC-07) — ✅ **T-M1-12** ("Xoá lịch sử chat" → `DELETE /api/conversations` · "Xoá dữ liệu cục bộ" → xoá khoa `sidekick.*` trong `chrome.storage.local`, **giữ** trạng thái onboarding · telemetry + history OFF mặc định)
 - [ ] Token/cost hiển thị — ⬜ T-M2-03
 - [ ] Keyboard shortcuts cấu hình được — ⬜ T-M1-18
 - [ ] Log request đầy đủ vào DB — ✅ **T-M1-14** (mọi lượt chat — thành công **và** thất bại — đều ghi 1 dòng `request_logs` với provider · model · token in/out · `cost_usd` **thật** (tính từ `PROVIDER_PRICING`) · `ttft_ms` · `latency_ms` · `tool_calls` · `context_hash` · error code · `request_id` xuyên suốt client → BFF → provider · log HTTP dạng **JSON** 1 dòng/request · **retention 90 ngày** được enforce (startup + mỗi 24 h) · `GET /api/logs` · `GET /api/usage` trả **chỉ metadata** cho eval harness · *UI hiển thị token/cost → T-M2-03 · tool/MCP thật → M2*)
-- [ ] Direct/BYOK fallback khi BFF down — ⬜ T-M1-15
+- [ ] Direct/BYOK fallback khi BFF down — ⏸ tạm dừng *(BYOK — quyết định user 2026-11-08)*
 
 ### E.2 Checklist M4 — Workflow (ngoài đường găng, chỉ làm sau khi M0–M3 xong)
 

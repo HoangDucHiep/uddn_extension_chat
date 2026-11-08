@@ -227,15 +227,8 @@ export const viDictionary = {
   'onboarding.provider.keySource.K2': 'Key ban da luu',
   'onboarding.provider.keySource.K3': 'Key gui thang',
   'onboarding.provider.keySource.none': 'Khong can key',
-  'onboarding.provider.keyLabel': 'API key cho {provider}',
-  'onboarding.provider.keyPlaceholder': 'Dán API key cua ban',
-  'onboarding.provider.keyHint':
-    'Key duoc ma hoa AES-256-GCM truoc khi luu vao database cuc bo. Key khong bao gio gui ra ngoai.',
-  'onboarding.provider.keyTooShort': 'API key qua ngan (it nhat 8 ky tu).',
-  'onboarding.provider.keySaved': 'Key da luu va hoat dong ({provider} · {masked}).',
-  'onboarding.provider.keyInvalid': 'Key khong hop le.',
-  'onboarding.provider.keySaveFailed': 'Khong luu duoc API key. Thu lai sau.',
-  'onboarding.provider.saveAndTest': 'Luu & kiem tra',
+  'onboarding.provider.keyRequired':
+    'Mo hinh {provider} can API key. Hien tai Sidekick chi dung key do nhom cap (K1) — hay bat Ollama de chay cuc bo, hoac lien he admin de duoc cap key.',
   'onboarding.try.title': 'Thu mot cau hoi',
   'onboarding.try.description':
     'Dat cau hoi bat ky de kiem tra ket noi. Cau hoi nay chay qua may chu cua ban, khong luu vao lich su.',

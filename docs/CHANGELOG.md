@@ -7,6 +7,14 @@
 ---
 
 ## [Unreleased]
+### Removed
+- **BYOK (K2 + K3) — tạm dừng theo quyết định user 2026-11-08** (T-M1-15 ⏸ · T-M1-16 ⏸)
+  - `apps/extension/src/sidepanel/components/onboarding/StepProvider.tsx` — **gỡ ô nhập API key** + nút "Lưu & kiểm tra" → provider cần key mà chưa có **K1** chỉ hiện thông báo hướng dẫn (`data-testid="onboarding-key-required"`); luồng chọn provider + `onSelect` giữ nguyên.
+  - `apps/extension/src/i18n/vi.ts` + `en.ts` — thêm `onboarding.provider.keyRequired`; **xoá** 8 key chỉ dùng cho luồng nhập key (`keyLabel` · `keyPlaceholder` · `keyHint` · `keyTooShort` · `keySaved` · `keyInvalid` · `keySaveFailed` · `saveAndTest`).
+  - `apps/extension/tests/onboardingUi.test.tsx` — assert `onboarding-key-required` thay cho `onboarding-api-key`.
+  - **Server giữ nguyên** (`POST /api/providers/keys` · `GET/DELETE /api/providers/keys/:id` · `POST /api/providers/keys/:id/test` + bảng `provider_keys` AES-256-GCM) → mở lại được bằng cách thêm lại UI, **không** migration.
+  - **Không** đổi schema · **không** dependency mới · **không** permission mới.
+
 ### Added
 - **T-M1-17 — i18n VI/EN (FR-SETTINGS-06)**
   - `apps/extension/src/i18n/vi.ts` (mới) — `viDictionary` là **nguồn sự thật** của danh sách key (`const` object) → `TranslationKey = keyof typeof viDictionary` · `Dictionary = Record<TranslationKey, string>`.

@@ -90,8 +90,8 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | T-M1-12 | Settings: theme, cỡ chữ, chiều rộng, quản lý dữ liệu, endpoint BFF | FR-SETTINGS-01/02/03/04/05/06/07, FR-UX-06, NFR-SEC-07 | `sidepanel/components/settings/*` | Áp dụng ngay, persist qua reload; xoá dữ liệu có confirm; telemetry/history mặc định OFF | M | ✅ *(2026-11-07)* |
 | T-M1-13 | Export conversation (Markdown / JSON) | FR-CHAT-10 | `lib/export.ts` | Xuất đúng nội dung, mở được bằng Notepad/Markdown viewer | S | ⬜ |
 | T-M1-14 | Request logging đầy đủ vào `request_logs` | NFR-MAINT-04, FR-CONTEXT-12, NFR-REL-01, §7.2 | `packages/shared/src/pricing.ts`, `packages/shared/src/schemas/logs.ts`, `apps/server/src/middleware/requestId.ts`, `apps/server/src/services/requestLogService.ts`, `apps/server/src/routes/logs.ts` | Mỗi lượt chat có 1 dòng log: provider, model, token, cost, ttft, latency; snapshot context hash để tái lập | M | ✅ *(2026-11-07)* |
-| T-M1-15 | K3 direct mode (BYOK không cần BFF) | FR-PROVIDER-08/09, NFR-REL-03, NFR-SEC-01 | `lib/crypto.ts`, `lib/directProvider.ts`, `state/keyStore.ts` | Tắt Docker → vẫn chat được với key nhập tay; key mã hoá local | L | ⬜ |
-| T-M1-16 | K2 BYOK qua BFF: UI quản lý key | FR-PROVIDER-02, NFR-SEC-01 | `settings/ProviderSettings.tsx`, `POST /providers/keys` | Thêm key → test thành công; list key chỉ hiện 4 ký tự cuối | M | ⬜ |
+| T-M1-15 | K3 direct mode (BYOK không cần BFF) | FR-PROVIDER-08/09, NFR-REL-03, NFR-SEC-01 | `lib/crypto.ts`, `lib/directProvider.ts`, `state/keyStore.ts` | Tắt Docker → vẫn chat được với key nhập tay; key mã hoá local | L | ⏸ tạm dừng *(BYOK — quyết định user 2026-11-08)* |
+| T-M1-16 | K2 BYOK qua BFF: UI quản lý key | FR-PROVIDER-02, NFR-SEC-01 | `settings/ProviderSettings.tsx`, `POST /providers/keys` | Thêm key → test thành công; list key chỉ hiện 4 ký tự cuối | M | ⏸ tạm dừng *(BYOK — quyết định user 2026-11-08)* |
 | T-M1-17 | i18n VI/EN | FR-SETTINGS-06 | `apps/extension/src/i18n/{vi.ts,en.ts,index.ts,context.ts}`, `lib/i18n.ts`, `sidepanel/hooks/useI18n.ts` | Đổi ngôn ngữ → toàn bộ UI đổi | M | ✅ *(2026-11-08)* |
 | T-M1-18 | Keyboard shortcuts cấu hình được | FR-UX-01 | `settings/ShortcutsSettings.tsx`, `background/commands.ts` | Đổi được phím tắt; tránh xung đột với Chrome mặc định | M | ⬜ |
 | T-M1-19 | Empty / loading / error states | FR-UX-03/04/08, FR-CHAT-14, NFR-REL-02/04 | `sidepanel/components/states/*` | 4 trạng thái có UI riêng, không màn hình trắng; retry 1 lần khi lỗi mạng | M | ✅ *(2026-11-07)* |
@@ -105,6 +105,8 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 **Định mức M1:** 3 tuần · 25 task · ~41 ngày công
 
 > **Audit 2026-11-04:** M1 tăng từ 20 → 25 task sau khi bổ sung 5 task card còn thiếu (T-M1-21 PDF · T-M1-22 YouTube · T-M1-23 ngân sách context · T-M1-24 upload ảnh · T-M1-25 onboarding). PDF/YouTube được nâng từ **Should → Must** vì Edge Copilot (A20) và Chrome Gemini (B10) đều có ở mức Must để đạt parity. Xem [`REQUIREMENTS.md`](REQUIREMENTS.md) §11.1 (FR → Task đầy đủ).
+>
+> **Quyết định 2026-11-08 — BYOK tạm dừng:** T-M1-15 (K3 direct) + T-M1-16 (K2 BYOK UI) đánh dấu **⏸ tạm dừng** theo quyết định của user. Ô nhập API key đã **gỡ khỏi onboarding**; server giữ nguyên endpoint + bảng `provider_keys` để mở lại được sau (không migration). Ở M1 nguồn key duy nhất là **K1** (team key trong `.env` BFF) + Ollama local. Chi tiết: [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.6.1 · [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) ADR-9.
 
 ### 3.1 Kết quả verify T-M1-01 (2026-11-04)
 

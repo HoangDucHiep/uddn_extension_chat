@@ -140,7 +140,7 @@ describe('Onboarding', () => {
     expect(screen.getByText('Groq')).toBeDefined()
   })
 
-  it('buoc 2 hien thi o nhap key khi provider can key', async () => {
+  it('buoc 2 hien thi thong bao khi provider can key nhung chua co key', async () => {
     const onSelectProvider = vi.fn()
     render(
       <Onboarding
@@ -155,16 +155,17 @@ describe('Onboarding', () => {
       expect(screen.getByTestId('onboarding-provider-groq')).toBeDefined()
     })
 
-    // Chon provider can key → o nhap key hien ra.
+    // Chon provider can key → hien thong bao thieu key (khong con o nhap key).
     fireEvent.click(screen.getByTestId('onboarding-provider-groq'))
 
     await waitFor(() => {
-      expect(screen.getByTestId('onboarding-api-key')).toBeDefined()
+      expect(screen.getByTestId('onboarding-key-required')).toBeDefined()
     })
+    expect(screen.queryByTestId('onboarding-api-key')).toBeNull()
     expect(onSelectProvider).toHaveBeenCalledWith('groq')
   })
 
-  it('buoc 2 khong hien thi o nhap key voi provider khong can key', async () => {
+  it('buoc 2 khong hien thi thong bao key voi provider khong can key', async () => {
     render(
       <Onboarding
         preferredProvider={undefined}
@@ -180,6 +181,7 @@ describe('Onboarding', () => {
 
     fireEvent.click(screen.getByTestId('onboarding-provider-mock'))
 
+    expect(screen.queryByTestId('onboarding-key-required')).toBeNull()
     expect(screen.queryByTestId('onboarding-api-key')).toBeNull()
   })
 

@@ -26,12 +26,23 @@
 | Docs | ✅ Đầy đủ 9 file (`docs/`) + `AGENTS.md` ở root |
 | Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 + T-M1-05 + T-M1-02 + T-M1-24 + T-M1-25 + T-M1-06 + T-M1-07 + T-M1-08 + T-M1-09 + T-M1-10 + T-M1-11 + T-M1-03 + T-M1-12 + T-M1-19 + T-M1-14 + T-M1-17 xong** — 4 workspace, 1263 unit test + 73 E2E |
 | Git | ✅ Đã init (`main`) · tag `v0.1` đánh dấu M0 |
-| Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **20/25 task**) |
-| Task tiếp theo | **T-M1-15** (K3 direct mode — BYOK không cần BFF) · T-M1-16 (K2 BYOK UI) · T-M1-18 (shortcuts cấu hình được) · T-M1-20 (responsive 320–640px + a11y) — T-M1-13 (export) đã được user **defer** |
+| Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **21/25 task** — T-M1-15 + T-M1-16 ⏸ tạm dừng, T-M1-13 defer) |
+| Task tiếp theo | **T-M1-18** (keyboard shortcuts cấu hình được) → **T-M1-20** (responsive 320–640px + a11y) → đóng M1 → sang M2 — T-M1-13 (export) đã được user **defer** |
 
 ### Đang làm dở
 
 _(Không có — T-M1-17 i18n VI/EN xong)_
+
+### Quyết định mới trong phiên này (2026-11-08) — BYOK tạm dừng
+
+| Quyết định | Lý do |
+|---|---|
+| **T-M1-15 (K3 direct) + T-M1-16 (K2 BYOK UI) → ⏸ tạm dừng** | User quyết định bỏ BYOK khỏi sản phẩm (ưu tiên demo đơn giản, 1 nguồn key K1) |
+| **Gỡ ô nhập API key khỏi onboarding** (bước 2) → thay bằng thông báo hướng dẫn | Không còn luồng nhập key trong sản phẩm |
+| **Giữ nguyên** server `provider_keys` (endpoint + bảng + mã hoá AES-256-GCM) | Đã hoạt động + đã test; xoá sẽ tốn công và rủi ro hồi quy; mở lại = thêm lại UI, **không** migration |
+| Ở M1 chỉ có **K1** (team key trong `.env` BFF) + Ollama local (không cần key) | Đủ cho demo/eval; Ollama là fallback khi không có key |
+
+- Bằng chứng: `docs/REQUIREMENTS.md` §4.6.1 · `docs/SYSTEM_DESIGN.md` ADR-9/ADR-12 · `docs/IMPLEMENTATION_PLAN.md` §3 · `docs/COMPARISON_MATRIX.md` §C + §E.
 
 ### Việc đã xong gần đây (T-M1-17 — i18n VI/EN)
 
