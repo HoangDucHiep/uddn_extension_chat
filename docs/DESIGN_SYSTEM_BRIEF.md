@@ -592,6 +592,32 @@ Folder `apps/extension/src/sidepanel/components/states/` — **4 trạng thái**
 
 ---
 
+### 3.12 Menu xuất cuộc trò chuyện (đã implement T-M1-13)
+
+Component `ExportMenu` — menu **3 mục** trong header panel (FR-CHAT-10).
+
+- **Vị trí:** header panel, icon-button `Download` (`aria-label` = `t('chat.export')`, `data-testid="export-button"`), đặt **trước** nút "Xoá cuộc trò chuyện".
+- **Điều kiện hiện:** **chỉ khi thread có nội dung** (`messages.length > 0`) → không mở menu rỗng.
+- **Dạng menu:** Radix `Popover` (`components/ui/popover.tsx` — đã có sẵn) → render qua Portal → **không** bị `overflow` của thread cắt.
+- **3 mục (theo thứ tự):**
+
+| Mục | Icon | Hành động | `data-testid` |
+|---|---|---|---|
+| Sao chép Markdown | `ClipboardCopy` | `navigator.clipboard.writeText(markdown)` | `export-copy-markdown` |
+| Xuất tệp .md | `FileText` | download `.md` | `export-download-markdown` |
+| Xuất tệp .json | `FileJson` | download `.json` | `export-download-json` |
+
+- **Style mục menu:** button phẳng, icon `h-3.5 w-3.5` + text `--font-size-sm` + `--text-primary` · hover nền `--surface-sunken` · focus ring chuẩn `focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]`.
+- **Token:** `--surface-sunken` · `--text-primary` · `--radius-sm` · `--space-1/2`. **Không hardcode màu.**
+- **Feedback:** toast `sonner` — `toast.exportCopied` / `toast.exportDone` / `toast.exportFailed`.
+- **Chỉ xuất đường đi active** — dữ liệu lấy từ `activePathMessages(messages, path)` (T-M1-10) → đúng nội dung user đang nhìn thấy.
+- **`PanelHeader` nhận prop `exportMenu?: ReactNode`** (không phải callback) → header chỉ lo vị trí, không cần biết chi tiết hành động.
+- **A11y:** trigger có `aria-label` tiếng Việt (`t('chat.export')`) · mỗi mục là `<button type="button">` (focus được bằng Tab) · focus ring theo token `--border-focus`.
+
+> **Chi tiết hợp đồng file:** [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.20
+
+---
+
 ## 4. State & hành vi UI chuẩn hoá
 
 | Trạng thái | Yêu cầu UI | FR |

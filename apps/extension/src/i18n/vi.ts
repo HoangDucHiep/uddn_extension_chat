@@ -74,6 +74,11 @@ export const viDictionary = {
   'chat.summarizePage': 'Tóm tắt trang này',
   'chat.removeImage': 'Xoá ảnh đính kèm {name}',
   'chat.attachmentTokenEstimate': '{count} ảnh · ~{tokens} token',
+  'chat.export': 'Xuất cuộc trò chuyện',
+  'chat.exportCopy': 'Sao chép Markdown',
+  'chat.exportMarkdown': 'Xuất tệp .md',
+  'chat.exportJson': 'Xuất tệp .json',
+  'chat.exportDefaultTitle': 'Cuộc trò chuyện',
 
   // --- vision ---
   'vision.tooManyImages': 'Chỉ đính kèm được tối đa {count} ảnh mỗi lượt.',
@@ -308,6 +313,9 @@ export const viDictionary = {
   'toast.serverUnreachable': 'Không kết nối được (HTTP {status})',
   'toast.serverSaved': 'Đã lưu endpoint BFF',
   'toast.serverUnreachableGeneric': 'Không kết nối được tới BFF',
+  'toast.exportCopied': 'Đã sao chép Markdown',
+  'toast.exportDone': 'Đã xuất cuộc trò chuyện',
+  'toast.exportFailed': 'Không xuất được cuộc trò chuyện',
 } as const
 
 /** Union cua tat ca khoa dich hop le. */

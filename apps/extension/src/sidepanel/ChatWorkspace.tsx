@@ -22,6 +22,7 @@ import { AttachmentTray } from './components/composer/AttachmentTray'
 import { ConversationList } from './components/chat/ConversationList'
 import { SettingsDrawer } from './components/settings/SettingsDrawer'
 import { ScrollToBottomButton } from './components/chat/ScrollToBottomButton'
+import { ExportMenu } from './components/chat/ExportMenu'
 import { EmptyState } from './components/states/EmptyState'
 import { LoadingState } from './components/states/LoadingState'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
@@ -442,6 +443,33 @@ export function ChatWorkspace({
 
   const offPath = useMemo(() => offPathTurns(messages, path), [messages, path])
 
+  // Du lieu xuat cuoc tro chuyen (FR-CHAT-10 — T-M1-13).
+  // Chi xuat **duong di active** — dung nhung gi user nhin thay tren man hinh.
+  const exportMessages = useMemo(
+    () =>
+      visibleMessages.map((message) => ({
+        role: message.role,
+        content: message.content,
+        createdAt: message.createdAt,
+        ...(message.provider !== undefined ? { provider: message.provider } : {}),
+        ...(message.model !== undefined ? { model: message.model } : {}),
+        ...(message.tokensIn !== undefined ? { tokensIn: message.tokensIn } : {}),
+        ...(message.tokensOut !== undefined ? { tokensOut: message.tokensOut } : {}),
+        ...(message.requestId !== undefined ? { requestId: message.requestId } : {}),
+        ...(message.citations !== undefined && message.citations.length > 0
+          ? {
+              citations: message.citations.map((citation) => ({
+                index: citation.index,
+                url: citation.url,
+                title: citation.title,
+                snippet: citation.snippet,
+              })),
+            }
+          : {}),
+      })),
+    [visibleMessages],
+  )
+
   /**
    * Lay nhom bien the cua 1 turn (dung cho switcher bien the).
    *
@@ -469,6 +497,13 @@ export function ChatWorkspace({
         onOpenSettings={() => {
           setIsSettingsOpen(true)
         }}
+        exportMenu={
+          <ExportMenu
+            conversationId={conversationId}
+            title={conversationTitle ?? t('chat.exportDefaultTitle')}
+            messages={exportMessages}
+          />
+        }
       />
 
       {/* Banner offline (NFR-REL-04 — T-M1-19). */}

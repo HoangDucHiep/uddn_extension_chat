@@ -67,6 +67,11 @@ export const enDictionary: Dictionary = {
   'chat.summarizePage': 'Summarize this page',
   'chat.removeImage': 'Remove attached image {name}',
   'chat.attachmentTokenEstimate': '{count} images · ~{tokens} tokens',
+  'chat.export': 'Export conversation',
+  'chat.exportCopy': 'Copy Markdown',
+  'chat.exportMarkdown': 'Export .md file',
+  'chat.exportJson': 'Export .json file',
+  'chat.exportDefaultTitle': 'Conversation',
 
   // --- vision ---
   'vision.tooManyImages': 'You can attach at most {count} images per message.',
@@ -294,4 +299,7 @@ export const enDictionary: Dictionary = {
   'toast.serverUnreachable': 'Cannot connect (HTTP {status})',
   'toast.serverSaved': 'BFF endpoint saved',
   'toast.serverUnreachableGeneric': 'Cannot connect to the BFF',
+  'toast.exportCopied': 'Markdown copied',
+  'toast.exportDone': 'Conversation exported',
+  'toast.exportFailed': 'Cannot export the conversation',
 }

@@ -8,6 +8,17 @@
 
 ## [Unreleased]
 ### Added
+- **T-M1-13 — Export cuộc trò chuyện (FR-CHAT-10)**
+  - `apps/extension/src/lib/export.ts` (mới) — module **thuần** (không DOM / Zod / Chrome API): `buildMarkdownExport()` · `buildJsonExport()` · `buildExportFileName()`. File `.md` có metadata đầu file (thời điểm xuất ISO · conversation id · số tin nhắn) + metadata từng lượt assistant (provider · model · token in/out · request-id 6 ký tự — cùng slot với chip trong bubble) + danh sách nguồn `[N]`. File `.json` có `version` · `exportedAt` · `conversation{id,title}` · `messages[]{role,content,createdAt,provider?,model?,tokensIn?,tokensOut?,requestId?,citations?}` (field không có giá trị → **bỏ hẳn**, không để `undefined`).
+  - `apps/extension/src/lib/downloadFile.ts` (mới) — `downloadTextFile()` dùng `Blob` + `URL.createObjectURL` + `<a download>`; **tái sử dụng** cho export settings (`DataSettings.tsx`) → chỉ 1 bản trong repo.
+  - `apps/extension/src/sidepanel/components/chat/ExportMenu.tsx` (mới) — Radix `Popover` (đã có sẵn `components/ui/popover.tsx`) với 3 mục: **Sao chép Markdown** · **Xuất .md** · **Xuất .json** + toast kết quả (`sonner`).
+  - `apps/extension/src/sidepanel/components/PanelHeader.tsx` — thêm prop `exportMenu?: ReactNode` (header chỉ lo vị trí, không cần biết chi tiết hành động).
+  - `apps/extension/src/sidepanel/ChatWorkspace.tsx` — dựng `exportMessages` từ `activePathMessages(messages, path)` → chỉ xuất **đường đi active** (đúng nội dung user đang nhìn thấy).
+  - i18n: `chat.export` · `chat.exportCopy` · `chat.exportMarkdown` · `chat.exportJson` · `chat.exportDefaultTitle` · `toast.exportCopied` · `toast.exportDone` · `toast.exportFailed` (VI + EN).
+  - Test: `apps/extension/tests/export.test.ts` (mới, 15 unit test) + `apps/extension/e2e/export.spec.ts` (mới, 4 E2E test).
+  - **Không** migration · **không** dependency mới · **không** permission mới · **không** đổi manifest.
+
+### Added
 - **`docs/MANUAL_TEST_GUIDE.md`** (mới) — hướng dẫn **cài đặt + test tay toàn bộ tính năng M1** cho người dùng (không phải agent):
   - §0 Tóm tắt nhanh (6 lệnh) · §1 Yêu cầu · §2 Cài đặt chi tiết (pnpm · Docker · migrate · `.env` K1 · build · load unpacked · dev mode).
   - §3 Onboarding 3 bước · §4 Chat (streaming · markdown/code/bảng · 4 hành động tin nhắn · CRUD hội thoại · 6 trạng thái lỗi) · §5 Context (gợi ý theo trang · đính kèm · `@` · bôi đen · citation · ngân sách · PDF/YouTube · cache) · §6 Ảnh · §7 Settings (7 section) · §8 Phím tắt 2 lớp · §9 Mở/toggle panel + context menu · §10 Responsive + a11y · §11 Kiểm tra `request_logs` · §12 Xử lý sự cố (11 lỗi thường gặp) · §13 Chạy test tự động · §14 Bảng "đã có / chưa có" · §15 Checklist 18 mục để đánh dấu.

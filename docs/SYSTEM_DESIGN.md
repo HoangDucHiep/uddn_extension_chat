@@ -2711,6 +2711,147 @@ Icon-button trước đây dùng `p-[2px]` + icon `h-3`/`h-3.5` → kích thư�
 
 ---
 
+### 7.20 Export cuộc trò chuyện (FR-CHAT-10 — T-M1-13)
+
+> Nguồn sự thật cho hành vi: [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.1 (FR-CHAT-10).
+
+#### 7.20.1 Ranh giới module
+
+```mermaid
+flowchart LR
+  UI["ExportMenu.tsx<br/>(Radix Popover)"] --> B["lib/export.ts<br/>THUẦN — sinh nội dung"]
+  UI --> D["lib/downloadFile.ts<br/>Blob + <a download>"]
+  B --> MD["buildMarkdownExport()"]
+  B --> JS["buildJsonExport()"]
+  B --> FN["buildExportFileName()"]
+```
+
+| File | Trách nhiệm | Phụ thuộc |
+|---|---|---|
+| `apps/extension/src/lib/export.ts` | **Thuần** — sinh nội dung `.md` / `.json` + tên file | Không DOM · không Zod · không Chrome API |
+| `apps/extension/src/lib/downloadFile.ts` | Tạo file + trigger download | `Blob` · `URL.createObjectURL` · `<a download>` |
+| `apps/extension/src/sidepanel/components/chat/ExportMenu.tsx` | UI (Radix Popover) + toast | `useI18n` · `sonner` |
+
+> Vì sao tách `downloadTextFile`? `lib/export.ts` phải test được trong vitest mà **không** cần DOM → nếu gộp `Blob`/`document` vào sẽ phải mock. Ngoài ra `downloadTextFile` được **tái sử dụng** cho export settings (`DataSettings.tsx`) → chỉ 1 bản.
+
+#### 7.20.2 Hợp đồng dữ liệu đầu vào
+
+```ts
+interface ExportConversation {
+  id?: string
+  title: string
+  messages: readonly ExportMessage[]
+  exportedAt?: Date
+}
+
+interface ExportMessage {
+  role: 'user' | 'assistant' | 'system'
+  content: string
+  createdAt: number          // epoch ms
+  provider?: string
+  model?: string
+  tokensIn?: number
+  tokensOut?: number
+  requestId?: string
+  citations?: readonly { index: number; url: string; title: string; snippet?: string }[]
+}
+```
+
+**Nguồn dữ liệu:** `ChatWorkspace.tsx` map từ `visibleMessages` (= `activePathMessages(messages, path)`) → chỉ xuất **đường đi active**, đúng nội dung user đang nhìn thấy trên màn hình.
+
+#### 7.20.3 Định dạng file Markdown
+
+```markdown
+# {tiêu đề conversation}
+
+- Xuất lúc: {ISO 8601}
+- Conversation ID: {uuid}
+- Số tin nhắn: {n}
+
+## Người dùng
+
+*{ISO 8601 message*
+
+> gemini · gemini-2.0-flash · 120/45 tokens · req abcdef
+
+{nội dung}
+
+## Trợ lý
+
+...
+
+**Nguồn:**
+
+- [1] [Tiêu đề nguồn](https://url)
+```
+
+| Khối | Nguồn | Mục đích |
+|---|---|---|
+| Metadata đầu file | `exportedAt` · `conversation.id` · số message | Xác định **lúc nào** + **cái gì** được xuất |
+| Metadata từng lượt assistant | `provider` · `model` · `tokensIn/tokensOut` · `requestId.slice(0,6)` | Đối chiếu với dòng `request_logs` (T-M1-14) — cùng 6 ký tự như chip trong bubble |
+| `**Nguồn:**` | `citations[]` | Giữ liên kết nguồn theo marker `[N]` như trong nội dung |
+
+> Role heading (`## Người dùng` / `## Trợ lý` / `## Hệ thống`) là **chuỗi cố định** — không dịch theo `i18n` vì file export phải ổn định giữa các lần xuất (và để máy đọc được). UI (nút, toast) **có** dịch VI/EN.
+
+#### 7.20.4 Định dạng file JSON
+
+```json
+{
+  "version": 1,
+  "exportedAt": "2026-11-09T01:30:00.000Z",
+  "conversation": { "id": "…", "title": "…" },
+  "messages": [
+    {
+      "role": "user",
+      "content": "…",
+      "createdAt": "2026-11-09T01:29:00.000Z",
+      "provider": "gemini",
+      "model": "gemini-2.0-flash",
+      "tokensIn": 120,
+      "tokensOut": 45,
+      "requestId": "abcdef123456",
+      "citations": [{ "index": 1, "url": "…", "title": "…", "snippet": "…" }]
+    }
+  ]
+}
+```
+
+- `version` (`EXPORT_FORMAT_VERSION = 1`) → tăng khi đổi shape → máy đọc được biết format nào.
+- Field không có giá trị → **bỏ hẳn** khỏi object (không để `undefined`) → JSON gọn, không có `null` rác.
+- Kiểu trả về là `ExportJsonPayload` (interface cụ thể) — **không** dùng `Record<string, unknown>` → test không phải ép kiểu.
+
+#### 7.20.5 Tên file
+
+`buildExportFileName(title, ext, at)` → `sidekick-<title>-<yyyyMMdd-HHmm>.<ext>`
+
+- Loại ký tự cấm Windows: `< > : " / \ | ? *` → thay bằng khoảng trắng.
+- Gộp khoảng trắng liên tiếp · cắt còn ≤ 60 ký tự · fallback `conversation` khi tiêu đề rỗng.
+- Timestamp theo **giờ địa phương** (dễ đọc với user) — `yyyyMMdd-HHmm`.
+
+#### 7.20.6 Hành vi UI
+
+| Hành động | Kết quả | Toast |
+|---|---|---|
+| **Sao chép Markdown** | `navigator.clipboard.writeText(markdown)` | `toast.exportCopied` / `toast.exportFailed` |
+| **Xuất .md** | download `sidekick-<title>-<stamp>.md` (`text/markdown`) | `toast.exportDone` / `toast.exportFailed` |
+| **Xuất .json** | download `sidekick-<title>-<stamp>.json` (`application/json`) | `toast.exportDone` / `toast.exportFailed` |
+
+- Nút export **chỉ hiện khi thread có nội dung** (`messages.length > 0`) → không mở menu rỗng.
+- Menu là Radix `Popover` (đã có sẵn `components/ui/popover.tsx`) → render qua Portal → **không** bị `overflow` của thread cắt (FR-CONTEXT-10).
+- `PanelHeader` nhận prop `exportMenu?: ReactNode` (không phải callback) → header chỉ lo vị trí, không cần biết chi tiết hành động.
+- i18n keys: `chat.export` · `chat.exportCopy` · `chat.exportMarkdown` · `chat.exportJson` · `chat.exportDefaultTitle` · `toast.exportCopied` · `toast.exportDone` · `toast.exportFailed`.
+
+#### 7.20.7 Kiểm thử
+
+| Tầng | File | Phạm vi |
+|---|---|---|
+| Unit | `apps/extension/tests/export.test.ts` | metadata đầu file · metadata từng lượt · nguồn `[N]` · message rỗng bị bỏ qua · conversation rỗng vẫn sinh file · giữ nguyên ký tự đặc biệt · shape JSON + không có field `undefined` · tên file (ký tự cấm Windows · fallback · cắt độ dài) |
+| E2E | `apps/extension/e2e/export.spec.ts` | thread rỗng → không có nút · có tin nhắn → menu 3 mục · download `.md` chứa nội dung assistant · download `.json` parse được + `version`/`messages[]` |
+
+> **Mutation spot-check:** đổi `buildExportFileName` bỏ bước loại ký tự cấm Windows → **1 test fail** (đã kiểm chứng).
+
+---
+
 ## 8. Hiệu năng
 
 | Chỉ số | Mục tiêu | Cách đạt |

@@ -203,7 +203,7 @@ Quy ước ưu tiên: **M** = Must (bắt buộc cho M1) · **S** = Should (bắ
 | FR-CHAT-07 | Dừng generation (Stop) | M | Dừng ≤ 300ms; giữ nội dung dở; có nút "Tiếp tục". **Đã implement (T-M1-10):** `AbortController.abort()` cắt stream → giữ nguyên nội dung dở + `meta.aborted=true` → bubble hiện nút "Tiếp tục"; `operation: 'continue'` gửi `CONTINUE_INSTRUCTION` cho provider và **UPDATE** message cũ (`content = partial + phần mới`), không tạo message mới |
 | FR-CHAT-08 | Xoá tin nhắn / xoá cả cuộc trò chuyện | M | Xoá cả nhóm → có confirm dialog. **Đã implement (T-M1-09):** xoá cả **cuộc trò chuyện** qua `DELETE /api/conversations/:id` (cascade xoá messages + citations + attachments) · confirm dialog `ConfirmDialog` bắt buộc trước khi xoá |
 | FR-CHAT-09 | Quản lý nhiều cuộc trò chuyện: tạo, đổi tên, xoá, ghim | M | List view ở sidebar trái; search theo tên. **Đã implement (T-M1-09):** drawer `ConversationList` (Radix Dialog trượt từ trái) · tạo / đổi tên / xoá / ghim / lưu trữ / search theo tên (debounce 250 ms) · phân trang keyset (cursor) |
-| FR-CHAT-10 | Copy toàn bộ cuộc trò chuyện / export Markdown / JSON | S | Xuất file .md và .json kèm metadata (model, token, thời gian) |
+| FR-CHAT-10 | Copy toàn bộ cuộc trò chuyện / export Markdown / JSON | S | Xuất file .md và .json kèm metadata (model, token, thời gian). **Đã implement (T-M1-13):** menu `ExportMenu` (Radix Popover) trong header panel — 3 hành động: **Sao chép Markdown** (clipboard) · **Xuất .md** · **Xuất .json**. File `.md` có heading conversation + metadata đầu file (thời điểm xuất ISO · conversation id · số tin nhắn) + metadata từng lượt assistant (provider · model · token in/out · request-id 6 ký tự) + danh sách nguồn `[N]`. File `.json` có `version` · `exportedAt` · `conversation{id,title}` · `messages[]{role,content,createdAt,provider?,model?,tokensIn?,tokensOut?,requestId?,citations?}`. Tên file `sidekick-<title>-<yyyyMMdd-HHmm>.md\|json` (đã loại ký tự cấm Windows). **Chỉ xuất đường đi active** — đúng nội dung user đang nhìn thấy |
 | FR-CHAT-11 | Ghim tin nhắn (pin) để giữ | C | Pin ở đầu thread. **Đã implement (T-M1-09) — phạm vi đã chốt:** ghim ở cấp **cuộc trò chuyện** (`conversations.pinned`), conversation ghim luôn ở đầu danh sách (`pinned desc, updated_at desc, id desc`). Ghim **tin nhắn** để task sau |
 | FR-CHAT-12 | Keyboard: Enter gửi, Shift+Enter xuống dòng, Esc dừng | M | Không nhập nhầm ký tự. **Đã implement (T-M1-10):** `Composer` — Enter gửi · Shift+Enter xuống dòng · Esc **dừng generation** nếu đang streaming, ngược lại đóng popover `@`; `MessageEditBox` — Enter gửi lại · Shift+Enter xuống dòng · Esc huỷ |
 | FR-CHAT-13 | Tự lưu bản nháp (draft) khi đóng panel | S | Mở lại vẫn còn draft của conversation đang mở. **Đã implement (T-M1-10):** `chrome.storage.local` key `sidekick.draft.<conversationId>` · ghi **debounce 300 ms** · TTL 30 ngày · khoá xoá sau khi gửi thành công · khôi phục khi mở lại panel / đổi conversation |
@@ -1127,7 +1127,7 @@ Chỉ bắt đầu M4 khi **đồng thời** thỏa:
 | FR-CHAT-07 | M | T-M1-10 | M1 |
 | FR-CHAT-08 | M | T-M1-09 ✅ | M1 |
 | FR-CHAT-09 | M | T-M1-09 ✅ | M1 |
-| FR-CHAT-10 | S | T-M1-13 | M1 |
+| FR-CHAT-10 | S | T-M1-13 ✅ | M1 |
 | FR-CHAT-11 | C | T-M1-09 ✅ (cấp conversation) | M1 |
 | FR-CHAT-12 | M | T-M1-10 | M1 |
 | FR-CHAT-13 | S | T-M1-10 | M1 |

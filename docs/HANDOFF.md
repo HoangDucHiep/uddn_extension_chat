@@ -24,14 +24,14 @@
 | Hạng mục | Trạng thái |
 |---|---|
 | Docs | ✅ Đầy đủ 9 file (`docs/`) + `AGENTS.md` ở root |
-| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 + T-M1-05 + T-M1-02 + T-M1-24 + T-M1-25 + T-M1-06 + T-M1-07 + T-M1-08 + T-M1-09 + T-M1-10 + T-M1-11 + T-M1-03 + T-M1-12 + T-M1-19 + T-M1-14 + T-M1-17 + T-M1-18 + T-M1-20 xong** — 4 workspace, 1311 unit test + 81 E2E |
+| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 + T-M1-05 + T-M1-02 + T-M1-24 + T-M1-25 + T-M1-06 + T-M1-07 + T-M1-08 + T-M1-09 + T-M1-10 + T-M1-11 + T-M1-03 + T-M1-12 + T-M1-19 + T-M1-14 + T-M1-17 + T-M1-18 + T-M1-20 + T-M1-13 xong** — 4 workspace, 1326 unit test + 85 E2E |
 | Git | ✅ Đã init (`main`) · tag `v0.1` đánh dấu M0 |
-| Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **23/25 task** — T-M1-15 + T-M1-16 ⏸ tạm dừng, T-M1-13 defer) |
-| Task tiếp theo | **Đóng M1** → sang **M2 — Advanced & Eval** (`docs/EVAL_PLAN.md`) — T-M1-13 (export) đã được user **defer** |
+| Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **24/25 task** — T-M1-15 + T-M1-16 ⏸ tạm dừng) |
+| Task tiếp theo | **Đóng M1** → sang **M2 — Advanced & Eval** (`docs/EVAL_PLAN.md`) |
 
 ### Đang làm dở
 
-_(Không có — T-M1-20 responsive + a11y xong)_
+_(Không có — T-M1-13 export xong 2026-11-09)_
 
 ### Hướng dẫn test tay cho người dùng
 
@@ -637,7 +637,7 @@ _(Ghi lại các câu hỏi chưa có câu trả lời, hoặc điều kiện đ
 - Có nên push lên remote (GitHub) để backup không? (hiện tại chỉ git local)
 - Ngôn ngữ chính của UI: tiếng Việt hay song ngữ ưu tiên?
 - Có cần giữ `MockProvider` trong production build không, hay chỉ dùng cho test?
-- **T-M1-13 (export) đã defer** — ưu tiên task M1 tiếp theo là T-M1-14 (log request vào DB) hay bỏ qua log để dồn sang T-M1-15 (K3 direct) / T-M1-16 (BYOK UI)?
+- ~~**T-M1-13 (export) đã defer**~~ — **đã xong 2026-11-09** (menu export .md/.json + copy Markdown).
 
 ---
 

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { CircleHelp, History, Settings, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useI18n } from '@/sidepanel/hooks/useI18n'
@@ -15,6 +16,13 @@ export interface PanelHeaderProps {
   onOpenConversations?: (() => void) | undefined
   /** Mo drawer cai dat (FR-SETTINGS-01..07 — T-M1-12). */
   onOpenSettings?: (() => void) | undefined
+  /**
+   * Node xuat cuoc tro chuyen (FR-CHAT-10 — T-M1-13).
+   *
+   * Truyen **node** (khong phai callback) de menu giu duoc trigger cua rieng
+   * no — header chi lo vi tri, khong can biet chi tiet hành động.
+   */
+  exportMenu?: ReactNode
   /** Tieu de conversation hien tai (hien thi trong header). */
   conversationTitle?: string | undefined
   /** Trang thai ket noi toi BFF (NFR-REL-04 — T-M1-19). */
@@ -33,6 +41,7 @@ export function PanelHeader({
   onOpenOnboarding,
   onOpenConversations,
   onOpenSettings,
+  exportMenu,
   conversationTitle,
   connectionStatus,
 }: PanelHeaderProps) {
@@ -105,6 +114,8 @@ export function PanelHeader({
             <Settings className="h-3.5 w-3.5" aria-hidden="true" />
           </Button>
         ) : null}
+
+        {exportMenu !== undefined ? exportMenu : null}
 
         <Button
           variant="ghost"

@@ -86,7 +86,7 @@ Cột ưu tiên: **M** = Must (M1) · **S** = Should (M2) · **C** = Could (M2/M
 | B21 | Chọn model | Không cho chọn model (chỉ model của Gemini) | 🟢 FR-PROVIDER-03 |
 | B22 | API / BYOK | Không có | 🟢 FR-PROVIDER-02 |
 | B23 | Chạy ngoài Chrome | Không | 🟢 (thiết kế không cấm Firefox) |
-| B24 | Log / export transcript | Không có API; người dùng phải copy tay | 🟢 FR-CHAT-10, NFR-MAINT-04 |
+| B24 | Log / export transcript | Không có API; người dùng phải copy tay | 🟢 FR-CHAT-10, NFR-MAINT-04 — ✅ T-M1-13 (export .md/.json + copy Markdown) |
 | B25 | Self-host | Không | 🟢 FR-PROVIDER-07 |
 | B26 | Skill library browser (`chrome://skills/browse`) | Trang xem sẵn skill mẫu, lọc theo loại/tên | S |
 | B27 | Yêu cầu đăng nhập | Bắt buộc đăng nhập Google Account; Skills cần **Chrome ≥ 147**, ngôn ngữ **en-US**, ChromeOS/Mac/Windows; không dùng được trên managed/Enterprise account (trừ khi admin bật) | 🟢 Không cần tài khoản hãng; chạy offline được |
@@ -181,7 +181,7 @@ Dùng làm acceptance checklist cho M1.
 - [x] Prompt gợi ý theo loại trang — ✅ T-M1-11 (bộ luật phân loại ở `packages/shared/src/pageProfile.ts`: docs / article / forum / video / pdf / shopping / general · mỗi profile **4** gợi ý có `{title}` · nút refresh xoay vòng deterministic trong cùng profile · đổi tab → đổi bộ gợi ý · không có tab đọc được → 4 gợi ý chung FR-UX-04)
 - [ ] Nhiều conversation: tạo / đổi tên / xoá / ghim — ✅ T-M1-09 (drawer `ConversationList` (Radix Dialog trượt từ trái) · tạo / đổi tên / xoá (có confirm dialog) / ghim / lưu trữ / search theo tên · **phạm vi: ghim ở cấp conversation**, ghim tin nhắn để task sau)
 - [ ] Stop / Regenerate / Edit-resend — ✅ T-M1-10 (regenerate tạo **biến thể** (switcher "1/2") lưu phía server `messages.meta` → không mất khi reload · edit-resend tạo **branch** (nhánh cũ giữ trong DB, hiển thị ở "Phiên bản cũ") · stop giữ nội dung dở + nút "Tiếp tục" (continue UPDATE message cũ) · Enter gửi / Shift+Enter xuống dòng / Esc dừng · tự lưu draft · auto-scroll chỉ khi ở đáy + nút "Cuộn xuống")
-- [ ] Export conversation (Markdown / JSON) — ⬜ T-M1-13
+- [x] Export conversation (Markdown / JSON) — ✅ T-M1-13 (menu `ExportMenu` (Radix Popover) trong header panel · 3 hành động: **Sao chép Markdown** · **Xuất .md** · **Xuất .json** · `.md` có metadata đầu file + metadata từng lượt assistant (provider · model · token · request-id) + nguồn `[N]` · `.json` có `version`/`exportedAt`/`conversation`/`messages[]` · tên file `sidekick-<title>-<yyyyMMdd-HHmm>.<ext>` · chỉ xuất **đường đi active** · E2E `e2e/export.spec.ts` + unit `tests/export.test.ts`)
 - [ ] **Error / loading / empty states + retry + trạng thái kết nối** — ✅ **T-M1-19** (4 trạng thái có UI riêng trong `sidepanel/components/states/`: `LoadingState` skeleton · `EmptyState` (wrapper `PromptGallery`) · `ErrorState` card inline · `ConnectionBadge` + banner offline · **hành động khôi phục theo nhóm lỗi**: 401 → "Kiểm tra API key" (mở Settings) · 429 → đếm ngược rồi "Thử lại" · 5xx/network → "Thử lại" · retry tự động **1 lần** backoff 800 ms, **không** retry lỗi auth)
 - [ ] Skills `/` + tạo/sửa/xoá skill + library có sẵn + trang duyệt skill library — ⬜ T-M2-04/06/21
 - [ ] Onboarding lần đầu 3 bước — ✅ T-M1-25 (bước 1 giải thích quyền · bước 2 chọn provider + nhập API key (BYOK K2) hoặc dùng Ollama không cần key · bước 3 thử câu hỏi bằng SSE thật · skippable ở mọi bước · mở lại được từ nút "Hướng dẫn" trong header) — *2026-11-08: ô nhập API key đã **gỡ** khỏi bước 2 (BYOK tạm dừng); provider cần key mà chưa có K1 hiện thông báo hướng dẫn*

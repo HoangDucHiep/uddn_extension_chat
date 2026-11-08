@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/sidepanel/components/chat/ConfirmDialog'
 import { deleteAllConversations } from '@/lib/conversationClient'
 import { deleteLocalSidekickData, exportSettings, importSettings } from '@/lib/settings'
+import { downloadTextFile } from '@/lib/downloadFile'
 import { useI18n } from '@/sidepanel/hooks/useI18n'
 
 /**
@@ -33,15 +34,7 @@ export function DataSettings({ onHistoryDeleted }: DataSettingsProps) {
   const handleExport = async (): Promise<void> => {
     try {
       const json = await exportSettings()
-      const blob = new Blob([json], { type: 'application/json' })
-      const url = URL.createObjectURL(blob)
-      const anchor = document.createElement('a')
-      anchor.href = url
-      anchor.download = 'sidekick-settings.json'
-      document.body.appendChild(anchor)
-      anchor.click()
-      document.body.removeChild(anchor)
-      URL.revokeObjectURL(url)
+      downloadTextFile('sidekick-settings.json', json, 'application/json')
       toast.success(t('toast.settingsExported'))
     } catch {
       toast.error(t('toast.settingsExportFailed'))
