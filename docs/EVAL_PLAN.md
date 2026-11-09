@@ -312,7 +312,7 @@ Cơ chế đã implement: LLM trả marker `[N]` trong câu trả lời → serv
 | `citation_precision` | Trong các citation nhận được, % mà `snippet` **thực sự chứa** nội dung hỗ trợ claim được trích dẫn (judge LLM đối chiếu `snippet` với claim) | Cùng cách — nhưng Edge/Gemini **không** công bộ đoạn nguồn → chỉ chấm được mức "có trỏ đúng nguồn hay không", ta chấm được mức chặt hơn (đúng **đoạn**) |
 | `hallucination_rate` | Claim **không** có marker `[N]` nào bám theo → tính vào claim không được hỗ trợ | Tương đương |
 
-> **Lưu ý công bằng khi so sánh:** Edge Copilot / Chrome Gemini hiển thị trích dẫn ở dạng **số đoạn/số nguồn** (không mở được đoạn nguồn để đối chiếu). Vì vậy trong [`EVAL_REPORT.md`](EVAL_REPORT.md) phải ghi rõ:
+> **Lưu ý công bằng khi so sánh:** Edge Copilot / Chrome Gemini hiển thị trích dẫn ở dạng **số đoạn/số nguồn** (không mở được đoạn nguồn để đối chiếu). Vì lậy trong `EVAL_REPORT.md` (deliverable M2 — T-M2-17) phải ghi rõ:
 > 1. `citation_precision` của ta đo **chặt hơn** (đúng đoạn nguồn) → **không** so sánh thẳng điểm tuyệt đối với Edge/Gemini nếu hệ thống đối chiếu không mở được đoạn.
 > 2. Metric **cùng định nghĩa** cho cả 3 hệ thống phải là `citation_recall` (số trích dẫn kỳ vọng có mặt) → đây mới là phép so sánh công bằng.
 > 3. Marker `[N]` **không** phải thứ Edge/Gemini dùng → khi chấm thủ công, **bỏ qua** phần hiển thị của ta (chip) để chấm nội dung câu trả lời như nhau.

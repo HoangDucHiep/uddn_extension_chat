@@ -1,7 +1,7 @@
 # Documentation Index — Sidekick AI (Chrome Extension Chat Sidebar)
 
 **Dự án:** Extension chat-bot sidebar cho trình duyệt, cạnh tranh với Edge Copilot Sidebar và Chrome Gemini Sidebar.
-**Giai đoạn hiện tại:** **M0 (Foundation) đã implement xong** (tag `v0.1`) · đang làm **M1 (Parity)** — 23/25 task (T-M1-01, T-M1-04 ✅ hấp thụ, T-M1-05, T-M1-21, T-M1-22, T-M1-23, T-M1-02, T-M1-24, T-M1-25, T-M1-06 ✅, T-M1-07 ✅, T-M1-08 ✅, T-M1-09 ✅, T-M1-10 ✅, T-M1-11 ✅, T-M1-03 ✅, T-M1-12 ✅, T-M1-19 ✅, T-M1-14 ✅, T-M1-17 ✅, T-M1-18 ✅, T-M1-20 ✅) · 1311 unit test + 81 E2E.
+**Giai đoạn hiện tại:** **M0 (Foundation) ✅** (tag `v0.1`) · **M1 (Parity) ✅ ĐÓNG** (tag `v0.2`) — **23/25 task** (T-M1-13 export ✅ 2026-11-09) · **1337 unit test + 88 E2E** · tiếp theo: **M2 — Advanced & Eval** (`docs/EVAL_PLAN.md`, deliverable bắt buộc: `docs/EVAL_REPORT.md`).
 **Entry point cho agent:** [`../AGENTS.md`](../AGENTS.md) · [`HANDOFF.md`](HANDOFF.md)
 
 ---
@@ -19,6 +19,7 @@
 | [`HANDOFF.md`](HANDOFF.md) | **Chuyển phiên chat** | Checklist bắt đầu chat mới (≤ 5 phút), trạng thái hiện tại, quyết định đã chốt, mẹo tiết kiệm token | **Đọc đầu tiên khi mở chat mới** |
 | [`CHANGELOG.md`](CHANGELOG.md) | **Lịch sử thay đổi** | Mọi thay đổi docs + code, mới → cũ | Xem gần đây đã làm gì |
 | [`MANUAL_TEST_GUIDE.md`](MANUAL_TEST_GUIDE.md) | **Hướng dẫn cài đặt & test tay** | Cài extension + chạy hạ tầng local · checklist test tay **từng tính năng** M1 · xử lý sự cố | **Khi bạn muốn tự dùng thử sản phẩm** |
+| [`CONTEXT_HANDOFF_2026-11-09.md`](CONTEXT_HANDOFF_2026-11-09.md) | **Bàn giao context** (snapshot 1 lần) | Tóm tắt context để chuyển sang chat mới mà không đọc lại toàn bộ `docs/` | Khi cần nhanh 1 trang tóm tắt |
 
 ---
 
@@ -100,21 +101,21 @@ Chi tiết lý do & hệ quả: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §2 (12 A
 
 | Tài liệu | Phiên bản | Ngày | Trạng thái |
 |---|---|---|---|
-| REQUIREMENTS.md | v2.1 | 2026-11-08 | ✅ Đã cập nhật — FR-UX-06/07/09/10 + NFR-A11Y-01..05 ✅ + §4.9.5 — T-M1-20 |
-| COMPARISON_MATRIX.md | v2.1 | 2026-11-08 | ✅ Đã cập nhật — dòng parity "responsive + a11y cơ bản" → ✅ T-M1-20 |
-| EVAL_PLAN.md | v1.3 | 2026-11-07 | ✅ Đã cập nhật — §5.3.1 metric lấy từ `request_logs` + cảnh báo giá snapshot — T-M1-14 |
+| REQUIREMENTS.md | v2.2 | 2026-11-09 | ✅ Đã cập nhật — §9 thêm dòng **kết quả M1** (gate đạt 91.4% / 91.3%) |
+| COMPARISON_MATRIX.md | v2.2 | 2026-11-09 | ✅ Đã cập nhật — §E chuẩn hoá 32/35 `- [x]` · **§E.1** kết quả audit + **§E.1.1** đối chiếu dòng Must §A/§B + **§E.1.2** bằng chứng context extraction |
+| EVAL_PLAN.md | v1.4 | 2026-11-09 | ✅ Đã cập nhật — §3.1 bảng field bắt buộc + ghi chú contract `evalTaskSchema` |
 | DESIGN_SYSTEM_BRIEF.md | v2.0 | 2026-11-08 | ✅ Đã cập nhật — §5 + §5.1 checklist a11y — T-M1-20 |
-| SYSTEM_DESIGN.md | v2.2 | 2026-11-08 | ✅ Đã cập nhật — §7.19 responsive + a11y — T-M1-20 |
-| IMPLEMENTATION_PLAN.md | v2.1 | 2026-11-08 | ✅ Đã cập nhật — T-M1-20 ✅ + §3.1t — T-M1-20 |
-| HANDOFF.md | v2.2 | 2026-11-08 | ✅ Đã cập nhật — T-M1-20 responsive + a11y (M1: 23/25) |
-| CHANGELOG.md | v2.2 | 2026-11-08 | ✅ Đang theo dõi |
+| SYSTEM_DESIGN.md | v2.3 | 2026-11-09 | ✅ Đã cập nhật — **§4.5** contract eval dataset (mới) |
+| IMPLEMENTATION_PLAN.md | v2.2 | 2026-11-09 | ✅ Đã cập nhật — **§3.1u** kết quả audit gate M1 + đóng M1 |
+| HANDOFF.md | v2.3 | 2026-11-09 | ✅ Đã cập nhật — M1 **đóng** (tag `v0.2`) + bước tiếp theo M2 |
+| CHANGELOG.md | v2.3 | 2026-11-09 | ✅ Đang theo dõi |
 
 ## Trạng thái milestone
 
 | Milestone | Nội dung | Trạng thái |
 |---|---|---|
 | **M0 — Foundation** (2 tuần) | Monorepo, shared types, Docker/Postgres, Drizzle, BFF skeleton, provider Gemini, SSE, side panel shell | ✅ Xong (tag `v0.1`) |
-| **M1 — Parity** (3 tuần) | Content extraction (HTML + PDF + YouTube transcript), context đính kèm chủ động + ngân sách token, `@` multi-tab, selection, citations, markdown/code, conversation CRUD, chat actions (regenerate/edit-resend/stop/continue), gợi ý theo trang + tóm tắt 1-click, toggle panel + context menu + phím tắt, settings, upload ảnh, onboarding, **error/loading/empty states + retry + connection status**, **request logging đầy đủ vào `request_logs`** (request-id xuyên suốt · cost thật · retention 90 ngày · API đọc metadata cho eval), **i18n VI/EN** (dictionary có kiểu · đổi ngôn ngữ áp dụng ngay), **phím tắt cấu hình được** (2 lớp: native Chrome + nhanh Sidekick), **responsive 320–640px + a11y pass cơ bản** (focus ring chuẩn hoá · live region streaming · skip-link · tap target 24px), K2/K3 | 🚧 Đang làm — 23/25 task (T-M1-01, T-M1-04 ✅ hấp thụ, T-M1-05, T-M1-21, T-M1-22, T-M1-23, T-M1-02, T-M1-24, T-M1-25, T-M1-06 ✅, T-M1-07 ✅, T-M1-08 ✅, T-M1-09 ✅, T-M1-10 ✅, T-M1-11 ✅, T-M1-03 ✅, T-M1-12 ✅, T-M1-19 ✅, T-M1-14 ✅, T-M1-17 ✅, T-M1-18 ✅, T-M1-20 ✅) |
+| **M1 — Parity** (3 tuần) | Content extraction (HTML + PDF + YouTube transcript), context đính kèm chủ động + ngân sách token, `@` multi-tab, selection, citations, markdown/code, conversation CRUD, chat actions (regenerate/edit-resend/stop/continue), gợi ý theo trang + tóm tắt 1-click, toggle panel + context menu + phím tắt, settings, upload ảnh, onboarding, **error/loading/empty states + retry + connection status**, **request logging đầy đủ vào `request_logs`** (request-id xuyên suốt · cost thật · retention 90 ngày · API đọc metadata cho eval), **i18n VI/EN** (dictionary có kiểu · đổi ngôn ngữ áp dụng ngay), **phím tắt cấu hình được** (2 lớp: native Chrome + nhanh Sidekick), **responsive 320–640px + a11y pass cơ bản** (focus ring chuẩn hoá · live region streaming · skip-link · tap target 24px), **export conversation Markdown/JSON**, K2/K3 | ✅ **Xong (tag `v0.2`)** — 23/25 task (T-M1-15 + T-M1-16 ⏸ tạm dừng) · gate đạt: checklist §E **32/35 = 91.4%** · dòng "Must" §A/§B **21/23 = 91.3%** |
 | **M2 — Advanced & Eval** (3 tuần) | Multi-provider, skills, tool registry + MCP, RAG, token/cost UI, **EVAL_REPORT** | ⬜ Chưa bắt đầu |
 | **M3 — Polish & Deliverable** (1 tuần) | Design system, states, a11y audit, i18n, demo video, slide, README, backup DB, ADR | ⬜ Chưa bắt đầu |
 | **M4 — Workflow** (tuỳ chọn, 2 tuần) | Scheduler, workflow CRUD, run log, import/export, notification | ⬜ Ngoài đường găng |

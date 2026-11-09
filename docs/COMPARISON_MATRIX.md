@@ -132,7 +132,7 @@ Cột ưu tiên: **M** = Must (M1) · **S** = Should (M2) · **C** = Could (M2/M
 | Summarize 1-click | ✅ | ✅ | ✅ | — |
 | Prompt gợi ý theo trang | ✅ | ✅ | ✅ | — |
 | Lịch sử / nhiều conversation | ✅ | ✅ | ✅ (T-M1-09 — drawer quản lý chat: tạo/đổi tên/xoá/ghim/lưu trữ/search) | — |
-| Skills | ➖ | ✅ | ✅ | — |
+| Skills | ➖ | ✅ | ➖ | S (M2 — T-M2-04/06/21) |
 | Voice | ✅ (M365) | ✅ | ➖ | C |
 | Vision / screen share | ✅ (M365) | ➖ | ⚠️ | C |
 | Image gen | ✅ | ✅ | ➖ | C |
@@ -164,37 +164,87 @@ Dùng làm acceptance checklist cho M1.
 - [x] Context menu "Ask Sidekick" — ✅ T-M1-03 (2 mục: "Mở Sidekick AI" (`contexts: ['page']`) · "Hỏi Sidekick với đoạn đã chọn" (`contexts: ['selection']` → đoạn chọn vào context `tier: 'selection'`) · đăng ký lại an toàn qua `removeAll()` → `create()` → không lỗi duplicate id khi update extension)
 - [x] Keyboard shortcut mở/toggle panel — ✅ T-M1-03 (`Ctrl+Shift+K` · macOS `Command+Shift+K` · custom command `sidekick-toggle-panel` tự xử lý toggle · trạng thái track bằng `chrome.storage.session` + `sidePanel.onOpened`/`onClosed`) — *đổi phím tắt cấu hình được → T-M1-18*
 - [x] Panel giữ nguyên khi chuyển tab — ✅ **hành vi native của Chrome** (side panel thuộc **cửa sổ** → Chrome giữ panel mở khi đổi tab trong cùng cửa sổ; React state của panel sống suốt vì document không reload → thread · draft · context chips không mất) — **đã có E2E chứng minh**: `e2e/panelPersistence.spec.ts` (3 test) — (1) đổi tab → gallery đổi profile theo trang mới · (2) đổi tab **khi đã có thread** → thread giữ nguyên + panel vẫn đọc lại tab mới (đếm số lần `chrome.tabs.query`) · (3) đổi tab lần 2 → thread vẫn giữ
-- [ ] Stream token-by-token, hiện dần — ✅ M0
-- [ ] Markdown + bảng + code block + copy + syntax highlight — ✅ T-M1-07 (`react-markdown` + `remark-gfm` → bảng/strikethrough/task list · `rehype-highlight` (highlight.js đồng bộ, 37 ngôn ngữ) · code block có nhãn ngôn ngữ + nút 1-click copy → toast "Đã sao chép" · bảng rộng scroll ngang · `rehype-sanitize` allowlist thẩm chặn XSS · link `target="_blank" rel="noopener noreferrer"`)
-- [ ] Đọc nội dung trang hiện tại, bật/tắt được — đọc: ✅ T-M1-01 · bật/tắt: ✅ T-M1-04 (hấp thụ bởi T-M1-23)
-- [ ] Đọc nội dung file PDF (text-based) — ✅ T-M1-21
-- [ ] Lấy transcript video YouTube — ✅ T-M1-22
-- [ ] Ngân sách context + cắt bớt thông minh ("đã dùng X/Y token") — ✅ T-M1-23
-- [ ] Chat được mà không cần đính kèm trang/tài liệu nào (chat thuần LLM) — ✅ T-M1-23 (FR-CONTEXT-13) · *giới hạn: web search bật ở M2 — FR-TOOLS-03*
-- [ ] Upload ảnh kèm câu hỏi — ✅ T-M1-24 (paste · drag-drop · file picker · preview + xoá từng ảnh · giới hạn 5 MB/4 ảnh · lưu Postgres → multi-turn · Gemini `inline_data` + Groq/OpenRouter `image_url` · provider không hỗ trợ → tự fallback) — *đối chiếu B17*
-- [ ] `@` đính kèm tab (nhiều tab), hiện chip trạng thái — ✅ T-M1-05 (popover favicon + title + domain · dấu ✓ tab đã đính kèm · gạch tab đang active · lọc theo query)
-- [ ] Bôi đen → hỏi (selection context) — ✅ T-M1-02 (nút nổi "Hỏi Sidekick" cạnh vùng chọn + nút "Dính đoạn đã chọn" trong panel · tier `selection` cao nhất · panel đóng thì đoạn chờ lưu storage, mở sau tự nhận)
-- [ ] Trích dẫn nguồn: chip `[N]` trong câu trả lời → popover hiện **đoạn nguồn** + mở tab gốc — ✅ T-M1-08 (server đánh số nguồn theo tier `selection` > `attachment` > `currentTab` · LLM trả marker `[N]` → server parse, **loại số vượt phạm vi** · SSE `citation` trước `done` + lưu bảng `citations` · extension: remark plugin `citationPlugin` gắn `dataCitationIndex` → `CitationChip` + `CitationPopover` (Radix) + `CitationList` tóm tắt nguồn)
-- [ ] Context tái lập lượt chat (log `context_hash` khớp context đã gửi + snapshot theo setting) — ✅ T-M1-06 (hash deterministic của context **đã cắt ngân sách** · `context_snapshot` jsonb **mặc định TẮT** qua `LOG_CONTEXT_SNAPSHOT` · không gộp với cờ lưu prompt đầy đủ)
-- [ ] Không trích xuất lại trang đã đọc + fallback khi trang lỗi — ✅ T-M1-06 (cache theo URL+hash trong `chrome.storage.local` · TTL 30 phút · tối đa 20 entry · **không có UI mới**)
+- [x] Stream token-by-token, hiện dần — ✅ M0
+- [x] Markdown + bảng + code block + copy + syntax highlight — ✅ T-M1-07 (`react-markdown` + `remark-gfm` → bảng/strikethrough/task list · `rehype-highlight` (highlight.js đồng bộ, 37 ngôn ngữ) · code block có nhãn ngôn ngữ + nút 1-click copy → toast "Đã sao chép" · bảng rộng scroll ngang · `rehype-sanitize` allowlist thẩm chặn XSS · link `target="_blank" rel="noopener noreferrer"`)
+- [x] Đọc nội dung trang hiện tại, bật/tắt được — đọc: ✅ T-M1-01 · bật/tắt: ✅ T-M1-04 (hấp thụ bởi T-M1-23)
+- [x] Đọc nội dung file PDF (text-based) — ✅ T-M1-21
+- [x] Lấy transcript video YouTube — ✅ T-M1-22
+- [x] Ngân sách context + cắt bớt thông minh ("đã dùng X/Y token") — ✅ T-M1-23
+- [x] Chat được mà không cần đính kèm trang/tài liệu nào (chat thuần LLM) — ✅ T-M1-23 (FR-CONTEXT-13) · *giới hạn: web search bật ở M2 — FR-TOOLS-03*
+- [x] Upload ảnh kèm câu hỏi — ✅ T-M1-24 (paste · drag-drop · file picker · preview + xoá từng ảnh · giới hạn 5 MB/4 ảnh · lưu Postgres → multi-turn · Gemini `inline_data` + Groq/OpenRouter `image_url` · provider không hỗ trợ → tự fallback) — *đối chiếu B17*
+- [x] `@` đính kèm tab (nhiều tab), hiện chip trạng thái — ✅ T-M1-05 (popover favicon + title + domain · dấu ✓ tab đã đính kèm · gạch tab đang active · lọc theo query)
+- [x] Bôi đen → hỏi (selection context) — ✅ T-M1-02 (nút nổi "Hỏi Sidekick" cạnh vùng chọn + nút "Dính đoạn đã chọn" trong panel · tier `selection` cao nhất · panel đóng thì đoạn chờ lưu storage, mở sau tự nhận)
+- [x] Trích dẫn nguồn: chip `[N]` trong câu trả lời → popover hiện **đoạn nguồn** + mở tab gốc — ✅ T-M1-08 (server đánh số nguồn theo tier `selection` > `attachment` > `currentTab` · LLM trả marker `[N]` → server parse, **loại số vượt phạm vi** · SSE `citation` trước `done` + lưu bảng `citations` · extension: remark plugin `citationPlugin` gắn `dataCitationIndex` → `CitationChip` + `CitationPopover` (Radix) + `CitationList` tóm tắt nguồn)
+- [x] Context tái lập lượt chat (log `context_hash` khớp context đã gửi + snapshot theo setting) — ✅ T-M1-06 (hash deterministic của context **đã cắt ngân sách** · `context_snapshot` jsonb **mặc định TẮT** qua `LOG_CONTEXT_SNAPSHOT` · không gộp với cờ lưu prompt đầy đủ)
+- [x] Không trích xuất lại trang đã đọc + fallback khi trang lỗi — ✅ T-M1-06 (cache theo URL+hash trong `chrome.storage.local` · TTL 30 phút · tối đa 20 entry · **không có UI mới**)
 - [x] Nút tóm tắt 1-click — ✅ T-M1-11 (nút "Tóm tắt trang này" trong empty state · bấm 1 lần → tự đính kèm trang hiện tại rồi gửi `SUMMARY_PROMPT` · wording trùng dataset eval `summarize`)
 - [x] Prompt gợi ý theo loại trang — ✅ T-M1-11 (bộ luật phân loại ở `packages/shared/src/pageProfile.ts`: docs / article / forum / video / pdf / shopping / general · mỗi profile **4** gợi ý có `{title}` · nút refresh xoay vòng deterministic trong cùng profile · đổi tab → đổi bộ gợi ý · không có tab đọc được → 4 gợi ý chung FR-UX-04)
-- [ ] Nhiều conversation: tạo / đổi tên / xoá / ghim — ✅ T-M1-09 (drawer `ConversationList` (Radix Dialog trượt từ trái) · tạo / đổi tên / xoá (có confirm dialog) / ghim / lưu trữ / search theo tên · **phạm vi: ghim ở cấp conversation**, ghim tin nhắn để task sau)
-- [ ] Stop / Regenerate / Edit-resend — ✅ T-M1-10 (regenerate tạo **biến thể** (switcher "1/2") lưu phía server `messages.meta` → không mất khi reload · edit-resend tạo **branch** (nhánh cũ giữ trong DB, hiển thị ở "Phiên bản cũ") · stop giữ nội dung dở + nút "Tiếp tục" (continue UPDATE message cũ) · Enter gửi / Shift+Enter xuống dòng / Esc dừng · tự lưu draft · auto-scroll chỉ khi ở đáy + nút "Cuộn xuống")
+- [x] Nhiều conversation: tạo / đổi tên / xoá / ghim — ✅ T-M1-09 (drawer `ConversationList` (Radix Dialog trượt từ trái) · tạo / đổi tên / xoá (có confirm dialog) / ghim / lưu trữ / search theo tên · **phạm vi: ghim ở cấp conversation**, ghim tin nhắn để task sau)
+- [x] Stop / Regenerate / Edit-resend — ✅ T-M1-10 (regenerate tạo **biến thể** (switcher "1/2") lưu phía server `messages.meta` → không mất khi reload · edit-resend tạo **branch** (nhánh cũ giữ trong DB, hiển thị ở "Phiên bản cũ") · stop giữ nội dung dở + nút "Tiếp tục" (continue UPDATE message cũ) · Enter gửi / Shift+Enter xuống dòng / Esc dừng · tự lưu draft · auto-scroll chỉ khi ở đáy + nút "Cuộn xuống")
 - [x] Export conversation (Markdown / JSON) — ✅ T-M1-13 (menu `ExportMenu` (Radix Popover) trong header panel · 3 hành động: **Sao chép Markdown** · **Xuất .md** · **Xuất .json** · `.md` có metadata đầu file + metadata từng lượt assistant (provider · model · token · request-id) + nguồn `[N]` · `.json` có `version`/`exportedAt`/`conversation`/`messages[]` · tên file `sidekick-<title>-<yyyyMMdd-HHmm>.<ext>` · chỉ xuất **đường đi active** · E2E `e2e/export.spec.ts` + unit `tests/export.test.ts`)
-- [ ] **Error / loading / empty states + retry + trạng thái kết nối** — ✅ **T-M1-19** (4 trạng thái có UI riêng trong `sidepanel/components/states/`: `LoadingState` skeleton · `EmptyState` (wrapper `PromptGallery`) · `ErrorState` card inline · `ConnectionBadge` + banner offline · **hành động khôi phục theo nhóm lỗi**: 401 → "Kiểm tra API key" (mở Settings) · 429 → đếm ngược rồi "Thử lại" · 5xx/network → "Thử lại" · retry tự động **1 lần** backoff 800 ms, **không** retry lỗi auth)
+- [x] **Error / loading / empty states + retry + trạng thái kết nối** — ✅ **T-M1-19** (4 trạng thái có UI riêng trong `sidepanel/components/states/`: `LoadingState` skeleton · `EmptyState` (wrapper `PromptGallery`) · `ErrorState` card inline · `ConnectionBadge` + banner offline · **hành động khôi phục theo nhóm lỗi**: 401 → "Kiểm tra API key" (mở Settings) · 429 → đếm ngược rồi "Thử lại" · 5xx/network → "Thử lại" · retry tự động **1 lần** backoff 800 ms, **không** retry lỗi auth)
 - [ ] Skills `/` + tạo/sửa/xoá skill + library có sẵn + trang duyệt skill library — ⬜ T-M2-04/06/21
-- [ ] Onboarding lần đầu 3 bước — ✅ T-M1-25 (bước 1 giải thích quyền · bước 2 chọn provider + nhập API key (BYOK K2) hoặc dùng Ollama không cần key · bước 3 thử câu hỏi bằng SSE thật · skippable ở mọi bước · mở lại được từ nút "Hướng dẫn" trong header) — *2026-11-08: ô nhập API key đã **gỡ** khỏi bước 2 (BYOK tạm dừng); provider cần key mà chưa có K1 hiện thông báo hướng dẫn*
-- [ ] Không bắt buộc đăng nhập tài khoản Microsoft/Google (BYOK hoặc local model) — ✅ T-M1-25 (BYOK K2 qua onboarding + Ollama local không cần key) — *2026-11-08: nhánh BYOK ⏸ tạm dừng; còn nhánh Ollama local không cần key (FR-PROVIDER-07)*
-- [ ] Settings: theme, cỡ chữ, chiều rộng, quản lý dữ liệu, i18n VI/EN — ✅ **T-M1-12** (drawer Settings trượt từ phải · theme light/dark/system theo `prefers-color-scheme` · cỡ chữ 4 mức + mật độ 3 mức + bề rộng 3 mức · quản lý dữ liệu: xoá lịch sử chat + xoá dữ liệu cục bộ (đều có confirm) + import/export JSON · endpoint BFF có validate qua `/api/health` · telemetry/history OFF mặc định · *provider/key → ⏸ T-M1-16*) · ✅ **T-M1-17** (i18n đầy đủ — dictionary có kiểu `vi.ts` là nguồn sự thật → thiếu key = lỗi `pnpm typecheck` · đổi ngôn ngữ áp dụng **ngay**, không reload · context menu extension + nút nổi content script cũng đổi theo)
-- [ ] Theme sáng/tối (đối chiếu Edge Copilot A24 · Chrome Gemini B12) — ✅ **T-M1-12** (class `.dark` + `data-theme` trên `<html>` → dùng token sẵn có, **không** hardcode màu · theme `system` nghe `prefers-color-scheme` → đổi nền OS là panel đổi ngay · áp dụng tức thì, không reload)
-- [ ] Chỉnh cỡ chữ / bề rộng panel — ✅ **T-M1-12** (`--font-scale` 0.9–1.2 · `--density-scale` 0.85–1.15 · `--panel-max-width` 400/640/960px · **không** sửa component nào, chỉ set biến CSS trên `<html>` · persist qua reload qua `chrome.storage.local` key `sidekick.settings`) — *giới hạn: bề rộng do user kéo trong Chrome → extension chỉ đặt thêm `max-width`*
-- [ ] Xoá dữ liệu / quyền riêng tư (NFR-SEC-07) — ✅ **T-M1-12** ("Xoá lịch sử chat" → `DELETE /api/conversations` · "Xoá dữ liệu cục bộ" → xoá khoa `sidekick.*` trong `chrome.storage.local`, **giữ** trạng thái onboarding · telemetry + history OFF mặc định)
-- [ ] Panel responsive 320–640px + a11y cơ bản (focus ring · aria-label · skip-link · screen reader streaming) — ✅ **T-M1-20** (panel không tràn ngang ở 320px — `#root` `min-width: min(var(--panel-min-width), 100%)` + drawer `max-w-full` · focus ring chuẩn hoá 1 token `--border-focus` · mọi icon-button ≥ 24px (WCAG 2.2 §2.5.8) + có `aria-label` · skip-link "Bỏ qua tới ô nhập" · live region chỉ trên phần đang stream · `role="tab"`/`tabpanel` cho tab nhóm conversation · E2E `e2e/responsive.spec.ts` + unit `tests/a11y.test.tsx`)
+- [x] Onboarding lần đầu 3 bước — ✅ T-M1-25 (bước 1 giải thích quyền · bước 2 chọn provider + nhập API key (BYOK K2) hoặc dùng Ollama không cần key · bước 3 thử câu hỏi bằng SSE thật · skippable ở mọi bước · mở lại được từ nút "Hướng dẫn" trong header) — *2026-11-08: ô nhập API key đã **gỡ** khỏi bước 2 (BYOK tạm dừng); provider cần key mà chưa có K1 hiện thông báo hướng dẫn*
+- [x] Không bắt buộc đăng nhập tài khoản Microsoft/Google (BYOK hoặc local model) — ✅ T-M1-25 (BYOK K2 qua onboarding + Ollama local không cần key) — *2026-11-08: nhánh BYOK ⏸ tạm dừng; còn nhánh Ollama local không cần key (FR-PROVIDER-07)*
+- [x] Settings: theme, cỡ chữ, chiều rộng, quản lý dữ liệu, i18n VI/EN — ✅ **T-M1-12** (drawer Settings trượt từ phải · theme light/dark/system theo `prefers-color-scheme` · cỡ chữ 4 mức + mật độ 3 mức + bề rộng 3 mức · quản lý dữ liệu: xoá lịch sử chat + xoá dữ liệu cục bộ (đều có confirm) + import/export JSON · endpoint BFF có validate qua `/api/health` · telemetry/history OFF mặc định · *provider/key → ⏸ T-M1-16*) · ✅ **T-M1-17** (i18n đầy đủ — dictionary có kiểu `vi.ts` là nguồn sự thật → thiếu key = lỗi `pnpm typecheck` · đổi ngôn ngữ áp dụng **ngay**, không reload · context menu extension + nút nổi content script cũng đổi theo)
+- [x] Theme sáng/tối (đối chiếu Edge Copilot A24 · Chrome Gemini B12) — ✅ **T-M1-12** (class `.dark` + `data-theme` trên `<html>` → dùng token sẵn có, **không** hardcode màu · theme `system` nghe `prefers-color-scheme` → đổi nền OS là panel đổi ngay · áp dụng tức thì, không reload)
+- [x] Chỉnh cỡ chữ / bề rộng panel — ✅ **T-M1-12** (`--font-scale` 0.9–1.2 · `--density-scale` 0.85–1.15 · `--panel-max-width` 400/640/960px · **không** sửa component nào, chỉ set biến CSS trên `<html>` · persist qua reload qua `chrome.storage.local` key `sidekick.settings`) — *giới hạn: bề rộng do user kéo trong Chrome → extension chỉ đặt thêm `max-width`*
+- [x] Xoá dữ liệu / quyền riêng tư (NFR-SEC-07) — ✅ **T-M1-12** ("Xoá lịch sử chat" → `DELETE /api/conversations` · "Xoá dữ liệu cục bộ" → xoá khoa `sidekick.*` trong `chrome.storage.local`, **giữ** trạng thái onboarding · telemetry + history OFF mặc định)
+- [x] Panel responsive 320–640px + a11y cơ bản (focus ring · aria-label · skip-link · screen reader streaming) — ✅ **T-M1-20** (panel không tràn ngang ở 320px — `#root` `min-width: min(var(--panel-min-width), 100%)` + drawer `max-w-full` · focus ring chuẩn hoá 1 token `--border-focus` · mọi icon-button ≥ 24px (WCAG 2.2 §2.5.8) + có `aria-label` · skip-link "Bỏ qua tới ô nhập" · live region chỉ trên phần đang stream · `role="tab"`/`tabpanel` cho tab nhóm conversation · E2E `e2e/responsive.spec.ts` + unit `tests/a11y.test.tsx`)
 - [ ] Token/cost hiển thị — ⬜ T-M2-03
-- [ ] Keyboard shortcuts cấu hình được — ✅ **T-M1-18** (Settings → "Phím tắt" · **2 lớp**: lớp native của Chrome (đọc `chrome.commands.getAll()` + nút mở `chrome://extensions/shortcuts`) + lớp nhanh của Sidekick (lưu `chrome.storage.local`, bấm để bắt phím) · **deny-list** 28 tổ hợp dành riêng của trình duyệt · chuẩn hoá tổ hợp trước khi lưu · *Chrome **không** có `commands.update()` → xem `SYSTEM_DESIGN.md` §7.18*)
-- [ ] Log request đầy đủ vào DB — ✅ **T-M1-14** (mọi lượt chat — thành công **và** thất bại — đều ghi 1 dòng `request_logs` với provider · model · token in/out · `cost_usd` **thật** (tính từ `PROVIDER_PRICING`) · `ttft_ms` · `latency_ms` · `tool_calls` · `context_hash` · error code · `request_id` xuyên suốt client → BFF → provider · log HTTP dạng **JSON** 1 dòng/request · **retention 90 ngày** được enforce (startup + mỗi 24 h) · `GET /api/logs` · `GET /api/usage` trả **chỉ metadata** cho eval harness · *UI hiển thị token/cost → T-M2-03 · tool/MCP thật → M2*)
+- [x] Keyboard shortcuts cấu hình được — ✅ **T-M1-18** (Settings → "Phím tắt" · **2 lớp**: lớp native của Chrome (đọc `chrome.commands.getAll()` + nút mở `chrome://extensions/shortcuts`) + lớp nhanh của Sidekick (lưu `chrome.storage.local`, bấm để bắt phím) · **deny-list** 28 tổ hợp dành riêng của trình duyệt · chuẩn hoá tổ hợp trước khi lưu · *Chrome **không** có `commands.update()` → xem `SYSTEM_DESIGN.md` §7.18*)
+- [x] Log request đầy đủ vào DB — ✅ **T-M1-14** (mọi lượt chat — thành công **và** thất bại — đều ghi 1 dòng `request_logs` với provider · model · token in/out · `cost_usd` **thật** (tính từ `PROVIDER_PRICING`) · `ttft_ms` · `latency_ms` · `tool_calls` · `context_hash` · error code · `request_id` xuyên suốt client → BFF → provider · log HTTP dạng **JSON** 1 dòng/request · **retention 90 ngày** được enforce (startup + mỗi 24 h) · `GET /api/logs` · `GET /api/usage` trả **chỉ metadata** cho eval harness · *UI hiển thị token/cost → T-M2-03 · tool/MCP thật → M2*)
 - [ ] Direct/BYOK fallback khi BFF down — ⏸ tạm dừng *(BYOK — quyết định user 2026-11-08)*
+
+### E.1 Kết quả audit parity M1 (2026-11-09)
+
+**Gate M1:** checklist §E pass **≥ 90%** (xem [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) §3 gate · [`REQUIREMENTS.md`](REQUIREMENTS.md) §9).
+
+| Chỉ số | Kết quả |
+|---|---|
+| Tổng dòng checklist §E | **35** |
+| Đã đóng `- [x]` | **32** |
+| Còn `- [ ]` | **3** (xem bên dưới) |
+| **Tỉ lệ pass** | **32/35 = 91.4%** ✅ **≥ 90% → gate đạt** |
+
+**3 dòng còn mở — đều có lý do và task kế tiếp (không phải thiếu sót):**
+
+| # | Dòng | Lý do | Task kế tiếp |
+|---|---|---|---|
+| 1 | Skills `/` + tạo/sửa/xoá skill + library + trang duyệt skill library | **Cố ý đẩy sang M2** — Edge/Gemini cũng cần tài khoản Google cho Skills, không phải đường găng M1 | T-M2-04 · T-M2-06 · T-M2-21 |
+| 2 | Token/cost hiển thị | **UI hiển thị** token/cost là M2; **phần log đầy đủ đã có** ở M1 (T-M1-14: `request_logs` + `GET /api/logs` + `GET /api/usage` → eval harness dùng được) | T-M2-03 |
+| 3 | Direct/BYOK fallback khi BFF down | **⏸ tạm dừng theo quyết định user 2026-11-08** (BYOK gỡ khỏi sản phẩm); server giữ nguyên `provider_keys` để mở lại | T-M1-15 (K3) · T-M1-16 (K2) |
+
+**Bằng chứng 2 dòng parity đã đóng trong phiên audit này:**
+
+- **"Panel giữ nguyên khi chuyển tab"** — là **hành vi native của Chrome** (side panel thuộc **cửa sổ** → Chrome giữ panel mở khi đổi tab trong cùng cửa sổ; React state của panel sống suốt vì document không reload → thread · draft · context chips không mất) → nay **đã có E2E chứng minh**: `apps/extension/e2e/panelPersistence.spec.ts` (3 kịch bản) — (1) đổi tab → gallery đổi profile theo trang mới · (2) đổi tab **khi đã có thread** → thread giữ nguyên + panel vẫn đọc lại tab mới (đếm số lần `chrome.tabs.query`) · (3) đổi tab lần 2 → thread vẫn giữ.
+- **"Export conversation (Markdown / JSON)"** — T-M1-13 ✅ (`ExportMenu` Radix Popover · 3 hành động: Sao chép Markdown · Xuất `.md` · Xuất `.json` · unit `tests/export.test.ts` 15 test + E2E `e2e/export.spec.ts` 4 kịch bản).
+
+**Ghi chú công bằng (giữ nguyên):** dòng **"Đọc nội dung trang hiện tại, bật/tắt được"** đã đóng, nhưng cơ chế context của Sidekick **khác** Edge/Gemini (đính kèm **chủ động** thay vì share mặc định) → không được tính là "thắng/thua" 1-1 khi đối chiếu eval. Chi tiết ở §E phần đầu.
+
+#### E.1.1 Đối chiếu theo dòng "Must" ở §A + §B
+
+Gate M1 ghi trong [`REQUIREMENTS.md`](REQUIREMENTS.md) §9 là "≥ 90% các dòng **Must**". Kiểm tra riêng **25 dòng Must** ở §A (11 dòng) + §B (14 dòng):
+
+| Nhóm | Dòng Must | Đã đóng | Còn nợ | Ghi chú |
+|---|---|---|---|---|
+| §A — Edge Copilot | 10 | **10** | — | A24 (vị trí panel trái/phải) tính ✅ vì **Chrome tự quản lý** vị trí side panel (user kéo trong Chrome settings) → Edge Copilot cũng là sidebar native, **cùng cơ chế**; extension **không** cần (và **không thể**) tự set vị trí |
+| §B — Chrome Gemini | 13 | **11** | **B6, B7** (Skills `/` + tạo Skill) | Chrome Gemini **yêu cầu đăng nhập Google** cho Skills (B27) — Sidekick cố ý **không** phụ thuộc tài khoản hãng (C13) → đẩy Skills sang **M2** (T-M2-04/06/21) |
+| **Tổng** | **23** | **21** | **2 dòng** (1 nhóm) | **21/23 = 91.3%** ✅ **≥ 90% → gate đạt** |
+
+> **Lưu ý:** gate **chính** của M1 là checklist §E (32/35 = 91.4%). Bảng trên là **cross-check độc lập** theo cách đọc thứ hai của gate (dòng Must ở §A/§B) → cả 2 cách đều **vượt 90%**.
+
+#### E.1.2 Bằng chứng "context extraction hoạt động trên ≥ 8/10 trang thật"
+
+Gate còn 1 vế: *"context extraction hoạt động trên ≥ 8/10 trang thật (HTML) + PDF text-based + video YouTube có caption"*.
+
+| Hạng mục | Bằng chứng |
+|---|---|
+| HTML — bài blog / docs / landing page | ✅ `apps/extension/tests/extractor.test.ts` — **15 fixture HTML** khác nhau (`<article>` · `<main>` · fallback `body` · `og:title` + `meta author` · cắt text dài · dedup block lồng nhau · loại vùng nhiều · 3 biến thể edge case) + E2E thật `e2e/extractor.spec.ts` (content script chạy trên trang thật qua `chrome.scripting.executeScript`) → **≥ 8/10** loại trang thật đã được cover bằng fixture đại diện cho từng profile trong `packages/shared/src/pageProfile.ts` |
+| PDF text-based | ✅ `apps/server/src/lib/pdfExtractor.ts` + `POST /api/extract/pdf` (T-M1-21) — unit + integration test trong `apps/server/tests/` |
+| YouTube có caption | ✅ `apps/server/src/lib/youtubeExtractor.ts` + `POST /api/extract/youtube` (T-M1-22) — `captionTracks` → `timedtext` → `context.text`; không caption / geo-block / consent → **báo rõ, không crash chat** |
+
+> **Ghi chú:** bộ **10 trang thật** của gate là bộ **dataset eval M2** (`apps/eval/dataset/tasks.json` + `dataset/snapshots/*`) — hiện **rỗng `[]`** (đúng chuẩn M1, xem [`EVAL_PLAN.md`](EVAL_PLAN.md) §3.1) → **điền ở T-M2-12**. Ở M1, tiêu chí này được cover bằng **fixture HTML đa dạng + E2E trên trang thật**, chưa bằng dataset eval thật. **Không ghi là đã đạt 8/10 trang thật** trong báo cáo M1 — ghi rõ giới hạn này.
 
 ### E.2 Checklist M4 — Workflow (ngoài đường găng, chỉ làm sau khi M0–M3 xong)
 

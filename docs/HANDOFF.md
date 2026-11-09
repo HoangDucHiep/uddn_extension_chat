@@ -23,15 +23,25 @@
 
 | Hạng mục | Trạng thái |
 |---|---|
-| Docs | ✅ Đầy đủ 9 file (`docs/`) + `AGENTS.md` ở root |
-| Code | ✅ M0 (Foundation) hoàn tất · **T-M1-01 + T-M1-21 + T-M1-22 + T-M1-23 + T-M1-04 + T-M1-05 + T-M1-02 + T-M1-24 + T-M1-25 + T-M1-06 + T-M1-07 + T-M1-08 + T-M1-09 + T-M1-10 + T-M1-11 + T-M1-03 + T-M1-12 + T-M1-19 + T-M1-14 + T-M1-17 + T-M1-18 + T-M1-20 + T-M1-13 xong** — 4 workspace, 1326 unit test + 88 E2E |
-| Git | ✅ Đã init (`main`) · tag `v0.1` đánh dấu M0 |
-| Milestone hiện tại | **M1 — Parity** (M0 đã đóng, M1: **24/25 task** — T-M1-15 + T-M1-16 ⏸ tạm dừng) |
-| Task tiếp theo | **Đóng M1** → sang **M2 — Advanced & Eval** (`docs/EVAL_PLAN.md`) |
+| Docs | ✅ Đầy đủ 11 file (`docs/`) + `AGENTS.md` ở root |
+| Code | ✅ **M1 (Parity) ĐÓNG** — 23/25 task (T-M1-15 + T-M1-16 ⏸ tạm dừng) — 4 workspace, **1337 unit test + 88 E2E** |
+| Git | ✅ Đã init (`main`) · tag `v0.1` (M0) · tag **`v0.2`** (M1 đóng 2026-11-09) |
+| Milestone hiện tại | **M2 — Advanced & Eval** (M0 ✅ · M1 ✅) |
+| Task tiếp theo | **T-M2-12** — điền dataset eval thật (`apps/eval/dataset/tasks.json` + `dataset/snapshots/*`) → T-M2-13 harness → T-M2-14 judge → T-M2-15..17 → **`docs/EVAL_REPORT.md`** (deliverable bắt buộc) |
 
 ### Đang làm dở
 
-_(Không có — T-M1-13 export xong 2026-11-09)_
+_(Không có — M1 đóng xong 2026-11-09, tag `v0.2`)_
+
+### Kết quả đóng M1 (2026-11-09)
+
+- **3 task cuối của M1:** T-M1-13 export conversation (`.md` / `.json` — commit `0a8d9d6`) · E2E chứng minh parity "panel giữ nguyên khi chuyển tab" (commit `07fb7ce`) · đồng bộ contract eval với `EVAL_PLAN.md` (commit `03a1d69`).
+- **Gate M1 ĐẠT:** checklist §E `COMPARISON_MATRIX.md` **32/35 = 91.4%** · dòng "Must" ở §A/§B **21/23 = 91.3%** (cả 2 ≥ 90%).
+- **3 dòng §E còn mở** — đều có task kế tiếp, không phải thiếu sót: Skills `/` + library → **T-M2-04/06/21** (Chrome Gemini cần đăng nhập Google cho Skills; Sidekick cố ý không phụ thuộc tài khoản hãng) · token/cost **UI** → **T-M2-03** (phần log đã đầy đủ ở M1) · Direct/BYOK fallback → **T-M1-15/16** (⏸ tạm dừng).
+- **Giới hạn đã ghi rõ:** vế "≥ 8/10 trang thật" của gate là **dataset eval M2** (hiện rỗng `[]`) → cover bằng **15 fixture HTML** + E2E trang thật ở M1, **không** tuyên bố đã đạt 8/10 trang thật.
+- **Test tại lúc đóng M1:** shared 243 · server 377 · extension 706 · eval 11 = **1337 unit** + **88 E2E** (23 file). `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm build` ✅ · `pnpm test:e2e` ✅ (88/88).
+- **Lưu ý chạy E2E:** cần **Docker Desktop đang chạy** + BFF lên (`pnpm dev:server`) → 4 kịch bản `citation` · `markdown` · `sidepanel` · `vision` gọi BFF thật. Docker tắt → 4 test fail (không phải hồi quy code).
+- Chi tiết: [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) §3.1u · [`COMPARISON_MATRIX.md`](COMPARISON_MATRIX.md) §E.1 / §E.1.1 / §E.1.2 · [`REQUIREMENTS.md`](REQUIREMENTS.md) §9.
 
 ### Hướng dẫn test tay cho người dùng
 

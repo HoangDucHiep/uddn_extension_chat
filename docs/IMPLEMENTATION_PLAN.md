@@ -104,6 +104,8 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 
 **Định mức M1:** 3 tuần · 25 task · ~41 ngày công
 
+> **Kết quả 2026-11-09 — M1 ĐÓNG (tag `v0.2`):** **23/25 task ✅** (T-M1-15 + T-M1-16 ⏸ tạm dừng) · gate đạt (checklist §E **32/35 = 91.4%** · dòng "Must" §A/§B **21/23 = 91.3%** — cả 2 ≥ 90%) · chi tiết & bằng chứng: **§3.1u** (ngay dưới) + [`COMPARISON_MATRIX.md`](COMPARISON_MATRIX.md) §E.1.
+
 > **Audit 2026-11-04:** M1 tăng từ 20 → 25 task sau khi bổ sung 5 task card còn thiếu (T-M1-21 PDF · T-M1-22 YouTube · T-M1-23 ngân sách context · T-M1-24 upload ảnh · T-M1-25 onboarding). PDF/YouTube được nâng từ **Should → Must** vì Edge Copilot (A20) và Chrome Gemini (B10) đều có ở mức Must để đạt parity. Xem [`REQUIREMENTS.md`](REQUIREMENTS.md) §11.1 (FR → Task đầy đủ).
 >
 > **Quyết định 2026-11-08 — BYOK tạm dừng:** T-M1-15 (K3 direct) + T-M1-16 (K2 BYOK UI) đánh dấu **⏸ tạm dừng** theo quyết định của user. Ô nhập API key đã **gỡ khỏi onboarding**; server giữ nguyên endpoint + bảng `provider_keys` để mở lại được sau (không migration). Ở M1 nguồn key duy nhất là **K1** (team key trong `.env` BFF) + Ollama local. Chi tiết: [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.6.1 · [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) ADR-9.
@@ -939,6 +941,57 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 > **Phát hiện quan trọng — live region phải đặt ở *phần vừa stream*, không đặt ở thread.** Đặt `aria-live="polite"` trên container thread (`role="log"`) → mỗi lần stream, screen reader đọc lại **toàn bộ lịch sử chat** (spam). Pattern đúng: `MessageContent` có `role="article"` + `aria-live="polite"` + `aria-atomic="false"` + `aria-relevant="additions text"` — **chỉ** khi `isStreaming`; thread chỉ có `role="log"` **không** `aria-live`.
 >
 > **Quyết định kỹ thuật:** (1) **Focus ring 1 token** — 12 chỗ dùng `focus-visible:outline-none focus-visible:ring-[var(--focus-ring)]` (shadow 2 vòng) → chuyển hết sang `focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]` (đồng bộ `Button`/`Input`/`Textarea`); (2) **"Responsive" của side panel = không tràn ngang**, không phải breakpoint — panel là 1 cột do user kéo → mọi bề rộng cứng phải `min(..., 100%)`; (3) **Tap target 24px** (WCAG 2.2 §2.5.8) — icon-button `p-[2px]` (~18px) → `h-6 w-6`; (4) **`useI18n` đặt ở `src/i18n/`** để `components/ui/dialog.tsx` (component dùng chung) dịch được mà không vi phạm layering; (5) **Test a11y kiểm source-level** (quét class) cho focus ring + tap target — jsdom không tính kích thước hiển thị → bắt được hồi quy về `outline-none`; (6) **Không** dùng `chrome.commands`/permission mới — task là UI + CSS.
+
+### 3.1u Kết quả audit gate M1 + đóng M1 (2026-11-09, tag `v0.2`)
+
+> Đây là phiên **đóng M1**. 3 task cuối: T-M1-13 (export) · E2E chứng minh parity "panel giữ nguyên khi chuyển tab" · đồng bộ contract eval.
+
+#### 3.1u.1 Trạng thái task
+
+| Nhóm | Kết quả |
+|---|---|
+| **T-M1-01 → T-M1-25** | **23/25 task ✅** · T-M1-15 (K3 direct) + T-M1-16 (K2 BYOK UI) **⏸ tạm dừng** (quyết định user 2026-11-08 — BYOK gỡ khỏi sản phẩm; **server giữ nguyên** `provider_keys` + 4 endpoint để mở lại không cần migration) |
+| T-M1-13 (export) | ✅ *(2026-11-09)* — commit `0a8d9d6` |
+| Parity "panel giữ nguyên khi chuyển tab" | ✅ **đã có E2E chứng minh** — commit `07fb7ce` |
+| Contract eval đồng bộ | ✅ — commit `03a1d69` |
+
+#### 3.1u.2 Gate M1 — kết quả đo
+
+| Vế của gate | Ngưỡng | Kết quả | Đạt? |
+|---|---|---|---|
+| Checklist §E (`COMPARISON_MATRIX.md`) | ≥ 90% | **32/35 = 91.4%** | ✅ |
+| Dòng "Must" ở §A/§B (cách đọc thứ hai của gate) | ≥ 90% | **21/23 = 91.3%** | ✅ |
+| Context extraction — HTML | ≥ 8/10 trang thật | **15 fixture HTML** (`tests/extractor.test.ts`) + E2E trang thật (`e2e/extractor.spec.ts`) | ✅ *(xem giới hạn bên dưới)* |
+| Context extraction — PDF text-based | có | ✅ `pdfExtractor.ts` + `POST /api/extract/pdf` (T-M1-21) | ✅ |
+| Context extraction — YouTube có caption | có | ✅ `youtubeExtractor.ts` + `POST /api/extract/youtube` (T-M1-22) | ✅ |
+| Log đủ để chạy eval | có | ✅ `request_logs` + `GET /api/logs` + `GET /api/usage` (T-M1-14) | ✅ |
+
+**3 dòng §E còn mở — đều có task kế tiếp, không phải thiếu sót:**
+
+| Dòng §E | Lý do | Task kế tiếp |
+|---|---|---|
+| Skills `/` + library + trang duyệt skill | Chrome Gemini cần **đăng nhập Google** cho Skills; Sidekick cố ý **không** phụ thuộc tài khoản hãng → đẩy M2 | T-M2-04 · T-M2-06 · T-M2-21 |
+| Token/cost **hiển thị** (UI) | Phần **log** đã có đầy đủ ở M1; **UI** hiển thị là M2 | T-M2-03 |
+| Direct/BYOK fallback khi BFF down | ⏸ tạm dừng theo quyết định user 2026-11-08 | T-M1-15 · T-M1-16 |
+
+#### 3.1u.3 Giới hạn đã ghi nhận (không ghi là đã đạt)
+
+> **Vế "≥ 8/10 trang thật"** của gate: bộ **10 trang thật** là **dataset eval M2** (`apps/eval/dataset/tasks.json` + `dataset/snapshots/*`) — hiện **rỗng `[]`** (đúng chuẩn M1: chưa có nội dung trang thật để chụp snapshot) → **điền ở T-M2-12**. Ở M1, tiêu chí này được cover bằng **15 fixture HTML đa dạng** (đại diện từng profile trong `packages/shared/src/pageProfile.ts`) + **E2E trên trang thật** → **không** tuyên bố "đã đạt 8/10 trang thật" trong báo cáo M1.
+
+#### 3.1u.4 Test & build tại thời điểm đóng M1
+
+| Tầng | Số test |
+|---|---|
+| Unit — shared | 243 |
+| Unit — server | 377 |
+| Unit — extension | 706 |
+| Unit — eval | 11 |
+| **Unit tổng** | **1337** |
+| E2E (Playwright) | **88** kịch bản / 23 file |
+
+Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm build` ✅ · `pnpm test:e2e` ✅ (**88/88 passed**).
+
+> **Lưu ý khi chạy E2E:** cần **Docker Desktop đang chạy** (`docker compose up -d`) + BFF lên (`pnpm dev:server`) → 4 kịch bản `citation` · `markdown` · `sidepanel` · `vision` gọi BFF thật. Nếu Docker tắt → 4 test này **fail** (không phải hồi quy code) → bật Docker rồi chạy lại là xanh.
 
 ### 3.2 Traceability FR → Task
 

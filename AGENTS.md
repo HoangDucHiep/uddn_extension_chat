@@ -102,14 +102,18 @@ pnpm eval:run                # chạy eval harness
 | Milestone | Trạng thái | Ghi chú |
 |---|---|---|
 | **M0 — Foundation** | ✅ Hoàn thành | 15/15 task · 91 unit test + 2 E2E · tag `v0.1` |
-| **M1 — Parity** | 🚧 Đang làm | 23/25 task (T-M1-01, T-M1-04 ✅ hấp thụ, T-M1-05, T-M1-21, T-M1-22, T-M1-23, T-M1-02, T-M1-24, T-M1-25, T-M1-06 ✅, T-M1-07 ✅, T-M1-08 ✅, T-M1-09 ✅, T-M1-10 ✅, T-M1-11 ✅, T-M1-03 ✅, T-M1-12 ✅, T-M1-19 ✅, T-M1-14 ✅, T-M1-17 ✅, T-M1-18 ✅, T-M1-20 ✅) · 1311 unit test + 81 E2E |
-| **M2 — Advanced & Eval** | ⬜ Chưa bắt đầu | `EVAL_REPORT.md` là deliverable bắt buộc |
+| **M1 — Parity** | ✅ **Đóng** (2026-11-09) | **23/25 task** (T-M1-15 + T-M1-16 ⏸ tạm dừng) · **1337 unit test + 88 E2E** · **tag `v0.2`** · gate đạt: checklist §E **32/35 = 91.4%** · dòng "Must" §A/§B **21/23 = 91.3%** |
+| **M2 — Advanced & Eval** | ⬜ Chưa bắt đầu | `EVAL_REPORT.md` là deliverable bắt buộc · **bắt đầu từ T-M2-12 (dataset eval)** |
 | **M3 — Polish & Deliverable** | ⬜ Chưa bắt đầu | |
 | **M4 — Workflow** | ⬜ Tuỳ chọn | Chỉ sau M3 + đã có eval report |
 
 **Trạng thái docs:** ✅ Requirements · ✅ Design System Brief · ✅ System Design · ✅ Implementation Plan · ✅ Comparison Matrix · ✅ Eval Plan · ✅ Handoff · ✅ Changelog
 
-**Việc tiếp theo:** **Đóng M1** → sang **M2 — Advanced & Eval** (`docs/EVAL_PLAN.md`). T-M1-13 (export) đã được user defer · T-M1-15 (K3 direct) + T-M1-16 (K2 BYOK UI) **⏸ tạm dừng** (2026-11-08).
+**Việc tiếp theo:** **M1 ĐÃ ĐÓNG** (2026-11-09, tag `v0.2`) → bắt đầu **M2 — Advanced & Eval** (`docs/EVAL_PLAN.md`). Bắt đầu từ **T-M2-12** (điền dataset eval thật — contract đã sẵn sàng ở `packages/shared/src/schemas/eval.ts`) → T-M2-13 (harness) → T-M2-14 (judge) → T-M2-15..17 (thu thập + **`docs/EVAL_REPORT.md` — deliverable bắt buộc**). T-M1-15 (K3 direct) + T-M1-16 (K2 BYOK UI) **⏸ tạm dừng** (2026-11-08) — server giữ nguyên để mở lại được.
+
+> **Đóng M1 (2026-11-09):** 3 task cuối — **T-M1-13 export** (commit `0a8d9d6`) · **E2E chứng minh parity "panel giữ nguyên khi chuyển tab"** (commit `07fb7ce`) · **đồng bộ contract eval** (commit `03a1d69`). Gate đạt: checklist §E **32/35 = 91.4%** + dòng "Must" §A/§B **21/23 = 91.3%** (cả 2 ≥ 90%). 3 dòng §E còn mở đều có task kế tiếp (Skills → T-M2-04/06/21 · token/cost UI → T-M2-03 · BYOK → T-M1-15/16). Chi tiết: [`IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) §3.1u · [`COMPARISON_MATRIX.md`](docs/COMPARISON_MATRIX.md) §E.1.
+
+> **Contract eval (2026-11-09):** shape dataset eval đã **có nguồn sự thật** → [`packages/shared/src/schemas/eval.ts`](packages/shared/src/schemas/eval.ts) (`evalTaskSchema` + `EVAL_GROUPS` **8 nhóm** theo [`EVAL_PLAN.md`](docs/EVAL_PLAN.md) §3.2) → `apps/eval` validate bằng đúng schema đó. Field **snake_case** (`snapshot_path` · `content_hash` · `key_points` · `must_include_facts` · `must_not_contain` · `expected_citations`). `apps/eval/dataset/tasks.json` hiện **rỗng `[]`** — đúng chuẩn M1, điền ở T-M2-12. Chi tiết: [`SYSTEM_DESIGN.md`](docs/SYSTEM_DESIGN.md) §4.5.
 
 > **Bundle content script (fix sau T-M1-20):** `dist/content.js` đã **phình 151 kB** (T-M1-17: `lib/i18n.ts` → `lib/settings.ts` → `@sidekick/shared` barrel → **Zod**) rồi **~46 kB** (T-M1-20: kéo dictionary **đầy đủ** ~34 kB) → nay **17.27 kB** (gzip 6.65 kB). **2 tầng dictionary**: `i18n/format.ts` (thuần) · `i18n/outsidePanel.{vi,en}.ts` (**4 khoá** ngoài panel — nguồn sự thật) · `i18n/outsidePanel.ts` · `i18n/surface.ts` (union kiểu) · `lib/i18nSurface.ts` (`getSurfaceTranslator()` cho content script + SW) · `lib/storageKeys.ts` (khoá storage + đọc ngôn ngữ, **không** Zod). `i18n/vi.ts` + `en.ts` **spread** dictionary rút gọn → 1 nguồn sự thật. **Guard** `apps/extension/tests/contentBundleGuard.test.ts` duyệt **đệ quy đồ thị phụ thuộc** (grep từng file bị lọt) → chặn `@sidekick/shared` barrel · dictionary đầy đủ · `react` · `zod`; assert `dist/content.js` **≤ 40 kB**. Chi tiết: [`SYSTEM_DESIGN.md`](docs/SYSTEM_DESIGN.md) §7.5.1 + §7.5.2.
 

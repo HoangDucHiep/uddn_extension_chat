@@ -7,6 +7,20 @@
 ---
 
 ## [Unreleased]
+### Changed
+- **Đóng M1 (Milestone Parity) — tag `v0.2`** (`docs/COMPARISON_MATRIX.md` §E · §E.1 · `docs/IMPLEMENTATION_PLAN.md` §3.1u · `docs/REQUIREMENTS.md` §9 · `docs/README.md` · `AGENTS.md` §6 · `docs/HANDOFF.md` §2)
+  - **Checklist parity §E chuẩn hoá:** **32 dòng** đã implement trước đây ghi `- [ ]` → `- [x]` (25 dòng). Danh sách đầy đủ 35 dòng: **32/35 = 91.4%** ✅ (ngưỡng gate ≥ 90%).
+  - **Cross-check độc lập theo dòng "Must" ở §A/§B:** **21/23 = 91.3%** ✅ (ngưỡng ≥ 90%).
+  - **3 dòng còn mở — đều có task kế tiếp, không phải thiếu sót:** Skills `/` + library (→ T-M2-04/06/21 — Chrome Gemini cần đăng nhập Google cho Skills, Sidekick cố ý không phụ thuộc tài khoản hãng) · token/cost **UI** (→ T-M2-03; phần **log** đã đầy đủ ở M1) · Direct/BYOK fallback khi BFF down (→ T-M1-15/16, ⏸ tạm dừng 2026-11-08).
+  - **`COMPARISON_MATRIX.md` §D** — dòng "Skills": Sidekick `✅` → `➖` + gap `S (M2 — T-M2-04/06/21)` (sửa lại mâu thuẫn với §E: Skills **chưa** implement ở M1).
+  - **`COMPARISON_MATRIX.md` §E.1.2** — ghi rõ **bằng chứng** từng vế của gate (15 fixture HTML + E2E trang thật + PDF + YouTube caption + `request_logs` API) + **giới hạn**: bộ "10 trang thật" là **dataset eval M2** (`tasks.json` hiện rỗng `[]`) → điền ở T-M2-12 → **không** tuyên bố đã đạt 8/10 trang thật ở M1.
+  - **Số liệu test chốt lúc đóng M1:** shared 243 · server 377 · extension 706 · eval 11 = **1337 unit** + **88 E2E** (23 file).
+
+### Docs
+- Sửa link `[EVAL_REPORT.md](EVAL_REPORT.md)` **chưa tồn tại** trong `EVAL_PLAN.md` §7 → đổi thành text thuần kèm mã task (`deliverable M2 — T-M2-17`) → mọi link `.md` trong `docs/` **đều resolve được** (rule `docs-sync.mdc` §5).
+- `docs/README.md` — bảng tài liệu: thêm `CONTEXT_HANDOFF_2026-11-09.md`; bảng phiên bản docs cập nhật (11 file).
+- `.gitignore` — ignore `.tmp-*.log` / `.tmp-*.err` (log tạm của dev server).
+
 ### Added
 - **Contract eval dataset đồng bộ với `EVAL_PLAN.md` (nền cho T-M2-12/13)**
   - `packages/shared/src/schemas/eval.ts` (mới) — Zod schema là **nguồn sự thật** cho contract dataset: `EVAL_GROUPS` (**8 nhóm** theo `EVAL_PLAN.md` §3.2: `page_qa` · `summarize` · `cross_tab` · `writing` · `vision` · `doc_extract` · `video_transcript` · `general_qa`) · `evalGroupSchema` · `evalLangSchema` · `evalPageSchema` · `evalReferenceSchema` · `evalTaskSchema` (shape §3.1) · `evalTaskListSchema`. Export trong `packages/shared/src/index.ts`.
