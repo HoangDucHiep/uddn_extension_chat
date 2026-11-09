@@ -590,6 +590,78 @@ Mỗi `ProviderAdapter` phải cài `supportsVision(model: string): boolean`. Kh
 
 > **Lưu ý:** model mặc định của Groq (`openai/gpt-oss-120b`) **không** hỗ trợ ảnh → khi user đính kèm ảnh, server tự fallback sang `openrouter` hoặc `gemini`. Người dùng không cần chỉnh tay.
 
+### 4.5 Contract eval dataset (T-M2-12 — nền cho eval harness)
+
+> Nguồn sự thật cho shape: [`EVAL_PLAN.md`](EVAL_PLAN.md) §3.1 (1 task) + §3.2 (8 nhóm).
+> Nguồn sự thật cho **code**: [`packages/shared/src/schemas/eval.ts`](../packages/shared/src/schemas/eval.ts) (Zod).
+
+#### 4.5.1 Vì sao đặt ở `packages/shared`?
+
+| Consumer | Dùng để |
+|---|---|
+| `apps/eval` (`src/dataset.ts`) | Validate `dataset/tasks.json` — reject dataset sai shape **trước** khi chạy |
+| `apps/server` (tương lai) | Nếu sau này phục vụ dataset / nhận dataset từ client → dùng **cùng 1 schema** |
+
+→ 1 nguồn sự thật, không viết 2 bản. **Không** thêm dependency mới cho `apps/eval` (Zod đã có sẵn trong repo).
+
+#### 4.5.2 Schema
+
+```ts
+export const EVAL_GROUPS = [
+  'page_qa', 'summarize', 'cross_tab', 'writing',
+  'vision', 'doc_extract', 'video_transcript', 'general_qa',
+] as const
+
+export const evalGroupSchema = z.enum(EVAL_GROUPS)
+export const evalLangSchema = z.enum(['vi', 'en'])
+
+export const evalPageSchema = z.object({
+  url: z.string().url(),
+  title: z.string(),
+  snapshot_path: z.string().min(1),
+  content_hash: z.string().min(1),
+})
+
+export const evalReferenceSchema = z.object({
+  key_points: z.array(z.string().min(1)).optional(),
+  must_include_facts: z.array(z.string().min(1)).optional(),
+  must_not_contain: z.array(z.string().min(1)).optional(),
+})
+
+export const evalTaskSchema = z.object({
+  id: z.string().min(1),
+  group: evalGroupSchema,
+  lang: evalLangSchema,
+  page: evalPageSchema,
+  prompt: z.string().min(1),
+  reference: evalReferenceSchema.optional(),
+  expected_citations: z.number().int().nonnegative().optional(),
+  tags: z.array(z.string().min(1)).optional(),
+  notes: z.string().optional(),
+})
+
+export const evalTaskListSchema = z.array(evalTaskSchema)
+```
+
+**Quy ước field:** **snake_case** (`snapshot_path` · `content_hash` · `key_points` · `must_include_facts` · `must_not_contain` · `expected_citations`) — vì dataset là JSON **interchange**, dùng chung với transcript thủ công của Edge/Gemini.
+
+**Nhóm `workflow` không có trong `EVAL_GROUPS`** — nó thuộc M4 (`EVAL_PLAN.md` §3.2.1) và chỉ chạy khi đã implement workflow → thêm sau, không làm dataset M2 bị reject.
+
+#### 4.5.3 Validator của `apps/eval`
+
+`apps/eval/src/dataset.ts` → `validateTask()` dùng `evalTaskSchema.safeParse()`:
+
+- Lỗi → `throw` kèm **đường dẫn field** cụ thể (`must_include_facts: Expected array, received string`).
+- `apps/eval/src/types.ts` **re-export** từ `@sidekick/shared` → `EvalGroup` · `EvalLang` · `EvalTask` · `EVAL_GROUPS` (không còn bản sao trong `apps/eval`).
+
+#### 4.5.4 Trạng thái dataset
+
+`apps/eval/dataset/tasks.json` **để rỗng `[]`** — đúng chuẩn M1 (M1 không có nội dung trang thật để chụp snapshot). Điền dataset thật là **T-M2-12** (M2). Không phải bug.
+
+#### 4.5.5 Kiểm thử
+
+`apps/eval/tests/dataset.test.ts` (mới, 11 test) — fixture hợp lệ cho **từng** group trong 8 group · giữ nguyên field snake_case · field optional không bắt buộc · reject: group sai · `must_include_facts` sai kiểu · thiếu `page.snapshot_path` · thiếu `id` · `lang` sai · dataset không phải array · `filterTasks` lọc theo group + lang.
+
 ---
 
 ## 5. Data model (Drizzle / PostgreSQL 16)

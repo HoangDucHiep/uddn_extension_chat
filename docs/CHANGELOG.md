@@ -8,6 +8,16 @@
 
 ## [Unreleased]
 ### Added
+- **Contract eval dataset đồng bộ với `EVAL_PLAN.md` (nền cho T-M2-12/13)**
+  - `packages/shared/src/schemas/eval.ts` (mới) — Zod schema là **nguồn sự thật** cho contract dataset: `EVAL_GROUPS` (**8 nhóm** theo `EVAL_PLAN.md` §3.2: `page_qa` · `summarize` · `cross_tab` · `writing` · `vision` · `doc_extract` · `video_transcript` · `general_qa`) · `evalGroupSchema` · `evalLangSchema` · `evalPageSchema` · `evalReferenceSchema` · `evalTaskSchema` (shape §3.1) · `evalTaskListSchema`. Export trong `packages/shared/src/index.ts`.
+    - Nhóm `workflow` (§3.2.1, M4) **cố ý không** có trong `EVAL_GROUPS` → không làm dataset M2 bị reject.
+    - Field **snake_case** (`snapshot_path` · `content_hash` · `key_points` · `must_include_facts` · `must_not_contain` · `expected_citations`) — dataset là JSON interchange, dùng chung với transcript thủ công của Edge/Gemini.
+  - `apps/eval/src/types.ts` — bỏ `EVAL_GROUPS` cũ (`page_qa`/`summarization`/`rewrite`/`coding`/`comparison`) + shape `reference.answer/keyFacts` (**sai chuẩn `EVAL_PLAN.md`**) → **re-export** từ `@sidekick/shared`; giữ `EvalRunResult` + `EVAL_RUNS_PER_TASK = 3`.
+  - `apps/eval/src/dataset.ts` — `validateTask()` dùng `evalTaskSchema.safeParse` (thay validate tay) → lỗi có **đường dẫn field** rõ ràng.
+  - `apps/eval/tests/dataset.test.ts` (mới, 11 test) — fixture hợp lệ cho **từng** group + reject (group sai · `must_include_facts` sai kiểu · thiếu `page.snapshot_path` · thiếu `id` · `lang` sai · dataset không phải array) + `filterTasks`.
+  - `apps/eval/dataset/tasks.json` **giữ rỗng `[]`** — đúng chuẩn M1; điền dataset thật là T-M2-12.
+  - **Không** thêm dependency mới (Zod đã có sẵn) · **không** migration · **không** đổi API server.
+  - Docs: `EVAL_PLAN.md` §3.1 (bảng field bắt buộc + ghi chú contract) + §3.2 (ghi chú `EVAL_GROUPS`) · `SYSTEM_DESIGN.md` §4.5 (mới) · `IMPLEMENTATION_PLAN.md` (ghi chú T-M2-12).
 - **Parity "Panel giữ nguyên khi chuyển tab" — đã chứng minh bằng E2E**
   - `apps/extension/e2e/panelPersistence.spec.ts` (mới, 3 test) — mock `chrome.tabs` + stub SSE `/api/chat`:
     - đổi tab → gallery đổi `data-profile` theo trang mới.

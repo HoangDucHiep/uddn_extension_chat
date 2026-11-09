@@ -1,12 +1,17 @@
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { EVAL_GROUPS, type EvalGroup, type EvalTask, type EvalLang } from './types.js'
+import { evalTaskSchema, type EvalGroup, type EvalLang, type EvalTask } from './types.js'
 
 /**
  * Loader cho eval dataset.
  *
  * Dataset luu o `apps/eval/dataset/tasks.json` (dang array).
  * File snapshot noi dung trang nam o `apps/eval/dataset/snapshots/`.
+ *
+ * Validate bang `evalTaskSchema` (Zod) tu `@sidekick/shared` → **1 nguon
+ * su that** cho contract dataset (dung chung voi server) + loi co **duong
+ * dan field** ro rang.
+ *
  * Docs: docs/EVAL_PLAN.md §3
  */
 
@@ -28,45 +33,25 @@ export async function loadDataset(path: string = DEFAULT_DATASET_PATH): Promise<
   return parsed.map((task, index) => validateTask(task, index))
 }
 
-/** Kiem tra 1 task co dung schema khong. */
+/**
+ * Kiem tra 1 task co dung schema khong.
+ *
+ * @param value - Gia tri raw tu JSON.
+ * @param index - Vi tri trong mang (de bao loi ro rang).
+ * @returns Task da qua validate.
+ * @throws Error neu task khong hop le.
+ */
 function validateTask(value: unknown, index: number): EvalTask {
-  if (typeof value !== 'object' || value === null) {
-    throw new Error(`Task tai index ${index} khong phai object`)
+  const result = evalTaskSchema.safeParse(value)
+
+  if (!result.success) {
+    const issues = result.error.issues
+      .map((issue) => `${issue.path.join('.') || '(root)'}: ${issue.message}`)
+      .join('; ')
+    throw new Error(`Task tai index ${index} khong hop le schema — ${issues}`)
   }
 
-  const task = value as Record<string, unknown>
-
-  if (typeof task['id'] !== 'string' || task['id'].length === 0) {
-    throw new Error(`Task tai index ${index} thieu "id"`)
-  }
-
-  const group = task['group']
-  if (typeof group !== 'string' || !EVAL_GROUPS.includes(group as EvalTask['group'])) {
-    throw new Error(`Task ${String(task['id'])} co "group" khong hop le`)
-  }
-
-  const lang = task['lang']
-  if (lang !== 'vi' && lang !== 'en') {
-    throw new Error(`Task ${String(task['id'])} co "lang" khong hop le`)
-  }
-
-  const page = task['page']
-  if (typeof page !== 'object' || page === null) {
-    throw new Error(`Task ${String(task['id'])} thieu "page"`)
-  }
-
-  const pageData = page as Record<string, unknown>
-  for (const key of ['url', 'title', 'snapshotPath', 'contentHash']) {
-    if (typeof pageData[key] !== 'string') {
-      throw new Error(`Task ${String(task['id'])} thiếu "page.${key}"`)
-    }
-  }
-
-  if (typeof task['prompt'] !== 'string' || task['prompt'].length === 0) {
-    throw new Error(`Task ${String(task['id'])} thieu "prompt"`)
-  }
-
-  return task as unknown as EvalTask
+  return result.data
 }
 
 /** Loc dataset theo nhom va ngon ngu. */

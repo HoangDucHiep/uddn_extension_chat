@@ -65,6 +65,8 @@ flowchart LR
 
 ### 3.1 Cấu trúc
 
+> **Contract đã hiện thực:** schema của 1 task nằm ở [`packages/shared/src/schemas/eval.ts`](../packages/shared/src/schemas/eval.ts) (`evalTaskSchema` — Zod) → dùng chung cho `apps/eval` (validate dataset) và server (sau này). Bản JSON bên dưới là **nguồn sự thật**; khi sửa 1 trong 2 → sửa cả 2.
+
 ```json
 {
   "id": "pg-qa-001",
@@ -87,6 +89,23 @@ flowchart LR
 }
 ```
 
+| Field | Bắt buộc | Kiểu | Ghi chú |
+|---|---|---|---|
+| `id` | ✅ | `string` | `<group>-<nguoi-tao>-<so>` |
+| `group` | ✅ | enum 8 nhóm | xem §3.2 |
+| `lang` | ✅ | `'vi' \| 'en'` | ≥ 40% tiếng Việt |
+| `page.url` | ✅ | `string` (URL hợp lệ) | |
+| `page.title` | ✅ | `string` | |
+| `page.snapshot_path` | ✅ | `string` | tương đối repo root |
+| `page.content_hash` | ✅ | `string` | phát hiện thay đổi snapshot |
+| `prompt` | ✅ | `string` | |
+| `reference.key_points` | ⬜ | `string[]` | |
+| `reference.must_include_facts` | ⬜ | `string[]` | |
+| `reference.must_not_contain` | ⬜ | `string[]` | |
+| `expected_citations` | ⬜ | `number` (≥ 0) | metric citation precision |
+| `tags` | ⬜ | `string[]` | |
+| `notes` | ⬜ | `string` | VD provider limitation |
+
 ### 3.2 Bốn nhóm tác vụ
 
 | Nhóm | Mã | Mô tả | Số task tối thiểu |
@@ -101,6 +120,8 @@ flowchart LR
 | *(bổ sung)* | `general_qa` | **Chat không cần trang/tài liệu** — hỏi đáp kiến thức chung, viết code, giải thích khái niệm (đo đường "chat thuần LLM" — FR-CONTEXT-13) | 4 |
 
 **Tổng ≥ 52 task.** Mỗi nhóm có cả task tiếng Việt và tiếng Anh (≥ 40% tiếng Việt).
+
+> **Contract đã hiện thực (2026-11-09):** 8 nhóm trên được khai báo bằng `EVAL_GROUPS` trong [`packages/shared/src/schemas/eval.ts`](../packages/shared/src/schemas/eval.ts) → `apps/eval` validate dataset bằng đúng danh sách này. Nhóm `workflow` (§3.2.1) **cố ý không có** trong `EVAL_GROUPS` — nó thuộc M4 và chỉ chạy khi đã implement workflow → thêm sau, không làm dataset M2 bị reject.
 
 > **Nhóm `vision` cập nhật 2026-11-05 (T-M1-24):** giờ nhóm này đo **2 đường** khác nhau và phải tách số liệu khi tổng hợp:
 > - **Đường A — upload ảnh (user chủ động đính kèm):** Sidekick AI hỗ trợ đầy đủ từ T-M1-24 (paste / drag-drop / file picker → Gemini `inline_data` hoặc OpenAI-compatible `image_url`). Edge Copilot (B17) và Chrome Gemini (A12) đều làm được → so sánh trực tiếp, công bằng.

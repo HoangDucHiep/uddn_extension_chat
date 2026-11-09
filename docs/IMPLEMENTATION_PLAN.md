@@ -999,6 +999,8 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 **Định mức M2:** 3 tuần · 22 task · ~39 ngày công
 > Nếu trễ: **cắt T-M2-18 (agentic)** → không ảnh hưởng tiêu chí bắt buộc. Cắt T-M2-10/11 (RAG) nếu cần — theo §10. Cắt T-M2-22 (vision mở rộng) trước — chỉ ảnh hưởng tính năng Could.
 
+> **Ghi chú T-M2-12 (2026-11-09):** **contract dataset đã hiện thực** ở [`packages/shared/src/schemas/eval.ts`](../packages/shared/src/schemas/eval.ts) (`evalTaskSchema` + `EVAL_GROUPS` 8 nhóm theo [`EVAL_PLAN.md`](EVAL_PLAN.md) §3.2) → `apps/eval` validate dataset bằng đúng schema đó. Khi điền `apps/eval/dataset/tasks.json` + `dataset/snapshots/*` phải tuân thủ shape §3.1 (`page.snapshot_path` · `page.content_hash` · `reference.key_points` / `must_include_facts` / `must_not_contain` — **snake_case**). Dataset hiện **rỗng `[]`** là **đúng chuẩn M1** (chưa có nội dung trang thật để chụp snapshot) — **không phải bug**.
+
 ---
 
 ## 5. Milestone M3 — Polish & Deliverable (1 tuần)
