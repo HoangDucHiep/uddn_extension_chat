@@ -191,7 +191,7 @@ Dùng làm acceptance checklist cho M1.
 - [x] Chỉnh cỡ chữ / bề rộng panel — ✅ **T-M1-12** (`--font-scale` 0.9–1.2 · `--density-scale` 0.85–1.15 · `--panel-max-width` 400/640/960px · **không** sửa component nào, chỉ set biến CSS trên `<html>` · persist qua reload qua `chrome.storage.local` key `sidekick.settings`) — *giới hạn: bề rộng do user kéo trong Chrome → extension chỉ đặt thêm `max-width`*
 - [x] Xoá dữ liệu / quyền riêng tư (NFR-SEC-07) — ✅ **T-M1-12** ("Xoá lịch sử chat" → `DELETE /api/conversations` · "Xoá dữ liệu cục bộ" → xoá khoa `sidekick.*` trong `chrome.storage.local`, **giữ** trạng thái onboarding · telemetry + history OFF mặc định)
 - [x] Panel responsive 320–640px + a11y cơ bản (focus ring · aria-label · skip-link · screen reader streaming) — ✅ **T-M1-20** (panel không tràn ngang ở 320px — `#root` `min-width: min(var(--panel-min-width), 100%)` + drawer `max-w-full` · focus ring chuẩn hoá 1 token `--border-focus` · mọi icon-button ≥ 24px (WCAG 2.2 §2.5.8) + có `aria-label` · skip-link "Bỏ qua tới ô nhập" · live region chỉ trên phần đang stream · `role="tab"`/`tabpanel` cho tab nhóm conversation · E2E `e2e/responsive.spec.ts` + unit `tests/a11y.test.tsx`)
-- [ ] Token/cost hiển thị — ⬜ T-M2-03
+- [x] Token/cost hiển thị — ✅ **T-M2-03** (`UsageBadge` dưới bubble assistant: token vào/ra + `~ $0.0123` 4 chữ số thập phân, lấy `costUsd` từ SSE `usage` · provider local (mock/Ollama) → chỉ hiện token, không hiện `$0.0000` · section **"Chi phí & sử dụng"** trong Settings: tổng token + tổng chi phí + bảng phân rã **theo ngày** (`GET /api/usage`, khoảng `today/7d/30d/all`) · chi phí do **server** tính từ `PROVIDER_PRICING` → UI không lệch với giá thật)
 - [x] Keyboard shortcuts cấu hình được — ✅ **T-M1-18** (Settings → "Phím tắt" · **2 lớp**: lớp native của Chrome (đọc `chrome.commands.getAll()` + nút mở `chrome://extensions/shortcuts`) + lớp nhanh của Sidekick (lưu `chrome.storage.local`, bấm để bắt phím) · **deny-list** 28 tổ hợp dành riêng của trình duyệt · chuẩn hoá tổ hợp trước khi lưu · *Chrome **không** có `commands.update()` → xem `SYSTEM_DESIGN.md` §7.18*)
 - [x] Log request đầy đủ vào DB — ✅ **T-M1-14** (mọi lượt chat — thành công **và** thất bại — đều ghi 1 dòng `request_logs` với provider · model · token in/out · `cost_usd` **thật** (tính từ `PROVIDER_PRICING`) · `ttft_ms` · `latency_ms` · `tool_calls` · `context_hash` · error code · `request_id` xuyên suốt client → BFF → provider · log HTTP dạng **JSON** 1 dòng/request · **retention 90 ngày** được enforce (startup + mỗi 24 h) · `GET /api/logs` · `GET /api/usage` trả **chỉ metadata** cho eval harness · *UI hiển thị token/cost → T-M2-03 · tool/MCP thật → M2*)
 - [ ] Direct/BYOK fallback khi BFF down — ⏸ tạm dừng *(BYOK — quyết định user 2026-11-08)*
@@ -203,16 +203,17 @@ Dùng làm acceptance checklist cho M1.
 | Chỉ số | Kết quả |
 |---|---|
 | Tổng dòng checklist §E | **35** |
-| Đã đóng `- [x]` | **32** |
-| Còn `- [ ]` | **3** (xem bên dưới) |
-| **Tỉ lệ pass** | **32/35 = 91.4%** ✅ **≥ 90% → gate đạt** |
+| Đã đóng `- [x]` (tại thời điểm đóng M1) | **32** |
+| Còn `- [ ]` (tại thời điểm đóng M1) | **3** (xem bên dưới) |
+| **Tỉ lệ pass (lúc đóng M1)** | **32/35 = 91.4%** ✅ **≥ 90% → gate đạt** |
+| **Cập nhật sau T-M2-03 (2026-11-10)** | **33/35 = 94.3%** (đóng thêm dòng "Token/cost hiển thị" — xem §E.1.3) |
 
 **3 dòng còn mở — đều có lý do và task kế tiếp (không phải thiếu sót):**
 
 | # | Dòng | Lý do | Task kế tiếp |
 |---|---|---|---|
 | 1 | Skills `/` + tạo/sửa/xoá skill + library + trang duyệt skill library | **Cố ý đẩy sang M2** — Edge/Gemini cũng cần tài khoản Google cho Skills, không phải đường găng M1 | T-M2-04 · T-M2-06 · T-M2-21 |
-| 2 | Token/cost hiển thị | **UI hiển thị** token/cost là M2; **phần log đầy đủ đã có** ở M1 (T-M1-14: `request_logs` + `GET /api/logs` + `GET /api/usage` → eval harness dùng được) | T-M2-03 |
+| 2 | Token/cost hiển thị | **UI hiển thị** token/cost là M2; **phần log đầy đủ đã có** ở M1 (T-M1-14: `request_logs` + `GET /api/logs` + `GET /api/usage` → eval harness dùng được) | T-M2-03 → **✅ đã đóng 2026-11-10 (§E.1.3)** |
 | 3 | Direct/BYOK fallback khi BFF down | **⏸ tạm dừng theo quyết định user 2026-11-08** (BYOK gỡ khỏi sản phẩm); server giữ nguyên `provider_keys` để mở lại | T-M1-15 (K3) · T-M1-16 (K2) |
 
 **Bằng chứng 2 dòng parity đã đóng trong phiên audit này:**
@@ -245,6 +246,22 @@ Gate còn 1 vế: *"context extraction hoạt động trên ≥ 8/10 trang thậ
 | YouTube có caption | ✅ `apps/server/src/lib/youtubeExtractor.ts` + `POST /api/extract/youtube` (T-M1-22) — `captionTracks` → `timedtext` → `context.text`; không caption / geo-block / consent → **báo rõ, không crash chat** |
 
 > **Ghi chú:** bộ **10 trang thật** của gate là bộ **dataset eval M2** (`apps/eval/dataset/tasks.json` + `dataset/snapshots/*`) — hiện **rỗng `[]`** (đúng chuẩn M1, xem [`EVAL_PLAN.md`](EVAL_PLAN.md) §3.1) → **điền ở T-M2-12**. Ở M1, tiêu chí này được cover bằng **fixture HTML đa dạng + E2E trên trang thật**, chưa bằng dataset eval thật. **Không ghi là đã đạt 8/10 trang thật** trong báo cáo M1 — ghi rõ giới hạn này.
+
+#### E.1.3 Cập nhật sau T-M2-03 — đóng dòng "Token/cost hiển thị" (2026-11-10)
+
+Dòng **"Token/cost hiển thị"** ở §E được đóng bằng **T-M2-03** → checklist §E tăng từ **32/35 = 91.4%** lên **33/35 = 94.3%**.
+
+**Bằng chứng:**
+
+| Hạng mục | Bằng chứng |
+|---|---|
+| Badge theo lượt | `apps/extension/src/sidepanel/components/chat/UsageBadge.tsx` — token vào/ra + `~ $0.0123` (4 chữ số thập phân) · `costUsd` lấy từ SSE `usage` (`packages/shared/src/events.ts`) → lưu vào `ChatMessage.costUsd` |
+| Tổng theo ngày trong Settings | `apps/extension/src/sidepanel/components/settings/UsageSettings.tsx` — `GET /api/usage` (`range`: `today/7d/30d/all`) → tổng token + tổng chi phí + bảng theo ngày (`byDay[]`) |
+| Chi phí **thật**, không tự tính ở client | server tính từ `PROVIDER_PRICING` (`packages/shared/src/pricing.ts`) → `request_logs.cost_usd` (T-M1-14) → SSE `usage.costUsd` → UI chỉ hiển thị → **không** lệch với giá thật |
+| Provider local (mock/Ollama) | `costUsd = 0` → badge **chỉ** hiện token (không hiện `$0.0000` gây hiểu nhầm là đã mất tiền) |
+| Kiểm thử | unit `tests/costFormat.test.ts` · `tests/usageBadge.test.tsx` · `tests/usageSettings.test.tsx` · E2E `e2e/modelPicker.spec.ts` (mục usage badge + usage settings) |
+
+> **Còn mở 2 dòng** ở §E: (1) **Skills `/`** → T-M2-04/06/21 · (2) **Direct/BYOK fallback khi BFF down** → ⏸ tạm dừng theo quyết định user 2026-11-08 (T-M1-15/16).
 
 ### E.2 Checklist M4 — Workflow (ngoài đường găng, chỉ làm sau khi M0–M3 xong)
 

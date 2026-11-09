@@ -971,7 +971,7 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 | Dòng §E | Lý do | Task kế tiếp |
 |---|---|---|
 | Skills `/` + library + trang duyệt skill | Chrome Gemini cần **đăng nhập Google** cho Skills; Sidekick cố ý **không** phụ thuộc tài khoản hãng → đẩy M2 | T-M2-04 · T-M2-06 · T-M2-21 |
-| Token/cost **hiển thị** (UI) | Phần **log** đã có đầy đủ ở M1; **UI** hiển thị là M2 | T-M2-03 |
+| Token/cost **hiển thị** (UI) | Phần **log** đã có đầy đủ ở M1; **UI** hiển thị là M2 | ✅ **T-M2-03 (2026-11-10)** → §E = **33/35 = 94.3%** |
 | Direct/BYOK fallback khi BFF down | ⏸ tạm dừng theo quyết định user 2026-11-08 | T-M1-15 · T-M1-16 |
 
 #### 3.1u.3 Giới hạn đã ghi nhận (không ghi là đã đạt)
@@ -1026,9 +1026,9 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 
 | ID | Task | FR | Output files | AC | Est |
 |---|---|---|---|---|---|
-| T-M2-01 | Multi-provider: OpenAI, Anthropic, OpenRouter, Groq, Ollama | FR-PROVIDER-01/03/07 | `apps/server/src/providers/{openai,anthropic,openrouter,groq,ollama}.ts` | Mỗi provider stream được; model list lấy động; phát hiện được Ollama local khả dụng | L |
-| T-M2-02 | Model picker + fallback chain | FR-PROVIDER-03/04 | `settings/ModelPicker.tsx`, `providers/fallback.ts` | Provider chính lỗi → tự chuyển provider dự phòng, ghi log | M |
-| T-M2-03 | Token & cost calculator + usage UI + budget cap | FR-PROVIDER-05/06 | `lib/cost.ts`, `settings/DataSettings.tsx`, `chat/UsageBadge.tsx` | Hiện token/cost từng lượt; cảnh báo khi vượt budget | M |
+| T-M2-01 | Multi-provider: OpenAI, Anthropic, OpenRouter, Groq, Ollama | FR-PROVIDER-01/03/07 | `apps/server/src/providers/{openai,anthropic,openrouter,groq,ollama}.ts` | Mỗi provider stream được; model list lấy động; phát hiện được Ollama local khả dụng | L | ⏸ **đẩy lại** — xem ghi chú bên dưới |
+| T-M2-02 | Model picker + fallback chain | FR-PROVIDER-03/04 | `settings/ModelPicker.tsx`, `providers/fallback.ts` | Provider chính lỗi → tự chuyển provider dự phòng, ghi log | M | ✅ *(2026-11-10)* |
+| T-M2-03 | Token & cost calculator + usage UI + budget cap | FR-PROVIDER-05/06 | `lib/cost.ts`, `settings/DataSettings.tsx`, `chat/UsageBadge.tsx` | Hiện token/cost từng lượt; cảnh báo khi vượt budget | M | ✅ *(2026-11-10)* — phần **budget cap (FR-PROVIDER-06) chưa làm** |
 | T-M2-04 | Skills: menu `/`, CRUD, builtin library | FR-SKILL-01/02/03, NFR-MAINT-03 | `sidepanel/components/skills/*`, `POST /skills` | `/` → list skill; tạo skill từ message; CRUD đủ | L |
 | T-M2-05 | Skill import/export JSON | FR-SKILL-05 | `sidepanel/lib/skillIO.ts` | Export/import round-trip không mất dữ liệu | S |
 | T-M2-06 | Skill library browser nội bộ | FR-SKILL-07 | `sidepanel/components/skills/SkillLibrary.tsx` | Xem/lọc skill theo tag | M |
@@ -1053,6 +1053,30 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 > Nếu trễ: **cắt T-M2-18 (agentic)** → không ảnh hưởng tiêu chí bắt buộc. Cắt T-M2-10/11 (RAG) nếu cần — theo §10. Cắt T-M2-22 (vision mở rộng) trước — chỉ ảnh hưởng tính năng Could.
 
 > **Ghi chú T-M2-12 (2026-11-09):** **contract dataset đã hiện thực** ở [`packages/shared/src/schemas/eval.ts`](../packages/shared/src/schemas/eval.ts) (`evalTaskSchema` + `EVAL_GROUPS` 8 nhóm theo [`EVAL_PLAN.md`](EVAL_PLAN.md) §3.2) → `apps/eval` validate dataset bằng đúng schema đó. Khi điền `apps/eval/dataset/tasks.json` + `dataset/snapshots/*` phải tuân thủ shape §3.1 (`page.snapshot_path` · `page.content_hash` · `reference.key_points` / `must_include_facts` / `must_not_contain` — **snake_case**). Dataset hiện **rỗng `[]`** là **đúng chuẩn M1** (chưa có nội dung trang thật để chụp snapshot) — **không phải bug**.
+
+##### Ghi chú phạm vi M2 — đổi ngày 2026-11-10 (T-M2-02 · T-M2-03 ✅)
+
+**T-M2-01 được đẩy lại.** Quyết định của user (2026-11-10): **không thêm provider mới** (OpenAI/Anthropic) → giữ nguyên `PROVIDER_IDS` (`mock · groq · openrouter · gemini · ollama`), `packages/shared/src/constants.ts` **không đổi**, **không** migration bảng provider. Phần "model list động" của T-M2-01 đã được **T-M2-02** thực hiện xong (dùng adapter `discoverModels()` sẵn có) → khi nào làm lại T-M2-01 chỉ cần bổ sung adapter OpenAI/Anthropic.
+
+**T-M2-02 — đã đóng (2026-11-10).** Nguồn sự thật: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.22.
+
+| Hạng mục | Hiện thực |
+|---|---|
+| Danh sách model **động** | `GET /api/providers/:id/models` (`apps/server/src/routes/providers.ts`) → `listProviderModels()` (`apps/server/src/services/providerService.ts`) → `discoverModels?(apiKey)` trên `ProviderAdapter` (`openaiCompatible.ts` · `gemini.ts`) gửi **auth header** (`Authorization` / `x-goog-api-key`) → `source: 'live' \| 'fallback'` |
+| Fallback chain runtime | `apps/server/src/services/chatService.ts` — lặp chuỗi ứng viên; fallback **chỉ** khi lỗi `retryable` **và** `streamedToken === false`; 401/403 → **không** fallback; context budget + prompt **tính lại** theo provider mới |
+| SSE event | `provider_switch` (`packages/shared/src/events.ts`) `{ from, to, reason, model }` |
+| Log | cột mới `request_logs.fallback_from` (`text`, nullable) — migration `apps/server/drizzle/0002_certain_vector.sql` |
+| UI | `ModelPicker` (Radix Popover) ở header · lựa chọn lưu `chrome.storage.local` (`sidekick.modelSelection`) · gửi `provider` + `model` mỗi lượt chat · toast "Đã chuyển sang provider X" |
+
+**T-M2-03 — đã đóng (2026-11-10)**, ngoại trừ **budget cap**. Nguồn sự thật: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.23.
+
+| Hạng mục | Hiện thực |
+|---|---|
+| Chi phí theo lượt | `ChatMessage.costUsd` (lấy từ SSE `usage`) → `UsageBadge` dưới bubble assistant (`apps/extension/src/sidepanel/components/chat/UsageBadge.tsx`) · `formatCostUsd()` (`apps/extension/src/lib/costFormat.ts`) — 4 chữ số thập phân |
+| Tổng theo ngày | `UsageSettings` (`apps/extension/src/sidepanel/components/settings/UsageSettings.tsx`) → `GET /api/usage` (`apps/extension/src/lib/usageClient.ts`) · khoảng `today/7d/30d/all` |
+| **Budget cap (FR-PROVIDER-06)** | ⬜ **chưa làm** — priority `C` → `TODO(T-M2-03b)`: cảnh báo khi vượt ngưỡng + tuỳ chọn chặn (cần cấu hình ngưỡng ở Settings + so sánh với tổng `cost_usd`) |
+
+> **Không làm trong T-M2-02/03 (ngoài phạm vi):** budget cap (FR-PROVIDER-06) · thêm provider OpenAI/Anthropic (T-M2-01) · K2/K3 BYOK (T-M1-15/16, ⏸ tạm dừng).
 
 ---
 

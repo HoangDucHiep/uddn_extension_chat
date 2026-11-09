@@ -192,7 +192,7 @@ DP-2 quy định thread chat chiếm ≥ 90% không gian panel (DP-1: panel hẹ
 | `StreamingIndicator` | Con trỏ, shimmer, "Đang suy nghĩ" | FR-CHAT-01 | |
 | `ErrorMessage` | Lỗi + hành động khôi phục | FR-CHAT-14 | Ảnh hưởng độ ổn định đo được |
 | `AttachmentChip` | Ảnh đính kèm trong message | FR-VISION-01 | |
-| `UsageBadge` | Token in/out + cost của lượt đó | FR-PROVIDER-05 | |
+| `UsageBadge` | Token in/out + cost của lượt đó | FR-PROVIDER-05 | ✅ T-M2-03 — provider local (cost = 0) → chỉ hiện token, không hiện `$0.0000` |
 | `PromptGallery` | Empty state: grid gợi ý theo loại trang + nút refresh + nút "Tóm tắt trang này" | FR-UX-03, FR-UX-04 | Gợi ý sai ngữ cảnh → user bấm nhầm |
 | `SummarizeButton` | Nút chính "Tóm tắt trang này" 1-click | FR-UX-04 | Thiếu → mất điểm parity Edge "Create a Summary" / Gemini "Summarize" |
 
@@ -397,7 +397,7 @@ Cache context chạy **hoàn toàn ngầm** ở tầng `lib/` (`contextCache.ts`
 | `ConfirmDialog` (đã implement T-M1-09) | Xoá / hành động phá huỷ — bọc Radix Dialog, nút nguy hiểm dùng variant `danger`, disable 2 nút khi đang xử lý (`isBusy`) — chi tiết §3.6.1 |
 | `PromptGallery` | Prompt gợi ý theo ngữ cảnh trang |
 | `Onboarding` (đã implement T-M1-25) | 3 bước lần đầu: quyền → chọn provider → thử câu hỏi — chi tiết §3.8 |
-| `ModelPicker` | Dropdown model + provider |
+| `ModelPicker` (đã implement T-M2-02) | Dropdown model + provider — Radix `Popover` ở header panel, chi tiết §3.7.2 |
 | `KeySourceSelector` | Chọn K1 / K2 / K3 |
 | `WorkflowEditor` | Editor workflow (M4) |
 
@@ -435,7 +435,8 @@ Cache context chạy **hoàn toàn ngầm** ở tầng `lib/` (`contextCache.ts`
 | `SettingsControls` | (dùng chung) | ✅ T-M1-12 — `RadioGroup` · `ToggleRow` · `SettingsSection` |
 | `SkipLink` | FR-UX-07, NFR-A11Y-04 | ✅ **T-M1-20** — anchor `#sidekick-composer-input` · `sr-only focus:not-sr-only` |
 | `ProviderSettings` | FR-PROVIDER-01/02/08 | ⏸ **tạm dừng** *(BYOK — quyết định user 2026-11-08)* |
-| `ModelPicker` | FR-PROVIDER-03 | ⬜ T-M2-02 |
+| `ModelPicker` | FR-PROVIDER-03 | ✅ **T-M2-02** — Radix `Popover` ở header panel · danh sách provider (`GET /api/providers`) + model **động** (`GET /api/providers/:id/models`) · search khi > 12 model · lưu `chrome.storage.local` key `sidekick.modelSelection` · chi tiết §3.7.2 |
+| `UsageSettings` | FR-PROVIDER-05 | ✅ **T-M2-03** — section "Chi phí & sử dụng" trong Settings · `GET /api/usage` → tổng token + tổng chi phí + bảng theo ngày · khoảng `today/7d/30d/all` + nút làm mới |
 | `ToolsSettings` | FR-TOOLS-01 | ⬜ T-M2-05 |
 | `SkillsSettings` | FR-SKILL-03, FR-SKILL-07 | ⬜ T-M2-04 |
 | `WorkflowSettings` | FR-WORKFLOW-08 (M4) | ⬜ M4 |
@@ -483,6 +484,43 @@ Cache context chạy **hoàn toàn ngầm** ở tầng `lib/` (`contextCache.ts`
 > `data-testid` cho E2E: `settings-button` · `settings-drawer` · `settings-theme` · `settings-font-scale` · `settings-density` · `settings-panel-width` · `settings-telemetry` · `settings-history` · `settings-delete-history` · `settings-delete-local` · `settings-export` · `settings-import` · `settings-import-input` · `settings-bff-url` · `settings-bff-check` · `settings-bff-reset` · `settings-language` · `radio-<value>`.
 
 > **Giới hạn đã biết:** bề rộng panel do người dùng kéo trong Chrome → extension chỉ đặt thêm `max-width`. Không thể cưỡng chế bề rộng tuyệt đối (ghi rõ trong UI).
+
+#### 3.7.2 Section "Chi phí & sử dụng" + `ModelPicker` (đã implement T-M2-02 · T-M2-03)
+
+**`UsageSettings`** — section trong `SettingsDrawer` (FR-PROVIDER-05):
+
+| Hạng mục | Nội dung |
+|---|---|
+| Tổng | token vào/ra + tổng chi phí USD (4 chữ số thập phân — `formatCostUsd()`) |
+| Bảng theo ngày | `date` · `requests` · `tokensIn` · `tokensOut` · `costUsd` — dựng từ `byDay[]` của `GET /api/usage` |
+| Khoảng thời gian | `today` · `7d` · `30d` · `all` (mặc định `7d`) |
+| Nút "Làm mới" | gọi lại API |
+| Rỗng | "Chưa có lượt chat nào được ghi nhận." (không render bảng rỗng) |
+| Lỗi | thông báo + nút thử lại — **không** crash drawer (response sai shape → `safeParse` fail → coi như rỗng) |
+
+**`UsageBadge`** — dòng meta dưới bubble assistant (FR-PROVIDER-05):
+
+| Trường hợp | Hiển thị |
+|---|---|
+| Chưa có event `usage` | **không** render (tránh dòng rỗng) |
+| `costUsd = 0` (provider local) | `↑ 123 ↓ 45 token` — **không** hiện `$0.0000` |
+| `costUsd > 0` | `↑ 123 ↓ 45 token · ~ $0.0123` |
+
+**`ModelPicker`** — Radix `Popover` ở header panel (FR-PROVIDER-03):
+
+| Hạng mục | Nội dung |
+|---|---|
+| Trigger | icon-button `ChevronsUpDown` · `aria-label` tiếng Việt · `title` = provider/model **đang thật sự chạy** (từ SSE `meta`) |
+| Danh sách provider | `GET /api/providers` → chỉ provider `available` · item có `aria-pressed` |
+| Danh sách model | `GET /api/providers/:id/models` · `source: 'fallback'` → dòng cảnh báo màu `--warning` |
+| Tìm kiếm | chỉ hiện khi provider có **> 12 model** · icon `Search` + `Input` (`aria-label` tiếng Việt) |
+| Lựa chọn đang chọn | nền `--color-accent-subtle` + chữ `--color-accent-hover` |
+| Nút "Về mặc định" | link-style (`underline`) · `--text-secondary` → `--text-primary` khi hover |
+| Toast khi fallback | "Đã chuyển sang provider X" (i18n `providerSwitch.toast`) |
+
+> **Token dùng:** `--surface-overlay` · `--surface-sunken` · `--text-primary` · `--text-secondary` · `--text-tertiary` · `--color-accent-subtle` · `--color-accent-hover` · `--warning` · `--danger` · `--border-focus` · `--radius-sm` · `--font-size-xs` · `--font-size-sm`.
+>
+> Chi tiết kỹ thuật: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.22 (model picker + fallback) · §7.23 (token & chi phí).
 
 ### 3.8 Onboarding (đã implement T-M1-25)
 
@@ -571,7 +609,7 @@ Folder `apps/extension/src/sidepanel/components/states/` — **4 trạng thái**
 - **Không phải badge nổi bật:** đây là **chi tiết kỹ thuật phụ trợ**, không phải thông tin hành động → không dùng `--color-accent`, không nền đậm (tránh cạnh tranh chú ý với nội dung).
 - **A11y:** nằm trong text thuần của dòng meta → được đọc bởi screen reader như một đoạn text; không cần `aria-label` riêng. Id đầy đủ nằm trong `title` (đọc được qua tooltip).
 
-> **Liên quan:** `UsageBadge` (hiển thị token in/out + cost) vẫn là **T-M2-03** — T-M1-14 chỉ hiện **request-id**, **không** hiện cost lên UI (cost đã có trong DB + SSE `usage`).
+> **Liên quan:** `UsageBadge` (hiển thị token in/out + cost) đã **✅ T-M2-03** — T-M1-14 chỉ hiện **request-id**, **không** hiện cost lên UI (cost đã có trong DB + SSE `usage`). Chi tiết: §3.7.2.
 
 ---
 

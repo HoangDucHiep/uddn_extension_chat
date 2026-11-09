@@ -7,7 +7,27 @@
 ---
 
 ## [Unreleased]
+
+### Added
+- **T-M2-02 — Model picker động + fallback chain runtime (FR-PROVIDER-03/04)**
+  - **Server — danh sách model động:** `GET /api/providers/:id/models` (`apps/server/src/routes/providers.ts`) → `listProviderModels()` (`apps/server/src/services/providerService.ts`) → `ProviderAdapter.discoverModels?(apiKey)` (`apps/server/src/providers/types.ts`). `openaiCompatible.ts` (`groq` · `openrouter`) gửi header `Authorization: Bearer` · `gemini.ts` gửi header `x-goog-api-key` → trước đây `GET /models` **không** có key → provider trả 401 → luôn rơi về danh sách tĩnh. Response `ProviderModelsResponse` = `{ providerId, models, source }` với `source: 'live' | 'fallback'` (adapter không implement `discoverModels` → server tự fallback về `preferredModels`).
+    - Contract shared: `packages/shared/src/constants.ts` (`API_ROUTES.providerModels`) · `packages/shared/src/schemas/provider.ts` (`providerModelsResponseSchema` · `providerModelSourceSchema`).
+  - **Server — fallback chain runtime:** `apps/server/src/services/chatService.ts` lặp qua chuỗi ứng viên (provider được chỉ định → `registry.getFallbackChain()`); provider **không có key** hoặc **không hỗ trợ vision** → bỏ qua (không tốn lượt thử). Fallback **chỉ** khi lỗi `retryable` **và** `streamedToken === false` (đã stream dở thì fallback sinh nội dung trùng lặp) → lỗi 401/403 **không** fallback, giữ nguyên hành vi M1. Khi chuyển provider → **tính lại** `contextBudget` + `messagesForProvider` theo context window của provider mới.
+  - **SSE event mới `provider_switch`** (`packages/shared/src/events.ts`): `{ type, from, to, reason, model }` — phát **trước** token đầu tiên của provider mới.
+  - **Migration `0002_certain_vector.sql`** — cột mới `request_logs.fallback_from` (`text`, nullable) lưu provider đã lỗi → truy vết được lượt chat nào đã fallback. Cập nhật `apps/server/src/db/schema.ts` + `apps/server/src/services/requestLogService.ts` + `packages/shared/src/schemas/logs.ts`.
+  - **Extension — `ModelPicker`** (`apps/extension/src/sidepanel/components/ModelPicker.tsx`): Radix `Popover` ở header panel · danh sách provider (`GET /api/providers`, chỉ provider `available`) → danh sách model của provider đó · **> 12 model** thì có ô tìm kiếm · đổi provider → **xoá model đã chọn** · nút "Về mặc định". Lựa chọn lưu `chrome.storage.local` key `sidekick.modelSelection` (`apps/extension/src/lib/modelSelection.ts` — module thuần, **không** Zod để giữ bundle content script nhỏ) → persist qua reload, dùng cho **mọi** lượt chat sau (gửi `provider` + `model` trong `POST /api/chat`). Nút trigger hiện provider/model **đang thật sự chạy** (từ SSE `meta`).
+  - **Extension — phản ứng `provider_switch`** (`apps/extension/src/sidepanel/hooks/useChat.ts`): đổi chip provider ở header + ghi provider thật vào bubble + **toast** "Đã chuyển sang provider X" (i18n `providerSwitch.toast`).
+    - **Test:** `apps/server/tests/providerModelsRoute.test.ts` (4) · `apps/server/tests/fallbackChain.test.ts` (6) · `apps/extension/tests/modelSelection.test.ts` · `providerModelsClient.test.ts` · `modelPicker.test.tsx` · `useChatM2.test.ts` · `apps/extension/e2e/modelPicker.spec.ts` (3).
+- **T-M2-03 — Hiển thị token & chi phí (FR-PROVIDER-05)**
+  - `apps/extension/src/lib/costFormat.ts` (mới) — `formatCostUsd()`: 4 chữ số thập phân (chi phí nhỏ như `0.0004` không bị làm tròn mất) · `0` → chuỗi rỗng (provider local → không hiện `$0.0000` gây hiểu nhầm).
+  - `ChatMessage.costUsd` (`apps/extension/src/sidepanel/store/chatStore.ts`) — lấy từ SSE `usage` (`apps/extension/src/sidepanel/hooks/useChat.ts`) → chi phí do **server** tính từ `PROVIDER_PRICING` → UI **không** lệch với giá thật.
+  - `apps/extension/src/sidepanel/components/chat/UsageBadge.tsx` (mới) — badge dưới bubble assistant: `↑ {tokensIn} ↓ {tokensOut} token · ~ $0.0123` · chưa có `usage` event → **không** render rỗng.
+  - `apps/extension/src/sidepanel/components/settings/UsageSettings.tsx` (mới) + `apps/extension/src/lib/usageClient.ts` (mới) — section **"Chi phí & sử dụng"** trong `SettingsDrawer`: `GET /api/usage` → tổng token + tổng chi phí + bảng phân rã **theo ngày** (`byDay[]`) · khoảng `today/7d/30d/all` + nút làm mới.
+  - **Test:** `apps/extension/tests/costFormat.test.ts` · `usageBadge.test.tsx` · `usageSettings.test.tsx`.
+
 ### Changed
+- **Checklist parity §E: 32/35 = 91.4% → 33/35 = 94.3%** (T-M2-03 đóng dòng "Token/cost hiển thị") — `docs/COMPARISON_MATRIX.md` §E + §E.1.3 (mới) · `docs/IMPLEMENTATION_PLAN.md` §3.1u.2 · `docs/REQUIREMENTS.md` §4.6 (AC của FR-PROVIDER-03/04/05).
+- **Phạm vi M2 được chốt lại (2026-11-10):** **T-M2-01 đẩy lại** — quyết định user: **không thêm provider mới** (OpenAI/Anthropic) → giữ nguyên `PROVIDER_IDS` (`mock · groq · openrouter · gemini · ollama`), `packages/shared/src/constants.ts` **không đổi**, **không** migration bảng provider. Phần "model list động" của T-M2-01 đã thực hiện xong trong T-M2-02. **T-M2-03 đóng, trừ phần budget cap** (FR-PROVIDER-06, priority `C`) → `TODO(T-M2-03b)`.
 - **Đóng M1 (Milestone Parity) — tag `v0.2`** (`docs/COMPARISON_MATRIX.md` §E · §E.1 · `docs/IMPLEMENTATION_PLAN.md` §3.1u · `docs/REQUIREMENTS.md` §9 · `docs/README.md` · `AGENTS.md` §6 · `docs/HANDOFF.md` §2)
   - **Checklist parity §E chuẩn hoá:** **32 dòng** đã implement trước đây ghi `- [ ]` → `- [x]` (25 dòng). Danh sách đầy đủ 35 dòng: **32/35 = 91.4%** ✅ (ngưỡng gate ≥ 90%).
   - **Cross-check độc lập theo dòng "Must" ở §A/§B:** **21/23 = 91.3%** ✅ (ngưỡng ≥ 90%).

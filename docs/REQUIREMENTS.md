@@ -318,9 +318,9 @@ Quy ước ưu tiên: **M** = Must (bắt buộc cho M1) · **S** = Should (bắ
 |---|---|---|---|
 | FR-PROVIDER-01 | Multi-provider adapter (OpenAI, Gemini, Anthropic, OpenRouter, Groq, Ollama) | M | Interface chung: `stream(messages, tools, options)`; thêm provider mới không sửa UI |
 | FR-PROVIDER-02 | Lưu API key (BYOK) mã hoá trong storage phía server | ~~M~~ ⏸ | Key không bao giờ render ra UI sau khi lưu; hiện dạng `sk-…abcd` — **⏸ TẠM DỪNG 2026-11-08** (quyết định user: bỏ BYOK). Server giữ nguyên `POST /api/providers/keys` + bảng `provider_keys`; UI nhập key đã gỡ khỏi onboarding. Mở lại = thêm ô nhập key + section Settings |
-| FR-PROVIDER-03 | Chuyển model trong lúc chat (dropdown ở header) | M | Đổi model giữa cuộc trò chuyện không mất lịch sử |
-| FR-PROVIDER-04 | Fallback khi provider lỗi (429/5xx) sang provider dự phòng | S | Có log; người dùng được thông báo "đã chuyển sang provider X" |
-| FR-PROVIDER-05 | Hiển thị token in/out + chi phí ước tính theo lượt | S | Cập nhật sau mỗi lượt; tổng theo ngày trong Settings — **phần server đã implement (T-M1-14):** `cost_usd` thật trong `request_logs` (tính từ `PROVIDER_PRICING`) + SSE `usage` mang `costUsd` thật + `GET /api/usage` tổng hợp theo ngày; **UI hiển thị** (UsageBadge) → T-M2-03 |
+| FR-PROVIDER-03 | Chuyển model trong lúc chat (dropdown ở header) | M | Đổi model giữa cuộc trò chuyện không mất lịch sử — **✅ ĐÃ IMPLEMENT (T-M2-02):** `ModelPicker` (Radix Popover) ở header → danh sách provider (`GET /api/providers`) + danh sách model **động** (`GET /api/providers/:id/models`, gọi API provider thật có auth header; lỗi → `source: 'fallback'` về danh sách tĩnh + cảnh báo nhỏ). Lựa chọn lưu `chrome.storage.local` (`sidekick.modelSelection`) → persist qua reload, dùng cho **mọi** lượt chat sau (gửi `provider` + `model` trong `POST /api/chat`). Đổi provider → xoá model đã chọn; > 12 model → có ô tìm kiếm. Lịch sử cuộc trò chuyện **không** mất khi đổi model |
+| FR-PROVIDER-04 | Fallback khi provider lỗi (429/5xx) sang provider dự phòng | S | Có log; người dùng được thông báo "đã chuyển sang provider X" — **✅ ĐÃ IMPLEMENT (T-M2-02):** `chatService` lặp qua chuỗi ứng viên; fallback **chỉ** khi lỗi `retryable` **và** chưa phát token nào (`streamedToken === false`) → không sinh nội dung trùng lặp. Lỗi 401/403 → **không** fallback (giữ hành vi M1). Phát SSE `provider_switch` `{from, to, reason, model}` → extension đổi chip provider + **toast** "Đã chuyển sang provider X". Ghi log vào cột mới `request_logs.fallback_from` (migration `0002_certain_vector.sql`) → truy vết được provider nào đã lỗi. Khi chuyển provider, context budget + prompt được **tính lại** theo context window của provider mới |
+| FR-PROVIDER-05 | Hiển thị token in/out + chi phí ước tính theo lượt | S | Cập nhật sau mỗi lượt; tổng theo ngày trong Settings — **✅ ĐÃ IMPLEMENT (T-M2-03):** server đã tính `cost_usd` thật trong `request_logs` (T-M1-14, từ `PROVIDER_PRICING`) + SSE `usage` mang `costUsd`; extension lưu `costUsd` vào `ChatMessage` → `UsageBadge` dưới bubble assistant (token vào/ra + `~ $0.0123`, 4 chữ số thập phân; provider local → chỉ hiện token, không hiện `$0.0000`). Section **"Chi phí & sử dụng"** trong Settings: tổng token + tổng chi phí + bảng phân rã **theo ngày** (`GET /api/usage`, khoảng `today/7d/30d/all`) + nút tải lại |
 | FR-PROVIDER-06 | Budget cap: cảnh báo khi vượt ngưỡng, tuỳ chọn chặn | C | |
 | FR-PROVIDER-07 | Chế độ offline: dùng Ollama/local model, không gọi cloud | S | Tự phát hiện provider local khả dụng |
 | FR-PROVIDER-08 | Team key (shared key) cấu hình qua biến môi trường server | S | Không có key team → extension tự chuyển sang chế độ BYOK/direct và báo rõ — **⏸ phần "BYOK/direct" TẠM DỪNG 2026-11-08**; phần **K1 (team key trong `.env` BFF) vẫn hoạt động** và là nguồn key duy nhất ở M1 |
@@ -1191,10 +1191,10 @@ Chỉ bắt đầu M4 khi **đồng thời** thỏa:
 |---|---|---|---|
 | FR-PROVIDER-01 | M | T-M0-07 ✅ · T-M0-08 ✅ · T-M2-01 | M0→M2 |
 | FR-PROVIDER-02 | M ⏸ | T-M1-16 ⏸ | M1 (tạm dừng) |
-| FR-PROVIDER-03 | M | T-M0-08 ✅ · T-M2-01 · T-M2-02 | M0→M2 |
-| FR-PROVIDER-04 | S | T-M2-02 | M2 |
-| FR-PROVIDER-05 | S | T-M2-03 | M2 |
-| FR-PROVIDER-06 | C | T-M2-03 | M2 |
+| FR-PROVIDER-03 | M | T-M0-08 ✅ · T-M2-02 ✅ | M0→M2 |
+| FR-PROVIDER-04 | S | T-M2-02 ✅ | M2 |
+| FR-PROVIDER-05 | S | T-M2-03 ✅ | M2 |
+| FR-PROVIDER-06 | C | T-M2-03 ⏸ (chỉ phần hiển thị, **budget cap chưa làm**) | M2 |
 | FR-PROVIDER-07 | S | T-M2-01 | M2 |
 | FR-PROVIDER-08 | S ⏸ | T-M1-15 ⏸ | M1 (tạm dừng) |
 | FR-PROVIDER-09 | S ⏸ | T-M1-15 ⏸ | M1 (tạm dừng) |

@@ -392,6 +392,65 @@ Cột cần chú ý:
 
 ---
 
+## 11b. Test Model picker + fallback + chi phí (M2 — T-M2-02 / T-M2-03)
+
+> Mục mới thêm 2026-11-10. Chi tiết kỹ thuật: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.22 (model picker + fallback) · §7.23 (token & chi phí).
+
+### 11b.1 Model picker (T-M2-02)
+
+Nút **"Chọn mô hình AI"** (icon ⇅) nằm cạnh chip provider ở header panel.
+
+- [ ] Bấm nút → hiện popover: danh sách **provider** (chỉ provider `available`) + danh sách **model**
+- [ ] Chọn 1 provider → danh sách model đổi theo provider đó
+- [ ] Provider có **> 12 model** → hiện ô **"Tìm mô hình…"** → gõ từ khoá → danh sách lọc đúng
+- [ ] Chọn 1 model → nút trigger đổi nhãn hiển thị
+- [ ] **Đổi provider** → model đã chọn bị **xoá** (không giữ model của provider khác)
+- [ ] Bấm **"Về mặc định"** → xoá lựa chọn → lượt chat sau dùng provider/model mặc định của BFF
+- [ ] **Reload panel** → lựa chọn **vẫn còn** (lưu `chrome.storage.local` key `sidekick.modelSelection`)
+- [ ] Gửi câu hỏi → chip provider ở header hiện provider/model **thật sự** đã trả lời
+- [ ] Đổi model giữa cuộc trò chuyện → **lịch sử không mất**
+- [ ] Provider không có key / API lỗi → hiện dòng cảnh báo *"Danh sách mô hình có thể cũ…"* và vẫn chọn được model từ danh sách tĩnh
+
+### 11b.2 Fallback khi provider lỗi (T-M2-02)
+
+Fallback **chỉ** xảy ra khi provider lỗi **tạm thời** (429 / 5xx / network) **và** chưa phát token nào.
+
+Cách kiểm chứng nhanh nhất (không cần sập provider thật):
+
+```bash
+# 1. Tạm dừng key của provider đang dùng trong apps/server/.env, đổi sang provider khác làm dự phòng
+# 2. Restart BFF, reload extension
+```
+
+- [ ] Provider chính lỗi **429 / 5xx** → server tự thử provider dự phòng → **toast** "Đã chuyển sang provider X" hiện lên
+- [ ] Chip provider ở header **đổi** sang provider dự phòng
+- [ ] Nội dung trả lời **không bị trùng lặp** (fallback chỉ khi chưa stream token nào)
+- [ ] Provider lỗi **401 / 403** → **không** fallback, hiện lỗi "Kiểm tra API key" như cũ
+- [ ] Kiểm tra log:
+
+```bash
+docker exec -it sidekick-db psql -U sidekick -d sidekick -c \
+  "SELECT provider, model, fallback_from, error FROM request_logs ORDER BY created_at DESC LIMIT 10;"
+```
+
+- [ ] Lượt đã fallback → cột `fallback_from` có tên provider **đã lỗi**; lượt bình thường → `fallback_from` = `NULL`
+
+### 11b.3 Token & chi phí (T-M2-03)
+
+- [ ] Sau mỗi lượt chat → dưới bubble assistant có badge `↑ … ↓ … token`
+- [ ] Với provider **trả phí** (Groq / OpenRouter / Gemini) → badge có thêm `~ $0.0123` (**4** chữ số thập phân)
+- [ ] Với provider **local** (Ollama / mock) → badge **chỉ** hiện token, **không** hiện `$0.0000`
+- [ ] Lượt chat chưa xong (chưa có event `usage`) → badge **chưa** hiện (không render rỗng)
+- [ ] Mở **Settings ⚙** → section **"Chi phí & sử dụng"** → hiện tổng token + tổng chi phí
+- [ ] Section có **bảng theo ngày** (ngày · lượt chat · token · chi phí)
+- [ ] Đổi khoảng thời gian `Hôm nay / 7 ngày / 30 ngày / Tất cả` → số liệu đổi theo
+- [ ] Bấm **"Làm mới"** → gọi lại API → số liệu cập nhật
+- [ ] BFF tắt → section hiện thông báo lỗi, **không** crash drawer
+
+> Chi phí là **ước lượng** theo bảng giá snapshot (`PROVIDER_PRICING`), không phải hoá đơn → số liệu giữa các provider có thể lệch nhẹ.
+
+---
+
 ## 12. Xử lý sự cố
 
 | Triệu chứng | Nguyên nhân | Cách xử lý |
@@ -430,20 +489,23 @@ pnpm test:e2e      # 81 test Playwright (cần Docker + BFF chạy)
 | **Context** | Đọc trang (HTML/PDF/YouTube) · đính kèm thủ công · `@` multi-tab · bôi đen · ngân sách + cắt bớt · cache 30 phút · citation chip + popover |
 | **Ảnh** | Chọn/paste/kéo-thả · preview · xoá · giới hạn 5 MB × 4 |
 | **Hội thoại** | CRUD + ghim + lưu trữ + search · tải lại kèm citations |
-| **Cài đặt** | Theme · cỡ chữ/mật độ/bề rộng · riêng tư · quản lý dữ liệu · endpoint BFF · **i18n VI/EN** · **phím tắt 2 lớp** |
+| **Cài đặt** | Theme · cỡ chữ/mật độ/bề rộng · riêng tư · quản lý dữ liệu · endpoint BFF · **i18n VI/EN** · **phím tắt 2 lớp** · **chi phí & sử dụng theo ngày** |
 | **Onboarding** | 3 bước, skippable, mở lại được |
 | **Responsive + a11y** | 320–640px không tràn · focus ring chuẩn · live region · skip-link · tap target 24px |
-| **Quan sát** | `request_logs` đầy đủ (token/cost/ttft/latency/hash/request-id) + API đọc metadata |
+| **Quan sát** | `request_logs` đầy đủ (token/cost/ttft/latency/hash/request-id/fallback_from) + API đọc metadata |
+| **M2 (2026-11-10)** | **Model picker động** (chọn provider + model, persist, search) · **fallback chain runtime** (tự chuyển provider + toast + log `fallback_from`) · **token & chi phí** (badge theo lượt + tổng theo ngày trong Settings) |
 
 ### Chưa có (để biết khi nào phàn nàn)
 
 | Tính năng | Trạng thái |
 |---|---|
-| Export cuộc trò chuyện (Markdown/JSON) | ⬜ T-M1-13 — **đã defer** |
+| Export cuộc trò chuyện (Markdown/JSON) | ✅ T-M1-13 — **đã có** |
 | BYOK (người dùng tự mang key) | ⏸ **tạm dừng** theo quyết định của bạn |
-| Skills / MCP / RAG / web search / multi-provider UI / workflow | ⬜ thuộc **M2–M4** |
-| Model picker + fallback chain | ⬜ T-M2-02 |
-| Token & cost calculator trong UI | ⬜ T-M2-03 |
+| Skills / MCP / RAG / web search / workflow | ⬜ thuộc **M2–M4** |
+| Thêm provider OpenAI / Anthropic | ⬜ T-M2-01 — **đẩy lại** (quyết định 2026-11-10) |
+| Budget cap (cảnh báo / chặn khi vượt ngưỡng) | ⬜ T-M2-03b — FR-PROVIDER-06, priority C |
+| Model picker + fallback chain | ✅ T-M2-02 — **đã có** |
+| Token & cost calculator trong UI | ✅ T-M2-03 — **đã có** |
 
 ---
 
@@ -468,4 +530,7 @@ pnpm test:e2e      # 81 test Playwright (cần Docker + BFF chạy)
 [ ] 16. a11y: skip-link, focus ring, aria-label, live region
 [ ] 17. request_logs có đủ cột + request_id khớp bubble
 [ ] 18. Chạy pnpm test / test:e2e xanh
+[ ] 19. Model picker: mở, chọn provider + model, đổi provider xoá model, search, persist qua reload
+[ ] 20. Fallback: provider lỗi 429/5xx → toast + đổi chip provider + log fallback_from; 401 → không fallback
+[ ] 21. Chi phí: badge token/cost dưới bubble + section "Chi phí & sử dụng" (tổng + bảng theo ngày + làm mới)
 ```

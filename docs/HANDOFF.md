@@ -24,7 +24,7 @@
 | Hạng mục | Trạng thái |
 |---|---|
 | Docs | ✅ Đầy đủ 11 file (`docs/`) + `AGENTS.md` ở root |
-| Code | ✅ **M1 (Parity) ĐÓNG** — 23/25 task (T-M1-15 + T-M1-16 ⏸ tạm dừng) — 4 workspace, **1337 unit test + 88 E2E** |
+| Code | ✅ **M1 (Parity) ĐÓNG** — 23/25 task (T-M1-15 + T-M1-16 ⏸ tạm dừng) — 4 workspace, **1337 unit test + 88 E2E** · **M2 bắt đầu** (T-M2-02 ✅ · T-M2-03 ✅) |
 | Git | ✅ Đã init (`main`) · tag `v0.1` (M0) · tag **`v0.2`** (M1 đóng 2026-11-09) |
 | Milestone hiện tại | **M2 — Advanced & Eval** (M0 ✅ · M1 ✅) |
 | Task tiếp theo | **T-M2-12** — điền dataset eval thật (`apps/eval/dataset/tasks.json` + `dataset/snapshots/*`) → T-M2-13 harness → T-M2-14 judge → T-M2-15..17 → **`docs/EVAL_REPORT.md`** (deliverable bắt buộc) |
@@ -32,6 +32,31 @@
 ### Đang làm dở
 
 _(Không có — M1 đóng xong 2026-11-09, tag `v0.2`)_
+
+### M2 — tiến độ (2026-11-10)
+
+| Task | Trạng thái | Ghi chú |
+|---|---|---|
+| T-M2-01 Multi-provider (OpenAI/Anthropic) | ⏸ **đẩy lại** | Quyết định user 2026-11-10: **không thêm provider mới** → giữ nguyên `PROVIDER_IDS` (`mock · groq · openrouter · gemini · ollama`). Phần "model list động" đã xong trong T-M2-02 |
+| T-M2-02 Model picker + fallback chain | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.22 |
+| T-M2-03 Token & cost UI | ✅ **xong** (trừ budget cap) | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.23 · `TODO(T-M2-03b)` cho FR-PROVIDER-06 (priority C) |
+| T-M2-12..17 Eval | ⬜ chưa bắt đầu | `docs/EVAL_REPORT.md` là deliverable bắt buộc |
+
+**Tóm tắt T-M2-02 (FR-PROVIDER-03/04):**
+
+- **Danh sách model động:** `GET /api/providers/:id/models` → `ProviderAdapter.discoverModels?(apiKey)` (`openaiCompatible.ts` gửi `Authorization` · `gemini.ts` gửi `x-goog-api-key`) → trả `{ providerId, models, source: 'live' | 'fallback' }`. Trước đây `GET /models` **không** có key → provider trả 401 → luôn rơi về danh sách tĩnh.
+- **Fallback chain runtime** (`apps/server/src/services/chatService.ts`): lặp chuỗi ứng viên; fallback **chỉ** khi lỗi `retryable` **và** `streamedToken === false` (đã stream dở → không fallback để tránh nội dung trùng lặp) · 401/403 → **không** fallback · provider không có key / không hỗ trợ vision → **bỏ qua** · khi chuyển provider → **tính lại** context budget + prompt.
+- **SSE `provider_switch`** `{ from, to, reason, model }` → extension đổi chip provider + **toast** "Đã chuyển sang provider X".
+- **Log:** cột mới `request_logs.fallback_from` (migration `apps/server/drizzle/0002_certain_vector.sql`).
+- **UI:** `ModelPicker` (Radix Popover) ở header · lựa chọn lưu `chrome.storage.local` key `sidekick.modelSelection` → persist qua reload, gửi kèm mỗi lượt chat.
+
+**Tóm tắt T-M2-03 (FR-PROVIDER-05):**
+
+- `UsageBadge` dưới bubble assistant: token vào/ra + `~ $0.0123` (4 chữ số thập phân) · provider local (`mock`/`ollama`) → chỉ hiện token.
+- Section **"Chi phí & sử dụng"** trong Settings: `GET /api/usage` → tổng token + tổng chi phí + bảng **theo ngày** (`byDay[]`) · khoảng `today/7d/30d/all`.
+- Chi phí do **server** tính từ `PROVIDER_PRICING` → extension chỉ hiển thị → **không** lệch với giá thật.
+
+**Ảnh hưởng lên gate parity:** checklist §E `COMPARISON_MATRIX.md` **32/35 = 91.4%** → **33/35 = 94.3%** (đóng dòng "Token/cost hiển thị") — xem §E.1.3.
 
 ### Kết quả đóng M1 (2026-11-09)
 

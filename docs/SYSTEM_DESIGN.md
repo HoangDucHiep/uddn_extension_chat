@@ -323,6 +323,7 @@ X-Request-Id: <uuid v4>            // idempotency + tracing
 |---|---|---|---|---|
 | GET | `/health` | — | `{ status, version, db, uptime }` | — |
 | GET | `/providers` | — | `{ items: ProviderInfo[] }` (id, name, models, keySource `K2\|K1\|none`, requiresKey, available, note?) | — |
+| GET | `/providers/:id/models` ✅ | — | `ProviderModelsResponse` = `{ providerId, models: string[], source: 'live'\|'fallback' }` — danh sách model **động** gọi API provider thật (có auth header); lỗi → `source: 'fallback'` + danh sách tĩnh (T-M2-02) | `VALIDATION_ERROR`, `NOT_FOUND` |
 | GET | `/providers/keys` | — | `{ items: ProviderKeyRecord[] }` (chỉ metadata + masked, **không** trả key gốc) | — |
 | POST | `/providers/keys` | `{ providerId, apiKey, label? }` | `201` + `ProviderKeyRecord` (id, providerId, label, masked, createdAt) | `VALIDATION_ERROR`, `MASTER_KEY_NOT_CONFIGURED` |
 | DELETE | `/providers/keys/:id` | — | `204` | `NOT_FOUND` |
@@ -515,6 +516,7 @@ type ChatEvent =
   | { type: 'tool_call'; id: string; name: string; args: unknown }
   | { type: 'tool_result'; id: string; ok: boolean; output: string; durationMs: number }
   | { type: 'usage'; tokensIn: number; tokensOut: number; costUsd: number }
+  | { type: 'provider_switch'; from: string; to: string; reason: string; model?: string }
   | { type: 'error'; code: string; message: string; retryable: boolean; retryAfterSeconds?: number }
   | { type: 'done'; finishReason: 'stop' | 'length' | 'tool' | 'aborted' | 'error'; messageId: string };
 ```
@@ -538,6 +540,7 @@ data: {"type":"done","finishReason":"stop","messageId":"..."}
 7. Server gửi heartbeat comment `: ping` mỗi 15s để giữ kết nối qua proxy.
 8. `citation` (FR-CONTEXT-10 — T-M1-08) phát **sau** toàn bộ `token*`, **trước** `usage`/`done` — server chỉ biết marker `[N]` sau khi stream kết thúc. Chi tiết: [§7.9](#79-citation-marker-n--sse--chip-fr-context-10--t-m1-08).
 9. `error` mang **thông tin lỗi thật** (T-M1-19): `code` (error code chuẩn) · `retryable` (**suy ra từ `code`**, không hardcode `true`) · `retryAfterSeconds` (từ header `Retry-After` của provider khi HTTP 429). Chi tiết: [§7.15](#715-states--retry--connection-status-fr-chat-14--fr-ux-08--nfr-rel-02--nfr-rel-04--t-m1-19).
+10. `provider_switch` (FR-PROVIDER-04 — T-M2-02) phát **giữa** luồng (sau `meta`, trước `token` đầu tiên của provider mới) khi server fallback sang provider dự phòng. Chi tiết: [§7.22](#722-model-picker-động--fallback-chain-runtime-fr-provider-0304--t-m2-02).
 
 ### 4.4 Chiến lược provider & fallback
 
@@ -770,7 +773,7 @@ BFF chỉ nhận request từ extension. Kiểm tra header `Origin` / `X-Sidekic
 | Tầng | Công cụ | Phạm vi | Ngưỡng |
 |---|---|---|---|
 | **Unit** | Vitest | Context builder, provider adapter, skill engine, RAG retriever, key resolver, cost calculator | Coverage ≥ 70% cho `packages/shared` và `apps/server/src/{providers,tools,rag}` |
-| **Integration** | Vitest + supertest | Từng route BFF: request → response, validation, error mapping, SSE format | Mọi endpoint trong §4.1 có ≥ 1 test; SSE có test đầy đủ 8 event type |
+| **Integration** | Vitest + supertest | Từng route BFF: request → response, validation, error mapping, SSE format | Mọi endpoint trong §4.1 có ≥ 1 test; SSE có test đầy đủ 9 event type |
 | **Contract** | Vitest | Response shape khớp `packages/shared` schemas (validate bằng Zod ở test) | 100% endpoint có schema |
 | **E2E** | Playwright + Chrome for Testing | Load unpacked extension → mở side panel → gửi prompt → nhận stream → kiểm tra citations | ≥ 6 kịch bản lõi (happy path, offline, BFF down, stop, edit-resend, context toggle) |
 | **Manual** | Checklist | `docs/REQUIREMENTS.md` §E của COMPARISON_MATRIX + checklist M1 | Trước mỗi milestone demo |
@@ -2963,6 +2966,198 @@ Thêm vào đó, side panel là **một document React** — không bị reload 
 | `đổi tab lần 2 → thread vẫn giữ nguyên` | đổi tab nhiều lần → thread không mất |
 
 > **Giới hạn của E2E:** Playwright không điều khiển được side panel native của Chrome → test mô phỏng sự kiện `tabs.onActivated`. Phần "Chrome giữ panel mở khi đổi tab" là **hành vi native** (không có API nào để tắt) → không cần test code.
+
+### 7.22 Model picker động + fallback chain runtime (FR-PROVIDER-03/04 — T-M2-02)
+
+> Nguồn sự thật cho hành vi: [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.6.
+
+#### 7.22.1 Vì sao cần "model động"
+
+Provider thay đổi danh mục model liên tục (Gemini, Groq, OpenRouter). Danh sách hardcode trong code sẽ nhanh lỗi thời → user không chọn được model mới. Vì vậy:
+
+- **Server** gọi API `/models` của provider **thật** (có auth header) → trả danh sách model hiện hành.
+- Nếu provider lỗi / không hỗ trợ → server trả danh sách **tĩnh** (preferred models) với `source: 'fallback'` → UI vẫn dùng được, chỉ hiện cảnh báo nhỏ.
+
+#### 7.22.2 Endpoint — `GET /api/providers/:id/models`
+
+| Thuộc tính | Giá trị |
+|---|---|
+| Route | `GET /api/providers/:id/models` (`apps/server/src/routes/providers.ts`) |
+| Handler | `listProviderModels(deps, providerId)` (`apps/server/src/services/providerService.ts`) |
+| Response | `ProviderModelsResponse` (`packages/shared/src/schemas/provider.ts`) |
+| Auth | Header provider (`Authorization` hoặc `x-goog-api-key`) — **key nằm ở BFF, không bao giờ gửi xuống extension** |
+
+```ts
+// packages/shared/src/schemas/provider.ts
+providerModelSourceSchema = z.enum(['live', 'fallback'])
+providerModelsResponseSchema = z.object({
+  providerId: providerIdSchema,
+  models: z.array(z.string()),
+  source: providerModelSourceSchema,
+})
+```
+
+**Contract adapter** (`apps/server/src/providers/types.ts`):
+
+```ts
+export interface ProviderModelDiscovery {
+  models: string[]
+  /** `live` = gọi API thật · `fallback` = dùng danh sách tĩnh. */
+  source: 'live' | 'fallback'
+}
+
+export interface ProviderAdapter {
+  // ...
+  /** Danh sách model động — adapter không implement thì server tự fallback. */
+  discoverModels?(apiKey?: string): Promise<ProviderModelDiscovery>
+}
+```
+
+- `openaiCompatible.ts` (`groq`, `openrouter`): `GET {baseUrl}/models` + header `Authorization: Bearer <key>`.
+- `gemini.ts`: `GET {baseUrl}/models` + header `x-goog-api-key: <key>`.
+- Adapter **không** implement `discoverModels` → `listProviderModels` trả `{ models: preferredModels, source: 'fallback' }`.
+
+#### 7.22.3 Fallback chain runtime (FR-PROVIDER-04)
+
+Khi provider chính lỗi **tạm thời** (429 / 5xx / network) **trước khi** token đầu tiên được phát ra → server thử provider tiếp theo trong chain.
+
+**Điều kiện fallback (cả 3 phải đúng):**
+
+1. Lỗi có `retryable: true` (dùng `isRetryableKind(classifyChatError(code))` — T-M1-19).
+2. `streamedToken === false` — **chưa** phát token nào ra client. Nếu đã stream dở thì fallback sẽ sinh nội dung trùng lặp → không được.
+3. Còn candidate tiếp theo trong chain.
+
+**Chuỗi ứng viên** (`apps/server/src/services/chatService.ts`):
+
+- Provider được chỉ định trong request (`request.provider`) → đứng đầu.
+- Nếu không → `registry.getFallbackChain()` (mặc định: provider mặc định → các provider còn lại).
+- Provider **không có key** → **bỏ qua** (không phải lỗi → không tốn lượt thử).
+- Request có ảnh → provider/model không hỗ trợ vision → **bỏ qua** (FR-VISION-01).
+
+**SSE event mới — `provider_switch`** (`packages/shared/src/events.ts`):
+
+```ts
+chatProviderSwitchEventSchema = z.object({
+  type: z.literal('provider_switch'),
+  from: providerIdSchema,   // provider bị lỗi
+  to: providerIdSchema,     // provider dự phòng đang dùng
+  reason: z.string(),       // error code của provider trước (vd: 'RATE_LIMITED')
+  model: z.string(),        // model của provider mới
+})
+```
+
+> Event phát **trước** `token` đầu tiên của provider mới → client biết chính xác model nào đang trả lời.
+
+**Khi chuyển provider, server tính lại:**
+
+- `contextBudget` — context window mỗi provider khác nhau → cắt lại context.
+- `messagesForProvider` — dựng lại prompt theo provider mới (format tool/message khác nhau).
+
+**Ghi log** — cột mới `request_logs.fallback_from` (`text`, nullable):
+
+- Lưu `providerId` của provider **đã lỗi** → truy vết "lượt chat này đã fallback".
+- Migration: `apps/server/drizzle/0002_certain_vector.sql`.
+
+#### 7.22.4 Extension — `ModelPicker`
+
+| Thành phần | Vị trí | Vai trò |
+|---|---|---|
+| Component | `apps/extension/src/sidepanel/components/ModelPicker.tsx` | Radix `Popover` trong header panel |
+| Storage | `apps/extension/src/lib/modelSelection.ts` | `chrome.storage.local` key `sidekick.modelSelection` |
+| Client | `apps/extension/src/lib/providerClient.ts` → `listProviderModels()` | `GET /api/providers/:id/models`, validate bằng Zod |
+| Gửi lên | `apps/extension/src/sidepanel/hooks/useChat.ts` | `provider` + `model` trong body `POST /api/chat` |
+
+**Hành vi:**
+
+- Danh sách provider: `GET /api/providers` → chỉ hiện provider `available: true`.
+- Đổi provider → **xoá model đã chọn** (model của provider khác không dùng được).
+- Đổi model → lọc theo từ khoá khi provider có **> 12 model** (`MODEL_SEARCH_THRESHOLD`).
+- Nút "Về mặc định" → xoá lựa chọn → BFF tự dùng provider/model mặc định.
+- Lựa chọn được lưu `chrome.storage.local` → **persist qua reload panel**, và dùng cho **mọi** lượt chat sau.
+- `source === 'fallback'` → hiện dòng cảnh báo nhỏ (danh sách model không phải live).
+- Response lệch shape → `providerModelsResponseSchema.safeParse` **không** crash UI → hiện danh sách rỗng + thông báo lỗi.
+
+**Nút trigger** hiện provider/model **đang thật sự chạy** (từ SSE `meta`), không phải lựa chọn đã lưu → user luôn thấy đúng thứ đang trả lời.
+
+#### 7.22.5 Phản ứng với `provider_switch` ở extension
+
+`useChat.ts` (case `'provider_switch'`):
+
+1. `setActive({ provider: event.to, model: event.model })` → chip provider trong header đổi ngay.
+2. `updateMessage(assistantId, { provider: event.to, model: event.model })` → bubble ghi nhận provider thật sự đã trả lời.
+3. Toast thông báo: "Đã chuyển sang provider X (lý do)" — i18n key `providerSwitch.toast`.
+
+> `keySource` **không** đổi theo event (provider mới có key riêng → server sẽ cập nhật ở lượt sau) → giữ nguyên `keySource` hiện tại.
+
+#### 7.22.6 Kiểm thử
+
+| Tầng | File | Phủ |
+|---|---|---|
+| Server unit | `apps/server/tests/providerModelsRoute.test.ts` | 4 test — route trả model thật, `source` đúng, provider lạ → 400, model rỗng |
+| Server unit | `apps/server/tests/fallbackChain.test.ts` | 6 test — fallback khi lỗi retryable, **không** fallback khi đã stream token, **không** fallback khi 401, lỗi sau khi hết chain, ghi `fallback_from` |
+| Extension unit | `apps/extension/tests/modelSelection.test.ts` | đọc/ghi/xoá storage, dữ liệu hỏng → fallback về mặc định |
+| Extension unit | `apps/extension/tests/providerModelsClient.test.ts` | validate Zod, response sai shape → không throw |
+| Extension unit | `apps/extension/tests/modelPicker.test.tsx` | render, đổi provider xoá model, tìm kiếm, lưu lựa chọn |
+| Extension unit | `apps/extension/tests/useChatM2.test.ts` | xử lý `provider_switch` + `usage` |
+| E2E | `apps/extension/e2e/modelPicker.spec.ts` | mở picker, chọn model, hiện usage badge, mở section chi phí |
+
+### 7.23 Token & chi phí (FR-PROVIDER-05 — T-M2-03)
+
+> Nguồn sự thật cho hành vi: [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.6.
+
+#### 7.23.1 Nguồn dữ liệu
+
+Chi phí **không** tính ở extension → server đã tính sẵn (`PROVIDER_PRICING` — §7.16.4) và gửi kèm trong SSE event `usage`:
+
+```
+usage → { tokensIn, tokensOut, costUsd }
+```
+
+Extension chỉ **lưu & hiển thị** → không lệch với giá thật.
+
+#### 7.23.2 `UsageBadge` — badge dưới bubble assistant
+
+| Thuộc tính | Giá trị |
+|---|---|
+| Component | `apps/extension/src/sidepanel/components/chat/UsageBadge.tsx` |
+| Vị trí | Dòng meta của bubble assistant (cạnh `request_id`) |
+| Store | `chatStore` → `ChatMessage.costUsd` (mới) |
+| Format | `apps/extension/src/lib/costFormat.ts` → `formatCostUsd()` |
+
+**Hiển thị:**
+
+| Trường hợp | Kết quả |
+|---|---|
+| Có token, `costUsd` = 0 (mock / Ollama local) | chỉ token vào/ra — **không** hiện `$0.0000` |
+| Có token, `costUsd` > 0 | token vào/ra + `~ $0.0123` |
+| Chưa có `usage` event | badge **không** hiện (không render rỗng) |
+
+`formatCostUsd()` dùng **4 chữ số thập phân** cho chi phí nhỏ (`0.0004`) → giá trị < 0.0001 bị làm tròn về 0 vẫn phải hiện đọc được.
+
+#### 7.23.3 `UsageSettings` — section "Chi phí & sử dụng"
+
+| Thuộc tính | Giá trị |
+|---|---|
+| Component | `apps/extension/src/sidepanel/components/settings/UsageSettings.tsx` |
+| Vị trí | `SettingsDrawer` → section "Chi phí & sử dụng" |
+| API | `GET /api/usage?range=…` → `apps/extension/src/lib/usageClient.ts` → `fetchUsage()` |
+| Parse | `usageResponseSchema.safeParse` → response lệch shape **không** crash drawer |
+
+**Nội dung:**
+
+- Tổng token vào/ra + tổng chi phí USD cho khoảng đã chọn.
+- Bảng phân rã **theo ngày** (`byDay[]` → `date` · `requests` · `tokensIn` · `tokensOut` · `costUsd`).
+- Nút "Tải lại" → gọi lại API.
+
+**Khoảng thời gian:** `today` · `7d` · `30d` · `all` (mặc định `7d`).
+
+#### 7.23.4 Kiểm thử
+
+| Tầng | File | Phủ |
+|---|---|---|
+| Extension unit | `apps/extension/tests/costFormat.test.ts` | `formatCostUsd` — 0 · 0.0004 · 0.0123 · số lớn |
+| Extension unit | `apps/extension/tests/usageBadge.test.tsx` | ẩn khi chưa có token · chỉ token khi cost = 0 · có cost khi > 0 |
+| Extension unit | `apps/extension/tests/usageSettings.test.tsx` | render tổng · bảng theo ngày · response sai shape → không crash |
 
 ---
 

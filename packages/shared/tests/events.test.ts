@@ -7,8 +7,8 @@ import {
 import { AppError, ERROR_CODES, ERROR_STATUS_MAP } from '../src/errors.js'
 
 describe('events', () => {
-  it('co du 8 event type', () => {
-    expect(CHAT_EVENT_TYPES).toHaveLength(8)
+  it('co du 9 event type', () => {
+    expect(CHAT_EVENT_TYPES).toHaveLength(9)
   })
 
   it('parse meta event', () => {
@@ -46,6 +46,27 @@ describe('events', () => {
 
   it('parse usage event', () => {
     expect(isChatEvent({ type: 'usage', tokensIn: 10, tokensOut: 20, costUsd: 0.1 })).toBe(true)
+  })
+
+  it('parse provider_switch event (T-M2-02)', () => {
+    expect(
+      isChatEvent({
+        type: 'provider_switch',
+        from: 'groq',
+        to: 'openrouter',
+        reason: 'PROVIDER_RATE_LIMITED',
+        model: 'google/gemini-2.5-flash',
+      }),
+    ).toBe(true)
+  })
+
+  it('provider_switch event thieu `to` bi tu choi', () => {
+    const parsed = chatEventSchema.safeParse({
+      type: 'provider_switch',
+      from: 'groq',
+      reason: 'PROVIDER_ERROR',
+    })
+    expect(parsed.success).toBe(false)
   })
 
   it('parse error event', () => {
