@@ -23,6 +23,7 @@ import { ConversationList } from './components/chat/ConversationList'
 import { SettingsDrawer } from './components/settings/SettingsDrawer'
 import { ScrollToBottomButton } from './components/chat/ScrollToBottomButton'
 import { ExportMenu } from './components/chat/ExportMenu'
+import { ModelPicker } from './components/ModelPicker'
 import { EmptyState } from './components/states/EmptyState'
 import { LoadingState } from './components/states/LoadingState'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
@@ -503,6 +504,9 @@ export function ChatWorkspace({
             title={conversationTitle ?? t('chat.exportDefaultTitle')}
             messages={exportMessages}
           />
+        }
+        modelPicker={
+          <ModelPicker activeProvider={activeProvider} activeModel={activeModel} />
         }
       />
 

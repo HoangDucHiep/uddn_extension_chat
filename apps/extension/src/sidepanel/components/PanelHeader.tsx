@@ -23,6 +23,12 @@ export interface PanelHeaderProps {
    * no — header chi lo vi tri, khong can biet chi tiet hành động.
    */
   exportMenu?: ReactNode
+  /**
+   * Node chon mo hinh AI (T-M2-02 — FR-PROVIDER-03).
+   *
+   * Cung truyen **node** de picker giu duoc trigger cua rieng no.
+   */
+  modelPicker?: ReactNode
   /** Tieu de conversation hien tai (hien thi trong header). */
   conversationTitle?: string | undefined
   /** Trang thai ket noi toi BFF (NFR-REL-04 — T-M1-19). */
@@ -42,6 +48,7 @@ export function PanelHeader({
   onOpenConversations,
   onOpenSettings,
   exportMenu,
+  modelPicker,
   conversationTitle,
   connectionStatus,
 }: PanelHeaderProps) {
@@ -114,6 +121,8 @@ export function PanelHeader({
             <Settings className="h-3.5 w-3.5" aria-hidden="true" />
           </Button>
         ) : null}
+
+        {modelPicker !== undefined ? modelPicker : null}
 
         {exportMenu !== undefined ? exportMenu : null}
 

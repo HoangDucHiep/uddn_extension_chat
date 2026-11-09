@@ -65,6 +65,13 @@ export interface ChatMessage {
   errorMessage?: string | undefined
   tokensIn?: number
   tokensOut?: number
+  /**
+   * Chi phi USD cua luot nay (T-M2-03 — FR-PROVIDER-05).
+   *
+   * Gia tri uoc luong theo bang gia token (khong phai hoa don) → hien thi
+   * khoang 4 chu so nghinh.
+   */
+  costUsd?: number
   /** Anh dinh kem cua message (FR-VISION-01 — T-M1-24). */
   images?: ChatImage[]
   /** Nguon trich dan cua message (FR-CONTEXT-10 — T-M1-08). */

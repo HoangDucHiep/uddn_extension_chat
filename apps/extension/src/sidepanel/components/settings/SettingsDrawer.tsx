@@ -16,6 +16,7 @@ import { LanguageSettings } from './LanguageSettings'
 import { PrivacySettings } from './PrivacySettings'
 import { ShortcutsSettings } from './ShortcutsSettings'
 import { ThemeSettings } from './ThemeSettings'
+import { UsageSettings } from './UsageSettings'
 
 /**
  * Drawer cai dat (FR-SETTINGS-01..07 + FR-UX-06 + NFR-SEC-07 — T-M1-12).
@@ -115,6 +116,9 @@ export function SettingsDrawer({
               onSettingsChange({ historyEnabled })
             }}
           />
+
+          {/* Chi phi & su dung (T-M2-03 — FR-PROVIDER-05). */}
+          <UsageSettings />
 
           <DataSettings {...(onHistoryDeleted !== undefined ? { onHistoryDeleted } : {})} />
 

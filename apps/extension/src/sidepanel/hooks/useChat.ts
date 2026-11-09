@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react'
+import { toast } from 'sonner'
 import {
   applyContextBudget,
   AUTO_RETRY_BACKOFF_MS,
@@ -20,6 +21,7 @@ import {
 } from '@/lib/contextAttach'
 import { readContextEnabled } from '@/lib/storage'
 import { readPreferredProvider } from '@/lib/onboarding'
+import { readModelSelection } from '@/lib/modelSelection'
 import { SELECTION_EMPTY_ERROR_CODE, type PendingSelection } from '@/lib/selectionProtocol'
 import { activePathMessages, buildHistory } from '@/lib/chatTurns'
 import { useChatStore, type ChatImage, type ChatMessage } from '../store/chatStore'
@@ -301,6 +303,12 @@ export function useChat() {
       // Khong co → server dung fallback chain mac dinh.
       const preferredProvider = await readPreferredProvider()
 
+      // Lua chon provider + model tu model picker (T-M2-02 — FR-PROVIDER-03).
+      //Uu tien lua chon cua picker (moi nhat) → fallback ve lua chon onboarding.
+      const modelSelection = await readModelSelection()
+      const requestProvider = modelSelection.providerId ?? preferredProvider
+      const requestModel = modelSelection.model
+
       const handleEvent = (event: ChatEvent): void => {
         switch (event.type) {
           case 'meta':
@@ -347,7 +355,32 @@ export function useChat() {
             break
 
           case 'usage':
-            updateMessage(assistantId, { tokensIn: event.tokensIn, tokensOut: event.tokensOut })
+            updateMessage(assistantId, {
+              tokensIn: event.tokensIn,
+              tokensOut: event.tokensOut,
+              // Chi phi USD cua luot nay (T-M2-03 — FR-PROVIDER-05).
+              costUsd: event.costUsd,
+            })
+            break
+
+          case 'provider_switch':
+            // Server da fallback sang provider du phong (FR-PROVIDER-04 — T-M2-02)
+            // → cap nhat chip provider + thong bao cho nguoi dung.
+            // Giu nguyen `keySource` hien tai (provider moi co key rieng → server
+            // se cap nhat o luot sau; luc nay chi doi provider/model).
+            {
+              const current = useChatStore.getState()
+              setActive({
+                provider: event.to,
+                ...(event.model !== undefined ? { model: event.model } : {}),
+                ...(current.keySource !== undefined ? { keySource: current.keySource } : {}),
+              })
+              updateMessage(assistantId, {
+                provider: event.to,
+                ...(event.model !== undefined ? { model: event.model } : {}),
+              })
+            }
+            toast.warning(t('providerSwitch.toast', { provider: event.to }))
             break
 
           case 'error':
@@ -397,7 +430,8 @@ export function useChat() {
           ? { parentTurnId: options.parentTurnId }
           : {}),
         ...(context === undefined ? {} : { context }),
-        ...(preferredProvider === undefined ? {} : { provider: preferredProvider }),
+        ...(requestProvider === undefined ? {} : { provider: requestProvider }),
+        ...(requestModel === undefined ? {} : { model: requestModel }),
       }
 
       /**

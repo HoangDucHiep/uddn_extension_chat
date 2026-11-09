@@ -5,6 +5,7 @@ import { CitationList } from './chat/CitationList'
 import { MessageActions } from './chat/MessageActions'
 import { MessageContent } from './chat/MessageContent'
 import { MessageEditBox } from './chat/MessageEditBox'
+import { UsageBadge } from './chat/UsageBadge'
 import { ErrorState } from './states/ErrorState'
 import { useI18n } from '@/sidepanel/hooks/useI18n'
 import type { TurnMessage } from '@/lib/chatTurns'
@@ -187,9 +188,11 @@ export function MessageBubble({
               </span>
             ) : null}
             {message.tokensOut !== undefined ? (
-              <span className="text-[length:var(--font-size-xs)] text-[var(--text-tertiary)]">
-                · {message.tokensOut} tokens
-              </span>
+              <UsageBadge
+                tokensIn={message.tokensIn}
+                tokensOut={message.tokensOut}
+                costUsd={message.costUsd}
+              />
             ) : null}
             {/* Request-id (T-M1-14) — 6 ky tu dau de doi chieu voi log BFF. */}
             {message.requestId !== undefined ? (

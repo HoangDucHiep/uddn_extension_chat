@@ -270,6 +270,41 @@ export const enDictionary: Dictionary = {
   'prompt.gallery.greeting': 'Hello!',
   'prompt.gallery.autoAttachNotice': 'This page will be attached automatically when you pick a suggestion',
 
+  // --- model picker (T-M2-02 — FR-PROVIDER-03) ---
+  'modelPicker.open': 'Choose AI model',
+  'modelPicker.title': 'AI model',
+  'modelPicker.providerLabel': 'Provider',
+  'modelPicker.modelLabel': 'Model',
+  'modelPicker.searchPlaceholder': 'Search models…',
+  'modelPicker.searchLabel': 'Search models by name',
+  'modelPicker.loading': 'Loading models…',
+  'modelPicker.empty': 'This provider has no models.',
+  'modelPicker.error': 'Could not load the model list.',
+  'modelPicker.fallbackNotice': 'Model list may be outdated — could not load it from the provider.',
+  'modelPicker.unavailable': 'not available',
+  'modelPicker.reset': 'Reset to default',
+  'modelPicker.current': 'In use: {provider} · {model}',
+  'modelPicker.currentDefault': 'Using default',
+  'providerSwitch.toast': 'Switched to provider {provider}',
+
+  // --- usage / cost (T-M2-03 — FR-PROVIDER-05) ---
+  'usage.badge': '↑ {tokensIn} ↓ {tokensOut} tokens',
+  'usage.badgeCost': '↑ {tokensIn} ↓ {tokensOut} tokens · {cost}',
+  'usage.costUsd': '${amount}',
+  'usage.costUsdFree': 'free',
+  'usage.settings.title': 'Cost & usage',
+  'usage.settings.description':
+    'Total tokens and estimated cost of chat turns on this server.',
+  'usage.settings.totalTokens': 'Total tokens',
+  'usage.settings.totalCost': 'Total cost',
+  'usage.settings.byDay': 'By day',
+  'usage.settings.requests': 'Chat turns',
+  'usage.settings.empty': 'No chat turns recorded yet.',
+  'usage.settings.loading': 'Loading usage data…',
+  'usage.settings.error': 'Could not load usage data.',
+  'usage.settings.refresh': 'Refresh',
+  'usage.settings.day': '{date}: {tokens} tokens · {cost}',
+
   // --- toast ---
   'toast.conversationCreated': 'New conversation created',
   'toast.conversationCreateFailed': 'Could not create a new conversation',

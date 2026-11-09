@@ -8,17 +8,39 @@
 
 import {
   API_ROUTES,
+  providerModelsResponseSchema,
   type ProviderId,
   type ProviderInfo,
   type ProviderKeyRecord,
   type ProviderKeyTestResult,
+  type ProviderModelsResponse,
 } from '@sidekick/shared'
 import { fetchJson } from './apiClient.js'
 
 /** Danh sach provider + trang thai key. */
 export async function listProviders(): Promise<ProviderInfo[]> {
-  const response = await fetchJson<{ items: ProviderInfo[] }>(API_ROUTES.providers)
+    const response = await fetchJson<{ items: ProviderInfo[] }>(API_ROUTES.providers)
   return response.items
+}
+
+/**
+ * Danh sach model **dong** cua 1 provider (T-M2-02 — FR-PROVIDER-03).
+ *
+ * Response validate bang `providerModelsResponseSchema` (nguon su that) →
+ * response sai shape nem loi chuan hoa thay vi lam UI crash.
+ *
+ * @param providerId - Provider can xem danh sach model.
+ */
+export async function listProviderModels(providerId: ProviderId): Promise<ProviderModelsResponse> {
+  const response = await fetchJson<unknown>(
+    API_ROUTES.providerModels.replace(':id', encodeURIComponent(providerId)),
+  )
+
+  const parsed = providerModelsResponseSchema.safeParse(response)
+  if (!parsed.success) {
+    throw new Error('Response danh sach model khong dung schema')
+  }
+  return parsed.data
 }
 
 /** Danh sach key da luu (chi metadata + key da che). */
