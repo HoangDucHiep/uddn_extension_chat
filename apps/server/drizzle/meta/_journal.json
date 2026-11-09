@@ -15,6 +15,13 @@
       "when": 1793856793205,
       "tag": "0001_puzzling_mathemanic",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794250379215,
+      "tag": "0002_certain_vector",
+      "breakpoints": true
     }
   ]
 }

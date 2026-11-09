@@ -21,6 +21,7 @@ import {
   type ProviderInfo,
   type ProviderKeyRecord,
   type ProviderKeyTestResult,
+  type ProviderModelsResponse,
 } from '@sidekick/shared'
 import { and, desc, eq } from 'drizzle-orm'
 import type { Database } from '../db/index.js'
@@ -28,7 +29,7 @@ import { providerKeys } from '../db/schema.js'
 import { decrypt, encrypt, keyHint } from '../lib/crypto.js'
 import { detectOllama, OLLAMA_DEFAULT_BASE_URL } from '../providers/ollama.js'
 import type { ProviderRegistry } from '../providers/registry.js'
-import { maskKey, type EnvKeys } from '../providers/keyResolver.js'
+import { maskKey, resolveKey, type EnvKeys } from '../providers/keyResolver.js'
 
 export interface ProviderServiceDeps {
   db: Database
@@ -144,6 +145,73 @@ function hasEnvKeyFor(envKeys: EnvKeys, providerId: ProviderId): boolean {
   if (!envName) return false
   const value = envKeys[envName]
   return typeof value === 'string' && value.trim().length > 0
+}
+
+/**
+ * Lay danh sach model **dong** cua 1 provider (T-M2-02 — FR-PROVIDER-03).
+ *
+ * Thu tu:
+ *  1. Resolve key (K2 trong DB → K1 trong `.env`).
+ *  2. `adapter.listModels(key)` → goi `GET /models` cua provider.
+ *  3. Provider loi / tra rong → fallback sang model mac dinh cua registry.
+ *
+ * `source` cho UI biet danh sach la **discovery that** hay **dự phòng** —
+ * UI canh bao "danh sach co the cu" khi `source === 'fallback'`.
+ *
+ * @param deps - Dependency cua service.
+ * @param providerId - Provider can xem danh sach model.
+ */
+export async function listProviderModels(
+  deps: ProviderServiceDeps,
+  providerId: ProviderId,
+): Promise<ProviderModelsResponse> {
+  const adapter = deps.registry.get(providerId)
+  if (!adapter) {
+    throw new AppError(ERROR_CODES.NOT_FOUND, `Khong tim thay provider "${providerId}"`)
+  }
+
+  // Resolve key — provider khong can key (mock, ollama) → undefined.
+  let apiKey: string | undefined
+  if (adapter.requiresKey) {
+    try {
+      const key = await resolveKey(
+        { db: deps.db, envKeys: deps.envKeys, masterKey: deps.masterKey },
+        providerId,
+      )
+      apiKey = key.apiKey
+    } catch {
+      // Khong co key → van goi `listModels` (1 so provider discovery khong can
+      // key) → neu that bai se fallback ve model mac dinh.
+      apiKey = undefined
+    }
+  }
+
+  try {
+    // Adapter co implement `discoverModels` → phan biet that/fallback.
+    // Khong co (mock, ollama) → danh sach tinh san → coi la `live`.
+    if (typeof adapter.discoverModels === 'function') {
+      const discovery = await adapter.discoverModels(apiKey)
+      const cleaned = discovery.models.filter((model) => model.length > 0)
+      if (cleaned.length > 0) {
+        return { providerId, models: cleaned, source: discovery.source }
+      }
+    } else {
+      const models = await adapter.listModels(apiKey)
+      const cleaned = models.filter((model) => model.length > 0)
+      if (cleaned.length > 0) {
+        return { providerId, models: cleaned, source: 'live' }
+      }
+    }
+  } catch {
+    // Provider loi → fallback ve model mac dinh.
+  }
+
+  const fallbackModel = deps.registry.getDefaultModel(providerId)
+  return {
+    providerId,
+    models: fallbackModel.length > 0 ? [fallbackModel] : [],
+    source: 'fallback',
+  }
 }
 
 /**

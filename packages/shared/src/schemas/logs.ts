@@ -39,6 +39,12 @@ export const requestLogSummarySchema = z.object({
   toolCallCount: z.number().int().nonnegative(),
   /** Error code neu luot chat that bai. */
   error: z.string().nullable(),
+  /**
+   * Provider **bi loi truoc do** khi server fallback sang provider du phong.
+   *
+   * T-M2-02 (FR-PROVIDER-04) — `null` neu khong co fallback nao xay ra.
+   */
+  fallbackFrom: z.string().nullable(),
   createdAt: z.string(),
 })
 export type RequestLogSummary = z.infer<typeof requestLogSummarySchema>

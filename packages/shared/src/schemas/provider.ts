@@ -120,6 +120,32 @@ export const providersResponseSchema = z.object({
 })
 export type ProvidersResponse = z.infer<typeof providersResponseSchema>
 
+/**
+ * Nguon danh sach model cua 1 provider.
+ *
+ * - `live` — goi API `GET /models` cua provider **thanh cong** → danh sach
+ *   model co that.
+ * - `fallback` — provider loi (401/500/network) → dung danh sach model uu tien
+ *   khai bao trong config. UI phai hieu rang danh sach nay co the cu.
+ */
+export const providerModelSourceSchema = z.enum(['live', 'fallback'])
+export type ProviderModelSource = z.infer<typeof providerModelSourceSchema>
+
+/**
+ * Response cua `GET /api/providers/:id/models` (T-M2-02).
+ *
+ * Danh sach model **dong** cua 1 provider — phuc vu model picker (FR-PROVIDER-03).
+ */
+export const providerModelsResponseSchema = z.object({
+  /** Provider ma danh sach nay thuoc ve. */
+  providerId: z.enum(PROVIDER_IDS),
+  /** Danh sach model (co the rong neu provider khong con model nao). */
+  models: z.array(z.string()),
+  /** Danh sach nay la discovery that hay fallback. */
+  source: providerModelSourceSchema,
+})
+export type ProviderModelsResponse = z.infer<typeof providerModelsResponseSchema>
+
 /** Response cua `GET /api/providers/keys`. */
 export const providerKeyListResponseSchema = z.object({
   items: z.array(providerKeyRecordSchema),

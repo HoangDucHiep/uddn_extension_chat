@@ -209,6 +209,12 @@ export const requestLogs = pgTable(
     latencyMs: integer('latency_ms').notNull().default(0),
     toolCalls: jsonb('tool_calls'),
     error: text('error'),
+    /**
+     * Provider **bi loi truoc do** khi server fallback sang provider du phong.
+     *
+     * T-M2-02 (FR-PROVIDER-04) — `null` neu khong co fallback nao xay ra.
+     */
+    fallbackFrom: text('fallback_from'),
     createdAt,
   },
   (table) => [

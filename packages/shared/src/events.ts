@@ -79,6 +79,26 @@ export const chatUsageEventSchema = z.object({
 })
 export type ChatUsageEvent = z.infer<typeof chatUsageEventSchema>
 
+/**
+ * Thong bao server da chuyen sang provider du phong (FR-PROVIDER-04 — T-M2-02).
+ *
+ * Emit **giua** luong (sau `meta`, truoc token dau tien) khi provider chinh
+ * loi tam thoi (429/5xx/network) → server thu provider tiep theo trong chuoi
+ * fallback. Client dung event nay de bao nguoi dung "da chuyen sang X".
+ */
+export const chatProviderSwitchEventSchema = z.object({
+  type: z.literal('provider_switch'),
+  /** Provider bi loi (da thu khong thanh cong). */
+  from: z.string().min(1),
+  /** Provider dang duoc dung sau khi chuyen. */
+  to: z.string().min(1),
+  /** Ly do chuyen (error code cua provider truoc do). */
+  reason: z.string().min(1),
+  /** Model dang dung sau khi chuyen (model theo provider moi). */
+  model: z.string().optional(),
+})
+export type ChatProviderSwitchEvent = z.infer<typeof chatProviderSwitchEventSchema>
+
 /** Loi giua luong. */
 export const chatErrorEventSchema = z.object({
   type: z.literal('error'),
@@ -110,7 +130,7 @@ export const chatDoneEventSchema = z.object({
 })
 export type ChatDoneEvent = z.infer<typeof chatDoneEventSchema>
 
-/** Union 8 event cua luong chat. */
+/** Union 9 event cua luong chat. */
 export const chatEventSchema = z.discriminatedUnion('type', [
   chatMetaEventSchema,
   chatTokenEventSchema,
@@ -118,6 +138,7 @@ export const chatEventSchema = z.discriminatedUnion('type', [
   chatToolCallEventSchema,
   chatToolResultEventSchema,
   chatUsageEventSchema,
+  chatProviderSwitchEventSchema,
   chatErrorEventSchema,
   chatDoneEventSchema,
 ])
@@ -130,6 +151,7 @@ export const CHAT_EVENT_TYPES = [
   'tool_call',
   'tool_result',
   'usage',
+  'provider_switch',
   'error',
   'done',
 ] as const

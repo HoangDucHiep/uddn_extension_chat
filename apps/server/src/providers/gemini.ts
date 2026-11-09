@@ -10,7 +10,12 @@
  */
 
 import type { ProviderChunk, ProviderStreamRequest } from '@sidekick/shared'
-import { errorChunk, type ProviderAdapter, type ProviderKeyCheck } from './types.js'
+import {
+  errorChunk,
+  type ProviderAdapter,
+  type ProviderKeyCheck,
+  type ProviderModelDiscovery,
+} from './types.js'
 import {
   isRetryableStatus,
   mapStatusToCode,
@@ -99,12 +104,32 @@ export class GeminiProvider implements ProviderAdapter {
     }
   }
 
-  async listModels(): Promise<string[]> {
+  async listModels(apiKey?: string): Promise<string[]> {
+    const result = await this.discoverModels(apiKey)
+    return result.models
+  }
+
+  /**
+   * Discovery danh sach model + phan biet that/fallback (T-M2-02).
+   *
+   * Gemini chi tra model ma key duoc xac thuc → goi `GET /models` co
+   * `x-goog-api-key`. Provider loi → danh sach uu tien mac dinh (`fallback`).
+   *
+   * @param apiKey - API key (optional).
+   */
+  async discoverModels(apiKey?: string): Promise<ProviderModelDiscovery> {
     try {
       const response = await fetch(`${GEMINI_BASE_URL}/models`, {
-        headers: { Accept: 'application/json' },
+        headers: {
+          Accept: 'application/json',
+          // Key (neu co) → Gemini chi tra model ma key duoc xac thuc.
+          // Khong key → 400/403 → fallback sang `preferredModels` (T-M2-02).
+          ...(apiKey !== undefined && apiKey.length > 0 ? { 'x-goog-api-key': apiKey } : {}),
+        },
       })
-      if (!response.ok) return this.preferredModels()
+      if (!response.ok) {
+        return { models: this.preferredModels(), source: 'fallback' }
+      }
 
       const payload = (await response.json()) as GeminiListResponse
       const ids = (payload.models ?? [])
@@ -112,9 +137,11 @@ export class GeminiProvider implements ProviderAdapter {
         .map((model) => (model.name ?? '').replace(/^models\//, ''))
         .filter((id) => id.length > 0)
 
-      return ids.length > 0 ? ids : this.preferredModels()
+      return ids.length > 0
+        ? { models: ids, source: 'live' }
+        : { models: this.preferredModels(), source: 'fallback' }
     } catch {
-      return this.preferredModels()
+      return { models: this.preferredModels(), source: 'fallback' }
     }
   }
 

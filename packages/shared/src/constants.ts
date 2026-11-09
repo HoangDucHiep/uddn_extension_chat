@@ -134,6 +134,8 @@ export const API_ROUTES = {
   /** Doi bien the active cua 1 turn — template, thay `:id` va `:turnId`. */
   conversationTurnActivate: `${API_BASE_PATH}/conversations/:id/turns/:turnId/activate`,
   providers: `${API_BASE_PATH}/providers`,
+  /** Danh sach model dong cua 1 provider — template, thay `:id`. */
+  providerModels: `${API_BASE_PATH}/providers/:id/models`,
   /** API key BYOK (K2) — GET/POST/DELETE + test. */
   providerKeys: `${API_BASE_PATH}/providers/keys`,
   extractPdf: `${API_BASE_PATH}/extract/pdf`,

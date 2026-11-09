@@ -12,7 +12,12 @@ import {
   safeReadText,
   shouldTryFallbackModel,
 } from './sse.js'
-import { errorChunk, type ProviderAdapter, type ProviderKeyCheck } from './types.js'
+import {
+  errorChunk,
+  type ProviderAdapter,
+  type ProviderKeyCheck,
+  type ProviderModelDiscovery,
+} from './types.js'
 
 /**
  * Dung `content` cho API kieu OpenAI.
@@ -90,13 +95,33 @@ export class OpenAiCompatibleProvider implements ProviderAdapter {
     this.requiresKey = options.requiresKey ?? true
   }
 
-  async listModels(): Promise<string[]> {
+  async listModels(apiKey?: string): Promise<string[]> {
+    const result = await this.discoverModels(apiKey)
+    return result.models
+  }
+
+  /**
+   * Discovery danh sach model + phan biet that/fallback (T-M2-02).
+   *
+   * Provider goi `GET /models` **co xac thuc** → danh sach that.
+   * Provider loi (401/500/network) → danh sach uu tien mac dinh (`fallback`).
+   *
+   * @param apiKey - API key (optional).
+   */
+  async discoverModels(apiKey?: string): Promise<ProviderModelDiscovery> {
     try {
       const response = await fetch(`${this.options.baseUrl}/models`, {
-        headers: { Accept: 'application/json' },
+        headers: {
+          Accept: 'application/json',
+          // Key (neu co) → provider discovery that. Khong key → Groq/OpenRouter
+          // tra 401 → fallback sang `preferredModels` (T-M2-02).
+          ...(apiKey !== undefined && apiKey.length > 0
+            ? this.options.buildHeaders(apiKey)
+            : {}),
+        },
       })
       if (!response.ok) {
-        return this.options.preferredModels
+        return { models: this.options.preferredModels, source: 'fallback' }
       }
       const payload: unknown = await response.json()
       const models = Array.isArray(payload)
@@ -109,10 +134,12 @@ export class OpenAiCompatibleProvider implements ProviderAdapter {
         .map((model) => (typeof model === 'string' ? model : (model.id ?? '')))
         .filter((id): id is string => typeof id === 'string' && id.length > 0)
 
-      return ids.length > 0 ? ids : this.options.preferredModels
+      return ids.length > 0
+        ? { models: ids, source: 'live' }
+        : { models: this.options.preferredModels, source: 'fallback' }
     } catch {
       // Discovery that bai -> dung danh sach uu tien.
-      return this.options.preferredModels
+      return { models: this.options.preferredModels, source: 'fallback' }
     }
   }
 

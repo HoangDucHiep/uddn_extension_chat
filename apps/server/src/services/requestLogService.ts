@@ -46,6 +46,12 @@ export interface RequestLogData {
   error: string | undefined
   /** Cac tool call phat sinh (M2 moi co that). */
   toolCalls: Array<Record<string, unknown>> | null
+  /**
+   * Provider **bi loi truoc do** khi server fallback sang provider khac.
+   *
+   * T-M2-02 (FR-PROVIDER-04) — `null` neu khong co fallback nao xay ra.
+   */
+  fallbackFrom?: string | null | undefined
 }
 
 /**
@@ -115,6 +121,8 @@ export async function insertRequestLog(
     latencyMs: data.latencyMs,
     toolCalls: data.toolCalls ?? null,
     error: data.error ?? null,
+    // Provider bi loi truoc do khi fallback (T-M2-02) — null neu khong fallback.
+    fallbackFrom: data.fallbackFrom ?? null,
   })
 }
 
@@ -200,6 +208,8 @@ export function toRequestLogSummary(row: typeof requestLogs.$inferSelect): Reque
     latencyMs: row.latencyMs,
     toolCallCount: countToolCalls(row.toolCalls),
     error: row.error,
+    // Provider bi loi truoc do khi fallback (T-M2-02).
+    fallbackFrom: row.fallbackFrom ?? null,
     createdAt: row.createdAt.toISOString(),
   }
 }

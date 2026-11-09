@@ -13,15 +13,28 @@
  */
 
 import { Router, type Request, type Response } from 'express'
-import { AppError, ERROR_CODES, saveProviderKeySchema } from '@sidekick/shared'
+import { AppError, ERROR_CODES, PROVIDER_IDS, saveProviderKeySchema } from '@sidekick/shared'
 import type { ProviderServiceDeps } from '../services/providerService.js'
 import {
   deleteProviderKey,
   listProviderInfo,
   listProviderKeys,
+  listProviderModels,
   saveProviderKey,
   testProviderKey,
 } from '../services/providerService.js'
+
+/**
+ * Kiem tra id provider co hop le khong.
+ *
+ * Dung `PROVIDER_IDS` (nguon su that) thay vi `isProviderId` cua extension
+ * (module phia client, khong dung o server).
+ *
+ * @param value - Gia tri can kiem tra.
+ */
+function isProviderId(value: string): value is (typeof PROVIDER_IDS)[number] {
+  return (PROVIDER_IDS as readonly string[]).includes(value)
+}
 
 export function createProvidersRouter(deps: ProviderServiceDeps): Router {
   const router = Router()
@@ -37,6 +50,38 @@ export function createProvidersRouter(deps: ProviderServiceDeps): Router {
         error: {
           code: ERROR_CODES.INTERNAL_ERROR,
           message: `Khong doc duoc danh sach provider: ${message.slice(0, 200)}`,
+        },
+      })
+    }
+  })
+
+  /**
+   * Danh sach model **dong** cua 1 provider (T-M2-02 — FR-PROVIDER-03).
+   *
+   * Phuc vu model picker trong side panel.
+   */
+  router.get('/providers/:id/models', async (req: Request, res: Response) => {
+    const providerId = req.params['id']
+    if (typeof providerId !== 'string' || !isProviderId(providerId)) {
+      res.status(400).json({
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: `Provider khong hop le: "${String(providerId)}"`,
+        },
+      })
+      return
+    }
+
+    try {
+      const result = await listProviderModels(deps, providerId)
+      res.status(200).json(result)
+    } catch (error) {
+      if (error instanceof AppError) throw error
+      const message = error instanceof Error ? error.message : String(error)
+      res.status(500).json({
+        error: {
+          code: ERROR_CODES.INTERNAL_ERROR,
+          message: `Khong doc duoc danh sach model: ${message.slice(0, 200)}`,
         },
       })
     }

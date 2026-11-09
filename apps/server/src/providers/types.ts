@@ -16,6 +16,19 @@ export interface ProviderKeyCheck {
   error?: string
 }
 
+/**
+ * Ket qua discovery danh sach model (T-M2-02 — FR-PROVIDER-03).
+ *
+ * `source` cho biet danh sach la **goi API that** hay **du phong** (provider
+ * loi → dung danh sach model mac dinh).
+ */
+export interface ProviderModelDiscovery {
+  /** Danh sach model. */
+  models: string[]
+  /** Danh sach la discovery that hay du phong. */
+  source: 'live' | 'fallback'
+}
+
 export interface ProviderAdapter {
   /** Id cua provider (khop voi PROVIDER_IDS). */
   readonly id: string
@@ -45,10 +58,30 @@ export interface ProviderAdapter {
 
   /**
    * Tra ve danh sach model dang hoat dong.
+   *
    * Provider that se goi API `GET /models` de discover dong.
    * Neu that bai -> tra ve danh sach uu tien mac dinh.
+   *
+   * @param apiKey - API key (optional). Truyen vao de provider goi `GET /models`
+   *   **co xac thuc** — Groq/OpenRouter tra 401 neu thieu header
+   *   `Authorization` → danh sach rong → phai fallback sang `preferredModels`.
    */
-  listModels(): Promise<string[]>
+  listModels(apiKey?: string): Promise<string[]>
+
+  /**
+   * Discover danh sach model **dong** + biet danh sach do la that hay du phong.
+   *
+   * T-M2-02 (FR-PROVIDER-03) — `listModels` nuot loi ben trong → khong phan biet
+   * duoc "provider tra danh sach that" voi "provider loi, dung danh sach mac
+   * dinh". `discoverModels` tra them `source` de server/UI biet canh bao nguoi
+   * dung ("danh sach co the cu").
+   *
+   * Adapter khong implement method nay → server coi danh sach la `live`
+   * (danh sach tinh san luon dung).
+   *
+   * @param apiKey - API key (optional) — truyen vao de `GET /models` co xac thuc.
+   */
+  discoverModels?(apiKey?: string): Promise<ProviderModelDiscovery>
 
   /**
    * Chon model se duoc dung thuc te cho request.
