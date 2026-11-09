@@ -101,6 +101,23 @@ export interface ChatStreamResult {
 }
 
 /**
+ * Mot provider **ung vien** cho luot chat (T-M2-02).
+ *
+ * Gom provider + model + key da resolve → dung de thu theo thu tu fallback
+ * ma khong can resolve key lai nhieu lan.
+ */
+interface ProviderCandidate {
+  /** Id provider. */
+  providerId: ProviderId
+  /** Model se dung thuc te cho provider nay. */
+  model: string
+  /** API key (chuoi rong cho provider khong can key: mock, ollama). */
+  apiKey: string
+  /** Nguon key: `K1` (team env) · `K2` (BYOK trong DB). */
+  keySource: string
+}
+
+/**
  * Ke hoach thao tac cua luot chat (T-M1-10).
  *
  * Tinh **truoc** khi stream provider → biet chinh xac:
@@ -150,8 +167,15 @@ export function createChatStream(
    * Hoist ra ngoai generator de `ChatStreamResult` (tra ve **synchronously**)
    * lay duoc gia tri sau khi stream chay. Ban dau la `K1`; neu khong tim
    * duoc provider nao → `none`.
+   *
+   * T-M2-02: gia tri thuc te lay tu `activeCandidate.keySource` (co the doi
+   * sau khi fallback sang provider du phong).
    */
   let resolvedKeySource = 'K1'
+  /** Provider thuc te cua luot (co the doi sau khi fallback — T-M2-02). */
+  let resolvedProviderId: ProviderId | undefined
+  /** Model thuc te cua luot (co the doi sau khi fallback — T-M2-02). */
+  let resolvedModelName = ''
 
   const events = (async function* generate(): AsyncGenerator<ChatEvent, void, undefined> {
     // Bat dau do thoi gian **truoc moi buoc** → latency do duoc ca thoi gian
@@ -180,9 +204,15 @@ export function createChatStream(
         ] as ProviderId[])
       : deps.registry.getFallbackChain()
 
-    let resolvedProvider: ProviderId | undefined
-    let resolvedModel = ''
-    let apiKey = ''
+    /**
+     * Cac provider **dung duoc** cho luot nay, theo thu tu uu tien.
+     *
+     * T-M2-02 (FR-PROVIDER-04): thu provider chinh truoc; neu provider loi
+     * tam thoi (429/5xx/network) → thu provider tiep theo trong chain.
+     * Provider khong co key / khong ho tro vision → **bo qua** (khong phai
+     * loi → khong dua vao danh sach).
+     */
+    const candidates: ProviderCandidate[] = []
 
     for (const providerId of chain) {
       const provider = deps.registry.get(providerId)
@@ -198,11 +228,13 @@ export function createChatStream(
 
       // Provider khong can key (mock, ollama local) -> dung luon.
       if (!provider.requiresKey) {
-        resolvedProvider = providerId
-        resolvedKeySource = 'K1'
-        apiKey = ''
-        resolvedModel = candidateModel
-        break
+        candidates.push({
+          providerId,
+          model: candidateModel,
+          apiKey: '',
+          keySource: 'K1',
+        })
+        continue
       }
 
       let key: Awaited<ReturnType<typeof resolveKey>>
@@ -216,14 +248,15 @@ export function createChatStream(
         continue
       }
 
-      resolvedProvider = providerId
-      resolvedKeySource = key.source
-      apiKey = key.apiKey
-      resolvedModel = candidateModel
-      break
+      candidates.push({
+        providerId,
+        model: candidateModel,
+        apiKey: key.apiKey,
+        keySource: key.source,
+      })
     }
 
-    if (!resolvedProvider) {
+    if (candidates.length === 0) {
       // Khong tim thay provider → phan biet "khong co key" vs "khong ho tro anh".
       const errorCode =
         imagesForProvider.length > 0
@@ -249,6 +282,7 @@ export function createChatStream(
         error: errorCode,
         costUsd: 0,
         toolCalls: null,
+        fallbackFrom: null,
       })
 
       if (imagesForProvider.length > 0) {
@@ -272,14 +306,27 @@ export function createChatStream(
       return
     }
 
+    // Provider thuc te cua luot nay — co the doi neu co fallback (T-M2-02).
+    let activeCandidate = candidates[0]
+    if (activeCandidate === undefined) {
+      yield { type: 'done', finishReason: 'error', messageId }
+      return
+    }
+    /** Provider bi loi truoc do — ghi vao log de truy vet fallback (T-M2-02). */
+    let fallbackFrom: ProviderId | undefined
+    /** Ly do chuyen provider (error code cua provider truoc do). */
+    let switchReason = ''
+    /** Provider bi loi truoc do (dung cho event `provider_switch`). */
+    let switchReasonProviderId: ProviderId | undefined
+
     // --- 3. Meta event (luon dau tien) ---
     yield {
       type: 'meta',
       messageId: plan.continueMessageId ?? messageId,
       conversationId,
-      provider: resolvedProvider,
-      model: resolvedModel,
-      keySource: resolvedKeySource,
+      provider: activeCandidate.providerId,
+      model: activeCandidate.model,
+      keySource: activeCandidate.keySource,
       requestId,
       turnId: plan.turnId,
     }
@@ -287,20 +334,20 @@ export function createChatStream(
     // --- 4. Stream provider ---
     // Tinh ngan sach context **mot lan** (server la nguon chan su that) →
     // dung lai cho ca prompt builder va `context_hash` trong log.
-    const contextBudget = resolveContextItems(request, {
-      provider: resolvedProvider,
+    let contextBudget = resolveContextItems(request, {
+      provider: activeCandidate.providerId,
       reservedOutputTokens: request.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
     })
 
-    const messagesForProvider = buildProviderMessages(request, {
-      provider: resolvedProvider,
+    let messagesForProvider = buildProviderMessages(request, {
+      provider: activeCandidate.providerId,
       reservedOutputTokens: request.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
       images: imagesForProvider,
       contextBudget,
       // Tiep tuc → them chi dan "viet phan tiep theo" (FR-CHAT-07).
       ...(operation === 'continue' ? { extraUserInstruction: CONTINUE_INSTRUCTION } : {}),
     })
-    const streamStartedAt = Date.now()
+    let streamStartedAt = Date.now()
     let firstTokenAt: number | undefined
     let text = ''
     let tokensIn = 0
@@ -316,67 +363,149 @@ export function createChatStream(
      */
     const toolCallRecords: Array<Record<string, unknown>> = []
 
-    const provider = deps.registry.require(resolvedProvider)
-
     // Gioi han max tokens — provider dua `max_tokens` vao billings/credit check.
     // Khong dat thi OpenRouter bao 402 (credit khong du cho 65535 tokens).
     const maxOutputTokens = request.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS
 
-    for await (const chunk of provider.stream({
-      model: resolvedModel,
-      messages: messagesForProvider,
-      temperature: request.temperature,
-      maxOutputTokens,
-      apiKey,
-      // Request-id → provider gui header `X-Request-Id` (NFR-MAINT-04).
-      requestId,
-      signal: abortSignal,
-    })) {
-      if (abortSignal.aborted) {
-        finishReason = 'aborted'
-        break
-      }
+    // Vong lap tren **candidates** — provider dau tien that bai tam thoi thi thu
+    // provider tiep theo (FR-PROVIDER-04 — T-M2-02).
+    for (let index = 0; index < candidates.length; index += 1) {
+      const candidate = candidates[index]
+      if (candidate === undefined) continue
 
-      if (chunk.kind === 'token') {
-        if (firstTokenAt === undefined) firstTokenAt = Date.now()
-        const delta = chunk.text ?? ''
-        text += delta
-        yield { type: 'token', delta, index: tokenIndex }
-        tokenIndex += 1
-        continue
-      }
-
-      if (chunk.kind === 'usage') {
-        tokensIn = chunk.tokensIn ?? tokensIn
-        tokensOut = chunk.tokensOut ?? tokensOut
-        continue
-      }
-
-      if (chunk.kind === 'done') {
-        const reason = chunk.finishReason
-        finishReason = reason === 'length' ? 'length' : 'stop'
-        continue
-      }
-
-      if (chunk.kind === 'error') {
-        errorMessage = chunk.errorMessage
-        finishReason = 'error'
-        const errorCode = chunk.errorCode ?? 'PROVIDER_ERROR'
-        // `retryable` phai phan anh `errorCode` thuc te — KHONG hardcode
-        // `true`, vi loi 401 (sai API key) retry vo ich (FR-CHAT-14 / NFR-REL-02).
-        const retryable = chunk.errorRetryable ?? isRetryableKind(classifyChatError(errorCode))
+      if (index > 0) {
+        // Da chuyen sang provider du phong → bao client + tinh lai ngan sach
+        // context (context window cua moi provider khac nhau).
         yield {
-          type: 'error',
-          code: errorCode,
-          message: chunk.errorMessage ?? 'Provider loi',
-          retryable,
-          ...(chunk.retryAfterSeconds !== undefined
-            ? { retryAfterSeconds: chunk.retryAfterSeconds }
-            : {}),
+          type: 'provider_switch',
+          from: switchReasonProviderId ?? activeCandidate.providerId,
+          to: candidate.providerId,
+          reason: switchReason,
+          model: candidate.model,
         }
+        activeCandidate = candidate
+        fallbackFrom = switchReasonProviderId
+
+        contextBudget = resolveContextItems(request, {
+          provider: candidate.providerId,
+          reservedOutputTokens: request.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
+        })
+        messagesForProvider = buildProviderMessages(request, {
+          provider: candidate.providerId,
+          reservedOutputTokens: request.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
+          images: imagesForProvider,
+          contextBudget,
+          ...(operation === 'continue' ? { extraUserInstruction: CONTINUE_INSTRUCTION } : {}),
+        })
+        // TTFT do tu luc provider moi bat dau stream.
+        streamStartedAt = Date.now()
+        firstTokenAt = undefined
+      }
+
+      const provider = deps.registry.require(candidate.providerId)
+
+      /** Loi cua provider nay (neu co). */
+      let providerError:
+        | {
+            code: string
+            message: string
+            retryable: boolean
+            retryAfterSeconds?: number | undefined
+          }
+        | undefined
+      /** Provider da stream token → khong duoc chuyen (tranh noi dung trung). */
+      let streamedToken = false
+
+      for await (const chunk of provider.stream({
+        model: candidate.model,
+        messages: messagesForProvider,
+        temperature: request.temperature,
+        maxOutputTokens,
+        apiKey: candidate.apiKey,
+        // Request-id → provider gui header `X-Request-Id` (NFR-MAINT-04).
+        requestId,
+        signal: abortSignal,
+      })) {
+        if (abortSignal.aborted) {
+          finishReason = 'aborted'
+          break
+        }
+
+        if (chunk.kind === 'token') {
+          if (firstTokenAt === undefined) firstTokenAt = Date.now()
+          const delta = chunk.text ?? ''
+          text += delta
+          streamedToken = true
+          yield { type: 'token', delta, index: tokenIndex }
+          tokenIndex += 1
+          continue
+        }
+
+        if (chunk.kind === 'usage') {
+          tokensIn = chunk.tokensIn ?? tokensIn
+          tokensOut = chunk.tokensOut ?? tokensOut
+          continue
+        }
+
+        if (chunk.kind === 'done') {
+          const reason = chunk.finishReason
+          finishReason = reason === 'length' ? 'length' : 'stop'
+          continue
+        }
+
+        if (chunk.kind === 'error') {
+          const errorCode = chunk.errorCode ?? 'PROVIDER_ERROR'
+          // `retryable` phai phan anh `errorCode` thuc te — KHONG hardcode
+          // `true`, vi loi 401 (sai API key) retry vo ich (FR-CHAT-14 / NFR-REL-02).
+          const retryable = chunk.errorRetryable ?? isRetryableKind(classifyChatError(errorCode))
+          providerError = {
+            code: errorCode,
+            message: chunk.errorMessage ?? 'Provider loi',
+            retryable,
+            ...(chunk.retryAfterSeconds !== undefined
+              ? { retryAfterSeconds: chunk.retryAfterSeconds }
+              : {}),
+          }
+          break
+        }
+      }
+
+      if (providerError === undefined) {
+        // Thanh cong (hoac user huy) → dung provider nay, khong thu them.
         break
       }
+
+      errorMessage = providerError.message
+
+      const canFallback =
+        providerError.retryable && !streamedToken && index < candidates.length - 1
+
+      if (canFallback) {
+        // Loi tam thoi → thu provider tiep theo (FR-PROVIDER-04).
+        switchReasonProviderId = candidate.providerId
+        switchReason = providerError.code
+        continue
+      }
+
+      // Khong fallback duoc → tra loi loi cho user.
+      finishReason = 'error'
+      yield {
+        type: 'error',
+        code: providerError.code,
+        message: providerError.message,
+        retryable: providerError.retryable,
+        ...(providerError.retryAfterSeconds !== undefined
+          ? { retryAfterSeconds: providerError.retryAfterSeconds }
+          : {}),
+      }
+      break
     }
+
+    const resolvedProvider = activeCandidate.providerId
+    const resolvedModel = activeCandidate.model
+    resolvedKeySource = activeCandidate.keySource
+    resolvedProviderId = activeCandidate.providerId
+    resolvedModelName = activeCandidate.model
 
     // Latency do **ca luot** (tu luc nhan request) — TTFT do phan stream
     // (den token dau tien). T-M1-14: `latency_ms` phai bao phu ca thoi gian
@@ -474,6 +603,7 @@ export function createChatStream(
       error: errorMessage,
       costUsd,
       toolCalls: toolCallRecords.length > 0 ? toolCallRecords : null,
+      fallbackFrom: fallbackFrom ?? null,
     })
 
     // --- 7. Done event (luon cuoi cung) ---
@@ -484,8 +614,8 @@ export function createChatStream(
     requestId,
     conversationId,
     messageId,
-    providerId: (request.provider ?? 'groq') as ProviderId,
-    model: request.model ?? '',
+    providerId: resolvedProviderId ?? ('groq' as ProviderId),
+    model: resolvedModelName,
     keySource: resolvedKeySource,
     events,
   }
