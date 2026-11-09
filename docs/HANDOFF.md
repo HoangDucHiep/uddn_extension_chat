@@ -58,6 +58,18 @@ _(Không có — M1 đóng xong 2026-11-09, tag `v0.2`)_
 
 **Ảnh hưởng lên gate parity:** checklist §E `COMPARISON_MATRIX.md` **32/35 = 91.4%** → **33/35 = 94.3%** (đóng dòng "Token/cost hiển thị") — xem §E.1.3.
 
+**Số liệu test sau T-M2-02/03 (2026-11-10):** shared 245 · server 387 · extension 745 · eval 11 = **1388 unit** + **91 E2E** (24 file). `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm build` ✅ (`dist/content.js` 17.27 kB) · `pnpm test:e2e` ✅ (91/91).
+
+> **Flake đã biết:** lần chạy E2E đầu tiên có `e2e/contextCache.spec.ts > trang đang lỗi → fallback về nội dung đã cache` fail (`expect(request?.context?.items).toHaveLength(1)` → `received value must have a length property`) — chạy lại **riêng** file đó thì **3/3 pass**, chạy lại **cả suite** thì **91/91 pass** → **flake do tải song song**, không phải hồi quy code. Nếu gặp lại: chạy lại `pnpm test:e2e` trước khi sửa code.
+
+**Endpoint đã kiểm chứng live** (BFF + Docker + `.env` có K1):
+
+```
+GET /api/providers/groq/models       → source=live  count=11
+GET /api/providers/openrouter/models → source=live  count=427
+GET /api/providers/gemini/models      → source=live  count=47
+```
+
 ### Kết quả đóng M1 (2026-11-09)
 
 - **3 task cuối của M1:** T-M1-13 export conversation (`.md` / `.json` — commit `0a8d9d6`) · E2E chứng minh parity "panel giữ nguyên khi chuyển tab" (commit `07fb7ce`) · đồng bộ contract eval với `EVAL_PLAN.md` (commit `03a1d69`).

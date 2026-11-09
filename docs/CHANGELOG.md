@@ -25,6 +25,10 @@
   - `apps/extension/src/sidepanel/components/settings/UsageSettings.tsx` (mới) + `apps/extension/src/lib/usageClient.ts` (mới) — section **"Chi phí & sử dụng"** trong `SettingsDrawer`: `GET /api/usage` → tổng token + tổng chi phí + bảng phân rã **theo ngày** (`byDay[]`) · khoảng `today/7d/30d/all` + nút làm mới.
   - **Test:** `apps/extension/tests/costFormat.test.ts` · `usageBadge.test.tsx` · `usageSettings.test.tsx`.
 
+### Fixed
+- `packages/shared/tests/events.test.ts` — assert `CHAT_EVENT_TYPES` còn **8** event type trong khi union đã có **9** (thêm `provider_switch` ở T-M2-02) → `pnpm test` fail ở `packages/shared`. Sửa thành **9** + thêm 2 test: parse `provider_switch` + từ chối event thiếu `to`.
+- **Flake E2E** (không phải hồi quy): `e2e/contextCache.spec.ts > trang đang lỗi → fallback về nội dung đã cache` fail 1 lần khi chạy song song (`toHaveLength` trên `undefined`) → chạy lại riêng file: **3/3 pass**; chạy lại cả suite: **91/91 pass** → tải song song. Ghi nhận trong `docs/HANDOFF.md` §2.
+
 ### Changed
 - **Checklist parity §E: 32/35 = 91.4% → 33/35 = 94.3%** (T-M2-03 đóng dòng "Token/cost hiển thị") — `docs/COMPARISON_MATRIX.md` §E + §E.1.3 (mới) · `docs/IMPLEMENTATION_PLAN.md` §3.1u.2 · `docs/REQUIREMENTS.md` §4.6 (AC của FR-PROVIDER-03/04/05).
 - **Phạm vi M2 được chốt lại (2026-11-10):** **T-M2-01 đẩy lại** — quyết định user: **không thêm provider mới** (OpenAI/Anthropic) → giữ nguyên `PROVIDER_IDS` (`mock · groq · openrouter · gemini · ollama`), `packages/shared/src/constants.ts` **không đổi**, **không** migration bảng provider. Phần "model list động" của T-M2-01 đã thực hiện xong trong T-M2-02. **T-M2-03 đóng, trừ phần budget cap** (FR-PROVIDER-06, priority `C`) → `TODO(T-M2-03b)`.
