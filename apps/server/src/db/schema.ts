@@ -250,6 +250,39 @@ export const budgetSettings = pgTable('budget_settings', {
 })
 
 /** ------------------------------------------------------------------
+ * skills — prompt mau dung lai duoc (FR-SKILL-01/02/03 — T-M2-04)
+ * ---------------------------------------------------------------- */
+export const skills = pgTable(
+  'skills',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    /** Ten skill — slug de go bang `/` (vd `tom-tat`). */
+    name: text('name').notNull(),
+    /** Mo ta ngan (hien thi trong menu `/` va drawer). */
+    description: text('description').notNull().default(''),
+    /** Prompt mau cua skill — server noi vao system prompt khi chat. */
+    promptTemplate: text('prompt_template').notNull(),
+    /** Pham vi: `user` (user tu tao) | `builtin` (san co, khong sua/xoa). */
+    scope: text('scope').notNull().default('user'),
+    /** Skill co bat hay khong. */
+    enabled: boolean('enabled').notNull().default(true),
+    /** Tag de loc (FR-SKILL-07 — T-M2-06). */
+    tags: text('tags')
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
+    /** Model mac dinh cua skill (optional — FR-SKILL-02). */
+    model: text('model'),
+    createdAt,
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('skills_name_idx').on(table.name),
+    index('skills_scope_enabled_idx').on(table.scope, table.enabled),
+  ],
+)
+
+/** ------------------------------------------------------------------
  * Relations
  * ---------------------------------------------------------------- */
 export const conversationsRelations = relations(conversations, ({ many }) => ({
@@ -299,3 +332,5 @@ export type RequestLogRow = typeof requestLogs.$inferSelect
 export type NewRequestLogRow = typeof requestLogs.$inferInsert
 export type BudgetSettingsRow = typeof budgetSettings.$inferSelect
 export type NewBudgetSettingsRow = typeof budgetSettings.$inferInsert
+export type SkillRow = typeof skills.$inferSelect
+export type NewSkillRow = typeof skills.$inferInsert

@@ -27,6 +27,21 @@ export interface ComposerProps {
    */
   mentionPopover?: ReactNode
   /**
+   * Popover `/` — hien thi danh sach skill de goi (T-M2-04, FR-SKILL-01).
+   *
+   * `undefined` → khong render popover (chua go `/`).
+   */
+  skillPopover?: ReactNode
+  /**
+   * Handler phim khi menu `/` dang mo.
+   *
+   * Tra ve `true` → Composer **khong** xu ly Enter/Tab (menu `/` lo).
+   * Tra ve `false` → Composer xu ly binh thuong.
+   *
+   * @param event - Su kien phim cua textarea.
+   */
+  onSkillKeyDown?: (event: KeyboardEvent<HTMLTextAreaElement>) => boolean
+  /**
    * Callback khi vi tri con tro thay doi (dung cho phat hien token `@`).
    *
    * @param value - Noi dung hien tai cua textarea.
@@ -62,6 +77,8 @@ export function Composer({
   isStreaming,
   disabled = false,
   mentionPopover,
+  skillPopover,
+  onSkillKeyDown,
   onCursorChange,
   onEscape,
   inputRef,
@@ -75,6 +92,12 @@ export function Composer({
     // Escape → dong popover `@` truoc (khong chan event de panel khong bi vung).
     if (event.key === 'Escape') {
       onEscape?.()
+      return
+    }
+
+    // Menu `/` dang mo → menu lo phim truoc (Enter chon, Tab autocomplete).
+    if (onSkillKeyDown?.(event) === true) {
+      event.preventDefault()
       return
     }
 
@@ -157,6 +180,7 @@ export function Composer({
       <div className="flex items-end gap-2">
         <div className="relative min-w-0 flex-1">
           {mentionPopover}
+          {skillPopover}
           <Textarea
             ref={inputRef}
             id="sidekick-composer-input"

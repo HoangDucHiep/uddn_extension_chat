@@ -210,6 +210,12 @@ export function useChat() {
         targetMessageId?: string
         /** Lich su gui len provider (mac dinh: suy tu duong di active). */
         history?: Array<{ role: 'user' | 'assistant'; content: string }>
+        /**
+         * Id skill duoc chon trong menu `/` (FR-SKILL-01 — T-M2-04).
+         *
+         * Client **khong** gui `prompt_template` → server resolve.
+         */
+        skillId?: string
       } = {},
     ) => {
       const state = useChatStore.getState()
@@ -459,6 +465,9 @@ export function useChat() {
         ...(context === undefined ? {} : { context }),
         ...(requestProvider === undefined ? {} : { provider: requestProvider }),
         ...(requestModel === undefined ? {} : { model: requestModel }),
+        // Skill duoc chon trong menu `/` (FR-SKILL-01 — T-M2-04).
+        // Server resolve → noi `prompt_template` vao system prompt.
+        ...(options.skillId === undefined ? {} : { skillId: options.skillId }),
       }
 
       /**
@@ -561,8 +570,11 @@ export function useChat() {
   )
 
   const send = useCallback(
-    async (content: string) => {
-      await streamTurn('send', { userContent: content })
+    async (content: string, skillId?: string) => {
+      await streamTurn('send', {
+        userContent: content,
+        ...(skillId === undefined ? {} : { skillId }),
+      })
     },
     [streamTurn],
   )

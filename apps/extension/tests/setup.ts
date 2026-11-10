@@ -243,6 +243,12 @@ const chromeMock = {
 
 globalThis.chrome = chromeMock as unknown as typeof chrome
 
+// jsdom KHONG implement `Element.scrollIntoView` → component dung no (SkillMenu
+// cuon dong active vao khung nhin) se nem loi khi render trong test.
+if (typeof Element.prototype.scrollIntoView !== 'function') {
+  Element.prototype.scrollIntoView = () => undefined
+}
+
 export {
   contextMenusCreateMock,
   contextMenusCreated,

@@ -1,7 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { toast } from 'sonner'
 import { WifiOff } from 'lucide-react'
-import type { ConversationMessage, Settings } from '@sidekick/shared'
+import {
+  filterSkills,
+  SKILL_DEFAULT_INPUT,
+  type ConversationMessage,
+  type Settings,
+  type Skill,
+} from '@sidekick/shared'
 import {
   classifyPage,
   detectPageKind,
@@ -18,6 +24,9 @@ import { ContextNotice } from './components/context/ContextNotice'
 import { ContextChips } from './components/context/ContextChips'
 import { ContextBudget } from './components/context/ContextBudget'
 import { MentionPopover } from './components/context/MentionPopover'
+import { SkillMenu } from './components/skills/SkillMenu'
+import { SkillManager } from './components/skills/SkillManager'
+import { SkillFormDialog } from './components/skills/SkillFormDialog'
 import { AttachmentTray } from './components/composer/AttachmentTray'
 import { ConversationList } from './components/chat/ConversationList'
 import { SettingsDrawer } from './components/settings/SettingsDrawer'
@@ -33,12 +42,14 @@ import { useConnectionStatus } from './hooks/useConnectionStatus'
 import { useBudgetStatus } from './hooks/useBudgetStatus'
 import { useI18n } from './hooks/useI18n'
 import { useMention } from './hooks/useMention'
+import { useSkillCommand } from './hooks/useSkillCommand'
 import { useSelection } from './hooks/useSelection'
 import { useTabs } from './hooks/useTabs'
 import { useActivePage } from './hooks/useActivePage'
 import { useImageAttachments } from './hooks/useImageAttachments'
 import { useChatStore, type ChatMessage } from './store/chatStore'
 import { useConversationStore } from './store/conversationStore'
+import { useSkillStore } from './store/skillStore'
 import { useBudgetStore } from './store/budgetStore'
 import {
   activateVariant as activateVariantRequest,
@@ -117,13 +128,36 @@ export function ChatWorkspace({
   const [isAttaching, setIsAttaching] = useState(false)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isSkillsOpen, setIsSkillsOpen] = useState(false)
+  /** Skill dang duoc chon trong menu `/` (FR-SKILL-01 — T-M2-04). */
+  const [selectedSkillId, setSelectedSkillId] = useState<string | undefined>(undefined)
+  /** Skill dang sua trong form (`undefined` → dang tao moi). */
+  const [editingSkill, setEditingSkill] = useState<Skill | undefined>(undefined)
+  /** Prefill prompt khi tao skill tu tin nhan user (FR-SKILL-02). */
+  const [skillPrefillPrompt, setSkillPrefillPrompt] = useState<string | undefined>(undefined)
+  /** Form skill co mo hay khong. */
+  const [isSkillFormOpen, setIsSkillFormOpen] = useState(false)
+  /** Chi so dong dang active trong menu `/`. */
+  const [skillActiveIndex, setSkillActiveIndex] = useState(0)
   const [isAtBottom, setIsAtBottom] = useState(true)
   const threadRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
   const mention = useMention()
+  const skillCommand = useSkillCommand()
   const { tabs, isLoading: isLoadingTabs } = useTabs(mention.state.open)
   const imageAttachments = useImageAttachments()
+
+  // --- FR-SKILL-01: danh sach skill cho menu `/` + drawer (T-M2-04) ---
+  const skills = useSkillStore((state) => state.items)
+  const refreshSkills = useSkillStore((state) => state.refresh)
+  const createSkill = useSkillStore((state) => state.create)
+  const updateSkill = useSkillStore((state) => state.update)
+
+  // Nap danh sach skill 1 lan khi mo panel.
+  useEffect(() => {
+    void refreshSkills()
+  }, [refreshSkills])
 
   // --- NFR-REL-04: trang thai ket noi toi BFF (T-M1-19) ---
   const connection = useConnectionStatus()
@@ -264,9 +298,22 @@ export function ChatWorkspace({
 
   const handleSend = (): void => {
     if (input.trim().length === 0) return
-    void send(input)
+
+    // Skill duoc chon → goi `/ten-skill` ra khoi cau hoi (token khong phai
+    // noi dung that cua user). Server resolve skill tu `skillId`.
+    const selectedSkill = skills.find((skill) => skill.id === selectedSkillId)
+    const stripped =
+      selectedSkill === undefined
+        ? input.trim()
+        : skillCommand.strip(input, selectedSkill.name)
+    // User chi goi `/ten-skill` ma khong viet them → gui cau mac dinh
+    // (server validate `content` toi thieu 1 ky tu).
+    const content = stripped.length > 0 ? stripped : SKILL_DEFAULT_INPUT
+
+    void send(content, selectedSkillId)
     setInput('')
     setDraft('')
+    setSelectedSkillId(undefined)
     // Xoa ban nhap cua ca conversation hien tai va cua scope `'new'`
     // (truong hop chua tao conversation).
     void clearDraft(draftScope)
@@ -376,6 +423,91 @@ export function ChatWorkspace({
       attachedTabIds={attachedTabIds}
       isLoading={isLoadingTabs}
       onSelect={handleSelectTab}
+    />
+  ) : undefined
+
+  // --- FR-SKILL-01: menu `/` (T-M2-04) ---
+  const filteredSkills = useMemo(
+    () => filterSkills(skills, skillCommand.state.query),
+    [skills, skillCommand.state.query],
+  )
+
+  /**
+   * Chon skill tu menu `/` → chen token `/ten-skill` vao textarea.
+   *
+   * @param skill - Skill duoc chon.
+   */
+  const handleSelectSkill = (skill: Skill): void => {
+    const cursor = inputRef.current?.selectionStart ?? input.length
+    const next = skillCommand.apply(input, cursor, skill)
+    setInput(next.value)
+    setDraft(next.value)
+    setSelectedSkillId(skill.id)
+    skillCommand.close()
+
+    // Dua con tro ve sau chuoi vua chen.
+    requestAnimationFrame(() => {
+      const node = inputRef.current
+      if (node === null) return
+      node.focus()
+      node.setSelectionRange(next.cursor, next.cursor)
+    })
+  }
+
+  /**
+   * Handler phim cho menu `/` — tra ve `true` neu menu lo phim do.
+   *
+   * @param event - Su kien phim cua textarea.
+   */
+  const handleSkillKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>): boolean => {
+    if (!skillCommand.state.open) return false
+    if (filteredSkills.length === 0) return false
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      setSkillActiveIndex((index) => (index + 1) % filteredSkills.length)
+      return true
+    }
+    if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      setSkillActiveIndex((index) =>
+        index <= 0 ? filteredSkills.length - 1 : index - 1,
+      )
+      return true
+    }
+    if (event.key === 'Enter') {
+      event.preventDefault()
+      const skill = filteredSkills[skillActiveIndex]
+      if (skill !== undefined) handleSelectSkill(skill)
+      return true
+    }
+    if (event.key === 'Tab') {
+      // Autocomplete → chen ten day du (khong chon skill).
+      event.preventDefault()
+      const skill = filteredSkills[skillActiveIndex]
+      if (skill === undefined) return false
+      const cursor = inputRef.current?.selectionStart ?? input.length
+      const next = skillCommand.apply(input, cursor, skill)
+      setInput(next.value)
+      setDraft(next.value)
+      setSelectedSkillId(skill.id)
+      requestAnimationFrame(() => {
+        const node = inputRef.current
+        if (node === null) return
+        node.focus()
+        node.setSelectionRange(next.cursor, next.cursor)
+      })
+      return true
+    }
+    return false
+  }
+
+  const skillPopover = skillCommand.state.open ? (
+    <SkillMenu
+      skills={skills}
+      query={skillCommand.state.query}
+      activeIndex={skillActiveIndex}
+      onSelect={handleSelectSkill}
     />
   ) : undefined
 
@@ -501,6 +633,9 @@ export function ChatWorkspace({
         onOpenConversations={() => {
           setIsDrawerOpen(true)
         }}
+        onOpenSkills={() => {
+          setIsSkillsOpen(true)
+        }}
         onOpenSettings={() => {
           setIsSettingsOpen(true)
         }}
@@ -608,6 +743,12 @@ export function ChatWorkspace({
                   setIsSettingsOpen(true)
                 }}
                 onSelectVariant={handleSelectVariant}
+                onSaveAsSkill={(content) => {
+                  // FR-SKILL-02: tao skill tu prompt da dung → prefill form.
+                  setEditingSkill(undefined)
+                  setSkillPrefillPrompt(content)
+                  setIsSkillFormOpen(true)
+                }}
               />
             ))
           )}
@@ -671,7 +812,18 @@ export function ChatWorkspace({
         onStop={stop}
         isStreaming={isStreaming}
         mentionPopover={mentionPopover}
-        onCursorChange={mention.sync}
+        skillPopover={skillPopover}
+        onSkillKeyDown={handleSkillKeyDown}
+        onCursorChange={(value, cursor) => {
+          mention.sync(value, cursor)
+          skillCommand.sync(value, cursor)
+          // Chi 1 popover dung luc (mention `@` va skill `/`).
+          if (mention.state.open) {
+            skillCommand.close()
+          } else if (skillCommand.state.open) {
+            mention.close()
+          }
+        }}
         onEscape={() => {
           // FR-CHAT-12: Esc dung stream truoc, dong popover `@` sau.
           if (isStreaming) {
@@ -679,6 +831,7 @@ export function ChatWorkspace({
             return
           }
           mention.close()
+          skillCommand.close()
         }}
         inputRef={inputRef}
         onImagesSelected={(files) => {
@@ -704,6 +857,80 @@ export function ChatWorkspace({
           />
         </DialogContent>
       </Dialog>
+
+      {/* Drawer quan ly skill (FR-SKILL-02/03 — T-M2-04). */}
+      <Dialog open={isSkillsOpen} onOpenChange={setIsSkillsOpen}>
+        <DialogContent aria-labelledby="skill-drawer-title">
+          <DialogTitle id="skill-drawer-title" className="sr-only">
+            {t('skill.manager.title')}
+          </DialogTitle>
+          <SkillManager
+            onUse={(skill) => {
+              // Dung nhanh → chen `/ten-skill` vao composer.
+              const cursor = inputRef.current?.selectionStart ?? input.length
+              const next = skillCommand.apply(input, cursor, skill)
+              setInput(next.value)
+              setDraft(next.value)
+              setSelectedSkillId(skill.id)
+              setIsSkillsOpen(false)
+              requestAnimationFrame(() => {
+                const node = inputRef.current
+                if (node === null) return
+                node.focus()
+                node.setSelectionRange(next.cursor, next.cursor)
+              })
+            }}
+            onCreate={() => {
+              setEditingSkill(undefined)
+              setSkillPrefillPrompt(undefined)
+              setIsSkillFormOpen(true)
+            }}
+            onEdit={(skill) => {
+              setEditingSkill(skill)
+              setSkillPrefillPrompt(undefined)
+              setIsSkillFormOpen(true)
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Form tao / sua skill (FR-SKILL-02/03 — T-M2-04). */}
+      <SkillFormDialog
+        open={isSkillFormOpen}
+        skill={editingSkill}
+        initialPrompt={skillPrefillPrompt}
+        onOpenChange={(open) => {
+          setIsSkillFormOpen(open)
+        }}
+        onSubmit={async (values) => {
+          try {
+            if (editingSkill !== undefined) {
+              await updateSkill(editingSkill.id, {
+                name: values.name,
+                description: values.description,
+                promptTemplate: values.promptTemplate,
+                tags: values.tags,
+                ...(values.model !== undefined ? { model: values.model } : {}),
+              })
+              toast.success(t('toast.skillUpdated'))
+            } else {
+              await createSkill({
+                name: values.name,
+                description: values.description,
+                promptTemplate: values.promptTemplate,
+                tags: values.tags,
+                ...(values.model !== undefined ? { model: values.model } : {}),
+              })
+              toast.success(t('toast.skillCreated'))
+            }
+          } catch {
+            toast.error(
+              editingSkill !== undefined ? t('toast.skillUpdateFailed') : t('toast.skillCreateFailed'),
+            )
+            throw new Error('skill save failed')
+          }
+        }}
+      />
 
       {/* Drawer cai dat (FR-SETTINGS-01..07 — T-M1-12). */}
       <SettingsDrawer

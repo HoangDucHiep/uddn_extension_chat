@@ -1,6 +1,6 @@
 # System Design — Sidekick AI
 
-**Version:** v2.5 · **Ngày:** 2026-11-10 · **Trạng thái:** Baseline
+**Version:** v2.6 · **Ngày:** 2026-11-10 · **Trạng thái:** Baseline
 **Yêu cầu:** [`REQUIREMENTS.md`](REQUIREMENTS.md) · **Đối chiếu tính năng:** [`COMPARISON_MATRIX.md`](COMPARISON_MATRIX.md) · **UI:** [`DESIGN_SYSTEM_BRIEF.md`](DESIGN_SYSTEM_BRIEF.md)
 
 > Tài liệu này trả lời "**code viết như thế nào**". Nó không lặp lại requirement — mỗi requirement đã có ở `REQUIREMENTS.md`.
@@ -339,10 +339,10 @@ X-Request-Id: <uuid v4>            // idempotency + tracing
 | PATCH | `/conversations/:id` | `{ title?, pinned?, archived? }` ✅ | `ConversationSummary` | `VALIDATION_ERROR`, `NOT_FOUND` |
 | DELETE | `/conversations/:id` | — ✅ | `204` | `VALIDATION_ERROR`, `NOT_FOUND` |
 | DELETE | `/conversations` | — ✅ | `200` + `{ deleted: number }` (xoá toàn bộ lịch sử chat — FR-SETTINGS-03 + NFR-SEC-07, T-M1-12) | — |
-| GET | `/skills` | `?scope=builtin\|user` | `Skill[]` | — |
-| POST | `/skills` | `{ name, prompt, description? }` | `Skill` | `VALIDATION_ERROR` |
-| PATCH | `/skills/:id` | `{ name?, prompt?, enabled? }` | `Skill` | `NOT_FOUND` |
-| DELETE | `/skills/:id` | — | `204` | `NOT_FOUND` |
+| GET | `/skills` ✅ | `?scope=builtin\|user&q=` | `{ items: Skill[] }` — gộp **built-in** (registry trong code) + skill của user trong DB (T-M2-04) | `VALIDATION_ERROR` |
+| POST | `/skills` ✅ | `{ name, description?, promptTemplate, tags?, model? }` | `201` + `Skill` — tên được chuẩn hoá thành slug (T-M2-04) | `VALIDATION_ERROR`, `CONFLICT` |
+| PATCH | `/skills/:id` ✅ | `{ name?, description?, promptTemplate?, enabled?, tags?, model? }` | `Skill` (T-M2-04) | `VALIDATION_ERROR`, `NOT_FOUND`, `FORBIDDEN` |
+| DELETE | `/skills/:id` ✅ | — | `204` — xoá **built-in** bị từ chối `FORBIDDEN` (T-M2-04) | `NOT_FOUND`, `FORBIDDEN` |
 | GET | `/tools` | — | `ToolInfo[]` (builtin + MCP servers + trạng thái kết nối) | — |
 | POST | `/tools/mcp/servers` | `{ name, command, args?, env? }` | `McpServer` | `VALIDATION_ERROR` |
 | DELETE | `/tools/mcp/servers/:id` | — | `204` | `NOT_FOUND` |
@@ -390,6 +390,7 @@ X-Request-Id: <uuid v4>            // idempotency + tracing
 >   temperature?: number
 >   maxOutputTokens?: number
 >   stream?: boolean
+>   skillId?: string              // FR-SKILL-01 — T-M2-04, xem §7.25
 > }
 > ```
 >
@@ -684,7 +685,7 @@ export const evalTaskListSchema = z.array(evalTaskSchema)
 | `message_attachments` | id uuid pk (client sinh), message_id fk, conversation_id fk, mime_type text, byte_size int, ord int, width int, height int, file_name text, **data bytea**, created_at | `(message_id)`, `(conversation_id, created_at desc)`, unique `(message_id, ord)` |
 | `citations` | id uuid pk, message_id fk, idx int, url text, title text, snippet text, tab_id int, score real | `(message_id)` |
 | `tool_calls` | id uuid pk, message_id fk, name text, args jsonb, output text, status text, approval_required bool, approved_by_user bool, started_at, finished_at | `(message_id)` |
-| `skills` | id uuid pk, name text unique, description text, prompt_template text, scope text, enabled bool, tags text[], created_at, updated_at | `(scope, enabled)` |
+| `skills` | id uuid pk, name text unique, description text, prompt_template text, scope text, enabled bool, tags text[], **model text nullable**, created_at, updated_at | `(scope, enabled)`, unique `(name)` |
 | `tool_registry` | id uuid pk, name text unique, kind text (builtin\|mcp), server_id uuid nullable, schema jsonb, enabled bool | `(kind)` |
 | `mcp_servers` | id uuid pk, name text unique, transport text (stdio\|http), command text, args jsonb, env jsonb, enabled bool, last_connected_at | — |
 | `rag_documents` | id uuid pk, source_type text (message\|file\|url), ref_id text, title text, content text, embedding vector(384), embedding_model text, metadata jsonb, created_at | HNSW/IVFFlat trên `embedding` |
@@ -716,6 +717,16 @@ export const evalTaskListSchema = z.array(evalTaskSchema)
 
 - `drizzle-kit generate` → file SQL trong `apps/server/drizzle/` → `drizzle-kit migrate` khi khởi động container.
 - Migration chạy tự động trong entrypoint của Docker image (trước khi start server).
+
+**Danh sách migration hiện có:**
+
+| Migration | Nội dung |
+|---|---|
+| `0000_adorable_sister_grimm.sql` | Schema gốc (conversations, messages, citations, tool_calls, request_logs…) |
+| `0001_puzzling_mathemanic.sql` | `message_attachments` (FR-VISION-01 — T-M1-24) |
+| `0002_certain_vector.sql` | `request_logs.fallback_from` (T-M2-02) |
+| `0003_good_mimic.sql` | `budget_settings` (FR-PROVIDER-06 — T-M2-03b) |
+| `0004_worthless_earthquake.sql` | **Bảng `skills`** (FR-SKILL-01/02/03 — T-M2-04): `id` · `name` unique · `description` · `prompt_template` · `scope` · `enabled` · `tags text[]` · `model` · `created_at` · `updated_at` + index `skills_name_idx` (unique) + `skills_scope_enabled_idx` |
 
 ---
 
@@ -3302,6 +3313,173 @@ Validate ở biên bằng `budgetSettingsPatchSchema` → lỗi → `400 VALIDAT
 | Extension unit | `apps/extension/tests/budgetSettings.test.tsx` | render section · lưu → gọi `PUT` · API lỗi → không crash |
 | Extension unit | `apps/extension/tests/budgetBanner.test.tsx` | warning → `--warning` · exceeded → `--danger` · không có budget → không render |
 | E2E | `apps/extension/e2e/budget.spec.ts` | stub `/api/budget` → mở Settings → bật + đặt hạn mức → reload vẫn giữ · banner `exceeded` |
+
+---
+
+### 7.25 Skills — menu `/`, CRUD, seed built-in (FR-SKILL-01/02/03 — T-M2-04)
+
+> Nguồn sự thật cho hành vi: [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.7 (FR-SKILL-01/02/03/04).
+
+**Skill** = prompt mẫu dùng lại được. User gọi bằng `/ten-skill` trong composer → server nối `prompt_template` vào system prompt → model trả lời theo kỹ năng đó.
+
+#### 7.25.1 Quyết định thiết kế: server **resolve** skill
+
+| Câu hỏi | Chốt | Lý do |
+|---|---|---|
+| Skill áp dụng ở đâu? | **Server resolve** — client gửi `skillId` trong `POST /api/chat` | server là nguồn sự thật; client không cần biết nội dung template; 1 template dùng được cho mọi provider |
+| Skill lưu ở đâu? | Postgres (bảng `skills`) cho skill của **user** + registry **trong code** cho built-in | skill user phải sống lâu; built-in không cần migration seed |
+| Menu `/` | Popover ngay trên textarea (giống `MentionPopover`), lọc theo **prefix** | đúng AC FR-SKILL-01: lọc prefix · Enter chọn · Tab autocomplete |
+| Quản lý skill | Drawer trượt từ **trái** (Radix `Dialog`, y hệt `ConversationList`) | khớp pattern có sẵn, không thêm UI pattern mới |
+| `model` của skill | Cột `model text` nullable → khi chat, giá trị này **ghi đè** model của request | FR-SKILL-02 "optional model" |
+
+#### 7.25.2 Mô hình dữ liệu
+
+Bảng `skills` (migration `0004_worthless_earthquake.sql`):
+
+| Cột | Kiểu | Mặc định | Ý nghĩa |
+|---|---|---|---|
+| `id` | `uuid` pk | `gen_random_uuid()` | Id skill (client gửi `skillId`) |
+| `name` | `text` **unique** | — | Slug để gọi bằng `/` (vd `tom-tat`) |
+| `description` | `text` | `''` | Mô tả ngắn (hiển thị trong menu `/` + drawer) |
+| `prompt_template` | `text` | — | Prompt mẫu (có thể chứa placeholder `{input}`) |
+| `scope` | `text` | `'user'` | `user` (user tự tạo) \| `builtin` (có sẵn) |
+| `enabled` | `boolean` | `true` | Skill có bật hay không |
+| `tags` | `text[]` | `'{}'` | Tag để lọc (FR-SKILL-07 — T-M2-06) |
+| `model` | `text` nullable | `null` | Model mặc định của skill (**ghi đè** model của request) |
+| `created_at` / `updated_at` | `timestamptz` | `now()` | — |
+
+Index: `skills_name_idx` (unique trên `name`) · `skills_scope_enabled_idx` (`scope`, `enabled`).
+
+**Built-in seed** (`apps/server/src/skills/builtin.ts`) — 3 skill, **uuid cố định** (để client gửi `skillId` hợp lệ, không cần migration seed):
+
+| `name` | `id` | `description` |
+|---|---|---|
+| `tom-tat` | `a1000000-0000-4000-8000-000000000001` | Tóm tắt nội dung thành 5 ý chính + 2 con số nổi bật |
+| `giai-thich-don-gian` | `a1000000-0000-4000-8000-000000000002` | Giải thích như cho người mới, ví dụ đời thường |
+| `dich` | `a1000000-0000-4000-8000-000000000003` | Dịch sang tiếng Việt, giữ nguyên thuật ngữ kỹ thuật |
+
+> Phạm vi chốt: seed **tối thiểu 3 skill** (T-M2-04). Thư viện ≥ 8 skill nằm ở **T-M2-21** — chưa implement, không ghi là đã có.
+
+#### 7.25.3 Luồng ghép prompt (server)
+
+```
+POST /api/chat { messages: [...], skillId?: uuid }
+  └─ resolveSkillForChat(db, skillId)
+       ├─ tìm trong registry built-in trước → sau đó trong DB
+       └─ trả { promptTemplate, model? } | undefined
+  └─ nếu có skill:
+       ├─ systemPrompt = DEFAULT_SYSTEM_PROMPT + "\n\n" + buildSkillInstruction(skill.promptTemplate)
+       ├─ user turn cuối cùng = applySkillTemplate(skill.promptTemplate, stripSkillToken(question, skill.name))
+       └─ model = skill.model ?? request.model
+  └─ nếu KHÔNG có skill (hoặc skill đã bị xoá) → hành vi cũ, không đổi gì
+```
+
+> **Phạm vi áp dụng:** `applySkillTemplate` chỉ ghi đè **user turn cuối cùng** (câu hỏi đang trả lời) → các turn `continue` / `regenerate` (history kết thúc bằng assistant) **không** bị ghi đè nhầm.
+
+**Placeholder `{input}` — 2 lớp xử lý (tránh lặp nội dung):**
+
+| Hàm | Tác dụng | Nơi dùng |
+|---|---|---|
+| `buildSkillInstruction(template)` | **loại bỏ** `{input}` → chi dán cho model | nối vào system prompt |
+| `applySkillTemplate(template, input)` | thay `{input}` bằng câu hỏi thật của user | nội dung **user turn** |
+
+→ Câu hỏi của user chỉ xuất hiện **1 lần** (user turn), không lặp ở system instruction.
+→ Câu hỏi rỗng → dùng `SKILL_DEFAULT_INPUT = "Hãy áp dụng skill này."` (để qua `chatTurnSchema.content.min(1)`).
+
+**Token `/ten-skill` bị loại khỏi câu hỏi:**
+- Client strip **trước** khi gửi (`useSkillCommand.strip`).
+- Server strip **lần 2** (`stripSkillToken`) — chỉ khu vực đúng `name` của skill vừa resolve → không vô tình xoá `/api` hay URL trong câu hỏi.
+
+#### 7.25.4 API
+
+| Method | Path | Body | Response | Lỗi |
+|---|---|---|---|---|
+| `GET` | `/api/skills` | query `scope?` · `q?` (prefix) | `{ items: Skill[] }` — **gộp** built-in + user, sắp xếp `scope` rồi `name` | `VALIDATION_ERROR` |
+| `POST` | `/api/skills` | `{ name, description?, promptTemplate, tags?, model? }` | `201` + `Skill` | `VALIDATION_ERROR`, `CONFLICT` (tên trùng) |
+| `PATCH` | `/api/skills/:id` | `{ name?, description?, promptTemplate?, enabled?, tags?, model? }` | `Skill` | `VALIDATION_ERROR`, `NOT_FOUND`, `FORBIDDEN` (sửa built-in) |
+| `DELETE` | `/api/skills/:id` | — | `204` | `NOT_FOUND`, `FORBIDDEN` (xoá built-in) |
+
+Validate ở biên bằng Zod (`createSkillSchema` / `updateSkillSchema` trong `packages/shared/src/schemas/skill.ts`).
+Tên được **chuẩn hoá thành slug** (`normalizeSkillName`) ở tầng schema → "Tóm tắt" → `tom-tat`.
+`updateSkillSchema` dùng `.refine` → phải có **≥ 1 field**, nếu không → `400 VALIDATION_ERROR`.
+
+**Skill shape** (`packages/shared/src/schemas/skill.ts`):
+
+```ts
+{
+  id: string            // uuid
+  name: string          // slug
+  description: string
+  promptTemplate: string
+  scope: 'user' | 'builtin'
+  enabled: boolean
+  tags: string[]
+  model?: string        // optional
+  createdAt: string
+  updatedAt: string
+}
+```
+
+#### 7.25.5 Hàm thuần trong `packages/shared`
+
+| Hàm | File | Tác dụng |
+|---|---|---|
+| `normalizeSkillName(raw)` | `src/skill.ts` | slug: lowercase · bỏ dấu (NFD + strip combining marks) · `đ` → `d` · `[^a-z0-9]+` → `-` · ghep `-` · cắt đầu/cuối |
+| `matchesSkillPrefix(name, query)` | `src/skill.ts` | khớp **prefix**; query rỗng → khớp hết |
+| `filterSkills(skills, query)` | `src/skill.ts` | lọc danh sách, giữ thứ tự |
+| `applySkillTemplate(template, input)` | `src/skill.ts` | thay `{input}` cho user turn |
+| `buildSkillInstruction(template)` | `src/skill.ts` | loại `{input}` cho system prompt |
+| `stripSkillToken(text, name)` | `src/skill.ts` | bỏ token `/name` khỏi câu hỏi |
+
+> `đ`/`Đ` **không** tách được bằng NFD (U+0110 không phải base char + dấu) → cần `.replace(/đ/g, 'd')` riêng. Đã có test (`packages/shared/tests/skill.test.ts`).
+
+#### 7.25.6 Extension
+
+| Thành phần | File | Vai trò |
+|---|---|---|
+| Client | `apps/extension/src/lib/skillClient.ts` | `listSkills` · `createSkill` · `updateSkill` · `deleteSkill` — parse bằng `skillListResponseSchema` / `skillSchema` |
+| Store | `apps/extension/src/sidepanel/store/skillStore.ts` | Zustand `useSkillStore` → `items` · `isLoading` · `error` · `refresh` · `create` · `update` (optimistic + rollback) · `remove` · `duplicate` (`${name}-copy`) |
+| Hook | `apps/extension/src/sidepanel/hooks/useSkillCommand.ts` | `findSkillToken(value, cursor)` → `{ query, start, end }` · `sync` / `close` / `apply` / `strip` |
+| Menu `/` | `apps/extension/src/sidepanel/components/skills/SkillMenu.tsx` | popover `role="listbox"` — lọc prefix · badge scope · dòng active |
+| Drawer | `apps/extension/src/sidepanel/components/skills/SkillManager.tsx` | drawer trượt trái — 2 nhóm **Có sẵn** / **Của tôi** · dùng nhanh · sửa · nhân bản · xoá (có `ConfirmDialog`) |
+| Form | `apps/extension/src/sidepanel/components/skills/SkillFormDialog.tsx` | tạo/sửa — tên (preview slug) · mô tả · prompt (`{input}`) · model · tags — validate bằng schema shared |
+| Header | `apps/extension/src/sidepanel/components/PanelHeader.tsx` | nút icon `Sparkles` → `onOpenSkills` (`data-testid="skills-button"`) |
+| Action | `apps/extension/src/sidepanel/components/chat/MessageActions.tsx` | user message → "Lưu thành kỹ năng" (`BookmarkPlus`) → prefill form (FR-SKILL-02) |
+| Wiring | `apps/extension/src/sidepanel/ChatWorkspace.tsx` | `selectedSkillId` · strip token khi gửi · `skillPopover` + `onSkillKeyDown` cho `Composer` |
+
+**Phát hiện token `/` — chỉ ở word boundary:**
+
+`findSkillToken` dùng regex `/\/([^\s/]*)$/` + kiểm tra ký tự **trước** token:
+- Đầu chuỗi hoặc sau khoảng trắng → **bắt** (token hợp lệ).
+- Sau ký tự chữ/số/`:` (vd `https://example.com/docs`, `a@b`) → **KHÔNG bắt** → menu không mở nhầm khi user paste URL.
+
+**Tương tác với `@` (mention):** chỉ **1 popover** mở tại một thời điểm — `ChatWorkspace` đóng popover kia mỗi khi `onCursorChange` phát hiện token mới.
+
+**Keyboard (`SkillMenu` + `Composer`):**
+
+| Phím | Hành vi |
+|---|---|
+| `ArrowDown` / `ArrowUp` | đổi dòng active (vòng tròn) |
+| `Enter` | chọn skill → chen `/ten-skill ` vào textarea |
+| `Tab` | autocomplete → chen **tên đầy đủ** (không chọn skill) |
+| `Escape` | đóng popover (không tự mở lại cho token đang gép) |
+
+`Composer` nhận `onSkillKeyDown?: (e) => boolean` → trả `true` nghĩa là menu `/` đã xử lý → Composer **không** xử lý Enter/Tab.
+
+#### 7.25.7 Kiểm thử
+
+| Tầng | File | Phủ |
+|---|---|---|
+| Shared unit | `packages/shared/tests/skill.test.ts` | `normalizeSkillName` (có dấu · `đ` · ký tự lạ) · `matchesSkillPrefix` / `filterSkills` · schema create/update hợp lệ + không hợp lệ |
+| Server unit | `apps/server/tests/skillService.test.ts` | list gộp built-in + user · create trùng tên → `CONFLICT` · update/xoá không tồn tại → `NOT_FOUND` · xoá built-in → `FORBIDDEN` |
+| Server route | `apps/server/tests/skillsRoute.test.ts` | GET/POST/PATCH/DELETE · validate 400 |
+| Server chat | `apps/server/tests/chatSkill.test.ts` | resolve skill → system prompt có template + model override · không có skill → hành vi cũ |
+| Extension unit | `apps/extension/tests/skillClient.test.ts` | parse response đúng shape · response sai shape → throw |
+| Extension unit | `apps/extension/tests/skillStore.test.ts` | create/update optimistic + rollback · remove · duplicate |
+| Extension unit | `apps/extension/tests/useSkillCommand.test.ts` | nhận diện token `/` ở word boundary · **không** bắt trong URL · `apply` trả cursor đúng · `strip` |
+| Extension unit | `apps/extension/tests/skillMenu.test.tsx` | lọc theo prefix · dòng active · chọn skill · badge scope |
+| Extension unit | `apps/extension/tests/skillManager.test.tsx` | 2 nhóm · dùng/sửa/nhân bản/xoá (confirm) · built-in không cho xoá |
+| E2E | `apps/extension/e2e/skills.spec.ts` | stub `/api/skills` → gõ `/` → menu hiện → chọn → token vào composer + `skillId` gửi BFF · Escape đóng · drawer từ header |
 
 ---
 

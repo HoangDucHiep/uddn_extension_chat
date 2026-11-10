@@ -31,6 +31,12 @@ export interface MessageBubbleProps {
   onOpenSettings?: (() => void) | undefined
   /** Handler chuyen bien the (FR-CHAT-05). */
   onSelectVariant?: (turnId: string, variantIndex: number) => void
+  /**
+   * Handler luu prompt cua user thanh skill (FR-SKILL-02 — T-M2-04).
+   *
+   * @param content - Noi dung tin nhan user.
+   */
+  onSaveAsSkill?: (content: string) => void
   /** Dang stream → an thao tac phu thuoc trang thai. */
   isStreaming?: boolean
 }
@@ -52,6 +58,7 @@ export function MessageBubble({
   onRetry,
   onOpenSettings,
   onSelectVariant,
+  onSaveAsSkill,
   isStreaming = false,
 }: MessageBubbleProps) {
   const { t } = useI18n()
@@ -224,6 +231,7 @@ export function MessageBubble({
               : {})}
             {...(onContinue !== undefined ? { onContinue } : {})}
             {...(onSelectVariant !== undefined ? { onSelectVariant } : {})}
+            {...(onSaveAsSkill !== undefined ? { onSaveAsSkill } : {})}
           />
         ) : null}
 

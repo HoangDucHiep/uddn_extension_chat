@@ -1,6 +1,6 @@
 # Design System Brief — Sidekick AI
 
-**Version:** v2.1 · **Ngày:** 2026-11-10 · **Trạng thái:** Baseline cho giai đoạn thiết kế UI
+**Version:** v2.2 · **Ngày:** 2026-11-10 · **Trạng thái:** Baseline cho giai đoạn thiết kế UI
 **Stack UI đã chốt:** Tailwind CSS + shadcn/ui (Radix primitives) + React 18 + TypeScript
 **Nguồn yêu cầu:** [`REQUIREMENTS.md`](REQUIREMENTS.md) (§4.8 FR-SETTINGS, §4.9 FR-UX, §5.4 a11y, §5.1 hiệu năng)
 
@@ -438,8 +438,8 @@ Cache context chạy **hoàn toàn ngầm** ở tầng `lib/` (`contextCache.ts`
 | `ModelPicker` | FR-PROVIDER-03 | ✅ **T-M2-02** — Radix `Popover` ở header panel · danh sách provider (`GET /api/providers`) + model **động** (`GET /api/providers/:id/models`) · search khi > 12 model · lưu `chrome.storage.local` key `sidekick.modelSelection` · chi tiết §3.7.2 |
 | `UsageSettings` | FR-PROVIDER-05 | ✅ **T-M2-03** — section "Chi phí & sử dụng" trong Settings · `GET /api/usage` → tổng token + tổng chi phí + bảng theo ngày · khoảng `today/7d/30d/all` + nút làm mới |
 | `BudgetSettings` | FR-PROVIDER-06 | ✅ **T-M2-03b** — section "Ngân sách chi phí" trong Settings · bật · hạn mức USD · kỳ (`daily`/`monthly`) · ngưỡng cảnh báo % · toggle chặn · `PUT /api/budget` — chi tiết §3.7.3 |
-| `ToolsSettings` | FR-TOOLS-01 | ⬜ T-M2-05 |
-| `SkillsSettings` | FR-SKILL-03, FR-SKILL-07 | ⬜ T-M2-04 |
+| `ToolsSettings` | FR-TOOLS-01 | ⬜ T-M2-07 |
+| ~~`SkillsSettings`~~ | FR-SKILL-03, FR-SKILL-07 | 🟡 **T-M2-04 ✅** — FR-SKILL-03 (sửa/xoá/nhân bản) làm bằng drawer `SkillManager` (trượt trái, mở từ nút `Sparkles` ở header) — **không** tách thành section trong Settings · FR-SKILL-07 (library browser) → **T-M2-06** |
 | `WorkflowSettings` | FR-WORKFLOW-08 (M4) | ⬜ M4 |
 
 #### 3.7.1 Section "Phím tắt" (đã implement T-M1-18)
@@ -690,6 +690,49 @@ Component `ExportMenu` — menu **3 mục** trong header panel (FR-CHAT-10).
 
 > **Chi tiết hợp đồng file:** [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.20
 
+### 3.13 Skills — menu `/` + drawer quản lý (đã implement T-M2-04)
+
+Component `SkillMenu` (popover `/`) + `SkillManager` (drawer) + `SkillFormDialog` (form) — FR-SKILL-01/02/03.
+
+**3.13.1 Popover `/` (`SkillMenu`)**
+
+- **Vị trí:** `absolute bottom-full` ngay trên textarea (cùng khung `relative` với `MentionPopover`) → **không** bị `overflow` của thread cắt.
+- **Dạng:** `role="listbox"` + `aria-label={t('skill.menuLabel')}` · mỗi dòng `role="option"` + `aria-selected` · `data-testid="skill-option"` + `data-skill-name`.
+- **Nội dung dòng:** icon `Sparkles` (`aria-hidden`) · tên (`--font-size-sm`, `--text-primary`) · mô tả (`--font-size-xs`, `--text-tertiary`) · badge scope (`--surface-sunken`, `--radius-full`).
+- **Lọc:** **prefix** theo tên (`filterSkills` từ `packages/shared`) → dòng không khớp bị loại (không dùng fuzzy match).
+- **Trạng thái rộng:** danh sách rỗng → hiện dòng `t('skill.empty')` (vẫn giữ `role="listbox"`).
+- **Cuộn:** dòng active tự `scrollIntoView({ block: 'nearest' })` khi bấm Arrow liên tiếp.
+- **Token:** `--surface-overlay` · `--border-default` · `--shadow-2` · `--radius-md` · `--space-1/2`. **Không hardcode màu.**
+- **Keyboard:** `ArrowUp`/`ArrowDown` (đổi dòng active) · `Enter` (chọn) · `Tab` (autocomplete) · `Escape` (đóng).
+- **A11y:** focus ring chuẩn `focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]`; icon trang trí có `aria-hidden="true"`.
+
+**3.13.2 Drawer quản lý (`SkillManager`)**
+
+- **Dạng:** Radix `Dialog` **trượt từ trái** — y hệt pattern `ConversationList` (không thêm UI pattern mới) → `data-testid="skill-manager"`.
+- **Vị trí mở:** nút icon `Sparkles` ở `PanelHeader` → `data-testid="skills-button"`, `aria-label={t('header.openSkills')}`.
+- **2 nhóm (section `aria-label`):** **Có sẵn** (`scope='builtin'`) · **Của tôi** (`scope='user'`). Nhóm rỗng → **không render** section (không để trống rỗng).
+- **Hành động mỗi dòng:** dùng nhanh (`Play`) · sửa (`Pencil`, chỉ nhóm user) · nhân bản (`Copy`, chỉ nhóm user) · xoá (`Trash2`, chỉ nhóm user, **có** `ConfirmDialog`).
+- **Nút "Tạo kỹ năng"** (`Plus`) đầy chiều rộng, chỉ hiện khi truyền `onCreate`.
+- **Lỗi:** dòng `role="alert"` + `data-testid="skill-error"` (màu `--danger`).
+- **Feedback:** toast `sonner` — `toast.skillCreated` / `skillUpdated` / `skillDeleted` / `skillDuplicated` (+ biến thể `…Failed`).
+- **Tap target:** các icon-button dùng `size="icon-sm"` (≥ 24px) của `Button` chuẩn.
+
+**3.13.3 Form tạo / sửa (`SkillFormDialog`)**
+
+- **Dạng:** Radix `Dialog` **giữa màn hình** (không trượt) — `data-testid="skill-form"`, `w-[min(420px,92vw)] max-w-full` → co vừa panel 320px.
+- **Trường (mỗi trường có `<label htmlFor>` + `aria-label`):** tên · mô tả · prompt (`Textarea`, `min-h-[120px]`) · model (tuỳ chọn) · tags.
+- **Trường tên:** hiện **preview slug** (`data-testid="skill-form-slug"`) → user biết sẽ gọi bằng `/slug`.
+- **Validate:** dùng **chung** `createSkillSchema` / `updateSkillSchema` của `packages/shared` → server + client cùng 1 quy tắc; lỗi hiện inline (`role="alert"`, `data-testid="skill-form-error"`).
+- **Sửa:** tên để trống → giữ nguyên tên cũ (schema `updateSkillSchema` cho phép vắng mặt).
+- **Token:** `--radius-lg` · `--border-default` · `--surface-panel`. **Không hardcode màu.**
+
+**3.13.4 Action trên bubble (`MessageActions`)**
+
+- Chỉ hiện ở **user message** (assistant không có) → nút "Lưu thành kỹ năng" (`BookmarkPlus`).
+- **Điều kiện:** message có nội dung **và** không đang stream.
+
+> **Chi tiết hợp đồng file:** [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.25
+
 ---
 
 ## 4. State & hành vi UI chuẩn hoá
@@ -754,7 +797,7 @@ Component `ExportMenu` — menu **3 mục** trong header panel (FR-CHAT-10).
 | `CitationChip`, `CitationPopover` | FR-CONTEXT-10 | `citation_precision`, rubric R5 |
 | `CodeBlock`, `MarkdownTable` | FR-CHAT-03/04 | Rubric R6 (UX) |
 | `ToolCallBlock` | FR-TOOLS-02/06 | `tool_success_rate` |
-| `SkillMenu` | FR-SKILL-01/02 | Parity với Chrome Gemini |
+| `SkillMenu`, `SkillManager`, `SkillFormDialog` | FR-SKILL-01/02/03 | Parity với Chrome Gemini · điểm khác biệt: CRUD skill tự tạo (Edge/Gemini chưa có) |
 | `PromptGallery`, `SummarizeButton` | FR-UX-03/04 | Parity với Edge Copilot (A4/A5) · Chrome Gemini (B9) |
 | `Composer` | FR-CHAT-12/13 | Rubric R4 (instruction following) |
 | **Không có component mới** — T-M1-03 chỉ thêm context menu + phím tắt ở tầng browser | FR-UX-01 | Parity A1 / A25 / B1 / B19 |

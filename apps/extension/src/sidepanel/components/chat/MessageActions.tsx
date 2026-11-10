@@ -1,4 +1,4 @@
-import { Pencil, RefreshCw, RotateCcw } from 'lucide-react'
+import { BookmarkPlus, Pencil, RefreshCw, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { variantLabel, type TurnMessage } from '@/lib/chatTurns'
@@ -19,6 +19,12 @@ export interface MessageActionsProps {
   onContinue?: (messageId: string) => void
   /** Handler chuyen bien the (FR-CHAT-05). */
   onSelectVariant?: (turnId: string, variantIndex: number) => void
+  /**
+   * Handler luu prompt cua user thanh skill (FR-SKILL-02 — T-M2-04).
+   *
+   * @param content - Noi dung tin nhan user.
+   */
+  onSaveAsSkill?: (content: string) => void
   /** Dang stream → an nhanh thao tac phu thuoc trang thai. */
   isStreaming?: boolean
 }
@@ -40,6 +46,7 @@ export function MessageActions({
   onEdit,
   onContinue,
   onSelectVariant,
+  onSaveAsSkill,
   isStreaming = false,
 }: MessageActionsProps) {
   const { t } = useI18n()
@@ -47,22 +54,40 @@ export function MessageActions({
   const label = variantLabel(variants, activeVariant)
   const canSwitch = variants.length > 1 && message.turnId !== undefined
 
-  // User message → chi co nut "Sua".
+  // User message → nut "Sua" + (neu duoc) "Luu thanh skill".
   if (isUser) {
-    if (onEdit === undefined) return null
+    const canSaveAsSkill =
+      onSaveAsSkill !== undefined && !isStreaming && message.content.trim().length > 0
+    if (onEdit === undefined && !canSaveAsSkill) return null
     return (
       <div className="mt-1 flex items-center gap-1" data-testid="message-actions">
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          onClick={() => {
-            onEdit(message.id)
-          }}
-          aria-label={t('chat.editMessage')}
-          data-testid="message-edit-button"
-        >
-          <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-        </Button>
+        {onEdit !== undefined ? (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => {
+              onEdit(message.id)
+            }}
+            aria-label={t('chat.editMessage')}
+            data-testid="message-edit-button"
+          >
+            <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+          </Button>
+        ) : null}
+
+        {canSaveAsSkill ? (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => {
+              onSaveAsSkill?.(message.content)
+            }}
+            aria-label={t('skill.saveFromMessage')}
+            data-testid="message-save-skill-button"
+          >
+            <BookmarkPlus className="h-3.5 w-3.5" aria-hidden="true" />
+          </Button>
+        ) : null}
       </div>
     )
   }

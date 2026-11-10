@@ -1,7 +1,7 @@
-﻿# Requirements Specification — AI Chat Sidebar Browser Extension
+# Requirements Specification — AI Chat Sidebar Browser Extension
 
 **Project code name:** Sidekick AI
-**Document version:** v2.4 · 2026-11-10
+**Document version:** v2.5 · 2026-11-10
 **Status:** Baseline — Requirements & Design System
 **Related docs:** [`README.md`](README.md) · [`COMPARISON_MATRIX.md`](COMPARISON_MATRIX.md) · [`EVAL_PLAN.md`](EVAL_PLAN.md) · [`DESIGN_SYSTEM_BRIEF.md`](DESIGN_SYSTEM_BRIEF.md) · [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) · [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md)
 
@@ -304,13 +304,13 @@ Quy ước ưu tiên: **M** = Must (bắt buộc cho M1) · **S** = Should (bắ
 
 | ID | Requirement | Priority | Acceptance criteria |
 |---|---|---|---|
-| FR-SKILL-01 | Gọi skill bằng `/` trong composer | M | Menu lọc theo prefix; Enter chọn; Tab autocomplete |
-| FR-SKILL-02 | Tạo skill mới từ 1 prompt đã dùng | M | Lưu tên + prompt + optional model |
-| FR-SKILL-03 | Sửa / xoá / nhân bản skill | M | Bảng quản lý skill |
-| FR-SKILL-04 | Skill có sẵn (built-in) cho các use case phổ biến | S | ≥ 8 skill mẫu: tóm tắt, giải thích đơn giản, dịch, so sánh, trích xuất dữ liệu, viết email, sinh quiz, kiểm tra hiểu |
-| FR-SKILL-05 | Import/export skill dạng JSON | S | Round-trip không mất dữ liệu |
-| FR-SKILL-06 | Skill có thể gắn điều kiện (chạy trên tab hiện tại / kèm tab khác) | C | |
-| FR-SKILL-07 | Trang duyệt skill library: xem/lọc/tìm kiếm skill đã lưu + skill mẫu | S | Lọc theo tag/tên; click để chạy ngay |
+| FR-SKILL-01 | Gọi skill bằng `/` trong composer | M | Menu lọc theo prefix; Enter chọn; Tab autocomplete — **✅ ĐÃ IMPLEMENT (T-M2-04):** popover `/` ngay trên textarea (`SkillMenu`, `role="listbox"`) → lọc **prefix** theo tên skill (`filterSkills`) · `ArrowUp`/`ArrowDown` đổi dòng active · `Enter` chọn (chen `/ten-skill ` vào composer) · `Tab` autocomplete (chen tên đầy đủ) · `Escape` đóng (không tự mở lại). Token `/` chỉ bắt ở **word boundary** (đầu chuỗi hoặc sau khoảng trắng) → paste URL (`https://example.com/x`) **không** mở nhầm menu. Client gửi `skillId` trong `POST /api/chat` → **server resolve** `prompt_template` → nối vào system prompt + `model` của skill (nếu có) **ghi đè** model của request. Token `/ten-skill` bị **loại khỏi** câu hỏi (client strip + server strip lần 2). Câu hỏi rỗng → gửi `"Hãy áp dụng skill này."`. Chỉ **1 popover** mở tại một thời điểm (menu `/` và mention `@` loại trừ nhau) |
+| FR-SKILL-02 | Tạo skill mới từ 1 prompt đã dùng | M | Lưu tên + prompt + optional model — **✅ ĐÃ IMPLEMENT (T-M2-04):** action **"Lưu thành kỹ năng"** (`BookmarkPlus`) trên bubble của **user message** → mở form `SkillFormDialog` với **prefill = nội dung message**. Form: tên (tự chuẩn hoá thành slug + preview `/slug`) · mô tả · prompt (textarea, placeholder `{input}`) · **model (tuỳ chọn)** · tags. Validate bằng `createSkillSchema` của `packages/shared` → lỗi hiển thị inline. Lưu ở Postgres (bảng `skills`, `scope='user'`) qua `POST /api/skills`; tên trùng → `CONFLICT` |
+| FR-SKILL-03 | Sửa / xoá / nhân bản skill | M | Bảng quản lý skill — **✅ ĐÃ IMPLEMENT (T-M2-04):** drawer **trượt từ trái** (`SkillManager`, Radix `Dialog` — y hệt pattern `ConversationList`) mở bằng nút icon `Sparkles` ở header (`data-testid="skills-button"`). 2 nhóm: **Có sẵn** (built-in — chỉ "Dùng", **không** cho sửa/xoá) · **Của tôi** (user). Mỗi dòng: **dùng nhanh** (chen `/ten-skill` vào composer) · **sửa** (mở form, prefill dữ liệu skill) · **nhân bản** (`${name}-copy`) · **xoá** (có `ConfirmDialog`). Xoá built-in bị server **từ chối** (`FORBIDDEN`) |
+| FR-SKILL-04 | Skill có sẵn (built-in) cho các use case phổ biến | S | ≥ 8 skill mẫu: tóm tắt, giải thích đơn giản, dịch, so sánh, trích xuất dữ liệu, viết email, sinh quiz, kiểm tra hiểu — **🟡 MỞ (T-M2-04 → T-M2-21):** T-M2-04 chỉ seed **tối thiểu 3 skill built-in** (`tom-tat` · `giai-thich-don-gian` · `dich`, uuid cố định, định nghĩa trong code `apps/server/src/skills/builtin.ts` → không cần migration seed). **Thư viện ≥ 8 skill** nằm ở **T-M2-21** → chưa implement |
+| FR-SKILL-05 | Import/export skill dạng JSON | S | Round-trip không mất dữ liệu — ⏳ T-M2-05 (chưa implement) |
+| FR-SKILL-06 | Skill có thể gắn điều kiện (chạy trên tab hiện tại / kèm tab khác) | C | ⏳ T-M2-21 (chưa implement) |
+| FR-SKILL-07 | Trang duyệt skill library: xem/lọc/tìm kiếm skill đã lưu + skill mẫu | S | Lọc theo tag/tên; click để chạy ngay — ⏳ T-M2-06 (chưa implement; cột `tags` đã có sẵn trong DB) |
 
 ### 4.6 FR-PROVIDER — Provider & model
 
@@ -1177,10 +1177,10 @@ Chỉ bắt đầu M4 khi **đồng thời** thỏa:
 
 | FR | Priority | Task | Milestone |
 |---|---|---|---|
-| FR-SKILL-01 | M | T-M2-04 | M2 |
-| FR-SKILL-02 | M | T-M2-04 | M2 |
-| FR-SKILL-03 | M | T-M2-04 | M2 |
-| FR-SKILL-04 | S | **T-M2-21** | M2 |
+| FR-SKILL-01 | M | T-M2-04 ✅ | M2 |
+| FR-SKILL-02 | M | T-M2-04 ✅ | M2 |
+| FR-SKILL-03 | M | T-M2-04 ✅ | M2 |
+| FR-SKILL-04 | S | **T-M2-21** 🟡 (T-M2-04 seed tối thiểu 3 skill) | M2 |
 | FR-SKILL-05 | S | T-M2-05 | M2 |
 | FR-SKILL-06 | C | **T-M2-21** | M2 |
 | FR-SKILL-07 | S | T-M2-06 | M2 |

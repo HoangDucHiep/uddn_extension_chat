@@ -19,8 +19,7 @@
  * Docs: docs/SYSTEM_DESIGN.md §5
  */
 
-import type { citations } from '../../src/db/schema.js'
-import { conversations, messages } from '../../src/db/schema.js'
+import { citations, conversations, messages, skills } from '../../src/db/schema.js'
 
 /** Mot dong trong bang `conversations`. */
 export interface FakeConversationRow {
@@ -56,6 +55,34 @@ export interface FakeCitationRow {
   createdAt: Date
 }
 
+/** Mot dong trong bang `skills`. */
+export interface FakeSkillRow {
+  id: string
+  name: string
+  description: string
+  promptTemplate: string
+  scope: string
+  enabled: boolean
+  tags: string[]
+  model: string | null
+  createdAt: Date
+  updatedAt: Date
+}
+
+/** Map ten cot DB (snake_case) sang ten truong TS (camelCase). */
+const SKILL_COLUMN_TO_PROP: Record<string, keyof FakeSkillRow> = {
+  id: 'id',
+  name: 'name',
+  description: 'description',
+  prompt_template: 'promptTemplate',
+  scope: 'scope',
+  enabled: 'enabled',
+  tags: 'tags',
+  model: 'model',
+  created_at: 'createdAt',
+  updated_at: 'updatedAt',
+}
+
 /** Map ten cot DB (snake_case) sang ten truong TS (camelCase). */
 const CONVERSATION_COLUMN_TO_PROP: Record<string, keyof FakeConversationRow> = {
   id: 'id',
@@ -89,7 +116,7 @@ const CITATION_COLUMN_TO_PROP: Record<string, keyof FakeCitationRow> = {
 }
 
 /** Bang nguon cua fake. */
-type FakeTable = typeof conversations | typeof messages | typeof citations
+type FakeTable = typeof conversations | typeof messages | typeof citations | typeof skills
 
 /** Cay dieu kien da phan tich tu SQL chunk. */
 type Predicate =
@@ -385,6 +412,8 @@ class QueryBuilder<T> implements PromiseLike<T> {
   orders: OrderSpec[] = []
   /** Query co gom nhom hay khong. */
   isGrouped = false
+  /** So row toi da tra ve (cho `limit`). */
+  limitCount: number | undefined
 
   constructor(private readonly run: () => Promise<T>) {}
 
@@ -398,7 +427,8 @@ class QueryBuilder<T> implements PromiseLike<T> {
     return this
   }
 
-  limit(_count: number): QueryBuilder<T> {
+  limit(count: number): QueryBuilder<T> {
+    this.limitCount = count
     return this
   }
 
@@ -455,6 +485,8 @@ export interface FakeConversationDb {
   messageRows: FakeMessageRow[]
   /** Cac dong `citations`. */
   citationRows: FakeCitationRow[]
+  /** Cac dong `skills` (T-M2-04). */
+  skillRows: FakeSkillRow[]
   /** DB gia lap cho Drizzle. */
   db: unknown
   /** Them conversation truc tiep (test setup). */
@@ -463,6 +495,8 @@ export interface FakeConversationDb {
   seedMessage: (row: Partial<FakeMessageRow>) => FakeMessageRow
   /** Them citation truc tiep (test setup). */
   seedCitation: (row: Partial<FakeCitationRow>) => FakeCitationRow
+  /** Them skill truc tiep (test setup). */
+  seedSkill: (row: Partial<FakeSkillRow>) => FakeSkillRow
 }
 
 /**
@@ -475,20 +509,24 @@ export function createFakeConversationDb(
     conversations?: FakeConversationRow[]
     messages?: FakeMessageRow[]
     citations?: FakeCitationRow[]
+    skills?: FakeSkillRow[]
   } = {},
 ): FakeConversationDb {
   const conversationRows: FakeConversationRow[] = [...(initial.conversations ?? [])]
   const messageRows: FakeMessageRow[] = [...(initial.messages ?? [])]
   const citationRows: FakeCitationRow[] = [...(initial.citations ?? [])]
+  const skillRows: FakeSkillRow[] = [...(initial.skills ?? [])]
 
   let conversationCounter = 0
   let messageCounter = 0
   let citationCounter = 0
+  let skillCounter = 0
 
   const state: FakeConversationDb = {
     conversationRows,
     messageRows,
     citationRows,
+    skillRows,
     db: undefined,
     seedConversation: (row) => {
       conversationCounter += 1
@@ -531,6 +569,25 @@ export function createFakeConversationDb(
         createdAt: row.createdAt ?? new Date('2026-01-01T00:00:00.000Z'),
       }
       citationRows.push(full)
+      return full
+    },
+    seedSkill: (row) => {
+      skillCounter += 1
+      const full: FakeSkillRow = {
+        id:
+          row.id ??
+          `00000000-0000-4000-8000-${String(skillCounter).padStart(12, '0')}`,
+        name: row.name ?? `skill-${skillCounter}`,
+        description: row.description ?? '',
+        promptTemplate: row.promptTemplate ?? 'prompt',
+        scope: row.scope ?? 'user',
+        enabled: row.enabled ?? true,
+        tags: row.tags ?? [],
+        model: row.model ?? null,
+        createdAt: row.createdAt ?? new Date('2026-01-01T00:00:00.000Z'),
+        updatedAt: row.updatedAt ?? new Date('2026-01-01T00:00:00.000Z'),
+      }
+      skillRows.push(full)
       return full
     },
   }
@@ -585,18 +642,37 @@ export function createFakeConversationDb(
             return [row]
           }
 
-          const row: FakeCitationRow = {
-            id: (values['id'] as string) ?? `cite-${++citationCounter}`,
-            messageId: (values['messageId'] as string) ?? '',
-            idx: (values['idx'] as number) ?? 0,
-            url: (values['url'] as string) ?? '',
-            title: (values['title'] as string) ?? '',
-            snippet: (values['snippet'] as string) ?? '',
-            tabId: (values['tabId'] as number | null) ?? null,
-            score: (values['score'] as number | null) ?? null,
-            createdAt: (values['createdAt'] as Date) ?? new Date(),
+          if (source.table === citations) {
+            const row: FakeCitationRow = {
+              id: (values['id'] as string) ?? `cite-${++citationCounter}`,
+              messageId: (values['messageId'] as string) ?? '',
+              idx: (values['idx'] as number) ?? 0,
+              url: (values['url'] as string) ?? '',
+              title: (values['title'] as string) ?? '',
+              snippet: (values['snippet'] as string) ?? '',
+              tabId: (values['tabId'] as number | null) ?? null,
+              score: (values['score'] as number | null) ?? null,
+              createdAt: (values['createdAt'] as Date) ?? new Date(),
+            }
+            citationRows.push(row)
+            return [row]
           }
-          citationRows.push(row)
+
+          const row: FakeSkillRow = {
+            id:
+              (values['id'] as string) ??
+              `00000000-0000-4000-8000-${String(++skillCounter).padStart(12, '0')}`,
+            name: (values['name'] as string) ?? '',
+            description: (values['description'] as string) ?? '',
+            promptTemplate: (values['promptTemplate'] as string) ?? '',
+            scope: (values['scope'] as string) ?? 'user',
+            enabled: (values['enabled'] as boolean) ?? true,
+            tags: (values['tags'] as string[]) ?? [],
+            model: (values['model'] as string | null) ?? null,
+            createdAt: (values['createdAt'] as Date) ?? new Date(),
+            updatedAt: (values['updatedAt'] as Date) ?? new Date(),
+          }
+          skillRows.push(row)
           return [row]
         })
 
@@ -719,9 +795,11 @@ async function runSelect(
     })
   }
 
-  if (fields === undefined) return rows
+  if (fields === undefined) {
+    return builder.limitCount !== undefined ? rows.slice(0, builder.limitCount) : rows
+  }
 
-  return rows.map((row) => {
+  const projectedRows = rows.map((row) => {
     const projected: Record<string, unknown> = {}
     for (const key of Object.keys(fields)) {
       const prop = columnToProp[key] ?? key
@@ -729,6 +807,10 @@ async function runSelect(
     }
     return projected
   })
+
+  return builder.limitCount !== undefined
+    ? projectedRows.slice(0, builder.limitCount)
+    : projectedRows
 }
 
 /**
@@ -752,9 +834,24 @@ function resolveSource(table: FakeTable, state: FakeConversationDb): Source {
       columnToProp: MESSAGE_COLUMN_TO_PROP as Record<string, string>,
     }
   }
+  if (table === citations) {
+    return {
+      table,
+      rows: state.citationRows as unknown[],
+      columnToProp: CITATION_COLUMN_TO_PROP as Record<string, string>,
+    }
+  }
+  if (table === skills) {
+    return {
+      table,
+      rows: state.skillRows as unknown[],
+      columnToProp: SKILL_COLUMN_TO_PROP as Record<string, string>,
+    }
+  }
+  // Bang khac (vd `message_attachments`) → rong (fake khong mo phong).
   return {
     table,
-    rows: state.citationRows as unknown[],
-    columnToProp: CITATION_COLUMN_TO_PROP as Record<string, string>,
+    rows: [],
+    columnToProp: {},
   }
 }

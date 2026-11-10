@@ -16,6 +16,8 @@
 import { randomUUID } from 'node:crypto'
 import {
   applyContextBudget,
+  applySkillTemplate,
+  buildSkillInstruction,
   calculateCostUsd,
   CITATION_INSTRUCTION,
   classifyChatError,
@@ -27,6 +29,7 @@ import {
   evaluateBudgetState,
   hashString,
   isRetryableKind,
+  stripSkillToken,
   trimHistory,
   VISION,
   type ChatEvent,
@@ -47,6 +50,7 @@ import { loadRecentAttachments, persistAttachments } from './attachmentService.j
 import { clearCitations, extractCitations, persistCitations } from './citationService.js'
 import { buildAutoTitle } from './conversationService.js'
 import { buildBudgetStatus } from './budgetService.js'
+import { resolveSkillForChat, type ResolvedSkill } from './skillService.js'
 import { insertRequestLog, type RequestLogData } from './requestLogService.js'
 import {
   derivePath,
@@ -245,6 +249,13 @@ export function createChatStream(
     const imagesForProvider = mergeImages(conversationImages, requestAttachments(request))
 
     // --- 2. Chon provider + key ---
+    // Skill da chon trong menu `/` (FR-SKILL-01 — T-M2-04) → server resolve
+    // `prompt_template` + `model` cua skill. Skill khong ton tai / bi xoa →
+    // bo qua (chat chay binh thuong).
+    const skill = await resolveSkillForChat(deps.db, request.skillId)
+    // Model cua skill **ghi de** model cua request (user chon trong picker).
+    const requestedModel = skill?.model ?? request.model
+
     // Provider user chon duoc dat DAU chuoi, nhung fallback chain van duoc
     // giu nguyen phia sau → ton tai co che fallback (FR-PROVIDER-04).
     // Khong co `request.provider` → dung fallback chain mac dinh.
@@ -268,7 +279,7 @@ export function createChatStream(
       const provider = deps.registry.get(providerId)
       if (!provider) continue
 
-      const candidateModel = provider.resolveModel(request.model)
+      const candidateModel = provider.resolveModel(requestedModel)
 
       // Request co anh → bo qua provider/model khong ho tro vision
       // (FR-VISION-01 — T-M1-24).
@@ -396,6 +407,8 @@ export function createChatStream(
       contextBudget,
       // Tiep tuc → them chi dan "viet phan tiep theo" (FR-CHAT-07).
       ...(operation === 'continue' ? { extraUserInstruction: CONTINUE_INSTRUCTION } : {}),
+      // Skill → noi prompt mau vao system prompt (FR-SKILL-01 — T-M2-04).
+      ...(skill !== undefined ? { skill } : {}),
     })
     let streamStartedAt = Date.now()
     let firstTokenAt: number | undefined
@@ -446,6 +459,7 @@ export function createChatStream(
           images: imagesForProvider,
           contextBudget,
           ...(operation === 'continue' ? { extraUserInstruction: CONTINUE_INSTRUCTION } : {}),
+          ...(skill !== undefined ? { skill } : {}),
         })
         // TTFT do tu luc provider moi bat dau stream.
         streamStartedAt = Date.now()
@@ -902,6 +916,14 @@ export interface BuildProviderMessagesOptions {
    * them 1 user turn moi → tranh 2 user turn lien tiep (Gemini tu choi).
    */
   extraUserInstruction?: string
+  /**
+   * Skill da resolve (FR-SKILL-01 — T-M2-04).
+   *
+   * Server noi `prompt_template` vao **system prompt** va dung `model` cua
+   * skill de ghi de model cua request. Client chi gui `skillId` → server la
+   * noi resolve duy nhat.
+   */
+  skill?: ResolvedSkill | undefined
 }
 
 /** Mot turn san de gui cho provider (co the kem anh). */
@@ -946,7 +968,17 @@ export function buildProviderMessages(
   request: ChatRequest,
   options: BuildProviderMessagesOptions = {},
 ): ProviderMessage[] {
-  const systemPrompt = request.systemPrompt ?? DEFAULT_SYSTEM_PROMPT
+  const skill = options.skill
+  const baseSystemPrompt = request.systemPrompt ?? DEFAULT_SYSTEM_PROMPT
+
+  // Skill (FR-SKILL-01 — T-M2-04): noi **chi dan** cua skill vao system
+  // prompt. Placeholder `{input}` bi loai bo → cau hoi cua user van nam o
+  // user turn (model nhin thay ngay ben duoi chi dan) → khong lap lai 2 lan.
+  const systemPrompt =
+    skill !== undefined
+      ? `${baseSystemPrompt}\n\n${buildSkillInstruction(skill.promptTemplate)}`
+      : baseSystemPrompt
+
   const providerId = options.provider ?? 'mock'
   const reservedOutputTokens = options.reservedOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS
   const images = options.images ?? []
@@ -975,6 +1007,25 @@ export function buildProviderMessages(
 
   for (const turn of history) {
     result.push({ role: turn.role, content: turn.content })
+  }
+
+  // Skill (FR-SKILL-01 — T-M2-04): strip token `/ten-skill` (lop bao ve thu
+  // hai phia server) + noi prompt mau vao user turn qua `applySkillTemplate`
+  // → cau hoi cua user chi xuat hien **1 lan** (user turn), khong lap lai o
+  // system instruction.
+  //
+  // Chi ap dung cho **turn cuoi cung** (cau hoi dang tra loi) → turn `continue`
+  // / `regenerate` (het bang assistant) khong bi ghi de nham.
+  if (skill !== undefined) {
+    const questionIndex = result.length - 1
+    const question = result[questionIndex]
+    if (question !== undefined && question.role === 'user') {
+      const stripped = stripSkillToken(question.content, skill.name)
+      result[questionIndex] = {
+        ...question,
+        content: applySkillTemplate(skill.promptTemplate, stripped),
+      }
+    }
   }
 
   // Gan context (neu co) vao cuoi, phan biet ro rang la du lieu chu lenh.

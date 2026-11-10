@@ -1,6 +1,6 @@
-# Implementation Plan — Sidekick AI
+﻿# Implementation Plan — Sidekick AI
 
-**Version:** v2.5 · **Ngày:** 2026-11-10
+**Version:** v2.6 · **Ngày:** 2026-11-10
 **Tổng thời gian ước tính:** 11 tuần (M0–M3 bắt buộc) + 2 tuần tuỳ chọn (M4)
 
 > Đây là kế hoạch **task-level** để làm được ngay. Mỗi task có mã, FR liên quan, output files, acceptance criteria và estimate.
@@ -1004,7 +1004,7 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 | FR-CONTEXT-01..13 | 13 FR | T-M1-01/02/04/05/**06 ✅**/**08 ✅**/**14 ✅** · **T-M1-21/22/23** · **T-M2-19** | FR-CONTEXT-05/06 nâng lên Must (2026-11-04) · FR-CONTEXT-13 (chat không cần context) do T-M1-23 · **FR-CONTEXT-03 (`@` multi-tab) do T-M1-05 ✅** · **FR-CONTEXT-04 (selection) do T-M1-02 ✅** · **FR-CONTEXT-01 (cache URL+hash) + FR-CONTEXT-12 (snapshot) do T-M1-06 ✅** · **FR-CONTEXT-10 (citation chip + popover) do T-M1-08 ✅ (2026-11-06)** · **FR-CONTEXT-12 (log đầy đủ + cost thật + read API metadata-only) do T-M1-14 ✅ (2026-11-07)** |
 | FR-VISION-01..05 | 5 FR | **T-M1-24 ✅** (upload) · **T-M2-22** (mở rộng) | FR-VISION-01 nâng lên M · **T-M1-24 xong 2026-11-05** (vision đầy đủ Gemini + OpenAI-compatible, lưu Postgres, multi-turn) |
 | FR-TOOLS-01..06 | 6 FR | T-M2-07/08/09/10/11/18 · **T-M2-20** | FR-TOOLS-03 (web search) tách riêng khỏi tool registry |
-| FR-SKILL-01..07 | 7 FR | T-M2-04/05/06 · **T-M2-21** | FR-SKILL-04 (skill mẫu) + FR-SKILL-06 (điều kiện) tách task |
+| FR-SKILL-01..07 | 7 FR | **T-M2-04 ✅**/05/06 · **T-M2-21** | **FR-SKILL-01/02/03 (menu `/` + CRUD skill) do T-M2-04 ✅ (2026-11-10)** — server resolve `prompt_template` + `model` override; seed tối thiểu 3 skill built-in · FR-SKILL-04 (skill mẫu ≥8) + FR-SKILL-06 (điều kiện) tách task **T-M2-21** · FR-SKILL-05 (import/export) → T-M2-05 · FR-SKILL-07 (library browser) → T-M2-06 |
 | FR-PROVIDER-01..09 | 9 FR | T-M0-07/08 · T-M1-15/16 · T-M2-01/02/03 | FR-PROVIDER-04 (fallback) nằm trong T-M2-02 |
 | FR-WORKFLOW-01..13 | 13 FR | T-M4-01..08 · `FR-WORKFLOW-04` → **M5** | FR-WORKFLOW-04 deferred (rủi ro MV3 `tabs.onUpdated`) |
 | FR-SETTINGS-01..07 | 7 FR | T-M0-14 · **T-M1-12 ✅**/17 ✅ · **T-M2-19** (FR-SETTINGS-04) | **FR-SETTINGS-01/02/03/05/06/07 do T-M1-12 ✅ (2026-11-07)** (theme · cỡ chữ/mật độ/bề rộng · xoá lịch sử + xoá local + import/export · endpoint BFF có validate · lưu lựa chọn VI/EN) · FR-SETTINGS-04 (cờ telemetry/history, OFF mặc định) cũng do T-M1-12 ✅ — hành vi telemetry thật → T-M2-19 · **dịch UI VI/EN do T-M1-17 ✅ (2026-11-08)** (dictionary có kiểu → thiếu key = lỗi typecheck; đổi ngôn ngữ áp dụng ngay, không reload) |
@@ -1013,7 +1013,7 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 | NFR-SEC-01..08 | 8 NFR | T-M0-02/06/09/12 · T-M1-04/07/15/16 · **T-M2-19** | NFR-SEC-06 (domain nhạy cảm) → T-M2-19 |
 | NFR-REL-01..05 | 5 NFR | T-M1-10/**14 ✅**/15/**19 ✅** · **T-M3-10** | **NFR-REL-02 (retry 1 lần backoff 800 ms, không retry lỗi auth) + NFR-REL-04 (badge + banner trạng thái kết nối) do T-M1-19 ✅ (2026-11-07)** · NFR-REL-03 (K3 direct khi BFF chết) → T-M1-15 · NFR-REL-05 (backup DB) tách task M3 · **NFR-REL-01 (log đầy đủ + retention 90 ngày + read API cho eval) do T-M1-14 ✅ (2026-11-07)** |
 | NFR-A11Y-01..05 | 5 NFR | **T-M1-20 ✅** · T-M3-03 | A11Y pass cơ bản ở M1 (**T-M1-20 ✅ 2026-11-08** — focus ring chuẩn hoá · aria-label cho icon-button · live region chỉ trên phần stream · skip-link · tap target 24px · tab/tabpanel) — audit WCAG đầy đủ + độ tương phản ở M3 |
-| NFR-MAINT-01..05 | 5 NFR | T-M0-02/07/10 · **T-M1-14 ✅** · T-M2-04/07/12..17 · **T-M3-11** | NFR-MAINT-04 (request-id xuyên suốt client → BFF → provider + log JSON có cấu trúc) do **T-M1-14 ✅ (2026-11-07)** · NFR-MAINT-05 (ADR) tách task M3 |
+| NFR-MAINT-01..05 | 5 NFR | T-M0-02/07/10 · **T-M1-14 ✅** · **T-M2-04 ✅**/07/12..17 · **T-M3-11** | NFR-MAINT-04 (request-id xuyên suốt client → BFF → provider + log JSON có cấu trúc) do **T-M1-14 ✅ (2026-11-07)** · **NFR-MAINT-03 (interface chung / data-driven registry) do T-M2-04 ✅ (2026-11-10)** — registry skill data-driven (`skills` table + registry built-in trong code, cùng shape `Skill`) · NFR-MAINT-05 (ADR) tách task M3 |
 
 **Kết quả audit 2026-11-04:** trước đó **31 FR + 27 NFR (58 yêu cầu)** chưa được map tới task nào trong cột FR của plan, và 2 nhãn FR sai (T-M1-04, T-M1-06). Sau khi bổ sung task card (T-M1-21..25, T-M2-19..22, T-M3-10..11) và ghi bổ sung FR/NFR vào các task card cũ, **mọi FR/NFR đều có ít nhất 1 task** — trừ `FR-WORKFLOW-04` (chủ động defer sang M5).
 
@@ -1030,7 +1030,7 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 | T-M2-02 | Model picker + fallback chain | FR-PROVIDER-03/04 | `settings/ModelPicker.tsx`, `providers/fallback.ts` | Provider chính lỗi → tự chuyển provider dự phòng, ghi log | M | ✅ *(2026-11-10)* |
 | T-M2-03 | Token & cost calculator + usage UI | FR-PROVIDER-05 | `lib/cost.ts`, `settings/DataSettings.tsx`, `chat/UsageBadge.tsx` | Hiện token/cost từng lượt | M | ✅ *(2026-11-10)* — phần **budget cap (FR-PROVIDER-06)** tách thành **T-M2-03b** (đã xong) |
 | T-M2-03b | Budget cap (cảnh báo + tuỳ chọn chặn khi vượt ngưỡng chi phí) | FR-PROVIDER-06 | `packages/shared/src/budget.ts`, `packages/shared/src/schemas/budget.ts`, `apps/server/src/services/budgetService.ts`, `apps/server/src/routes/budget.ts`, `apps/extension/src/sidepanel/components/settings/BudgetSettings.tsx`, `apps/extension/src/sidepanel/components/BudgetBanner.tsx` | Cấu hình ngưỡng ở Settings (**lưu phía server** — bảng `budget_settings`); cảnh báo khi tổng `cost_usd` vượt ngưỡng; tuỳ chọn chặn lượt chat mới (server **không gọi provider** → chi phí = 0) | M | ✅ *(2026-11-10)* |
-| T-M2-04 | Skills: menu `/`, CRUD, builtin library | FR-SKILL-01/02/03, NFR-MAINT-03 | `sidepanel/components/skills/*`, `POST /skills` | `/` → list skill; tạo skill từ message; CRUD đủ | L |
+| T-M2-04 | Skills: menu `/`, CRUD, builtin library | FR-SKILL-01/02/03, NFR-MAINT-03 | `sidepanel/components/skills/*`, `POST /skills` | `/` → list skill; tạo skill từ message; CRUD đủ | L | ✅ *(2026-11-10)* — seed **tối thiểu 3 skill** built-in; thư viện ≥8 skill → T-M2-21 |
 | T-M2-05 | Skill import/export JSON | FR-SKILL-05 | `sidepanel/lib/skillIO.ts` | Export/import round-trip không mất dữ liệu | S |
 | T-M2-06 | Skill library browser nội bộ | FR-SKILL-07 | `sidepanel/components/skills/SkillLibrary.tsx` | Xem/lọc skill theo tag | M |
 | T-M2-07 | Tool registry (builtin: web search, calculator) | FR-TOOLS-01/02, NFR-MAINT-03 | `apps/server/src/tools/{registry.ts,builtin/*}` | Tool được liệt kê; invoke trả kết quả | L |
@@ -1132,6 +1132,53 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 
 - **Không** đổi checklist §E (`COMPARISON_MATRIX.md`) → giữ nguyên **33/35 = 94.3%** (budget cap là tính năng **độc quyền**, Edge/Gemini không có → ghi ở dòng C6 §C, **không** thêm dòng mới).
 - **Không** phá parity: không thêm permission, không đổi manifest, không đổi hành vi chat M1.
+
+---
+
+### 4.3 Kết quả M2 — T-M2-04 Skills (2026-11-10)
+
+#### 4.3.1 Trạng thái task
+
+| Task | Trạng thái | Bằng chứng |
+|---|---|---|
+| **T-M2-04** — Skills: menu `/`, CRUD, seed built-in tối thiểu (FR-SKILL-01/02/03, NFR-MAINT-03) | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.25 · [`DESIGN_SYSTEM_BRIEF.md`](DESIGN_SYSTEM_BRIEF.md) §3.13 |
+
+**Phạm vi đã chốt:**
+
+| Hạng mục | Chốt |
+|---|---|
+| Skill được áp dụng ở đâu? | **Server resolve** — client gửi `skillId` trong `POST /api/chat` → server nối `prompt_template` vào system prompt + `model` của skill **ghi đè** model của request |
+| Skill lưu ở đâu? | Postgres (bảng `skills`) cho skill của **user** + registry **trong code** cho built-in (`apps/server/src/skills/builtin.ts`) |
+| Seed built-in | **Tối thiểu 3 skill** (`tom-tat` · `giai-thich-don-gian` · `dich`, uuid cố định) → **thư viện ≥ 8 skill nằm ở T-M2-21** |
+| Menu `/` | Popover ngay trên textarea (giống `MentionPopover`), lọc **prefix** · Enter chọn · Tab autocomplete |
+| Quản lý skill | Drawer trượt từ **trái** (Radix `Dialog`, y hệt `ConversationList`), mở từ nút icon `Sparkles` ở header |
+
+#### 4.3.2 Verify
+
+| Hạng mục | Kết quả |
+|---|---|
+| `pnpm typecheck` | ✅ pass (4 workspace) |
+| `pnpm lint` | ✅ pass (0 error, 0 warning) |
+| `pnpm test` | ✅ **1565 unit** (shared 284 · server 458 · extension 812 · eval 11) — thêm `packages/shared/tests/skill.test.ts` (21) · `apps/server/tests/skillService.test.ts` (21) · `apps/server/tests/skillsRoute.test.ts` (13) · `apps/server/tests/chatSkill.test.ts` (10) · `apps/extension/tests/skillClient.test.ts` (9) · `apps/extension/tests/skillStore.test.ts` (11) · `apps/extension/tests/useSkillCommand.test.ts` (14) · `apps/extension/tests/skillMenu.test.tsx` (6) · `apps/extension/tests/skillManager.test.tsx` (10) |
+| `pnpm build` | ✅ pass — `dist/content.js` **17.27 kB** (gzip 6.65 kB) · IIFE 1 file (guard bundle pass — code skill **không** lọt vào content script) |
+| `pnpm db:migrate` | ✅ migration `0004_worthless_earthquake.sql` — bảng `skills` (unique `name` · `tags text[]` · `model` nullable) |
+| `pnpm test:e2e` | ✅ `apps/extension/e2e/skills.spec.ts` — **6/6** (stub `/api/skills` + `/api/chat`, không cần BFF thật) |
+
+#### 4.3.3 Ảnh hưởng lên gate parity
+
+- Checklist §E (`COMPARISON_MATRIX.md`) dòng **"Skills"** → **giữ nguyên mở**: còn thiếu **library browser** (T-M2-06) + **thư viện ≥ 8 skill** (T-M2-21) → ghi chú tiến độ, **không** tick sai (xem `COMPARISON_MATRIX.md` §E.1.4).
+- **Không** phá parity: không thêm permission, không đổi manifest, không đổi hành vi chat M1 (skill là **tuỳ chọn** — không gửi `skillId` → hành vi cũ y hệt).
+
+#### 4.3.4 Việc tiếp theo trong M2
+
+| Ưu tiên | Task | Lý do |
+|---|---|---|
+| 1 | **T-M2-12** — dataset eval (≥ 44 task + snapshot trang) | **Ràng buộc báo cáo** — `docs/EVAL_REPORT.md` là deliverable bắt buộc. Contract đã có ở `packages/shared/src/schemas/eval.ts` |
+| 2 | **T-M2-13** → **T-M2-14** — harness → judge | 1 lệnh chạy được + judge temperature 0 + blind mapping |
+| 3 | **T-M2-15 → 16 → 17** — thu thập tay → chấm tay → báo cáo | **Cần người thật** → có lead-time dài nhất, nên bắt đầu sớm |
+| 4 | **T-M2-05** — skill import/export JSON (FR-SKILL-05) | **Task kế tiếp theo thứ tự M2 sau T-M2-04** — mở rộng CRUD đã có |
+| 5 | **T-M2-06** — skill library browser (FR-SKILL-07) | Cột `tags` đã có sẵn → lọc theo tag dễ |
+| 6 | **T-M2-21** — thư viện ≥ 8 skill + skill gắn điều kiện (FR-SKILL-04/06) | Hoàn tất dòng §E "Skills" |
 
 ---
 

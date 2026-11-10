@@ -148,6 +148,8 @@ export const API_ROUTES = {
   usage: `${API_BASE_PATH}/usage`,
   /** Cai dat + trang thai budget cap (FR-PROVIDER-06 — T-M2-03b). */
   budget: `${API_BASE_PATH}/budget`,
+  /** CRUD skill — GET/POST/PATCH/DELETE (FR-SKILL-01/02/03 — T-M2-04). */
+  skills: `${API_BASE_PATH}/skills`,
 } as const
 
 /**

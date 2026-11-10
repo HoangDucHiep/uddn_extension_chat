@@ -1,4 +1,4 @@
-# HANDOFF — Bắt đầu chat mới
+﻿# HANDOFF — Bắt đầu chat mới
 
 > Mục tiêu: chat mới nắm context trong **≤ 5 phút** mà không cần đọc lại toàn bộ `docs/`.
 
@@ -24,10 +24,10 @@
 | Hạng mục | Trạng thái |
 |---|---|
 | Docs | ✅ Đầy đủ 11 file (`docs/`) + `AGENTS.md` ở root |
-| Code | ✅ **M1 (Parity) ĐÓNG** — 23/25 task (T-M1-15 + T-M1-16 ⏸ tạm dừng) — 4 workspace, **1394 unit test + 91 E2E** · **M2 đang làm** (T-M2-02 ✅ · T-M2-03 ✅ · kiểm chứng live Chrome **15/15** mục §11b) |
+| Code | ✅ **M1 (Parity) ĐÓNG** — 23/25 task (T-M1-15 + T-M1-16 ⏸ tạm dừng) — 4 workspace, **1565 unit test + 100 E2E** · **M2 đang làm** (T-M2-02 ✅ · T-M2-03 ✅ · T-M2-03b ✅ · T-M2-04 ✅ · kiểm chứng live Chrome **15/15** mục §11b) |
 | Git | ✅ Đã init (`main`) · tag `v0.1` (M0) · tag **`v0.2`** (M1 đóng 2026-11-09) |
 | Milestone hiện tại | **M2 — Advanced & Eval** (M0 ✅ · M1 ✅) |
-| Task tiếp theo | **T-M2-12** — điền dataset eval thật (`apps/eval/dataset/tasks.json` + `dataset/snapshots/*`) → T-M2-13 harness → T-M2-14 judge → T-M2-15..17 → **`docs/EVAL_REPORT.md`** (deliverable bắt buộc) |
+| Task tiếp theo | **T-M2-12** — điền dataset eval thật (`apps/eval/dataset/tasks.json` + `dataset/snapshots/*`) → T-M2-13 harness → T-M2-14 judge → T-M2-15..17 → **`docs/EVAL_REPORT.md`** (deliverable bắt buộc) · *(sau đó: **T-M2-05** skill import/export → **T-M2-06** skill library browser → **T-M2-21** thư viện ≥ 8 skill)* |
 
 ### Đang làm dở
 
@@ -41,6 +41,9 @@ _(Không có — M1 đóng xong 2026-11-09, tag `v0.2`)_
 | T-M2-02 Model picker + fallback chain | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.22 |
 | T-M2-03 Token & cost UI | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.23 |
 | T-M2-03b Budget cap (FR-PROVIDER-06) | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.24 · enforce **phía server** (`budget_settings` trong Postgres) |
+| T-M2-04 Skills: menu `/`, CRUD, seed built-in (FR-SKILL-01/02/03) | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.25 · server resolve `prompt_template` + `model` override · seed **3** skill built-in |
+| T-M2-05 Skill import/export JSON (FR-SKILL-05) | ⬜ chưa bắt đầu | **Task kế tiếp** — mở rộng CRUD đã có |
+| T-M2-06 Skill library browser (FR-SKILL-07) | ⬜ chưa bắt đầu | cột `tags` đã có sẵn → lọc theo tag dễ |
 | T-M2-12..17 Eval | ⬜ chưa bắt đầu | `docs/EVAL_REPORT.md` là deliverable bắt buộc |
 
 > **Bảng kết quả chi tiết của M2** (trạng thái task · verify · commit · ảnh hưởng gate parity) nằm ở [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) **§4.1** — đọc ở đó thay vì tra lại từng file.
@@ -75,6 +78,21 @@ _(Không có — M1 đóng xong 2026-11-09, tag `v0.2`)_
 **Kiểm chứng live (2026-11-10, BFF + Docker + `.env` có K1):** `GET /api/budget` → `state: "disabled"` · `PUT` hạn mức `0.01` USD → `state: "exceeded"` (đã dùng `0.0399`) → `POST /api/chat` → SSE `budget` (`exceeded`) → `error` `BUDGET_EXCEEDED` (`retryable: false`) → `done(finishReason: "error")` · `request_logs` ghi 1 dòng `error = BUDGET_EXCEEDED`, `cost_usd = 0` → **không** gọi provider · kỳ `daily` → `periodStart` = 00:00 hôm nay theo giờ local · `PUT` sai (`limitUsd = -1`) → **400 `VALIDATION_ERROR`**.
 
 **Số liệu test sau T-M2-02/03/03b (2026-11-10):** shared 263 · server 414 · extension 762 · eval 11 = **1450 unit** + **94 E2E** (25 file). `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm build` ✅ (`dist/content.js` 17.27 kB) · `pnpm test:e2e` ✅ (94/94).
+
+**Tóm tắt T-M2-04 (FR-SKILL-01/02/03 — Skills):**
+
+- **Server resolve skill** (quyết định thiết kế chính): client gửi `skillId` trong `POST /api/chat` → server nối `prompt_template` vào system prompt + `model` của skill **ghi đè** model của request → client **không** cần biết nội dung template.
+- **Placeholder `{input}` 2 lớp** (tránh lặp nội dung): `buildSkillInstruction(template)` **loại bỏ** `{input}` → system prompt · `applySkillTemplate(template, câu hỏi)` → **user turn cuối cùng** → câu hỏi xuất hiện **1 lần**. *(Đã sửa trong lúc audit: `applySkillTemplate` trước đó **chưa** được gọi ở server → prompt mẫu có `{input}` bị model nhận dạng rỗng.)*
+- **Token `/ten-skill` bị loại** khỏi câu hỏi: client strip (`useSkillCommand.strip`) + server strip lần 2 (`stripSkillToken`, chỉ đúng tên skill vừa resolve → **không** xoá nhầm URL). *(Lần 2 cũng **chưa** được gọi ở server → đã bổ sung.)*
+- **Nơi lưu**: Postgres (bảng `skills`, migration `apps/server/drizzle/0004_worthless_earthquake.sql`) cho skill của **user** + registry **trong code** (`apps/server/src/skills/builtin.ts`) cho built-in → **không** cần migration seed.
+- **Seed built-in tối thiểu 3 skill** (`tom-tat` · `giai-thich-don-gian` · `dich`, uuid cố định) — thư viện ≥ 8 skill nằm ở **T-M2-21**.
+- **Menu `/`**: popover `SkillMenu` trên textarea · lọc **prefix** · `Enter` chọn · `Tab` autocomplete · `Escape` đóng · token `/` chỉ bắt ở **word boundary** → paste URL **không** mở nhầm menu · chỉ **1** popover mở tại một thời điểm (loại trừ với mention `@`).
+- **CRUD**: drawer `SkillManager` trượt **trái** (mở từ nút icon `Sparkles` ở header) · 2 nhóm **Có sẵn** / **Của tôi** · dùng nhanh · sửa (`SkillFormDialog`) · nhân bản (`${name}-copy`) · xoá (có `ConfirmDialog`) · xoá/sửa built-in bị server **từ chối** (`FORBIDDEN`).
+- **Tạo skill từ message**: action **"Lưu thành kỹ năng"** trên **user message** → prefill form với nội dung message.
+- **API**: `GET/POST/PATCH/DELETE /api/skills` (validate Zod ở biên → `400 VALIDATION_ERROR`; tên trùng → `CONFLICT`).
+- **Không ảnh hưởng gate parity** → checklist §E giữ nguyên **33/35 = 94.3%** (dòng "Skills" **vẫn mở** — còn T-M2-06 library browser + T-M2-21 thư viện ≥ 8 skill → xem `COMPARISON_MATRIX.md` §E.1.4).
+
+**Số liệu test sau T-M2-04 (2026-11-10):** shared 284 · server 458 · extension 812 · eval 11 = **1565 unit** + **100 E2E** (26 file). `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm build` ✅ (`dist/content.js` **17.27 kB** — code skill **không** lọt vào content script) · E2E skills **6/6** ✅.
 
 **Kiểm chứng live trên Chrome thật (2026-11-10):** `pnpm manual:checklist` (script mới — `scripts/manual-checklist.mjs`) load extension **unpacked** vào Chrome (profile tạm) → **15/15 mục** của `MANUAL_TEST_GUIDE.md` §11b **pass**:
 - **Model động:** `openrouter` → **428 model** (`source: "live"`) · lọc tìm kiếm `428 → 7` · lựa chọn lưu đúng `chrome.storage.local`.

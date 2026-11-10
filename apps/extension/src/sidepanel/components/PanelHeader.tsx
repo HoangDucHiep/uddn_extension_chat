@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { CircleHelp, History, Settings, Trash2 } from 'lucide-react'
+import { CircleHelp, History, Settings, Sparkles, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useI18n } from '@/sidepanel/hooks/useI18n'
 import { ConnectionBadge } from './states/ConnectionBadge'
@@ -14,6 +14,8 @@ export interface PanelHeaderProps {
   onOpenOnboarding?: (() => void) | undefined
   /** Mo drawer danh sach cuoc tro chuyen (FR-CHAT-09 — T-M1-09). */
   onOpenConversations?: (() => void) | undefined
+  /** Mo drawer quan ly skill (FR-SKILL-02/03 — T-M2-04). */
+  onOpenSkills?: (() => void) | undefined
   /** Mo drawer cai dat (FR-SETTINGS-01..07 — T-M1-12). */
   onOpenSettings?: (() => void) | undefined
   /**
@@ -46,6 +48,7 @@ export function PanelHeader({
   onClear,
   onOpenOnboarding,
   onOpenConversations,
+  onOpenSkills,
   onOpenSettings,
   exportMenu,
   modelPicker,
@@ -95,6 +98,18 @@ export function PanelHeader({
             data-testid="conversations-button"
           >
             <History className="h-3.5 w-3.5" aria-hidden="true" />
+          </Button>
+        ) : null}
+
+        {onOpenSkills ? (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={onOpenSkills}
+            aria-label={t('header.openSkills')}
+            data-testid="skills-button"
+          >
+            <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
           </Button>
         ) : null}
 

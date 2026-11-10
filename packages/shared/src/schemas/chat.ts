@@ -181,6 +181,13 @@ export const chatRequestSchema = z.object({
    * duong di tai turn cha.
    */
   parentTurnId: z.string().max(200).optional(),
+  /**
+   * Skill duoc chon trong menu `/` (FR-SKILL-01 — T-M2-04).
+   *
+   * Server **resolve** skill → noi `prompt_template` vao system prompt +
+   * ap dung `model` cua skill (neu co). Client khong gui template.
+   */
+  skillId: z.string().uuid().optional(),
 })
 export type ChatRequest = z.infer<typeof chatRequestSchema>
 
