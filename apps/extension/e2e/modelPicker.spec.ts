@@ -96,6 +96,19 @@ test('model picker tai danh sach model dong va gui provider/model len BFF', asyn
   expect(body?.provider).toBe(saved?.providerId)
   expect(body?.model).toBe(modelName)
 
+  // --- Reload panel → lua chon van con, van gui dung provider/model ---
+  await panel.reload()
+  await expect(panel.getByTestId('composer-input')).toBeVisible({ timeout: 20_000 })
+
+  await panel.getByTestId('composer-input').fill('Hoi sau khi reload panel')
+  await panel.getByTestId('composer-send').click()
+  await expect(panel.getByTestId('message-assistant')).toBeVisible({ timeout: 30_000 })
+
+  await expect.poll(() => chatBodies.length, { timeout: 20_000 }).toBeGreaterThan(1)
+  const bodyAfterReload = chatBodies[1]
+  expect(bodyAfterReload?.provider).toBe(saved?.providerId)
+  expect(bodyAfterReload?.model).toBe(modelName)
+
   await panel.close()
 })
 

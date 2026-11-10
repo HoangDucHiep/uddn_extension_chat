@@ -142,4 +142,106 @@ describe('ModelPicker', () => {
       expect(saved?.providerId).toBeNull()
     })
   })
+
+  // MANUAL_TEST_GUIDE §11b.1: "Doi provider → model da chon bi xoa".
+  it('doi provider → xoa model da chon', async () => {
+    listProvidersMock.mockResolvedValueOnce([
+      {
+        id: 'mock',
+        name: 'Mock Provider',
+        models: [],
+        keySource: 'none',
+        requiresKey: false,
+        available: true,
+      },
+      {
+        id: 'ollama',
+        name: 'Ollama',
+        models: [],
+        keySource: 'none',
+        requiresKey: false,
+        available: true,
+      },
+    ])
+    listProviderModelsMock.mockResolvedValue({
+      providerId: 'mock' as never,
+      models: ['mock-model', 'mock-model-fast'],
+      source: 'live' as const,
+    })
+
+    render(<ModelPicker />)
+
+    fireEvent.click(screen.getByTestId('model-picker-button'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('model-picker-model-mock-model')).toBeTruthy()
+    })
+    fireEvent.click(screen.getByTestId('model-picker-model-mock-model'))
+
+    await waitFor(async () => {
+      const raw = await chrome.storage.local.get(MODEL_SELECTION_STORAGE_KEY)
+      const saved = raw[MODEL_SELECTION_STORAGE_KEY] as { model?: string | null } | undefined
+      expect(saved?.model).toBe('mock-model')
+    })
+
+    // Doi sang provider khac → model cua provider truoc phai bi xoa.
+    await waitFor(() => {
+      expect(screen.getByTestId('model-picker-provider-ollama')).toBeTruthy()
+    })
+    fireEvent.click(screen.getByTestId('model-picker-provider-ollama'))
+
+    await waitFor(async () => {
+      const raw = await chrome.storage.local.get(MODEL_SELECTION_STORAGE_KEY)
+      const saved = raw[MODEL_SELECTION_STORAGE_KEY] as
+        | { providerId?: string | null; model?: string | null }
+        | undefined
+      expect(saved?.providerId).toBe('ollama')
+      expect(saved?.model).toBeNull()
+    })
+  })
+
+  // MANUAL_TEST_GUIDE §11b.1: "> 12 model → hien o tim kiem → loc danh sach".
+  it('> 12 model → hien o tim kiem + loc danh sach', async () => {
+    const manyModels = Array.from({ length: 15 }, (_, index) => `model-${index + 1}`)
+    listProviderModelsMock.mockResolvedValue({
+      providerId: 'mock' as never,
+      models: manyModels,
+      source: 'live' as const,
+    })
+
+    render(<ModelPicker />)
+
+    fireEvent.click(screen.getByTestId('model-picker-button'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('model-picker-search')).toBeTruthy()
+    })
+
+    fireEvent.change(screen.getByTestId('model-picker-search'), { target: { value: 'model-1' } })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('model-picker-model-model-1')).toBeTruthy()
+    })
+    // `model-15` cung khop → van con.
+    expect(screen.getByTestId('model-picker-model-model-15')).toBeTruthy()
+    // `model-2` khong khop → bi an.
+    expect(screen.queryByTestId('model-picker-model-model-2')).toBeNull()
+  })
+
+  it('<= 12 model → khong hien o tim kiem', async () => {
+    listProviderModelsMock.mockResolvedValue({
+      providerId: 'mock' as never,
+      models: ['mock-model', 'mock-model-fast'],
+      source: 'live' as const,
+    })
+
+    render(<ModelPicker />)
+
+    fireEvent.click(screen.getByTestId('model-picker-button'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('model-picker-model-mock-model')).toBeTruthy()
+    })
+    expect(screen.queryByTestId('model-picker-search')).toBeNull()
+  })
 })
