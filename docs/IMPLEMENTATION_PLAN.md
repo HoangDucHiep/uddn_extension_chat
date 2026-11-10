@@ -1077,7 +1077,7 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 |---|---|---|---|
 | **T-M2-02** — Model picker + fallback chain (FR-PROVIDER-03/04) | ✅ **xong** | `1ea95cc` · `217328c` · `57865b8` | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.22 |
 | **T-M2-03** — Token & cost UI (FR-PROVIDER-05) | ✅ **xong** (phần budget cap đã tách **T-M2-03b**, xong 2026-11-10) | `57865b8` · `b02c806` | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.23 |
-| **T-M2-03b** — Budget cap (FR-PROVIDER-06) | ✅ **xong** (2026-11-10) | (commit hiện tại) | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.24 |
+| **T-M2-03b** — Budget cap (FR-PROVIDER-06) | ✅ **xong** (2026-11-10) | `ac52dd5` | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.24 |
 | **T-M2-01** — Multi-provider (OpenAI/Anthropic) | ⏸ **đẩy lại** | — | quyết định user 2026-11-10 — không thêm provider mới |
 
 #### 4.1.2 Verify
