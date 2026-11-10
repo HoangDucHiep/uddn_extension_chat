@@ -374,8 +374,8 @@ async function startFallbackBff(port) {
       if (response.status === 200) {
         return {
           stop: async () => {
-            child.kill()
-            await new Promise((resolve) => setTimeout(resolve, 300))
+            await killProcessTree(child.pid)
+            await new Promise((resolve) => setTimeout(resolve, 500))
           },
         }
       }
@@ -384,8 +384,43 @@ async function startFallbackBff(port) {
     }
   }
 
-  child.kill()
+  await killProcessTree(child.pid)
   return undefined
+}
+
+/**
+ * Tat ca cay tien trinh cua mot process (Windows).
+ *
+ * `child.kill()` chi tat **wrapper** (`cmd.exe` cua `pnpm.cmd`) → tien trinh
+ * con (`node` cua `tsx`) van chay va **giu port** → BFF phu chay lai sau khi
+ * script ket thuc. `taskkill /T` tat ca cay.
+ *
+ * @param {number | undefined} pid - PID cua process can tat.
+ */
+async function killProcessTree(pid) {
+  if (pid === undefined) return
+
+  if (process.platform === 'win32') {
+    await new Promise((resolve) => {
+      const killer = spawn('taskkill', ['/PID', String(pid), '/T', '/F'], {
+        stdio: 'ignore',
+        shell: true,
+      })
+      killer.on('close', () => {
+        resolve(undefined)
+      })
+      killer.on('error', () => {
+        resolve(undefined)
+      })
+    })
+    return
+  }
+
+  try {
+    process.kill(-pid, 'SIGTERM')
+  } catch {
+    // Tien trinh da chet → bo qua.
+  }
 }
 
 /**

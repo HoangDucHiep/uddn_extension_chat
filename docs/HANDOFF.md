@@ -70,7 +70,9 @@ _(Không có — M1 đóng xong 2026-11-09, tag `v0.2`)_
 
 **Lưu ý vận hành:** Postgres chạy trong container `sidekick-db` → **Docker Desktop phải chạy** trước khi `pnpm dev:server`, nếu không `/api/usage` + `/api/logs` trả **500** (health báo `db: "down"`). Đã ghi trong `MANUAL_TEST_GUIDE.md` §12.
 
-**Quan sát về độ ổn định của E2E (2026-11-10):** E2E gọi **provider thật** (Groq/OpenRouter) → tỉ lệ lỗi phụ thuộc **quota provider**, không phải logic repo. 1 lần chạy bị **4 failed / 87 passed** và kéo dài **52 phút** vì Groq trả **413 TPM** → fallback sang OpenRouter (chậm hơn) → timeout. Chạy lại ngay: **91/91 pass trong 3.9 phút**. Khi thấy E2E chậm bất thường → kiểm tra `request_logs` xem có lỗi `413` / rate-limit không trước khi nghi ngờ hồi quy.
+**Quan sát về độ ổn định của E2E (2026-11-10):** E2E gọi **provider thật** (Groq/OpenRouter) → tỉ lệ lỗi phụ thuộc **quota provider**, không phải logic repo. 1 lần chạy bị **4 failed / 87 passed** và kéo dài **52 phút** vì Groq trả **413 TPM** → fallback sang OpenRouter (chậm hơn) → timeout. Chạy lại ngay: **91/91 pass trong 3.9 phút**. Khi thấy E2E chậm bất thường → kiểm tra `request_logs` xem có lỗi `413` / rate-limit không trước khi nghi ngờ hồi quy. **Không chạy 2 suite E2E song song** — chúng dùng chung quota provider và sẽ tranh nhau (2 lần chạy song song đã cho 4 + 5 fail).
+
+**Lưu ý vận hành script `pnpm manual:checklist`:** script khởi động BFF phụ ở port `8791` và **phải** dọn sau khi chạy. Đã có bug `child.kill()` không giết tiến trình con `tsx` trên Windows → giữ port `8791` lại; đã sửa bằng `killProcessTree()` (`taskkill /T /F`). Nếu chạy tay và bị báo `port 8791 đã dùng` → `taskkill /PID <pid> /T /F`.
 
 > **Flake đã biết:** lần chạy E2E đầu tiên có `e2e/contextCache.spec.ts > trang đang lỗi → fallback về nội dung đã cache` fail (`expect(request?.context?.items).toHaveLength(1)` → `received value must have a length property`) — chạy lại **riêng** file đó thì **3/3 pass**, chạy lại **cả suite** thì **91/91 pass** → **flake do tải song song**, không phải hồi quy code. Nếu gặp lại: chạy lại `pnpm test:e2e` trước khi sửa code.
 
