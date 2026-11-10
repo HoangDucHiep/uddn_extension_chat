@@ -11,18 +11,13 @@
  * Dinh dang 1 so USD thanh chuoi hien thi.
  *
  * - `0` (hoac rong) → chuoi rong (de caller hien thi "mien phi").
- * - `< 0.01` → giu 4 chu so nghinh (vi du `0.0004`) vi lam tron 2 chu so
- *   se ra `0.00` → mat thong tin.
- * - `>= 0.01` → 4 chu so nghinh (vi du `0.0123`).
+ * - Gia tri > 0 → **4 chu so nghinh** (vi du `0.0004` · `0.0123`).
+ *   Khong lam tron 2 chu so vi chi phi nho se ra `0.00` → mat thong tin.
  *
  * @param costUsd - Chi phi USD can dinh dang.
  */
 export function formatCostUsd(costUsd: number | undefined): string {
   if (costUsd === undefined || !Number.isFinite(costUsd) || costUsd <= 0) return ''
-
-  if (costUsd < 0.01) {
-    return costUsd.toFixed(4)
-  }
 
   return costUsd.toFixed(4)
 }
