@@ -1073,7 +1073,7 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 | Hạng mục | Hiện thực |
 |---|---|
 | Chi phí theo lượt | `ChatMessage.costUsd` (lấy từ SSE `usage`) → `UsageBadge` dưới bubble assistant (`apps/extension/src/sidepanel/components/chat/UsageBadge.tsx`) · `formatCostUsd()` (`apps/extension/src/lib/costFormat.ts`) — 4 chữ số thập phân |
-| Tổng theo ngày | `UsageSettings` (`apps/extension/src/sidepanel/components/settings/UsageSettings.tsx`) → `GET /api/usage` (`apps/extension/src/lib/usageClient.ts`) · khoảng `today/7d/30d/all` |
+| Tổng theo ngày | `UsageSettings` (`apps/extension/src/sidepanel/components/settings/UsageSettings.tsx`) → `GET /api/usage` (`apps/extension/src/lib/usageClient.ts`) · khoảng `today/7d/30d/all` (mặc định `7d`) — đổi khoảng → gọi lại API ngay |
 | **Budget cap (FR-PROVIDER-06)** | ⬜ **chưa làm** — priority `C` → `TODO(T-M2-03b)`: cảnh báo khi vượt ngưỡng + tuỳ chọn chặn (cần cấu hình ngưỡng ở Settings + so sánh với tổng `cost_usd`) |
 
 > **Không làm trong T-M2-02/03 (ngoài phạm vi):** budget cap (FR-PROVIDER-06) · thêm provider OpenAI/Anthropic (T-M2-01) · K2/K3 BYOK (T-M1-15/16, ⏸ tạm dừng).
