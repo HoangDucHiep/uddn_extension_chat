@@ -25,6 +25,8 @@ export interface ListSkillsParams {
   scope?: 'user' | 'builtin' | undefined
   /** Loc theo ten (prefix). */
   q?: string | undefined
+  /** Loc theo tag (skill khop neu co it nhat 1 tag). */
+  tags?: readonly string[] | undefined
 }
 
 /**
@@ -37,6 +39,9 @@ export async function listSkills(params: ListSkillsParams = {}): Promise<Skill[]
   const search = new URLSearchParams()
   if (params.scope !== undefined) search.set('scope', params.scope)
   if (params.q !== undefined && params.q.length > 0) search.set('q', params.q)
+  if (params.tags !== undefined && params.tags.length > 0) {
+    search.set('tags', params.tags.join(','))
+  }
 
   const suffix = search.toString()
   const raw = await fetchJson<unknown>(

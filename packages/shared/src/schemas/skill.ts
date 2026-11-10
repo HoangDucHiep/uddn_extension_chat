@@ -99,11 +99,38 @@ export const updateSkillSchema = z
   })
 export type UpdateSkillInput = z.infer<typeof updateSkillSchema>
 
-/** Query cua `GET /api/skills`. */
+/**
+ * Query cua `GET /api/skills`.
+ *
+ * `tags` co the gui theo 2 cach:
+ * - `?tags=summary&tags=email` → mang
+ * - `?tags=summary,email` → chuoi tach bang dau phay
+ *
+ * → dung `z.preprocess` de chuan hoa ve **mang chuoi** truoc khi validate.
+ */
 export const skillListQuerySchema = z.object({
   /** Loc theo pham vi (`user` | `builtin`). */
   scope: skillScopeSchema.optional(),
   /** Loc theo ten (prefix, khong phan biet hoa thuong). */
   q: z.string().max(SKILL_MAX_NAME_CHARS).optional(),
+  /** Loc theo tag — skill khop neu co **it nhat 1** tag trong danh sach. */
+  tags: z.preprocess(
+    (value) => {
+      if (typeof value === 'string') {
+        return value
+          .split(',')
+          .map((tag) => tag.trim())
+          .filter((tag) => tag.length > 0)
+      }
+      if (Array.isArray(value)) {
+        return value
+          .flatMap((tag) => (typeof tag === 'string' ? tag.split(',') : []))
+          .map((tag) => tag.trim())
+          .filter((tag) => tag.length > 0)
+      }
+      return value
+    },
+    z.array(z.string().min(1).max(SKILL_MAX_TAG_CHARS)).max(SKILL_MAX_TAGS).optional(),
+  ),
 })
 export type SkillListQuery = z.infer<typeof skillListQuerySchema>

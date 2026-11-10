@@ -6,15 +6,20 @@ import { Button } from '@/components/ui/button'
 import { useSkillStore } from '@/sidepanel/store/skillStore'
 import { useI18n } from '@/sidepanel/hooks/useI18n'
 import { ConfirmDialog } from '@/sidepanel/components/chat/ConfirmDialog'
+import { SkillLibrary } from '@/sidepanel/components/skills/SkillLibrary'
 import { exportSkillsFile, importSkillsFile } from '@/lib/skillIO'
 
 /**
- * Drawer quan ly skill (FR-SKILL-02/03 — T-M2-04, FR-SKILL-05 — T-M2-05).
+ * Drawer quan ly skill (FR-SKILL-02/03 — T-M2-04, FR-SKILL-05 — T-M2-05,
+ * FR-SKILL-07 — T-M2-06).
  *
  * 2 nhom: **Co san** (built-in — chi dung, khong sua/xoa) · **Cua tao** (user
  * — sua / nhan ban / xoa).
  *
  * Them 2 hanh dong **import/export JSON** (FR-SKILL-05) — o header drawer.
+ *
+ * 2 **tab**: **Quan ly** (CRUD) · **Thu vien** (duyet skill theo tag —
+ * FR-SKILL-07).
  *
  * Docs: docs/SYSTEM_DESIGN.md §7.25
  */
@@ -28,6 +33,9 @@ export interface SkillManagerProps {
   onCreate?: () => void
 }
 
+/** Tab dang mo trong drawer. */
+type SkillTab = 'manage' | 'library'
+
 export function SkillManager({ onUse, onEdit, onCreate }: SkillManagerProps) {
   const { t } = useI18n()
   const items = useSkillStore((state) => state.items)
@@ -40,6 +48,7 @@ export function SkillManager({ onUse, onEdit, onCreate }: SkillManagerProps) {
 
   const [pendingDelete, setPendingDelete] = useState<Skill | undefined>(undefined)
   const [isImporting, setIsImporting] = useState(false)
+  const [tab, setTab] = useState<SkillTab>('manage')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Nap danh sach skill 1 lan khi mo drawer.
@@ -127,100 +136,144 @@ export function SkillManager({ onUse, onEdit, onCreate }: SkillManagerProps) {
           {t('skill.manager.title')}
         </h2>
 
-        {onCreate !== undefined ? (
-          <Button
-            variant="default"
-            size="sm"
-            className="w-full"
-            onClick={onCreate}
-            data-testid="skill-new"
-          >
-            <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-            {t('skill.manager.new')}
-          </Button>
-        ) : null}
-
-        {/* FR-SKILL-05: import/export skill dang JSON. */}
-        <div className="flex gap-[var(--space-2)]">
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1"
-            onClick={handleExport}
-            disabled={user.length === 0}
-            data-testid="skill-export"
-          >
-            <Download className="h-3.5 w-3.5" aria-hidden="true" />
-            {t('skill.manager.export')}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1"
-            onClick={() => {
-              fileInputRef.current?.click()
-            }}
-            disabled={isImporting}
-            data-testid="skill-import"
-          >
-            <Upload className="h-3.5 w-3.5" aria-hidden="true" />
-            {t('skill.manager.import')}
-          </Button>
+        {/* FR-SKILL-07: 2 tab — Quan ly (CRUD) · Thu vien (duyet theo tag). */}
+        <div
+          className="flex gap-[var(--space-1)] rounded-[var(--radius-md)] bg-[var(--surface-sunken)] p-1"
+          role="tablist"
+          aria-label={t('skill.manager.title')}
+        >
+          {(
+            [
+              { id: 'manage' as const, label: t('skill.manager.tabManage') },
+              { id: 'library' as const, label: t('skill.manager.tabLibrary') },
+            ] satisfies { id: SkillTab; label: string }[]
+          ).map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              role="tab"
+              aria-selected={tab === item.id}
+              data-testid={`skill-tab-${item.id}`}
+              onClick={() => {
+                setTab(item.id)
+              }}
+              className={[
+                'flex-1 rounded-[var(--radius-sm)] px-2 py-1 text-[length:var(--font-size-sm)] transition-colors',
+                'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]',
+                tab === item.id
+                  ? 'bg-[var(--surface-panel)] font-medium text-[var(--text-primary)] shadow-[var(--shadow-1)]'
+                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]',
+              ].join(' ')}
+            >
+              {item.label}
+            </button>
+          ))}
         </div>
 
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="application/json,.json"
-          className="hidden"
-          data-testid="skill-import-input"
-          onChange={(event) => {
-            const file = event.target.files?.[0]
-            event.target.value = ''
-            if (file !== undefined) {
-              void handleImportFile(file)
-            }
-          }}
-        />
-      </div>
+        {tab === 'manage' ? (
+          <>
+            {onCreate !== undefined ? (
+              <Button
+                variant="default"
+                size="sm"
+                className="w-full"
+                onClick={onCreate}
+                data-testid="skill-new"
+              >
+                <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                {t('skill.manager.new')}
+              </Button>
+            ) : null}
 
-      {error !== undefined ? (
-        <p
-          className="px-[var(--space-3)] pb-[var(--space-2)] text-[length:var(--font-size-xs)] text-[var(--danger)]"
-          role="alert"
-          data-testid="skill-error"
-        >
-          {error}
-        </p>
-      ) : null}
+            {/* FR-SKILL-05: import/export skill dang JSON. */}
+            <div className="flex gap-[var(--space-2)]">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1"
+                onClick={handleExport}
+                disabled={user.length === 0}
+                data-testid="skill-export"
+              >
+                <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                {t('skill.manager.export')}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1"
+                onClick={() => {
+                  fileInputRef.current?.click()
+                }}
+                disabled={isImporting}
+                data-testid="skill-import"
+              >
+                <Upload className="h-3.5 w-3.5" aria-hidden="true" />
+                {t('skill.manager.import')}
+              </Button>
+            </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-[var(--space-2)] pb-[var(--space-3)]">
-        <SkillGroup
-          title={t('skill.manager.builtin')}
-          skills={builtin}
-          onUse={onUse}
-          onEdit={onEdit}
-          onDuplicate={handleDuplicate}
-          onRequestDelete={setPendingDelete}
-        />
-        <SkillGroup
-          title={t('skill.manager.user')}
-          skills={user}
-          onUse={onUse}
-          onEdit={onEdit}
-          onDuplicate={handleDuplicate}
-          onRequestDelete={setPendingDelete}
-        />
-
-        {!isLoading && items.length === 0 ? (
-          <p
-            className="px-[var(--space-2)] py-[var(--space-3)] text-[length:var(--font-size-sm)] text-[var(--text-tertiary)]"
-            data-testid="skill-empty"
-          >
-            {t('skill.empty')}
-          </p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/json,.json"
+              className="hidden"
+              data-testid="skill-import-input"
+              onChange={(event) => {
+                const file = event.target.files?.[0]
+                event.target.value = ''
+                if (file !== undefined) {
+                  void handleImportFile(file)
+                }
+              }}
+            />
+          </>
         ) : null}
       </div>
+
+      {tab === 'library' ? (
+        <SkillLibrary onUse={onUse} />
+      ) : (
+        <>
+          {error !== undefined ? (
+            <p
+              className="px-[var(--space-3)] pb-[var(--space-2)] text-[length:var(--font-size-xs)] text-[var(--danger)]"
+              role="alert"
+              data-testid="skill-error"
+            >
+              {error}
+            </p>
+          ) : null}
+
+          <div className="min-h-0 flex-1 overflow-y-auto px-[var(--space-2)] pb-[var(--space-3)]">
+            <SkillGroup
+              title={t('skill.manager.builtin')}
+              skills={builtin}
+              onUse={onUse}
+              onEdit={onEdit}
+              onDuplicate={handleDuplicate}
+              onRequestDelete={setPendingDelete}
+            />
+            <SkillGroup
+              title={t('skill.manager.user')}
+              skills={user}
+              onUse={onUse}
+              onEdit={onEdit}
+              onDuplicate={handleDuplicate}
+              onRequestDelete={setPendingDelete}
+            />
+
+            {!isLoading && items.length === 0 ? (
+              <p
+                className="px-[var(--space-2)] py-[var(--space-3)] text-[length:var(--font-size-sm)] text-[var(--text-tertiary)]"
+                data-testid="skill-empty"
+              >
+                {t('skill.empty')}
+              </p>
+            ) : null}
+          </div>
+        </>
+      )}
 
       <ConfirmDialog
         open={pendingDelete !== undefined}

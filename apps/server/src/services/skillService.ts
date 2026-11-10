@@ -39,6 +39,40 @@ export interface ListSkillsParams {
   scope?: 'user' | 'builtin' | undefined
   /** Loc theo ten (prefix). */
   q?: string | undefined
+  /** Loc theo tag — skill khop neu co **it nhat 1** tag trong danh sach. */
+  tags?: readonly string[] | undefined
+}
+
+/**
+ * Kiem tra skill co khop bo loc tag hay khong.
+ *
+ * Che do `any` (it nhat 1 tag khop) — don gian hon `all`, hop ly voi
+ * nhu cau "loc theo tag" cua nguoi dung.
+ *
+ * @param tags - Tag cua skill.
+ * @param wanted - Bo loc tag (rong → khop het).
+ * @returns `true` neu khop.
+ */
+function matchesTags(tags: readonly string[], wanted: readonly string[] | undefined): boolean {
+  if (wanted === undefined || wanted.length === 0) return true
+  const normalized = wanted.map((tag) => tag.trim().toLowerCase())
+  return tags.some((tag) => normalized.includes(tag.toLowerCase()))
+}
+
+/**
+ * Kiem tra skill co khop tu khoa tim kiem hay khong.
+ *
+ * Khop o **ten** hoac **mo ta** → thu vien browser (FR-SKILL-07) de go
+ * "email" ra duoc skill "viet-email" (mo ta "Soan email").
+ *
+ * @param name - Ten skill.
+ * @param description - Mo ta skill.
+ * @param query - Tu khoa (da lowercase).
+ * @returns `true` neu khop.
+ */
+function matchesQuery(name: string, description: string, query: string): boolean {
+  if (name.toLowerCase().includes(query)) return true
+  return description.toLowerCase().includes(query)
 }
 
 /**
@@ -110,8 +144,8 @@ export async function listSkills(
 
   const builtins = BUILTIN_SKILLS.filter((skill) => {
     if (scope !== undefined && scope !== 'builtin') return false
-    if (query.length === 0) return true
-    return skill.name.toLowerCase().includes(query)
+    if (query.length > 0 && !matchesQuery(skill.name, skill.description, query)) return false
+    return matchesTags(skill.tags, params.tags)
   }).map(builtinToSkill)
 
   if (scope === 'builtin') return builtins
@@ -125,8 +159,10 @@ export async function listSkills(
   const users = rows
     .map(toSkill)
     .filter((skill) => {
-      if (query.length === 0) return true
-      return skill.name.toLowerCase().includes(query)
+      if (query.length > 0 && !matchesQuery(skill.name, skill.description, query)) {
+        return false
+      }
+      return matchesTags(skill.tags, params.tags)
     })
 
   return [...builtins, ...users]

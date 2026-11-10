@@ -109,12 +109,12 @@ Cột ưu tiên: **M** = Must (M1) · **S** = Should (M2) · **C** = Could (M2/M
 | C7 | **RAG local** trên lịch sử chat + tài liệu, có trích dẫn | FR-TOOLS-05 | Minh bạch hơn B15 (Personal Intelligence) |
 | C8 | **Allowlist/denylist context theo domain** | FR-CONTEXT-08 | Mạnh hơn A2 (chỉ bật/tắt toàn cục) |
 | C9 | **Công cụ eval tích hợp** (dataset, judge, dashboard) | `EVAL_PLAN.md` | Không có ở A/B |
-| C10 | **Skill import/export JSON** | FR-SKILL-05 | Mở hơn B6 (phụ thuộc tài khoản Google) — ⬜ T-M2-05 |
+| C10 | **Skill import/export JSON** | FR-SKILL-05 | Mở hơn B6 (phụ thuộc tài khoản Google) — ✅ **T-M2-05 (2026-11-10)** — nút "Xuất JSON" / "Nhập JSON" trong drawer Kỹ năng · file `version: 1` + `exportedAt` + `skills[]` · export chỉ scope `user` · import bỏ `id`/`scope`/timestamp (server tự sinh id mới) · trùng tên → bỏ qua |
 | C11 | **Direct/BYOK fallback mode** khi BFF không chạy | NFR-REL-03, FR-PROVIDER-08/09 ⏸ | Resilience — không hệ thống nào cần — **⏸ tạm dừng 2026-11-08** |
 | C11b | **3 nguồn key** (team key / BYOK qua BFF / BYOK direct) — linh hoạt cho demo lẫn production | FR-PROVIDER-08/09, §4.6.1 ⏸ | Quota tách theo người dùng, không bị lock-in — **⏸ tạm dừng 2026-11-08**; M1 chỉ dùng **K1** (team key trong `.env` BFF) |
 | C12 | **Agentic action có bước xác nhận + diff** | FR-TOOLS-04 | An toàn hơn A14/B12 (chưa thấy yêu cầu xác nhận chi tiết) |
 | C13 | **Không cần tài khoản hãng** (không Microsoft / không Google), chạy được trên managed/Enterprise browser | FR-PROVIDER-02, FR-PROVIDER-07 | Đánh trực tiếp A26, B27 |
-| C14 | **Skill library browser nội bộ** (xem/lọc skill) | FR-SKILL-07 | Tương đương `chrome://skills/browse` nhưng không phụ thuộc Google |
+| C14 | **Skill library browser nội bộ** (xem/lọc skill) | FR-SKILL-07 | Tương đương `chrome://skills/browse` nhưng không phụ thuộc Google — ✅ **T-M2-06 (2026-11-10)** — tab "Thư viện" trong drawer Kỹ năng · lọc server theo `?q=` (tên/mô tả) + `?tags=` (mode `any`) · chip tag · click card → chạy ngay |
 | C15 | **Scheduler chạy nền trong sidebar, self-hosted, không cần license** | FR-WORKFLOW-03, §4.7 | Đánh trực tiếp A28, B28 — cả hai đều đẩy tính năng này ra khỏi sidebar sang sản phẩm khác (M365 Copilot Tasks / Gemini Apps) |
 
 ---
@@ -183,7 +183,7 @@ Dùng làm acceptance checklist cho M1.
 - [x] Stop / Regenerate / Edit-resend — ✅ T-M1-10 (regenerate tạo **biến thể** (switcher "1/2") lưu phía server `messages.meta` → không mất khi reload · edit-resend tạo **branch** (nhánh cũ giữ trong DB, hiển thị ở "Phiên bản cũ") · stop giữ nội dung dở + nút "Tiếp tục" (continue UPDATE message cũ) · Enter gửi / Shift+Enter xuống dòng / Esc dừng · tự lưu draft · auto-scroll chỉ khi ở đáy + nút "Cuộn xuống")
 - [x] Export conversation (Markdown / JSON) — ✅ T-M1-13 (menu `ExportMenu` (Radix Popover) trong header panel · 3 hành động: **Sao chép Markdown** · **Xuất .md** · **Xuất .json** · `.md` có metadata đầu file + metadata từng lượt assistant (provider · model · token · request-id) + nguồn `[N]` · `.json` có `version`/`exportedAt`/`conversation`/`messages[]` · tên file `sidekick-<title>-<yyyyMMdd-HHmm>.<ext>` · chỉ xuất **đường đi active** · E2E `e2e/export.spec.ts` + unit `tests/export.test.ts`)
 - [x] **Error / loading / empty states + retry + trạng thái kết nối** — ✅ **T-M1-19** (4 trạng thái có UI riêng trong `sidepanel/components/states/`: `LoadingState` skeleton · `EmptyState` (wrapper `PromptGallery`) · `ErrorState` card inline · `ConnectionBadge` + banner offline · **hành động khôi phục theo nhóm lỗi**: 401 → "Kiểm tra API key" (mở Settings) · 429 → đếm ngược rồi "Thử lại" · 5xx/network → "Thử lại" · retry tự động **1 lần** backoff 800 ms, **không** retry lỗi auth)
-- [ ] Skills `/` + tạo/sửa/xoá skill + library có sẵn + trang duyệt skill library — 🟡 **T-M2-04 ✅ (2026-11-10)** · còn ⬜ T-M2-06 (library browser) · ⬜ T-M2-21 (thư viện ≥ 8 skill + skill gắn điều kiện) — *chi tiết ở §E.1.4*
+- [ ] Skills `/` + tạo/sửa/xoá skill + library có sẵn + trang duyệt skill library — 🟡 **T-M2-04 ✅ (2026-11-10)** · **T-M2-05 ✅** (import/export JSON) · **T-M2-06 ✅** (library browser lọc theo tag) · ⬜ T-M2-21 (thư viện ≥ 8 skill + skill gắn điều kiện) — *chi tiết ở §E.1.4*
 - [x] Onboarding lần đầu 3 bước — ✅ T-M1-25 (bước 1 giải thích quyền · bước 2 chọn provider + nhập API key (BYOK K2) hoặc dùng Ollama không cần key · bước 3 thử câu hỏi bằng SSE thật · skippable ở mọi bước · mở lại được từ nút "Hướng dẫn" trong header) — *2026-11-08: ô nhập API key đã **gỡ** khỏi bước 2 (BYOK tạm dừng); provider cần key mà chưa có K1 hiện thông báo hướng dẫn*
 - [x] Không bắt buộc đăng nhập tài khoản Microsoft/Google (BYOK hoặc local model) — ✅ T-M1-25 (BYOK K2 qua onboarding + Ollama local không cần key) — *2026-11-08: nhánh BYOK ⏸ tạm dừng; còn nhánh Ollama local không cần key (FR-PROVIDER-07)*
 - [x] Settings: theme, cỡ chữ, chiều rộng, quản lý dữ liệu, i18n VI/EN — ✅ **T-M1-12** (drawer Settings trượt từ phải · theme light/dark/system theo `prefers-color-scheme` · cỡ chữ 4 mức + mật độ 3 mức + bề rộng 3 mức · quản lý dữ liệu: xoá lịch sử chat + xoá dữ liệu cục bộ (đều có confirm) + import/export JSON · endpoint BFF có validate qua `/api/health` · telemetry/history OFF mặc định · *provider/key → ⏸ T-M1-16*) · ✅ **T-M1-17** (i18n đầy đủ — dictionary có kiểu `vi.ts` là nguồn sự thật → thiếu key = lỗi `pnpm typecheck` · đổi ngôn ngữ áp dụng **ngay**, không reload · context menu extension + nút nổi content script cũng đổi theo)
@@ -212,7 +212,7 @@ Dùng làm acceptance checklist cho M1.
 
 | # | Dòng | Lý do | Task kế tiếp |
 |---|---|---|---|
-| 1 | Skills `/` + tạo/sửa/xoá skill + library + trang duyệt skill library | **Cố ý đẩy sang M2** — Edge/Gemini cũng cần tài khoản Google cho Skills, không phải đường găng M1 | 🟡 T-M2-04 ✅ (2026-11-10) · ⬜ T-M2-06 (library browser) · ⬜ T-M2-21 (thư viện ≥ 8 skill + skill gắn điều kiện) — xem §E.1.4 |
+| 1 | Skills `/` + tạo/sửa/xoá skill + library + trang duyệt skill library | **Cố ý đẩy sang M2** — Edge/Gemini cũng cần tài khoản Google cho Skills, không phải đường găng M1 | 🟡 T-M2-04 ✅ (2026-11-10) · ✅ T-M2-05 ✅ T-M2-06 (2026-11-10) · ⬜ T-M2-21 (thư viện ≥ 8 skill + skill gắn điều kiện) — xem §E.1.4 |
 | 2 | Token/cost hiển thị | **UI hiển thị** token/cost là M2; **phần log đầy đủ đã có** ở M1 (T-M1-14: `request_logs` + `GET /api/logs` + `GET /api/usage` → eval harness dùng được) | T-M2-03 → **✅ đã đóng 2026-11-10 (§E.1.3)** |
 | 3 | Direct/BYOK fallback khi BFF down | **⏸ tạm dừng theo quyết định user 2026-11-08** (BYOK gỡ khỏi sản phẩm); server giữ nguyên `provider_keys` để mở lại | T-M1-15 (K3) · T-M1-16 (K2) |
 
@@ -281,12 +281,12 @@ Dòng **"Skills `/` + tạo/sửa/xoá skill + library có sẵn + trang duyệt
 
 | Phần còn thiếu | Task |
 |---|---|
-| **Trang duyệt skill library** (xem/lọc theo tag/tên, click để chạy ngay) | ⬜ **T-M2-06** |
+| **Trang duyệt skill library** (xem/lọc theo tag/tên, click để chạy ngay) | ✅ **T-M2-06 (2026-11-10)** — tab "Thư viện" trong drawer Kỹ năng · `SkillLibrary` (`apps/extension/src/sidepanel/components/skills/SkillLibrary.tsx`) · lọc server `?q=` + `?tags=` (mode `any`) · chip tag toggle · click card → chen `/ten-skill` + đóng drawer + focus composer · unit `tests/skillLibrary.test.tsx` (8) |
 | **Thư viện ≥ 8 skill built-in** (so sánh · trích xuất dữ liệu · viết email · sinh quiz · kiểm tra hiểu) | ⬜ **T-M2-21** |
 | Skill gắn điều kiện (chạy trên tab hiện tại / tab kèm theo — tương đương B6 của Chrome Gemini) | ⬜ **T-M2-21** |
-| Import/export skill JSON | ⬜ **T-M2-05** (độc quyền C10 — không nằm trong gate §E) |
+| Import/export skill JSON | ✅ **T-M2-05 (2026-11-10)** (độc quyền C10 — không nằm trong gate §E) |
 
-> **Không** đóng dòng §E này ở T-M2-04 — chỉ ghi chú tiến độ. Tỉ lệ pass §E **giữ nguyên 33/35 = 94.3%**.
+> **Không** đóng dòng §E này ở T-M2-04/T-M2-05/T-M2-06 — chỉ ghi chú tiến độ. Tỉ lệ pass §E **giữ nguyên 33/35 = 94.3%** (đóng được khi **T-M2-21** xong).
 
 > **Ghi chú công bằng:** Chrome Gemini (B6) **yêu cầu đăng nhập Google** + Chrome ≥ 147 + `en-US` (B27) → Skills của Sidekick cố ý **không** phụ thuộc tài khoản hãng (C13) → khi đối chiếu eval phải nói rõ khác biệt này, không tính là "thắng" 1-1.
 

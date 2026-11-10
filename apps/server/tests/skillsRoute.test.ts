@@ -69,6 +69,72 @@ describe('GET /api/skills', () => {
     const body = (await response.json()) as { error: { code: string } }
     expect(body.error.code).toBe('VALIDATION_ERROR')
   })
+
+  // --- FR-SKILL-07: loc theo tag (T-M2-06) ---
+
+  it('loc tags= → chi tra skill co tag do', async () => {
+    await fetch(`${baseUrl}/api/skills`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'skill-tag-hoc',
+        promptTemplate: 'x',
+        tags: ['b-hoc'],
+      }),
+    })
+
+    const response = await fetch(`${baseUrl}/api/skills?tags=b-hoc`)
+    const body = (await response.json()) as {
+      items: Array<{ name: string; tags: string[] }>
+    }
+
+    expect(response.status).toBe(200)
+    expect(body.items.length).toBeGreaterThan(0)
+    expect(
+      body.items.every((item) => item.tags.includes('b-hoc')),
+    ).toBe(true)
+  })
+
+  it('loc tags= nhieu tag → khop neu co it nhat 1', async () => {
+    const response = await fetch(`${baseUrl}/api/skills?tags=b-hoc,khong-ton-tai`)
+    const body = (await response.json()) as {
+      items: Array<{ tags: string[] }>
+    }
+
+    expect(response.status).toBe(200)
+    expect(body.items.length).toBeGreaterThan(0)
+    expect(
+      body.items.every((item) => item.tags.includes('b-hoc')),
+    ).toBe(true)
+  })
+
+  it('loc tags= → chan ca built-in va skill cua user', async () => {
+    const response = await fetch(`${baseUrl}/api/skills?tags=summary`)
+    const body = (await response.json()) as {
+      items: Array<{ scope: string; tags: string[] }>
+    }
+
+    expect(response.status).toBe(200)
+    expect(
+      body.items.every((item) => item.tags.includes('summary')),
+    ).toBe(true)
+  })
+
+  it('q= khop ca mo ta', async () => {
+    const response = await fetch(`${baseUrl}/api/skills?q=dich`)
+    const body = (await response.json()) as {
+      items: Array<{ name: string; description: string }>
+    }
+
+    expect(response.status).toBe(200)
+    expect(
+      body.items.every(
+        (item) =>
+          item.name.toLowerCase().includes('dich') ||
+          item.description.toLowerCase().includes('dich'),
+      ),
+    ).toBe(true)
+  })
 })
 
 describe('POST /api/skills', () => {

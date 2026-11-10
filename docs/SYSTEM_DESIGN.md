@@ -3530,6 +3530,41 @@ Tên được **chuẩn hoá thành slug** (`normalizeSkillName`) ở tầng sch
 | Extension unit | `apps/extension/tests/skillIO.test.ts` | export tạo file JSON đúng tên + MIME · không export built-in · import file hợp lệ / JSON hỏng / sai shape |
 | Extension unit | `apps/extension/tests/skillManager.test.tsx` | nút Xuất/Nhập · nút xuất disabled khi chưa có skill user · import skill trùng → bỏ qua · import skill mới → gọi API tạo |
 
+#### 7.25.9 Skill library browser (FR-SKILL-07 — T-M2-06)
+
+> Nguồn sự thật cho hành vi: [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.5 (FR-SKILL-07).
+
+**Vị trí:** **tab thứ 2** trong drawer `SkillManager` (`role="tablist"` + 2 nút **Quản lý** / **Thư viện**) → **không** thêm UI pattern mới, **không** thêm thư viện UI.
+
+**Server — lọc theo tag:**
+- `skillListQuerySchema` (shared) thêm `tags` — nhận **2 dạng**: `?tags=a&tags=b` hoặc `?tags=a,b` → `z.preprocess` chuẩn hoá về **mảng chuỗi**.
+- `listSkills` lọc **cả** built-in (registry trong code) **và** skill của user.
+- Chế độ khớp: **`any`** (có **ít nhất 1** tag trong danh sách) — đơn giản, hợp lý với "lọc theo tag".
+- So khớp tag **không phân biệt hoa thường**.
+
+**Server — tìm kiếm (`q`):** khớp ở **tên** **hoặc** **mô tả** → gõ "email" ra được skill `viet-email` (mô tả "Soạn email").
+
+**Extension — `SkillLibrary` component:**
+| Thành phần | Hành vi |
+|---|---|
+| Ô tìm kiếm | `type="search"` + icon `Search` → query `q` (debounce **không** dùng — request rất nhẹ) |
+| Chip tag | suy ra từ **toàn bộ** skill (gọi `listSkills()` không lọc) → user luôn thấy hết tag của thư viện kể cả khi đang lọc · bấm để **toggle** → query `tags` |
+| Card skill | tên + mô tả + badge phạ vi (`Có sẵn` / `Của tôi`) + badge từng tag + icon `Play` |
+| Click card | → `onUse(skill)` → chen `/ten-skill` vào composer + **đóng drawer** + **focus composer** (tái dùng pattern `skillCommand.apply` của `ChatWorkspace`) |
+| Trạng thái | `skill-library-loading` (icon `Loader2`) · `skill-library-empty` · `skill-library-emptyFiltered` (đang lọc mà không ra) · `skill-library-error` (`role="alert"`) |
+
+> **Lọc chạy phía server** → không tải toàn bộ skill về client để lọc.
+
+**API:** `GET /api/skills?q=...&tags=a,b` → `{ items: Skill[] }`.
+
+**Không** thêm endpoint mới · **không** thêm permission · **không** đổi hành vi menu `/`.
+
+| Tầng | File | Phủ |
+|---|---|---|
+| Server route | `apps/server/tests/skillsRoute.test.ts` | `?tags=` lọc đúng · nhiều tag (mode `any`) · lọc cả built-in · `q` khớp cả mô tả |
+| Extension unit | `apps/extension/tests/skillLibrary.test.tsx` | nap danh sách · chip tag suy ra · bấm chip → gọi API với `tags` · gõ → gọi API với `q` · click card → `onUse` · rỗng · lỗi · badge phạm vi |
+| Extension unit | `apps/extension/tests/skillManager.test.tsx` | mặc định tab "Quản lý" · bấm tab "Thư viện" → hiện `SkillLibrary` |
+
 ---
 
 ## 8. Hiệu năng

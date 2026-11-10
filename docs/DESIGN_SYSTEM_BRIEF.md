@@ -734,7 +734,16 @@ Component `SkillMenu` (popover `/`) + `SkillManager` (drawer) + `SkillFormDialog
 - **Icon:** `aria-hidden="true"`; nút có **text** (không icon-only) → không cần `aria-label` riêng.
 - **Feedback:** toast `toast.skillExported` / `skillExportFailed` / `skillImported` / `skillImportedPartial` / `skillImportFailed`.
 
-**3.13.5 Action trên bubble (`MessageActions`)**
+**3.13.5 Thư viện skill (`SkillLibrary`)**
+
+- **Vị trí:** **tab thứ 2** trong drawer `SkillManager` (`role="tablist"` + 2 nút **Quản lý** / **Thư viện**) → tái dùng pattern có sẵn, **không** thêm thư viện UI.
+- **Ô tìm kiếm:** `type="search"` + icon `Search` (trang trí) → `data-testid="skill-library-search"` · `aria-label` = `skill.library.searchLabel`.
+- **Chip tag:** `role="group"` + `aria-pressed` → `data-testid="skill-library-tag"` · trạng thái active dùng `--color-accent` / `--color-accent-fg` · **không** hardcode màu.
+- **Card skill:** `data-testid="skill-library-item"` · nút **1 ô** (click = chạy skill) · badge phạm vi (`data-testid="skill-library-scope"`) · badge tag (`data-testid="skill-library-item-tag"`).
+- **Trạng thái:** `skill-library-loading` (icon `Loader2` xoay) · `skill-library-empty` · `skill-library-emptyFiltered` · `skill-library-error` (`role="alert"`, màu `--danger`).
+- **Focus ring:** chuẩn `focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]`.
+
+**3.13.6 Action trên bubble (`MessageActions`)**
 
 - Chỉ hiện ở **user message** (assistant không có) → nút "Lưu thành kỹ năng" (`BookmarkPlus`).
 - **Điều kiện:** message có nội dung **và** không đang stream.

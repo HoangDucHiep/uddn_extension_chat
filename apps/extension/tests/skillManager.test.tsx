@@ -273,4 +273,30 @@ describe('SkillManager', () => {
       )
     })
   })
+
+  // --- FR-SKILL-07: tab "Thu vien" (T-M2-06) ---
+
+  it('mac dinh hien tab "Quan ly", an tab "Thu vien"', async () => {
+    render(<SkillManager onUse={vi.fn()} />)
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId('skill-use')).toHaveLength(2)
+    })
+
+    expect(screen.queryByTestId('skill-library')).toBeNull()
+    expect(screen.getByTestId('skill-tab-manage').getAttribute('aria-selected')).toBe('true')
+  })
+
+  it('bam tab "Thu vien" → hien SkillLibrary', async () => {
+    render(<SkillManager onUse={vi.fn()} />)
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId('skill-use')).toHaveLength(2)
+    })
+
+    fireEvent.click(screen.getByTestId('skill-tab-library'))
+
+    expect(screen.getByTestId('skill-library')).toBeTruthy()
+    expect(screen.getByTestId('skill-tab-library').getAttribute('aria-selected')).toBe('true')
+  })
 })

@@ -9,6 +9,15 @@
 ## [Unreleased]
 
 ### Added
+- **T-M2-06 — Skills: skill library browser lọc theo tag (FR-SKILL-07)**
+  - **Quyết định thiết kế:** lọc chạy **phía server** (`GET /api/skills?q=...&tags=a,b`) → không tải toàn bộ skill về client để lọc. Lọc **cả** built-in (registry trong code) **và** skill của user. Chế độ khớp tag = **`any`** (có **ít nhất 1** tag trong danh sách) — đơn giản hơn `all`, hợp lý với "lọc theo tag"; so khớp **không phân biệt hoa thường**. Query `q` khớp **tên** **hoặc** **mô tả** → gõ "email" ra được skill `viet-email`.
+  - **Contract shared:** `packages/shared/src/schemas/skill.ts` → `skillListQuerySchema.tags` (nhận **2 dạng**: `?tags=a&tags=b` hoặc `?tags=a,b` → `z.preprocess` chuẩn hoá về mảng chuỗi).
+  - **Server:** `apps/server/src/services/skillService.ts` → `ListSkillsParams.tags` + `matchesTags()` + `matchesQuery()` (tên **hoặc** mô tả). `apps/server/src/routes/skills.ts` → không đổi (query đã đi qua `skillListQuerySchema`).
+  - **Extension:** `apps/extension/src/lib/skillClient.ts` → `ListSkillsParams.tags` → `?tags=a,b`. `apps/extension/src/sidepanel/components/skills/SkillLibrary.tsx` (mới) → ô tìm kiếm (`type="search"` + icon `Search`) · hàng **chip tag** (toggle, `aria-pressed`) · card skill (tên + mô tả + badge phạm vi + badge tag + icon `Play`) · **click card → chạy ngay** (`onUse` → chen `/ten-skill` vào composer + đóng drawer + focus composer) · trạng thái `loading` / `empty` / `emptyFiltered` / `error` (inline, không crash).
+  - **UI:** `apps/extension/src/sidepanel/components/skills/SkillManager.tsx` → **2 tab** (`role="tablist"`): **Quản lý** (CRUD + import/export) · **Thư viện** (`SkillLibrary`). **Không** thêm thư viện UI.
+  - **i18n:** `skill.manager.tabManage` · `skill.manager.tabLibrary` · `skill.library.searchPlaceholder` · `skill.library.searchLabel` · `skill.library.tagFilterLabel` · `skill.library.loading` · `skill.library.empty` · `skill.library.emptyFiltered`.
+  - **Test:** `apps/server/tests/skillsRoute.test.ts` (+4 — `?tags=` lọc đúng · nhiều tag mode `any` · lọc cả built-in · `q` khớp cả mô tả) · `apps/extension/tests/skillLibrary.test.tsx` (8 — mới) · `apps/extension/tests/skillManager.test.tsx` (+2 — tab mặc định · chuyển tab).
+  - **Docs:** `docs/SYSTEM_DESIGN.md` §7.25.9 (mới) · `docs/REQUIREMENTS.md` §4.5 (FR-SKILL-07 → ✅) + §9 traceability · `docs/DESIGN_SYSTEM_BRIEF.md` §3.13.5 (mới).
 - **T-M2-05 — Skills: import/export JSON (FR-SKILL-05)**
   - **Định dạng file:** `version: 1` + `exportedAt` (ISO 8601) + `skills[]` (shape `Skill` đầy đủ) → `sidekick-skills-<yyyyMMdd-HHmm>.json`.
   - **Quyết định thiết kế:** export **chỉ** skill `scope === 'user'` (skill built-in nằm trong registry trong code `apps/server/src/skills/builtin.ts` → export ra rồi import lại vô nghĩa + đụng tên). Import **bỏ qua** `id` / `scope` / `createdAt` / `updatedAt` → server tự sinh `id` mới + gán `scope: 'user'` → không ghi đè skill của máy khác. Skill **trùng tên** → **bỏ qua** + toast tổng kết (không hỏi lại user). `version` khi import **không** bắt buộc → user tự viết file vẫn import được. Tối đa `SKILL_MAX_IMPORT_ITEMS = 100` skill / lần import.

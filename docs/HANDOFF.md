@@ -27,7 +27,7 @@
 | Code | ✅ **M1 (Parity) ĐÓNG** — 23/25 task (T-M1-15 + T-M1-16 ⏸ tạm dừng) — 4 workspace, **1565 unit test + 100 E2E** · **M2 đang làm** (T-M2-02 ✅ · T-M2-03 ✅ · T-M2-03b ✅ · T-M2-04 ✅ · kiểm chứng live Chrome **15/15** mục §11b) |
 | Git | ✅ Đã init (`main`) · tag `v0.1` (M0) · tag **`v0.2`** (M1 đóng 2026-11-09) |
 | Milestone hiện tại | **M2 — Advanced & Eval** (M0 ✅ · M1 ✅) |
-| Task tiếp theo | **T-M2-06** — skill library browser (lọc theo tag, search, click để chạy) → **T-M2-21** (thư viện ≥ 8 built-in skill + skill gắn điều kiện tab) → **T-M2-07 → 11** (Tools/MCP/RAG) → **T-M2-12 → 17** (eval — deliverable bắt buộc `docs/EVAL_REPORT.md`) |
+| Task tiếp theo | **T-M2-21** — thư viện ≥ 8 built-in skill (FR-SKILL-04) + skill gắn điều kiện tab (FR-SKILL-06) → **T-M2-07 → 11** (Tools/MCP/RAG) → **T-M2-12 → 17** (eval — deliverable bắt buộc `docs/EVAL_REPORT.md`) |
 
 ### Đang làm dở
 
@@ -43,8 +43,8 @@ _(Không có — M1 đóng xong 2026-11-09, tag `v0.2`)_
 | T-M2-03b Budget cap (FR-PROVIDER-06) | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.24 · enforce **phía server** (`budget_settings` trong Postgres) |
 | T-M2-04 Skills: menu `/`, CRUD, seed built-in (FR-SKILL-01/02/03) | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.25 · server resolve `prompt_template` + `model` override · seed **3** skill built-in |
 | T-M2-05 Skill import/export JSON (FR-SKILL-05) | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.25.8 — file `version: 1` + `exportedAt` + `skills[]`; export **chỉ** scope `user`; import bỏ `id`/`scope`/timestamp; trùng tên → bỏ qua + toast; nút **Xuất JSON** / **Nhập JSON** trong drawer Kỹ năng |
-| T-M2-06 Skill library browser (FR-SKILL-07) | 🟡 **đang làm** | cột `tags` đã có sẵn → lọc theo tag dễ · tab 2 trong drawer Kỹ năng |
-| T-M2-21 Skill library built-in ≥ 8 + skill gắn điều kiện tab (FR-SKILL-04/06) | ⬜ chưa bắt đầu | mở rộng registry `apps/server/src/skills/builtin.ts` + migration `0005` (cột `tab_condition` jsonb) |
+| T-M2-06 Skill library browser (FR-SKILL-07) | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.25.9 — tab "Thư viện" trong drawer Kỹ năng · lọc server `?q=` (tên/mô tả) + `?tags=` (mode `any`) · chip tag toggle · click card → chạy ngay |
+| T-M2-21 Skill library built-in ≥ 8 + skill gắn điều kiện tab (FR-SKILL-04/06) | ⬜ chưa bắt đầu | **Task tiếp theo** — mở rộng registry `apps/server/src/skills/builtin.ts` (3 → ≥ 8) + migration `0005` (cột `tab_condition` jsonb) |
 | T-M2-12..17 Eval | ⬜ chưa bắt đầu | `docs/EVAL_REPORT.md` là deliverable bắt buộc · **để sau** (quyết định user 2026-11-10) |
 
 > **Bảng kết quả chi tiết của M2** (trạng thái task · verify · commit · ảnh hưởng gate parity) nằm ở [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) **§4.1** — đọc ở đó thay vì tra lại từng file.
