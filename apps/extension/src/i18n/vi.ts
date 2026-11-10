@@ -393,6 +393,8 @@ export const viDictionary = {
   'skill.manager.builtin': 'Có sẵn',
   'skill.manager.user': 'Của tôi',
   'skill.manager.new': 'Tạo kỹ năng',
+  'skill.manager.export': 'Xuất JSON',
+  'skill.manager.import': 'Nhập JSON',
   'skill.manager.use': 'Dùng kỹ năng',
   'skill.manager.useLabel': 'Dùng kỹ năng {name}',
   'skill.manager.edit': 'Sửa kỹ năng',
@@ -426,6 +428,11 @@ export const viDictionary = {
   'toast.skillDuplicated': 'Đã nhân bản kỹ năng',
   'toast.skillDuplicateFailed': 'Không nhân bản được kỹ năng',
   'toast.skillLoadFailed': 'Không tải được danh sách kỹ năng',
+  'toast.skillExported': 'Đã xuất {count} kỹ năng',
+  'toast.skillExportFailed': 'Không xuất được kỹ năng',
+  'toast.skillImported': 'Đã nhập {count} kỹ năng',
+  'toast.skillImportedPartial': 'Đã nhập {count} kỹ năng, bỏ qua {skipped} trùng tên',
+  'toast.skillImportFailed': 'Không nhập được kỹ năng',
 } as const
 
 /** Union cua tat ca khoa dich hop le. */

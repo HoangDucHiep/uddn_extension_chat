@@ -726,7 +726,15 @@ Component `SkillMenu` (popover `/`) + `SkillManager` (drawer) + `SkillFormDialog
 - **Sửa:** tên để trống → giữ nguyên tên cũ (schema `updateSkillSchema` cho phép vắng mặt).
 - **Token:** `--radius-lg` · `--border-default` · `--surface-panel`. **Không hardcode màu.**
 
-**3.13.4 Action trên bubble (`MessageActions`)**
+**3.13.4 Import/export JSON (FR-SKILL-05 — T-M2-05)**
+
+- **Vị trí:** trong drawer `SkillManager`, hàng 2 nút **dưới** nút "Tạo kỹ năng" → `flex gap-[var(--space-2)]`, mỗi nút `variant="outline"` `size="sm"` `flex-1`.
+- **Nút "Xuất JSON"** (`Download`) → `data-testid="skill-export"` · **disabled** khi user chưa có skill nào của mình (không tạo file rỗng vô nghĩa).
+- **Nút "Nhập JSON"** (`Upload`) → `data-testid="skill-import"` → bấm để mở `<input type="file" accept="application/json,.json" class="hidden" data-testid="skill-import-input">` (pattern y hệt `DataSettings`).
+- **Icon:** `aria-hidden="true"`; nút có **text** (không icon-only) → không cần `aria-label` riêng.
+- **Feedback:** toast `toast.skillExported` / `skillExportFailed` / `skillImported` / `skillImportedPartial` / `skillImportFailed`.
+
+**3.13.5 Action trên bubble (`MessageActions`)**
 
 - Chỉ hiện ở **user message** (assistant không có) → nút "Lưu thành kỹ năng" (`BookmarkPlus`).
 - **Điều kiện:** message có nội dung **và** không đang stream.

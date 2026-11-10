@@ -21,6 +21,14 @@ vi.mock('sonner', () => ({
   },
 }))
 
+const exportSkillsFileMock = vi.fn()
+const importSkillsFileMock = vi.fn()
+
+vi.mock('@/lib/skillIO', () => ({
+  exportSkillsFile: (skills: unknown) => exportSkillsFileMock(skills),
+  importSkillsFile: (file: unknown) => importSkillsFileMock(file),
+}))
+
 const { SkillManager } = await import('../src/sidepanel/components/skills/SkillManager')
 const { useSkillStore } = await import('../src/sidepanel/store/skillStore')
 
@@ -178,6 +186,91 @@ describe('SkillManager', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('skill-error').textContent).toBe('BFF down')
+    })
+  })
+
+  // --- FR-SKILL-05: import/export JSON (T-M2-05) ---
+
+  it('bam "Xuat JSON" → goi exportSkillsFile', async () => {
+    render(<SkillManager onUse={vi.fn()} />)
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId('skill-use')).toHaveLength(2)
+    })
+
+    fireEvent.click(screen.getByTestId('skill-export'))
+
+    expect(exportSkillsFileMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('nut xuat bi disable khi khong co skill cua user', async () => {
+    listSkillsMock.mockResolvedValue([BUILTIN])
+
+    render(<SkillManager onUse={vi.fn()} />)
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId('skill-use')).toHaveLength(1)
+    })
+
+    expect((screen.getByTestId('skill-export') as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('chon file → goi importSkillsFile', async () => {
+    importSkillsFileMock.mockResolvedValue([])
+
+    render(<SkillManager onUse={vi.fn()} />)
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId('skill-use')).toHaveLength(2)
+    })
+
+    const file = new File(['{}'], 'skills.json', { type: 'application/json' })
+    fireEvent.change(screen.getByTestId('skill-import-input'), { target: { files: [file] } })
+
+    await waitFor(() => {
+      expect(importSkillsFileMock).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  it('import skill trung ten → bo qua (khong goi tao skill)', async () => {
+    importSkillsFileMock.mockResolvedValue([
+      { name: 'skill-cua-toi', description: '', promptTemplate: 'x', tags: [] },
+    ])
+
+    render(<SkillManager onUse={vi.fn()} />)
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId('skill-use')).toHaveLength(2)
+    })
+
+    const file = new File(['{}'], 'skills.json', { type: 'application/json' })
+    fireEvent.change(screen.getByTestId('skill-import-input'), { target: { files: [file] } })
+
+    await waitFor(() => {
+      expect(importSkillsFileMock).toHaveBeenCalled()
+    })
+    expect(createSkillMock).not.toHaveBeenCalled()
+  })
+
+  it('import skill moi → goi tao skill', async () => {
+    importSkillsFileMock.mockResolvedValue([
+      { name: 'skill-moi', description: '', promptTemplate: 'x', tags: [] },
+    ])
+    createSkillMock.mockResolvedValue(skill({ id: 's9', name: 'skill-moi', scope: 'user' }))
+
+    render(<SkillManager onUse={vi.fn()} />)
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId('skill-use')).toHaveLength(2)
+    })
+
+    const file = new File(['{}'], 'skills.json', { type: 'application/json' })
+    fireEvent.change(screen.getByTestId('skill-import-input'), { target: { files: [file] } })
+
+    await waitFor(() => {
+      expect(createSkillMock).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'skill-moi' }),
+      )
     })
   })
 })

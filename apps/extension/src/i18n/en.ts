@@ -381,6 +381,8 @@ export const enDictionary: Dictionary = {
   'skill.manager.builtin': 'Built-in',
   'skill.manager.user': 'Yours',
   'skill.manager.new': 'New skill',
+  'skill.manager.export': 'Export JSON',
+  'skill.manager.import': 'Import JSON',
   'skill.manager.use': 'Use skill',
   'skill.manager.useLabel': 'Use skill {name}',
   'skill.manager.edit': 'Edit skill',
@@ -414,4 +416,9 @@ export const enDictionary: Dictionary = {
   'toast.skillDuplicated': 'Skill duplicated',
   'toast.skillDuplicateFailed': 'Cannot duplicate the skill',
   'toast.skillLoadFailed': 'Cannot load the skill list',
+  'toast.skillExported': 'Exported {count} skills',
+  'toast.skillExportFailed': 'Cannot export the skills',
+  'toast.skillImported': 'Imported {count} skills',
+  'toast.skillImportedPartial': 'Imported {count} skills, skipped {skipped} duplicate names',
+  'toast.skillImportFailed': 'Cannot import the skills',
 }

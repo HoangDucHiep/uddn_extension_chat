@@ -3481,6 +3481,55 @@ Tên được **chuẩn hoá thành slug** (`normalizeSkillName`) ở tầng sch
 | Extension unit | `apps/extension/tests/skillManager.test.tsx` | 2 nhóm · dùng/sửa/nhân bản/xoá (confirm) · built-in không cho xoá |
 | E2E | `apps/extension/e2e/skills.spec.ts` | stub `/api/skills` → gõ `/` → menu hiện → chọn → token vào composer + `skillId` gửi BFF · Escape đóng · drawer từ header |
 
+#### 7.25.8 Import/export skill JSON (FR-SKILL-05 — T-M2-05)
+
+> Nguồn sự thật cho hành vi: [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.5 (FR-SKILL-05).
+
+**Định dạng file** (`version: 1`):
+
+```json
+{
+  "version": 1,
+  "exportedAt": "2026-11-10T08:30:00.000Z",
+  "skills": [ { "id": "...", "name": "viet-email", "description": "...", "...": "..." } ]
+}
+```
+
+| Quyết định | Chốt | Lý do |
+|---|---|---|
+| Export chỉ skill `scope === 'user'` | ✅ | Skill built-in nằm trong **registry trong code** (`apps/server/src/skills/builtin.ts`) → export ra rồi import lại vô nghĩa + đụng tên built-in |
+| Import bỏ qua `id` / `scope` / `createdAt` / `updatedAt` | ✅ | File có thể chuyển máy → `id` của máy A không tồn tại ở máy B → server tự sinh `id` mới + gán `scope: 'user'` → **không** ghi đè skill khác |
+| Tên trùng khi import | **Bỏ qua** + toast tổng kết | Không hỏi lại user; skill cũ được giữ nguyên |
+| `version` khi import | **không** bắt buộc | User tự viết file JSON vẫn import được |
+| Giới hạn | `skills` tối đa `SKILL_MAX_IMPORT_ITEMS = 100` | Chặn file quá lớn |
+
+**Module thuần** (`packages/shared/src/skillIO.ts` — không Zod, không DOM):
+
+| Hàm | Tác dụng |
+|---|---|
+| `buildSkillExport(skills, at?)` | lọc `scope === 'user'` → payload export |
+| `toImportableSkills(payload)` | chuẩn hoá slug · bỏ id/scope/timestamp · loại tên rõng/trùng trong file · cắt tag rỗng |
+| `buildSkillFileName(at?)` | `sidekick-skills-<yyyyMMdd-HHmm>.json` |
+
+**Schema Zod** (`packages/shared/src/schemas/skillIO.ts`): `skillExportPayloadSchema` (`version` literal `1`) · `skillImportPayloadSchema` (`skills` 1..100).
+
+**Extension** (`apps/extension/src/lib/skillIO.ts`):
+- `exportSkillsFile(skills)` → dùng `downloadTextFile` (`Blob` + `<a download>` — **không** cần permission `chrome.downloads`).
+- `importSkillsFile(file)` → `file.text()` + `JSON.parse` + `skillImportPayloadSchema.safeParse` → lỗi có **đường dẫn field** rõ ràng.
+
+**UI** (trong drawer `SkillManager`, dưới nút "Tạo kỹ năng"):
+- 2 nút: **Xuất JSON** (`Download`) · **Nhập JSON** (`Upload`) + `<input type="file" accept="application/json,.json" hidden>`.
+- Nút "Xuất JSON" **disabled** khi user chưa có skill nào của mình.
+- Import → gọi `POST /api/skills` cho từng skill (tái dùng endpoint có sẵn, **không** thêm endpoint mới) → server trả `CONFLICT` nếu trùng tên → client bỏ qua.
+
+**Không cần endpoint mới** — export dùng `GET /api/skills?scope=user`, import dùng `POST /api/skills`.
+
+| Tầng | File | Phủ |
+|---|---|---|
+| Shared unit | `packages/shared/tests/skillIO.test.ts` | export chỉ lấy scope user · round-trip không mất dữ liệu · bỏ id/scope · slug hoá · trùng tên trong file · schema reject (version sai · skills rỗng · > 100) |
+| Extension unit | `apps/extension/tests/skillIO.test.ts` | export tạo file JSON đúng tên + MIME · không export built-in · import file hợp lệ / JSON hỏng / sai shape |
+| Extension unit | `apps/extension/tests/skillManager.test.tsx` | nút Xuất/Nhập · nút xuất disabled khi chưa có skill user · import skill trùng → bỏ qua · import skill mới → gọi API tạo |
+
 ---
 
 ## 8. Hiệu năng

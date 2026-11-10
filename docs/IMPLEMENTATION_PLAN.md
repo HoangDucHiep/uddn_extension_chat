@@ -1004,7 +1004,7 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 | FR-CONTEXT-01..13 | 13 FR | T-M1-01/02/04/05/**06 ✅**/**08 ✅**/**14 ✅** · **T-M1-21/22/23** · **T-M2-19** | FR-CONTEXT-05/06 nâng lên Must (2026-11-04) · FR-CONTEXT-13 (chat không cần context) do T-M1-23 · **FR-CONTEXT-03 (`@` multi-tab) do T-M1-05 ✅** · **FR-CONTEXT-04 (selection) do T-M1-02 ✅** · **FR-CONTEXT-01 (cache URL+hash) + FR-CONTEXT-12 (snapshot) do T-M1-06 ✅** · **FR-CONTEXT-10 (citation chip + popover) do T-M1-08 ✅ (2026-11-06)** · **FR-CONTEXT-12 (log đầy đủ + cost thật + read API metadata-only) do T-M1-14 ✅ (2026-11-07)** |
 | FR-VISION-01..05 | 5 FR | **T-M1-24 ✅** (upload) · **T-M2-22** (mở rộng) | FR-VISION-01 nâng lên M · **T-M1-24 xong 2026-11-05** (vision đầy đủ Gemini + OpenAI-compatible, lưu Postgres, multi-turn) |
 | FR-TOOLS-01..06 | 6 FR | T-M2-07/08/09/10/11/18 · **T-M2-20** | FR-TOOLS-03 (web search) tách riêng khỏi tool registry |
-| FR-SKILL-01..07 | 7 FR | **T-M2-04 ✅**/05/06 · **T-M2-21** | **FR-SKILL-01/02/03 (menu `/` + CRUD skill) do T-M2-04 ✅ (2026-11-10)** — server resolve `prompt_template` + `model` override; seed tối thiểu 3 skill built-in · FR-SKILL-04 (skill mẫu ≥8) + FR-SKILL-06 (điều kiện) tách task **T-M2-21** · FR-SKILL-05 (import/export) → T-M2-05 · FR-SKILL-07 (library browser) → T-M2-06 |
+| FR-SKILL-01..07 | 7 FR | **T-M2-04 ✅**/05/06 · **T-M2-21** | **FR-SKILL-01/02/03 (menu `/` + CRUD skill) do T-M2-04 ✅ (2026-11-10)** — server resolve `prompt_template` + `model` override; seed tối thiểu 3 skill built-in · **FR-SKILL-05 (import/export JSON) do T-M2-05 ✅ (2026-11-10)** · FR-SKILL-04 (skill mẫu ≥8) + FR-SKILL-06 (điều kiện) tách task **T-M2-21** · FR-SKILL-07 (library browser) → T-M2-06 |
 | FR-PROVIDER-01..09 | 9 FR | T-M0-07/08 · T-M1-15/16 · T-M2-01/02/03 | FR-PROVIDER-04 (fallback) nằm trong T-M2-02 |
 | FR-WORKFLOW-01..13 | 13 FR | T-M4-01..08 · `FR-WORKFLOW-04` → **M5** | FR-WORKFLOW-04 deferred (rủi ro MV3 `tabs.onUpdated`) |
 | FR-SETTINGS-01..07 | 7 FR | T-M0-14 · **T-M1-12 ✅**/17 ✅ · **T-M2-19** (FR-SETTINGS-04) | **FR-SETTINGS-01/02/03/05/06/07 do T-M1-12 ✅ (2026-11-07)** (theme · cỡ chữ/mật độ/bề rộng · xoá lịch sử + xoá local + import/export · endpoint BFF có validate · lưu lựa chọn VI/EN) · FR-SETTINGS-04 (cờ telemetry/history, OFF mặc định) cũng do T-M1-12 ✅ — hành vi telemetry thật → T-M2-19 · **dịch UI VI/EN do T-M1-17 ✅ (2026-11-08)** (dictionary có kiểu → thiếu key = lỗi typecheck; đổi ngôn ngữ áp dụng ngay, không reload) |
@@ -1031,7 +1031,7 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 | T-M2-03 | Token & cost calculator + usage UI | FR-PROVIDER-05 | `lib/cost.ts`, `settings/DataSettings.tsx`, `chat/UsageBadge.tsx` | Hiện token/cost từng lượt | M | ✅ *(2026-11-10)* — phần **budget cap (FR-PROVIDER-06)** tách thành **T-M2-03b** (đã xong) |
 | T-M2-03b | Budget cap (cảnh báo + tuỳ chọn chặn khi vượt ngưỡng chi phí) | FR-PROVIDER-06 | `packages/shared/src/budget.ts`, `packages/shared/src/schemas/budget.ts`, `apps/server/src/services/budgetService.ts`, `apps/server/src/routes/budget.ts`, `apps/extension/src/sidepanel/components/settings/BudgetSettings.tsx`, `apps/extension/src/sidepanel/components/BudgetBanner.tsx` | Cấu hình ngưỡng ở Settings (**lưu phía server** — bảng `budget_settings`); cảnh báo khi tổng `cost_usd` vượt ngưỡng; tuỳ chọn chặn lượt chat mới (server **không gọi provider** → chi phí = 0) | M | ✅ *(2026-11-10)* |
 | T-M2-04 | Skills: menu `/`, CRUD, builtin library | FR-SKILL-01/02/03, NFR-MAINT-03 | `sidepanel/components/skills/*`, `POST /skills` | `/` → list skill; tạo skill từ message; CRUD đủ | L | ✅ *(2026-11-10)* — seed **tối thiểu 3 skill** built-in; thư viện ≥8 skill → T-M2-21 |
-| T-M2-05 | Skill import/export JSON | FR-SKILL-05 | `sidepanel/lib/skillIO.ts` | Export/import round-trip không mất dữ liệu | S |
+| T-M2-05 | Skill import/export JSON | FR-SKILL-05 | `packages/shared/src/skillIO.ts`, `packages/shared/src/schemas/skillIO.ts`, `apps/extension/src/lib/skillIO.ts` | Export/import round-trip không mất dữ liệu | S | ✅ *(2026-11-10)* — file `version: 1` + `exportedAt` + `skills[]`; export **chỉ** scope `user`; import bỏ `id`/`scope`/timestamp; trùng tên → bỏ qua + toast; ≤ 100 skill/lần |
 | T-M2-06 | Skill library browser nội bộ | FR-SKILL-07 | `sidepanel/components/skills/SkillLibrary.tsx` | Xem/lọc skill theo tag | M |
 | T-M2-07 | Tool registry (builtin: web search, calculator) | FR-TOOLS-01/02, NFR-MAINT-03 | `apps/server/src/tools/{registry.ts,builtin/*}` | Tool được liệt kê; invoke trả kết quả | L |
 | T-M2-08 | MCP client (stdio transport) + server manager | FR-TOOLS-01/02 | `apps/server/src/tools/mcp/{client.ts,manager.ts}` | Kết nối MCP server, liệt kê tool, gọi tool | L |
@@ -1171,14 +1171,19 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 
 #### 4.3.4 Việc tiếp theo trong M2
 
+> **Thứ tự đã chốt (2026-11-10, sau T-M2-04):** làm **hết nhóm Skills** (T-M2-05 → 06 → 21) **trước**, rồi mới sang Tools/MCP/RAG. Lý do:
+> - 3 task Skills đều là **mở rộng trên code đã có** (CRUD + `tags` + `scope` sẵn trong schema) → khối lượng nhỏ hơn hẳn nhóm Tools/MCP/RAG (greenfield).
+> - Đóng được dòng §E "Skills" + các hàng B8/C10/C14 → claim trong báo cáo khớp thực tế.
+> - **Eval (T-M2-12 → 17) để sau** (quyết định user 2026-11-10): eval đo chất lượng sản phẩm → chạy trên feature chưa ổn định thì phải chạy lại; T-M2-15/16 cần người thật → nên chạy **song song** khi feature đã ổn định.
+
 | Ưu tiên | Task | Lý do |
 |---|---|---|
-| 1 | **T-M2-12** — dataset eval (≥ 44 task + snapshot trang) | **Ràng buộc báo cáo** — `docs/EVAL_REPORT.md` là deliverable bắt buộc. Contract đã có ở `packages/shared/src/schemas/eval.ts` |
-| 2 | **T-M2-13** → **T-M2-14** — harness → judge | 1 lệnh chạy được + judge temperature 0 + blind mapping |
-| 3 | **T-M2-15 → 16 → 17** — thu thập tay → chấm tay → báo cáo | **Cần người thật** → có lead-time dài nhất, nên bắt đầu sớm |
-| 4 | **T-M2-05** — skill import/export JSON (FR-SKILL-05) | **Task kế tiếp theo thứ tự M2 sau T-M2-04** — mở rộng CRUD đã có |
-| 5 | **T-M2-06** — skill library browser (FR-SKILL-07) | Cột `tags` đã có sẵn → lọc theo tag dễ |
-| 6 | **T-M2-21** — thư viện ≥ 8 skill + skill gắn điều kiện (FR-SKILL-04/06) | Hoàn tất dòng §E "Skills" |
+| 1 | **T-M2-05** — skill import/export JSON (FR-SKILL-05) | ✅ *(2026-11-10)* — mở rộng CRUD đã có |
+| 2 | **T-M2-06** — skill library browser (FR-SKILL-07) | Cột `tags` đã có sẵn → lọc theo tag dễ |
+| 3 | **T-M2-21** — thư viện ≥ 8 skill + skill gắn điều kiện (FR-SKILL-04/06) | Hoàn tất dòng §E "Skills" |
+| 4 | **T-M2-07 → 11** — Tools/MCP/RAG | Greenfield · MCP (C4) + RAG (C7) là 2 claim độc quyền hiện **chưa có thật** |
+| 5 | **T-M2-12 → 17** — eval | Deliverable bắt buộc (`docs/EVAL_REPORT.md`) — làm **sau** khi feature ổn định |
+| 6 | **T-M2-18 → 20** — agentic · web search · context policy | Could — cắt được nếu thiếu thời gian |
 
 ---
 

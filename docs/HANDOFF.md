@@ -27,7 +27,7 @@
 | Code | ✅ **M1 (Parity) ĐÓNG** — 23/25 task (T-M1-15 + T-M1-16 ⏸ tạm dừng) — 4 workspace, **1565 unit test + 100 E2E** · **M2 đang làm** (T-M2-02 ✅ · T-M2-03 ✅ · T-M2-03b ✅ · T-M2-04 ✅ · kiểm chứng live Chrome **15/15** mục §11b) |
 | Git | ✅ Đã init (`main`) · tag `v0.1` (M0) · tag **`v0.2`** (M1 đóng 2026-11-09) |
 | Milestone hiện tại | **M2 — Advanced & Eval** (M0 ✅ · M1 ✅) |
-| Task tiếp theo | **T-M2-12** — điền dataset eval thật (`apps/eval/dataset/tasks.json` + `dataset/snapshots/*`) → T-M2-13 harness → T-M2-14 judge → T-M2-15..17 → **`docs/EVAL_REPORT.md`** (deliverable bắt buộc) · *(sau đó: **T-M2-05** skill import/export → **T-M2-06** skill library browser → **T-M2-21** thư viện ≥ 8 skill)* |
+| Task tiếp theo | **T-M2-06** — skill library browser (lọc theo tag, search, click để chạy) → **T-M2-21** (thư viện ≥ 8 built-in skill + skill gắn điều kiện tab) → **T-M2-07 → 11** (Tools/MCP/RAG) → **T-M2-12 → 17** (eval — deliverable bắt buộc `docs/EVAL_REPORT.md`) |
 
 ### Đang làm dở
 
@@ -42,11 +42,22 @@ _(Không có — M1 đóng xong 2026-11-09, tag `v0.2`)_
 | T-M2-03 Token & cost UI | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.23 |
 | T-M2-03b Budget cap (FR-PROVIDER-06) | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.24 · enforce **phía server** (`budget_settings` trong Postgres) |
 | T-M2-04 Skills: menu `/`, CRUD, seed built-in (FR-SKILL-01/02/03) | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.25 · server resolve `prompt_template` + `model` override · seed **3** skill built-in |
-| T-M2-05 Skill import/export JSON (FR-SKILL-05) | ⬜ chưa bắt đầu | **Task kế tiếp** — mở rộng CRUD đã có |
-| T-M2-06 Skill library browser (FR-SKILL-07) | ⬜ chưa bắt đầu | cột `tags` đã có sẵn → lọc theo tag dễ |
-| T-M2-12..17 Eval | ⬜ chưa bắt đầu | `docs/EVAL_REPORT.md` là deliverable bắt buộc |
+| T-M2-05 Skill import/export JSON (FR-SKILL-05) | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.25.8 — file `version: 1` + `exportedAt` + `skills[]`; export **chỉ** scope `user`; import bỏ `id`/`scope`/timestamp; trùng tên → bỏ qua + toast; nút **Xuất JSON** / **Nhập JSON** trong drawer Kỹ năng |
+| T-M2-06 Skill library browser (FR-SKILL-07) | 🟡 **đang làm** | cột `tags` đã có sẵn → lọc theo tag dễ · tab 2 trong drawer Kỹ năng |
+| T-M2-21 Skill library built-in ≥ 8 + skill gắn điều kiện tab (FR-SKILL-04/06) | ⬜ chưa bắt đầu | mở rộng registry `apps/server/src/skills/builtin.ts` + migration `0005` (cột `tab_condition` jsonb) |
+| T-M2-12..17 Eval | ⬜ chưa bắt đầu | `docs/EVAL_REPORT.md` là deliverable bắt buộc · **để sau** (quyết định user 2026-11-10) |
 
 > **Bảng kết quả chi tiết của M2** (trạng thái task · verify · commit · ảnh hưởng gate parity) nằm ở [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) **§4.1** — đọc ở đó thay vì tra lại từng file.
+
+### Quyết định mới (2026-11-10) — thứ tự ưu tiên M2
+
+| Quyết định | Lý do |
+|---|---|
+| **Hoàn tất nhóm Skills (T-M2-05 → 06 → 21) trước**, rồi mới sang Tools/MCP/RAG | 3 task Skills là **mở rộng trên code đã có** (CRUD + `tags` + `scope` sẵn trong schema) → nhỏ hơn hẳn nhóm greenfield · đóng được dòng §E "Skills" + B8/C10/C14 → claim trong báo cáo khớp thực tế |
+| **Eval (T-M2-12 → 17) để sau** | Eval đo chất lượng sản phẩm → chạy trên feature chưa ổn định thì phải chạy lại · T-M2-15/16 cần người thật → nên chạy **song song** khi feature đã ổn định |
+| FR-SKILL-06 → làm **đầy đủ** (skill khai báo điều kiện tab → khi chạy tự đính kèm tab hiện tại / tab được chọn) | Đối chiếu trực tiếp B6 của Chrome Gemini ("chạy trên tab hiện tại + tab được chọn") |
+| Vị trí import/export skill → **trong drawer Kỹ năng** | Gần chỗ user đang quản lý skill · không nhân bản UI pattern mới |
+| Import skill trùng tên → **bỏ qua** + toast tổng kết | Đơn giản, không hỏi lại user · giữ nguyên skill cũ |
 
 **Tóm tắt T-M2-02 (FR-PROVIDER-03/04):**
 

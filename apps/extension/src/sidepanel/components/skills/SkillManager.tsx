@@ -1,17 +1,20 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Copy, Pencil, Play, Plus, Trash2 } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Copy, Download, Pencil, Play, Plus, Trash2, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import type { Skill } from '@sidekick/shared'
 import { Button } from '@/components/ui/button'
 import { useSkillStore } from '@/sidepanel/store/skillStore'
 import { useI18n } from '@/sidepanel/hooks/useI18n'
 import { ConfirmDialog } from '@/sidepanel/components/chat/ConfirmDialog'
+import { exportSkillsFile, importSkillsFile } from '@/lib/skillIO'
 
 /**
- * Drawer quan ly skill (FR-SKILL-02/03 — T-M2-04).
+ * Drawer quan ly skill (FR-SKILL-02/03 — T-M2-04, FR-SKILL-05 — T-M2-05).
  *
  * 2 nhom: **Co san** (built-in — chi dung, khong sua/xoa) · **Cua tao** (user
  * — sua / nhan ban / xoa).
+ *
+ * Them 2 hanh dong **import/export JSON** (FR-SKILL-05) — o header drawer.
  *
  * Docs: docs/SYSTEM_DESIGN.md §7.25
  */
@@ -33,8 +36,11 @@ export function SkillManager({ onUse, onEdit, onCreate }: SkillManagerProps) {
   const refresh = useSkillStore((state) => state.refresh)
   const remove = useSkillStore((state) => state.remove)
   const duplicate = useSkillStore((state) => state.duplicate)
+  const create = useSkillStore((state) => state.create)
 
   const [pendingDelete, setPendingDelete] = useState<Skill | undefined>(undefined)
+  const [isImporting, setIsImporting] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Nap danh sach skill 1 lan khi mo drawer.
   useEffect(() => {
@@ -43,6 +49,56 @@ export function SkillManager({ onUse, onEdit, onCreate }: SkillManagerProps) {
 
   const builtin = useMemo(() => items.filter((item) => item.scope === 'builtin'), [items])
   const user = useMemo(() => items.filter((item) => item.scope === 'user'), [items])
+
+  /** FR-SKILL-05: xuat skill cua user ra file JSON. */
+  const handleExport = (): void => {
+    try {
+      exportSkillsFile(items)
+      toast.success(t('toast.skillExported', { count: user.length }))
+    } catch {
+      toast.error(t('toast.skillExportFailed'))
+    }
+  }
+
+  /**
+   * FR-SKILL-05: doc file JSON → tao skill moi.
+   *
+   * Skill trung ten voi skill da co → **bo qua** (khong ghi de skill cu).
+   */
+  const handleImportFile = async (file: File): Promise<void> => {
+    setIsImporting(true)
+    try {
+      const inputs = await importSkillsFile(file)
+      const existing = new Set(items.map((item) => item.name))
+
+      let imported = 0
+      let skipped = 0
+      for (const input of inputs) {
+        if (existing.has(input.name)) {
+          skipped += 1
+          continue
+        }
+        try {
+          await create(input)
+          existing.add(input.name)
+          imported += 1
+        } catch {
+          // Trung ten o server (race) → coi nhu bo qua.
+          skipped += 1
+        }
+      }
+
+      if (skipped > 0) {
+        toast.success(t('toast.skillImportedPartial', { count: imported, skipped }))
+      } else {
+        toast.success(t('toast.skillImported', { count: imported }))
+      }
+    } catch {
+      toast.error(t('toast.skillImportFailed'))
+    } finally {
+      setIsImporting(false)
+    }
+  }
 
   const handleDuplicate = async (skill: Skill): Promise<void> => {
     try {
@@ -83,6 +139,49 @@ export function SkillManager({ onUse, onEdit, onCreate }: SkillManagerProps) {
             {t('skill.manager.new')}
           </Button>
         ) : null}
+
+        {/* FR-SKILL-05: import/export skill dang JSON. */}
+        <div className="flex gap-[var(--space-2)]">
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1"
+            onClick={handleExport}
+            disabled={user.length === 0}
+            data-testid="skill-export"
+          >
+            <Download className="h-3.5 w-3.5" aria-hidden="true" />
+            {t('skill.manager.export')}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1"
+            onClick={() => {
+              fileInputRef.current?.click()
+            }}
+            disabled={isImporting}
+            data-testid="skill-import"
+          >
+            <Upload className="h-3.5 w-3.5" aria-hidden="true" />
+            {t('skill.manager.import')}
+          </Button>
+        </div>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="application/json,.json"
+          className="hidden"
+          data-testid="skill-import-input"
+          onChange={(event) => {
+            const file = event.target.files?.[0]
+            event.target.value = ''
+            if (file !== undefined) {
+              void handleImportFile(file)
+            }
+          }}
+        />
       </div>
 
       {error !== undefined ? (

@@ -308,7 +308,7 @@ Quy ước ưu tiên: **M** = Must (bắt buộc cho M1) · **S** = Should (bắ
 | FR-SKILL-02 | Tạo skill mới từ 1 prompt đã dùng | M | Lưu tên + prompt + optional model — **✅ ĐÃ IMPLEMENT (T-M2-04):** action **"Lưu thành kỹ năng"** (`BookmarkPlus`) trên bubble của **user message** → mở form `SkillFormDialog` với **prefill = nội dung message**. Form: tên (tự chuẩn hoá thành slug + preview `/slug`) · mô tả · prompt (textarea, placeholder `{input}`) · **model (tuỳ chọn)** · tags. Validate bằng `createSkillSchema` của `packages/shared` → lỗi hiển thị inline. Lưu ở Postgres (bảng `skills`, `scope='user'`) qua `POST /api/skills`; tên trùng → `CONFLICT` |
 | FR-SKILL-03 | Sửa / xoá / nhân bản skill | M | Bảng quản lý skill — **✅ ĐÃ IMPLEMENT (T-M2-04):** drawer **trượt từ trái** (`SkillManager`, Radix `Dialog` — y hệt pattern `ConversationList`) mở bằng nút icon `Sparkles` ở header (`data-testid="skills-button"`). 2 nhóm: **Có sẵn** (built-in — chỉ "Dùng", **không** cho sửa/xoá) · **Của tôi** (user). Mỗi dòng: **dùng nhanh** (chen `/ten-skill` vào composer) · **sửa** (mở form, prefill dữ liệu skill) · **nhân bản** (`${name}-copy`) · **xoá** (có `ConfirmDialog`). Xoá built-in bị server **từ chối** (`FORBIDDEN`) |
 | FR-SKILL-04 | Skill có sẵn (built-in) cho các use case phổ biến | S | ≥ 8 skill mẫu: tóm tắt, giải thích đơn giản, dịch, so sánh, trích xuất dữ liệu, viết email, sinh quiz, kiểm tra hiểu — **🟡 MỞ (T-M2-04 → T-M2-21):** T-M2-04 chỉ seed **tối thiểu 3 skill built-in** (`tom-tat` · `giai-thich-don-gian` · `dich`, uuid cố định, định nghĩa trong code `apps/server/src/skills/builtin.ts` → không cần migration seed). **Thư viện ≥ 8 skill** nằm ở **T-M2-21** → chưa implement |
-| FR-SKILL-05 | Import/export skill dạng JSON | S | Round-trip không mất dữ liệu — ⏳ T-M2-05 (chưa implement) |
+| FR-SKILL-05 | Import/export skill dạng JSON | S | Round-trip không mất dữ liệu — **✅ ĐÃ IMPLEMENT (T-M2-05):** nút **"Xuất JSON"** / **"Nhập JSON"** trong drawer Kỹ năng (`SkillManager`, dưới nút "Tạo kỹ năng"). Export → file `sidekick-skills-<yyyyMMdd-HHmm>.json` (`version: 1` + `exportedAt` + `skills[]`) → tải bằng `Blob` + `<a download>` (**không** cần permission `chrome.downloads`). Chỉ export skill `scope='user'` (built-in nằm trong registry code → export ra rồi import lại vô nghĩa). Import → đọc file, validate bằng `skillImportPayloadSchema` (Zod, `packages/shared`) → **bỏ qua `id`/`scope`/timestamp** (server tự sinh id mới → không ghi đè skill khác) → chuẩn hoá tên thành slug → gọi `POST /api/skills` cho từng skill. Skill **trùng tên** → **bỏ qua** + toast tổng kết ("Đã nhập N, bỏ qua M trùng tên"). Tối đa 100 skill / lần import. File hỏng → lỗi có **đường dẫn field** rõ ràng, không tạo skill nào |
 | FR-SKILL-06 | Skill có thể gắn điều kiện (chạy trên tab hiện tại / kèm tab khác) | C | ⏳ T-M2-21 (chưa implement) |
 | FR-SKILL-07 | Trang duyệt skill library: xem/lọc/tìm kiếm skill đã lưu + skill mẫu | S | Lọc theo tag/tên; click để chạy ngay — ⏳ T-M2-06 (chưa implement; cột `tags` đã có sẵn trong DB) |
 
@@ -1181,7 +1181,7 @@ Chỉ bắt đầu M4 khi **đồng thời** thỏa:
 | FR-SKILL-02 | M | T-M2-04 ✅ | M2 |
 | FR-SKILL-03 | M | T-M2-04 ✅ | M2 |
 | FR-SKILL-04 | S | **T-M2-21** 🟡 (T-M2-04 seed tối thiểu 3 skill) | M2 |
-| FR-SKILL-05 | S | T-M2-05 | M2 |
+| FR-SKILL-05 | S | **T-M2-05 ✅** | M2 |
 | FR-SKILL-06 | C | **T-M2-21** | M2 |
 | FR-SKILL-07 | S | T-M2-06 | M2 |
 
