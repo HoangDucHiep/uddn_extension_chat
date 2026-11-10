@@ -69,6 +69,7 @@ pnpm lint                    # eslint
 pnpm test                    # unit + integration
 pnpm test:e2e                # Playwright
 pnpm eval:run                # chạy eval harness
+pnpm manual:checklist        # chạy checklist test tay trên Chrome thật (load unpacked) + chụp ảnh
 ```
 
 > `pnpm` chưa có? → `corepack enable` (Windows: `corepack enable pnpm`). Fallback: dùng `npm` — cấu trúc thư mục không đổi.
@@ -103,7 +104,7 @@ pnpm eval:run                # chạy eval harness
 |---|---|---|
 | **M0 — Foundation** | ✅ Hoàn thành | 15/15 task · 91 unit test + 2 E2E · tag `v0.1` |
 | **M1 — Parity** | ✅ **Đóng** (2026-11-09) | **23/25 task** (T-M1-15 + T-M1-16 ⏸ tạm dừng) · **1337 unit test + 88 E2E** · **tag `v0.2`** · gate đạt: checklist §E **32/35 = 91.4%** · dòng "Must" §A/§B **21/23 = 91.3%** |
-| **M2 — Advanced & Eval** | 🟡 **Đang làm** | T-M2-02 ✅ (model picker + fallback) · T-M2-03 ✅ (token/cost UI) · T-M2-01 ⏸ đẩy · **1391 unit test + 91 E2E** · `EVAL_REPORT.md` là deliverable bắt buộc · **tiếp theo: T-M2-12 (dataset eval)** |
+| **M2 — Advanced & Eval** | 🟡 **Đang làm** | T-M2-02 ✅ (model picker + fallback) · T-M2-03 ✅ (token/cost UI) · T-M2-01 ⏸ đẩy · **1394 unit test + 91 E2E** · `EVAL_REPORT.md` là deliverable bắt buộc · **tiếp theo: T-M2-12 (dataset eval)** |
 | **M3 — Polish & Deliverable** | ⬜ Chưa bắt đầu | |
 | **M4 — Workflow** | ⬜ Tuỳ chọn | Chỉ sau M3 + đã có eval report |
 

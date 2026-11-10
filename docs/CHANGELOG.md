@@ -9,6 +9,7 @@
 ## [Unreleased]
 
 ### Added
+- **Script `scripts/manual-checklist.mjs` (`pnpm manual:checklist`)** — tự động hoá phần "test tay" của [`MANUAL_TEST_GUIDE.md`](MANUAL_TEST_GUIDE.md) §11b: load extension **unpacked** (`apps/extension/dist`) vào **Chrome thật** (profile tạm → **không** đụng profile người dùng) → đi từng mục checklist → **lưu ảnh chụp** vào `artifacts/manual-test/` (git-ignore). Bao gồm cả kiểm chứng **fallback live**: khởi động BFF phụ ở port `8791` với `DEFAULT_PROVIDER=ollama` (Ollama không chạy → lỗi network **retryable**) + `PROVIDER_FALLBACKS=groq,openrouter` → gửi 1 lượt chat → đọc `GET /api/logs` để xác nhận `fallback_from`. **Kết quả 2026-11-10: 15/15 mục pass** (xem `MANUAL_TEST_GUIDE.md` §13b).
 - **T-M2-02 — Model picker động + fallback chain runtime (FR-PROVIDER-03/04)**
   - **Server — danh sách model động:** `GET /api/providers/:id/models` (`apps/server/src/routes/providers.ts`) → `listProviderModels()` (`apps/server/src/services/providerService.ts`) → `ProviderAdapter.discoverModels?(apiKey)` (`apps/server/src/providers/types.ts`). `openaiCompatible.ts` (`groq` · `openrouter`) gửi header `Authorization: Bearer` · `gemini.ts` gửi header `x-goog-api-key` → trước đây `GET /models` **không** có key → provider trả 401 → luôn rơi về danh sách tĩnh. Response `ProviderModelsResponse` = `{ providerId, models, source }` với `source: 'live' | 'fallback'` (adapter không implement `discoverModels` → server tự fallback về `preferredModels`).
     - Contract shared: `packages/shared/src/constants.ts` (`API_ROUTES.providerModels`) · `packages/shared/src/schemas/provider.ts` (`providerModelsResponseSchema` · `providerModelSourceSchema`).
@@ -46,6 +47,9 @@
   - **Số liệu test chốt lúc đóng M1:** shared 243 · server 377 · extension 706 · eval 11 = **1337 unit** + **88 E2E** (23 file).
 
 ### Docs
+- `docs/MANUAL_TEST_GUIDE.md` — **§13b** (mới) "Script chạy checklist test tay tự động" (`pnpm manual:checklist`) + bảng kết quả **15/15 mục pass** ngày 2026-11-10 · §13 số liệu test cũ → **1394 unit** + **91 E2E** · §15 ghi chú mục 19–21 đã kiểm chứng tự động (nhưng vẫn nên bấm tay 1 lần để xác nhận toast render).
+- `docs/HANDOFF.md` — §2 số liệu **1394 unit** + **91 E2E** + kết quả kiểm chứng live (model động 428 model · fallback `ollama → groq` · `fallback_from` trong DB) · ghi rõ `pnpm manual:checklist` là cách chạy checklist §11b một lần.
+- `docs/README.md` · `AGENTS.md` — đồng bộ số liệu test + nhắc lệnh `pnpm manual:checklist`.
 - Sửa link `[EVAL_REPORT.md](EVAL_REPORT.md)` **chưa tồn tại** trong `EVAL_PLAN.md` §7 → đổi thành text thuần kèm mã task (`deliverable M2 — T-M2-17`) → mọi link `.md` trong `docs/` **đều resolve được** (rule `docs-sync.mdc` §5).
 - `docs/README.md` — bảng tài liệu: thêm `CONTEXT_HANDOFF_2026-11-09.md`; bảng phiên bản docs cập nhật (11 file).
 - `.gitignore` — ignore `.tmp-*.log` / `.tmp-*.err` (log tạm của dev server).

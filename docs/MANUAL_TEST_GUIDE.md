@@ -474,10 +474,45 @@ docker exec -it sidekick-db psql -U sidekick -d sidekick -c \
 ```bash
 pnpm typecheck     # kiểm tra kiểu
 pnpm lint          # ESLint
-pnpm test          # 1311 unit test
+pnpm test          # 1394 unit test
 pnpm build         # build tất cả
-pnpm test:e2e      # 81 test Playwright (cần Docker + BFF chạy)
+pnpm test:e2e      # 91 test Playwright (cần Docker + BFF chạy)
 ```
+
+### 13b. Script chạy checklist "test tay" tự động (M2)
+
+Ngoài checklist bằng tay ở §11b, có **script tự động hoá** chính phần test tay đó:
+load extension **unpacked** vào Chrome thật → đi từng mục → **lưu ảnh chụp** làm bằng chứng.
+
+```bash
+# Điều kiện: Docker Desktop chạy + BFF chạy (pnpm dev:server) + đã build extension
+pnpm build
+pnpm manual:checklist
+```
+
+- Script: [`scripts/manual-checklist.mjs`](../scripts/manual-checklist.mjs)
+- Ảnh chụp: `artifacts/manual-test/*.png` (thư mục này **không** commit)
+- Script **không** dùng profile Chrome của bạn → an toàn, chạy song song với Chrome đang mở được.
+
+| Mục | Kiểm tra | Kết quả lần chạy gần nhất (2026-11-10) |
+|---|---|---|
+| 11b.1-1 | Danh sách provider (chỉ `available`) | ✅ 4 mục |
+| 11b.1-2 | Model **động** theo provider | ✅ `openrouter` → **428 model** (live) |
+| 11b.1-3 | Ô tìm kiếm khi > 12 model | ✅ lọc `428 → 7` model |
+| 11b.1-4 | Chọn model → lưu `chrome.storage.local` | ✅ `openrouter · thinkingmachines/inkling-2-small:free` |
+| 11b.1-5 | "Về mặc định" → xoá lựa chọn | ✅ |
+| 11b.3-1 | Badge token dưới bubble assistant | ✅ `↑ 124 ↓ 212 token` |
+| 11b.3-2 | Badge có chi phí USD | ✅ `$0.0002` |
+| 11b.3-3 | Tổng token + tổng chi phí | ✅ `65,190` token · `$0.0374` |
+| 11b.3-4 | Bảng theo ngày | ✅ 4 dòng |
+| 11b.3-5 | Bộ chọn khoảng thời gian | ✅ 4 nút (`Hôm nay / 7 ngày / 30 ngày / Tất cả`) |
+| 11b.3-6 | Khoảng "Hôm nay" | ✅ `60,838` token (≠ tổng → lọc đúng) |
+| 11b.3-7 | Khoảng "Tất cả" | ✅ `65,190` token (= tổng) |
+| 11b.3-8 | Nút "Làm mới" | ✅ không lỗi |
+| 11b.2-1 | SSE `provider_switch` (live) | ✅ `ollama → groq` |
+| 11b.2-2 | `request_logs.fallback_from` | ✅ `provider="groq" fallback_from="ollama"` |
+
+> **Cách script kiểm chứng fallback (§11b.2):** nó khởi động một **BFF phụ** ở port `8791` với `DEFAULT_PROVIDER=ollama` (Ollama không chạy → lỗi network **retryable**) + `PROVIDER_FALLBACKS=groq,openrouter` → rồi gửi 1 lượt chat và đọc lại `GET /api/logs`. BFF phụ được tắt ngay sau khi kiểm tra.
 
 ---
 
@@ -535,3 +570,5 @@ pnpm test:e2e      # 81 test Playwright (cần Docker + BFF chạy)
 [ ] 20. Fallback: provider lỗi 429/5xx → toast + đổi chip provider + log fallback_from; 401 → không fallback
 [ ] 21. Chi phí: badge token/cost dưới bubble + section "Chi phí & sử dụng" (tổng + bảng theo ngày + làm mới)
 ```
+
+> **Mục 19–21 đã được kiểm chứng tự động** bằng `pnpm manual:checklist` (xem §13b) — **15/15 pass** ngày 2026-11-10 trên Chrome thật + BFF thật + Postgres thật. Checklist này vẫn nên bấm tay 1 lần để xác nhận trải nghiệm người dùng (đặc biệt là **toast** "Đã chuyển sang provider X" — script kiểm tra được event `provider_switch` nhưng không quan sát được toast render).

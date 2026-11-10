@@ -24,7 +24,7 @@
 | Hạng mục | Trạng thái |
 |---|---|
 | Docs | ✅ Đầy đủ 11 file (`docs/`) + `AGENTS.md` ở root |
-| Code | ✅ **M1 (Parity) ĐÓNG** — 23/25 task (T-M1-15 + T-M1-16 ⏸ tạm dừng) — 4 workspace, **1391 unit test + 91 E2E** · **M2 đang làm** (T-M2-02 ✅ · T-M2-03 ✅) |
+| Code | ✅ **M1 (Parity) ĐÓNG** — 23/25 task (T-M1-15 + T-M1-16 ⏸ tạm dừng) — 4 workspace, **1394 unit test + 91 E2E** · **M2 đang làm** (T-M2-02 ✅ · T-M2-03 ✅ · kiểm chứng live Chrome **15/15** mục §11b) |
 | Git | ✅ Đã init (`main`) · tag `v0.1` (M0) · tag **`v0.2`** (M1 đóng 2026-11-09) |
 | Milestone hiện tại | **M2 — Advanced & Eval** (M0 ✅ · M1 ✅) |
 | Task tiếp theo | **T-M2-12** — điền dataset eval thật (`apps/eval/dataset/tasks.json` + `dataset/snapshots/*`) → T-M2-13 harness → T-M2-14 judge → T-M2-15..17 → **`docs/EVAL_REPORT.md`** (deliverable bắt buộc) |
@@ -58,7 +58,13 @@ _(Không có — M1 đóng xong 2026-11-09, tag `v0.2`)_
 
 **Ảnh hưởng lên gate parity:** checklist §E `COMPARISON_MATRIX.md` **32/35 = 91.4%** → **33/35 = 94.3%** (đóng dòng "Token/cost hiển thị") — xem §E.1.3.
 
-**Số liệu test sau T-M2-02/03 (2026-11-10):** shared 245 · server 387 · extension 748 · eval 11 = **1391 unit** + **91 E2E** (24 file). `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm build` ✅ (`dist/content.js` 16.87 kB) · `pnpm test:e2e` ✅ (91/91).
+**Số liệu test sau T-M2-02/03 (2026-11-10):** shared 245 · server 387 · extension 751 · eval 11 = **1394 unit** + **91 E2E** (24 file). `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm build` ✅ (`dist/content.js` 17.27 kB) · `pnpm test:e2e` ✅ (91/91).
+
+**Kiểm chứng live trên Chrome thật (2026-11-10):** `pnpm manual:checklist` (script mới — `scripts/manual-checklist.mjs`) load extension **unpacked** vào Chrome (profile tạm) → **15/15 mục** của `MANUAL_TEST_GUIDE.md` §11b **pass**:
+- **Model động:** `openrouter` → **428 model** (`source: "live"`) · lọc tìm kiếm `428 → 7` · lựa chọn lưu đúng `chrome.storage.local`.
+- **Fallback live:** BFF phụ (port `8791`, `DEFAULT_PROVIDER=ollama` — Ollama không chạy → lỗi network retryable) → SSE `provider_switch` **`ollama → groq`** → `request_logs`: `provider="groq" fallback_from="ollama"`.
+- **Chi phí:** badge `↑ 124 ↓ 212 token · $0.0002` · Settings tổng `65,190` token / `$0.0374` · bảng theo ngày 4 dòng · khoảng "Hôm nay" `60,838` ≠ "Tất cả" `65,190` (lọc đúng).
+- Ảnh chụp lưu ở `artifacts/manual-test/` (git-ignore).
 
 **Bộ chọn khoảng thời gian trong Settings (bổ sung T-M2-03):** section "Chi phí & sử dụng" có 4 nút `Hôm nay / 7 ngày / 30 ngày / Tất cả` (mặc định `7d`) → `GET /api/usage?from=…` (`from` = ISO 8601, canh đầu ngày theo giờ local). Khoảng `all` → không gửi `from`. Đổi khoảng → gọi lại API ngay (không cần bấm "Làm mới").
 
