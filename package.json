@@ -35,7 +35,8 @@
     "pretest:e2e": "pnpm --filter @sidekick/shared build && pnpm --filter @sidekick/extension build",
     "test:e2e": "pnpm --filter @sidekick/extension test:e2e",
     "eval:run": "pnpm --filter @sidekick/eval run run",
-    "verify:providers": "node scripts/verify-providers.mjs"
+    "verify:providers": "node scripts/verify-providers.mjs",
+    "manual:checklist": "node scripts/manual-checklist.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

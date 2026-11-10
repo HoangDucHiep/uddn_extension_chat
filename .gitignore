@@ -41,6 +41,7 @@ playwright-report/
 test-results/
 screenshots/
 .vitest/
+artifacts/
 
 # ===== Editor / OS =====
 .DS_Store

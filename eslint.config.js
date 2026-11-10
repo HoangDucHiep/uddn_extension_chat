@@ -74,6 +74,10 @@ export default tseslint.config(
   },
   {
     // Script node ESM (.mjs): cho phep console.log + globals cua Node 22.
+    //
+    // `chrome` cung duoc them: code trong `page.evaluate()` chay **trong
+    // trang extension** → co API `chrome.storage` thật (khong phai global
+    // cua Node) → ESLint phai biet de khong bao `no-undef`.
     files: ['scripts/**/*.mjs', 'scripts/**/*.js'],
     languageOptions: {
       ecmaVersion: 2023,
@@ -81,6 +85,7 @@ export default tseslint.config(
       globals: {
         ...globals.node,
         ...globals.browser,
+        chrome: 'readonly',
       },
     },
     rules: {
