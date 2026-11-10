@@ -1,6 +1,6 @@
 # Implementation Plan — Sidekick AI
 
-**Version:** v1.0 · **Ngày:** 2026-11-03
+**Version:** v2.4 · **Ngày:** 2026-11-10
 **Tổng thời gian ước tính:** 11 tuần (M0–M3 bắt buộc) + 2 tuần tuỳ chọn (M4)
 
 > Đây là kế hoạch **task-level** để làm được ngay. Mỗi task có mã, FR liên quan, output files, acceptance criteria và estimate.
@@ -1028,7 +1028,8 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 |---|---|---|---|---|---|
 | T-M2-01 | Multi-provider: OpenAI, Anthropic, OpenRouter, Groq, Ollama | FR-PROVIDER-01/03/07 | `apps/server/src/providers/{openai,anthropic,openrouter,groq,ollama}.ts` | Mỗi provider stream được; model list lấy động; phát hiện được Ollama local khả dụng | L | ⏸ **đẩy lại** — xem ghi chú bên dưới |
 | T-M2-02 | Model picker + fallback chain | FR-PROVIDER-03/04 | `settings/ModelPicker.tsx`, `providers/fallback.ts` | Provider chính lỗi → tự chuyển provider dự phòng, ghi log | M | ✅ *(2026-11-10)* |
-| T-M2-03 | Token & cost calculator + usage UI + budget cap | FR-PROVIDER-05/06 | `lib/cost.ts`, `settings/DataSettings.tsx`, `chat/UsageBadge.tsx` | Hiện token/cost từng lượt; cảnh báo khi vượt budget | M | ✅ *(2026-11-10)* — phần **budget cap (FR-PROVIDER-06) chưa làm** |
+| T-M2-03 | Token & cost calculator + usage UI + budget cap | FR-PROVIDER-05/06 | `lib/cost.ts`, `settings/DataSettings.tsx`, `chat/UsageBadge.tsx` | Hiện token/cost từng lượt; cảnh báo khi vượt budget | M | ✅ *(2026-11-10)* — phần **budget cap (FR-PROVIDER-06) chưa làm** → tách thành **T-M2-03b** |
+| T-M2-03b | Budget cap (cảnh báo + tuỳ chọn chặn khi vượt ngưỡng chi phí) | FR-PROVIDER-06 | `sidepanel/components/settings/BudgetSettings.tsx`, `apps/extension/src/lib/budget.ts` | Cấu hình ngưỡng ở Settings; cảnh báo khi tổng `cost_usd` vượt ngưỡng; tuỳ chọn chặn lượt chat mới | S | ⬜ |
 | T-M2-04 | Skills: menu `/`, CRUD, builtin library | FR-SKILL-01/02/03, NFR-MAINT-03 | `sidepanel/components/skills/*`, `POST /skills` | `/` → list skill; tạo skill từ message; CRUD đủ | L |
 | T-M2-05 | Skill import/export JSON | FR-SKILL-05 | `sidepanel/lib/skillIO.ts` | Export/import round-trip không mất dữ liệu | S |
 | T-M2-06 | Skill library browser nội bộ | FR-SKILL-07 | `sidepanel/components/skills/SkillLibrary.tsx` | Xem/lọc skill theo tag | M |
@@ -1049,34 +1050,62 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 | T-M2-21 | Skill library built-in + skill gắn điều kiện (tab hiện tại / tab kèm theo) | FR-SKILL-04/06 | `sidepanel/components/skills/builtinLibrary.ts`, `apps/server/src/skills/builtin.ts` | ≥ 8 skill mẫu (tóm tắt, giải thích đơn giản, dịch, so sánh, trích xuất dữ liệu, viết email, sinh quiz, kiểm tra hiểu); skill gắn điều kiện chạy được trên tab chỉ định | M |
 | T-M2-22 | Vision mở rộng: chụp vùng, OCR, image-capable provider, alt text | FR-VISION-02/03/04/05 | `sidepanel/components/composer/RegionCapture.tsx`, `apps/server/src/lib/ocr.ts` | Chọn vùng bằng overlay; OCR trả text; provider không hỗ trợ image → ẩn tính năng không lỗi; alt text lưu lại để tiết kiệm token | L |
 
-**Định mức M2:** 3 tuần · 22 task · ~39 ngày công
+**Định mức M2:** 3 tuần · 23 task · ~40 ngày công
 > Nếu trễ: **cắt T-M2-18 (agentic)** → không ảnh hưởng tiêu chí bắt buộc. Cắt T-M2-10/11 (RAG) nếu cần — theo §10. Cắt T-M2-22 (vision mở rộng) trước — chỉ ảnh hưởng tính năng Could.
 
 > **Ghi chú T-M2-12 (2026-11-09):** **contract dataset đã hiện thực** ở [`packages/shared/src/schemas/eval.ts`](../packages/shared/src/schemas/eval.ts) (`evalTaskSchema` + `EVAL_GROUPS` 8 nhóm theo [`EVAL_PLAN.md`](EVAL_PLAN.md) §3.2) → `apps/eval` validate dataset bằng đúng schema đó. Khi điền `apps/eval/dataset/tasks.json` + `dataset/snapshots/*` phải tuân thủ shape §3.1 (`page.snapshot_path` · `page.content_hash` · `reference.key_points` / `must_include_facts` / `must_not_contain` — **snake_case**). Dataset hiện **rỗng `[]`** là **đúng chuẩn M1** (chưa có nội dung trang thật để chụp snapshot) — **không phải bug**.
 
 ##### Ghi chú phạm vi M2 — đổi ngày 2026-11-10 (T-M2-02 · T-M2-03 ✅)
 
+> **Bảng kết quả chi tiết (verify · commit · bằng chứng · ảnh hưởng gate parity) nằm ở [§4.1](#41-kết-quả-m2--t-m2-02--t-m2-03-2026-11-10)** bên dưới. Block này chỉ giữ **quyết định phạm vi**.
+
 **T-M2-01 được đẩy lại.** Quyết định của user (2026-11-10): **không thêm provider mới** (OpenAI/Anthropic) → giữ nguyên `PROVIDER_IDS` (`mock · groq · openrouter · gemini · ollama`), `packages/shared/src/constants.ts` **không đổi**, **không** migration bảng provider. Phần "model list động" của T-M2-01 đã được **T-M2-02** thực hiện xong (dùng adapter `discoverModels()` sẵn có) → khi nào làm lại T-M2-01 chỉ cần bổ sung adapter OpenAI/Anthropic.
 
-**T-M2-02 — đã đóng (2026-11-10).** Nguồn sự thật: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.22.
+**T-M2-03 tách phần budget cap.** Phần hiển thị token/cost (FR-PROVIDER-05) đã xong; phần **budget cap** (FR-PROVIDER-06, priority `C`) **chưa làm** → tách thành task riêng **T-M2-03b** (row mới trong bảng §4) để có thể theo dõi độc lập.
 
-| Hạng mục | Hiện thực |
+> **Không làm trong T-M2-02/03 (ngoài phạm vi):** budget cap (FR-PROVIDER-06 → T-M2-03b) · thêm provider OpenAI/Anthropic (T-M2-01) · K2/K3 BYOK (T-M1-15/16, ⏸ tạm dừng).
+
+### 4.1 Kết quả M2 — T-M2-02 + T-M2-03 (2026-11-10)
+
+> Đây là 2 task đầu của M2. Cả 2 đều nằm trong nhóm **Provider** (FR-PROVIDER-03/04/05) — phần **eval** (T-M2-12 → 17) chưa bắt đầu.
+
+#### 4.1.1 Trạng thái task
+
+| Task | Trạng thái | Commit | Bằng chứng |
+|---|---|---|---|
+| **T-M2-02** — Model picker + fallback chain (FR-PROVIDER-03/04) | ✅ **xong** | `1ea95cc` · `217328c` · `57865b8` | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.22 |
+| **T-M2-03** — Token & cost UI (FR-PROVIDER-05) | ✅ **xong** (trừ budget cap → tách **T-M2-03b**) | `57865b8` · `b02c806` | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.23 |
+| **T-M2-03b** — Budget cap (FR-PROVIDER-06) | ⬜ **chưa làm** | — | priority `C` — xem ghi chú phạm vi M2 ở trên |
+| **T-M2-01** — Multi-provider (OpenAI/Anthropic) | ⏸ **đẩy lại** | — | quyết định user 2026-11-10 — không thêm provider mới |
+
+#### 4.1.2 Verify
+
+| Hạng mục | Kết quả |
 |---|---|
-| Danh sách model **động** | `GET /api/providers/:id/models` (`apps/server/src/routes/providers.ts`) → `listProviderModels()` (`apps/server/src/services/providerService.ts`) → `discoverModels?(apiKey)` trên `ProviderAdapter` (`openaiCompatible.ts` · `gemini.ts`) gửi **auth header** (`Authorization` / `x-goog-api-key`) → `source: 'live' \| 'fallback'` |
-| Fallback chain runtime | `apps/server/src/services/chatService.ts` — lặp chuỗi ứng viên; fallback **chỉ** khi lỗi `retryable` **và** `streamedToken === false`; 401/403 → **không** fallback; context budget + prompt **tính lại** theo provider mới |
-| SSE event | `provider_switch` (`packages/shared/src/events.ts`) `{ from, to, reason, model }` |
-| Log | cột mới `request_logs.fallback_from` (`text`, nullable) — migration `apps/server/drizzle/0002_certain_vector.sql` |
-| UI | `ModelPicker` (Radix Popover) ở header · lựa chọn lưu `chrome.storage.local` (`sidekick.modelSelection`) · gửi `provider` + `model` mỗi lượt chat · toast "Đã chuyển sang provider X" |
+| `pnpm typecheck` | ✅ pass (4 workspace) |
+| `pnpm lint` | ✅ pass (0 error, 0 warning) |
+| `pnpm test` | ✅ **1394 unit** (shared 245 · server 387 · extension 751 · eval 11) |
+| `pnpm build` | ✅ pass — `dist/content.js` **17.27 kB** (gzip 6.65 kB) · IIFE 1 file (guard bundle pass) |
+| `pnpm db:migrate` | ✅ migration `0002_certain_vector.sql` — cột `request_logs.fallback_from` |
+| `pnpm test:e2e` | ✅ **91/91** (24 file — cần Docker + BFF thật) |
+| Kiểm chứng live (`pnpm manual:checklist`) | ✅ **15/15 mục** — load unpacked vào Chrome thật: model động **428 model** (`source: "live"`) · lọc `428 → 7` · fallback live `ollama → groq` với `fallback_from` ghi trong DB · badge `↑ 124 ↓ 212 token · $0.0002` · bảng chi phí theo ngày 4 dòng |
 
-**T-M2-03 — đã đóng (2026-11-10)**, ngoại trừ **budget cap**. Nguồn sự thật: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.23.
+> **Flake E2E đã ghi nhận** (không phải hồi quy code): 1 lần chạy song song cho **4 failed / 87 passed** do Groq trả **413 TPM** (`Limit 8000, Requested 24413`) → server fallback sang OpenRouter chậm hơn timeout chuỗi. Chạy lại ngay sau đó: **91/91 pass**. Bài học: E2E phụ thuộc **provider thật** → tỉ lệ lỗi phụ thuộc quota provider, không phải logic repo.
 
-| Hạng mục | Hiện thực |
-|---|---|
-| Chi phí theo lượt | `ChatMessage.costUsd` (lấy từ SSE `usage`) → `UsageBadge` dưới bubble assistant (`apps/extension/src/sidepanel/components/chat/UsageBadge.tsx`) · `formatCostUsd()` (`apps/extension/src/lib/costFormat.ts`) — 4 chữ số thập phân |
-| Tổng theo ngày | `UsageSettings` (`apps/extension/src/sidepanel/components/settings/UsageSettings.tsx`) → `GET /api/usage` (`apps/extension/src/lib/usageClient.ts`) · khoảng `today/7d/30d/all` (mặc định `7d`) — đổi khoảng → gọi lại API ngay |
-| **Budget cap (FR-PROVIDER-06)** | ⬜ **chưa làm** — priority `C` → `TODO(T-M2-03b)`: cảnh báo khi vượt ngưỡng + tuỳ chọn chặn (cần cấu hình ngưỡng ở Settings + so sánh với tổng `cost_usd`) |
+#### 4.1.3 Ảnh hưởng lên gate parity
 
-> **Không làm trong T-M2-02/03 (ngoài phạm vi):** budget cap (FR-PROVIDER-06) · thêm provider OpenAI/Anthropic (T-M2-01) · K2/K3 BYOK (T-M1-15/16, ⏸ tạm dừng).
+- Checklist §E (`COMPARISON_MATRIX.md`) đóng thêm dòng **"Token/cost hiển thị"** → **32/35 = 91.4%** → **33/35 = 94.3%** (xem `COMPARISON_MATRIX.md` §E.1.3).
+- **Không** phá parity: không thêm permission, không đổi manifest, không đổi hành vi chat M1.
+
+#### 4.1.4 Việc tiếp theo trong M2
+
+| Ưu tiên | Task | Lý do |
+|---|---|---|
+| 1 | **T-M2-12** — dataset eval (≥ 44 task + snapshot trang) | **Ràng buộc báo cáo** — `docs/EVAL_REPORT.md` là deliverable bắt buộc. Contract đã có ở `packages/shared/src/schemas/eval.ts` |
+| 2 | **T-M2-13** → **T-M2-14** — harness → judge | 1 lệnh chạy được + judge temperature 0 + blind mapping |
+| 3 | **T-M2-15 → 16 → 17** — thu thập tay → chấm tay → báo cáo | **Cần người thật** → có lead-time dài nhất, nên bắt đầu sớm |
+| 4 | **T-M2-03b** — budget cap | Priority C — đóng nốt FR-PROVIDER-06 |
+| 5 | Skills / Tools / MCP / RAG | Tính năng độc quyền — ưu tiên sau eval |
 
 ---
 

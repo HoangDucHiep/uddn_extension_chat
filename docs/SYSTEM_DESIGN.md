@@ -1,6 +1,6 @@
 # System Design — Sidekick AI
 
-**Version:** v1.0 · **Ngày:** 2026-11-03 · **Trạng thái:** Baseline
+**Version:** v2.4 · **Ngày:** 2026-11-10 · **Trạng thái:** Baseline
 **Yêu cầu:** [`REQUIREMENTS.md`](REQUIREMENTS.md) · **Đối chiếu tính năng:** [`COMPARISON_MATRIX.md`](COMPARISON_MATRIX.md) · **UI:** [`DESIGN_SYSTEM_BRIEF.md`](DESIGN_SYSTEM_BRIEF.md)
 
 > Tài liệu này trả lời "**code viết như thế nào**". Nó không lặp lại requirement — mỗi requirement đã có ở `REQUIREMENTS.md`.

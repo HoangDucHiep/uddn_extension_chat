@@ -1,6 +1,6 @@
 # Evaluation Plan — Sidekick AI vs Edge Copilot Sidebar vs Chrome Gemini Sidebar
 
-**Version:** v1.0 · **Ngày:** 2026-11-03 · **Trạng thái:** Draft để thảo luận với giảng viên
+**Version:** v1.4 · **Ngày:** 2026-11-09 · **Trạng thái:** Draft để thảo luận với giảng viên
 
 ---
 

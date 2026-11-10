@@ -1,7 +1,7 @@
 ﻿# Requirements Specification — AI Chat Sidebar Browser Extension
 
 **Project code name:** Sidekick AI
-**Document version:** v1.0
+**Document version:** v2.3 · 2026-11-10
 **Status:** Baseline — Requirements & Design System
 **Related docs:** [`README.md`](README.md) · [`COMPARISON_MATRIX.md`](COMPARISON_MATRIX.md) · [`EVAL_PLAN.md`](EVAL_PLAN.md) · [`DESIGN_SYSTEM_BRIEF.md`](DESIGN_SYSTEM_BRIEF.md) · [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) · [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md)
 

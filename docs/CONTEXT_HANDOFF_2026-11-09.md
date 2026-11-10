@@ -3,7 +3,9 @@
 > **Cách dùng:** mở chat mới ở Cursor → dán **toàn bộ nội dung file này** vào ô chat.
 > File này là **bản tổng hợp tự chứa** — chat mới **không** cần đọc lại transcript cũ.
 >
-> Cập nhật: **2026-11-09 00:43** (giờ VN) · HEAD = `3211d9c`
+> Cập nhật: **2026-11-10** (giờ VN) · HEAD = `000ddcc`
+>
+> ⚠️ **Đã refresh 2026-11-10** — tên file giữ nguyên theo lần tạo 2026-11-09, nhưng nội dung đã đồng bộ với trạng thái M2 mới nhất (2/23 task M2 xong). Đọc `docs/HANDOFF.md` §2 nếu cần số liệu mới hơn.
 
 ---
 
@@ -12,7 +14,7 @@
 1. Đọc `AGENTS.md` (file gốc ở root) — chứa 90% context của dự án.
 2. Đọc `docs/HANDOFF.md` §2 — trạng thái hiện tại + quyết định đã chốt.
 3. Kiểm tra bằng chứng bằng `git log --oneline -10` + `git status`.
-4. M1 đã đóng **23/25 task**. Việc tiếp theo: **T-M1-13** (export, S) → rồi **M2** (42 task).
+4. M1 đã đóng **23/25 task** (tag `v0.2`). **M2 đang làm — 2/23 task xong** (T-M2-02 ✅ · T-M2-03 ✅). Việc tiếp theo: **T-M2-12** (điền dataset eval thật — contract đã sẵn sàng ở `packages/shared/src/schemas/eval.ts`).
 5. **Bắt buộc** theo `.cursor/rules/docs-sync.mdc`: code → cập nhật `docs/` tương ứng + `docs/CHANGELOG.md` → 1 commit/task.
 
 ---
@@ -53,31 +55,46 @@
 | Hạng mục | Trạng thái |
 |---|---|
 | **M0 — Foundation** | ✅ Xong (tag `v0.1`) — 15/15 task |
-| **M1 — Parity** | 🚧 **23/25 task** — xem bảng dưới |
-| **M2 — Advanced & Eval** | ⬜ Chưa bắt đầu — 42 task |
+| **M1 — Parity** | ✅ Xong (tag `v0.2`) — 23/25 task · gate đạt: checklist §E **32/35 = 91.4%** · dòng "Must" §A/§B **21/23 = 91.3%** |
+| **M2 — Advanced & Eval** | 🟡 **Đang làm — 2/23 task** · T-M2-02 ✅ · T-M2-03 ✅ · T-M2-01 ⏸ đẩy |
 | **M3 — Polish & Deliverable** | ⬜ Chưa bắt đầu |
 | **M4 — Workflow** | ⬜ Ngoài đường găng (chỉ sau M3 + đã có eval report) |
 
-### 3 task M1 chưa xong
+### 2 task M1 treo
 
 | Task | Nội dung | Trạng thái |
 |---|---|---|
-| **T-M1-13** | Export conversation (Markdown / JSON) — `lib/export.ts` | ⬜ **Đã defer** bởi user |
 | **T-M1-15** | K3 direct mode (BYOK không cần BFF) | ⏸ **Tạm dừng** (BYOK — quyết định user 2026-11-08) |
 | **T-M1-16** | K2 BYOK qua BFF: UI quản lý key | ⏸ **Tạm dừng** (BYOK — quyết định user 2026-11-08) |
 
+> **T-M1-13 đã xong** 2026-11-09 (commit `0a8d9d6`) — export conversation Markdown/JSON. M1 còn 2 task treo (BYOK) như **gate parity đã đạt** → M1 đóng.
+>
 > **BYOK tạm dừng:** ô nhập API key đã **gỡ khỏi onboarding** (bước 2) → provider cần key mà chưa có **K1** chỉ hiện thông báo hướng dẫn (`data-testid="onboarding-key-required"`). **Server giữ nguyên** `POST /api/providers/keys` · `GET/DELETE /api/providers/keys/:id` · `POST /api/providers/keys/:id/test` + bảng `provider_keys` (AES-256-GCM) → mở lại được bằng cách thêm lại UI, **không** migration. Ở M1 nguồn key duy nhất là **K1** (team key trong `.env` BFF) + Ollama local.
 
-### M2 — 42 task (chưa làm gì)
+### M2 — 23 task (2/23 xong)
 
 | Nhóm | Task |
 |---|---|
-| **Provider** | T-M2-01 multi-provider (OpenAI, Anthropic, OpenRouter, Groq, Ollama) · T-M2-02 model picker + fallback chain · T-M2-03 token & cost calculator + budget cap |
+| **Provider** | T-M2-01 multi-provider (OpenAI, Anthropic, OpenRouter, Groq, Ollama) — ⏸ **đẩy lại** (quyết định user 2026-11-10: **không** thêm provider mới) · T-M2-02 model picker + fallback chain — ✅ **xong** · T-M2-03 token & cost UI — ✅ **xong** (trừ budget cap) · T-M2-03b budget cap — ⬜ |
 | **Skills** | T-M2-04 CRUD + menu `/` · T-M2-05 import/export JSON · T-M2-06 library browser · T-M2-21 built-in library (≥8 skill) + skill gắn điều kiện |
 | **Tools** | T-M2-07 tool registry (web search, calculator) · T-M2-08 MCP client (stdio) · T-M2-09 tool call UI + approval gate · T-M2-18 agentic action (cắt được) · T-M2-20 web search tool |
 | **RAG** | T-M2-10 embedding + `rag_documents` + search · T-M2-11 RAG UI + citation mở rộng |
 | **Eval** | T-M2-12 dataset 48 task + snapshot trang · T-M2-13 harness runner · T-M2-14 judge prompt + blind mapping · T-M2-15 thu thập tay Edge + Gemini (n=3) · T-M2-16 chấm tay Tầng B + độ tin cậy · T-M2-17 **`docs/EVAL_REPORT.md`** + radar chart |
 | **Khác** | T-M2-19 chính sách context theo domain + lịch sử duyệt opt-in + mode "chỉ dùng trang" · T-M2-22 vision mở rộng (chụp vùng, OCR, alt text) |
+
+**T-M2-02 (FR-PROVIDER-03/04) — model picker động + fallback chain runtime:**
+- **Server** — `GET /api/providers/:id/models` → `ProviderAdapter.discoverModels?(apiKey)` → `{ providerId, models, source: 'live' | 'fallback' }` (`openaiCompatible.ts` gửi `Authorization` · `gemini.ts` gửi `x-goog-api-key`).
+- **Fallback chain** trong `apps/server/src/services/chatService.ts`: fallback **chỉ** khi lỗi `retryable` **và** `streamedToken === false` · 401/403 → **không** fallback · chuyển provider → **tính lại** context budget + prompt.
+- **SSE event mới `provider_switch`** `{ from, to, reason, model }` → extension đổi chip provider + toast "Đã chuyển sang provider X".
+- **Migration `0002_certain_vector.sql`** — cột mới `request_logs.fallback_from`.
+- **UI** — `ModelPicker` (Radix Popover) ở header · lựa chọn lưu `chrome.storage.local` key `sidekick.modelSelection` → persist qua reload.
+
+**T-M2-03 (FR-PROVIDER-05) — token & chi phí:**
+- `UsageBadge` dưới bubble assistant (token vào/ra + `~ $0.0123`) · provider local → chỉ hiện token.
+- Section **"Chi phí & sử dụng"** trong Settings: `GET /api/usage` → tổng + bảng theo ngày · khoảng `today/7d/30d/all`.
+- **Budget cap (FR-PROVIDER-06, priority C) chưa làm** → `TODO(T-M2-03b)`.
+
+**Ảnh hưởng lên gate parity:** checklist §E **32/35 = 91.4%** → **33/35 = 94.3%** (đóng dòng "Token/cost hiển thị").
 
 > **Hiện trạng `apps/eval/`:** chỉ có **scaffold** — `src/{cli,dataset,logs,types}.ts` + `dataset/tasks.json` (**đang rỗng `[]`**). `pnpm eval:run` hiện chỉ in thống kê dataset; `pnpm eval:run logs` đọc `request_logs` từ BFF (thêm ở T-M1-14). Chưa có `runners/` hay `judge/` → đó là phần lớn T-M2-13/14.
 
@@ -86,17 +103,19 @@
 ## 3. Lịch sử commit (gần đây nhất trước)
 
 ```
-3211d9c docs: huong dan cai dat + test tay toan bo tinh nang M1
-58f5b1f docs: dong bo so test + ghi nhan fix bundle content script
-0144201 fix(content): giam bundle content script (bo Zod + dictionary day du)
-d4e450e feat(a11y): responsive 320-640px + a11y pass co ban (T-M1-20)
-906b35d feat(settings): keyboard shortcut cau hinh duoc (T-M1-18, FR-UX-01)
-57fb536 feat(onboarding): go luong BYOK, danh dau K2/K3 tam dung (T-M1-15/16)
-04296ed feat(i18n): full VI/EN localization (T-M1-17, FR-SETTINGS-06)
-fd2a5fb feat(logging): request logging đầy đủ vào request_logs (T-M1-14)
+000ddcc fix(scripts): giat ca cay tien trinh BFF phu de khong ro ri port 8791
+14d8057 docs(m2): ghi nhan flake E2E do quota provider (413 TPM) khong phai hoi quy code
+2b0c8e1 docs(m2): ghi nhan kiem chung live Chrome 15/15 muc + them lenh pnpm manual:checklist
+2a75376 feat(scripts): them script chay checklist test tay tren Chrome that (load unpacked)
+599b617 test(model-picker): them test doi provider xoa model, tim kiem > 12 model, persist qua reload
+b02c806 feat(usage): bo chon khoang thoi gian cho section chi phi (T-M2-03)
+57865b8 feat(ui): model picker + hien thi token/chi phi (T-M2-02, T-M2-03)
+217328c feat(chat): fallback chain runtime trong chatService + test (FR-PROVIDER-04)
+1ea95cc feat(provider): endpoint danh sach model dong + fallback chain runtime (T-M2-02)
+a05b654 docs(m1): audit checklist parity va dong M1 (tag v0.2)
 ```
 
-> Working tree **sạch** tại `3211d9c`.
+> Working tree **sạch** tại `000ddcc` (trừ 3 file chỉ lệch line-ending CRLF do `core.autocrlf=true` — không có thay đổi nội dung).
 
 ---
 
@@ -241,10 +260,11 @@ types/entities · schemas/{chat,conversation,extract,logs,provider,settings,visi
 |---|---|
 | `pnpm typecheck` | ✅ |
 | `pnpm lint` | ✅ |
-| `pnpm test` | ✅ **1311 unit** (shared 243 · server 377 · extension 691) |
+| `pnpm test` | ✅ **1394 unit** (shared 245 · server 387 · extension 751 · eval 11) |
 | `pnpm build` | ✅ `dist/content.js` 17.27 kB (gzip 6.65 kB) · `sidepanel.js` 780.53 kB |
-| `pnpm db:migrate` | ✅ (không migration mới) |
-| `pnpm test:e2e` | ✅ **81/81** (Docker + BFF thật) |
+| `pnpm db:migrate` | ✅ (migration `0002_certain_vector.sql` — cột `request_logs.fallback_from`) |
+| `pnpm test:e2e` | ✅ **91/91** (24 file — Docker + BFF thật) |
+| `pnpm manual:checklist` | ✅ **15/15 mục** (load unpacked vào Chrome thật — model động 428 model · fallback `ollama → groq` · `fallback_from` trong DB) |
 
 ### Lệnh
 
@@ -298,23 +318,26 @@ Sau mỗi lần build → bấm **↻ reload** trên thẻ extension.
 
 ## 8. Gợi ý bước tiếp theo
 
-### Ưu tiên 1 — T-M1-13 (Export conversation) · S · ~1 ngày
+### Ưu tiên 1 — T-M2-12 (Điền dataset eval thật) · L · ~3–5 ngày
 
-- File: `apps/extension/src/lib/export.ts` (theo plan) + UI trong `ConversationList` hoặc `MessageActions`.
-- AC: *"Xuất đúng nội dung, mở được bằng Notepad/Markdown viewer"*.
-- Ràng buộc: `lib/export.ts` phải **thuần** (test được trực tiếp). Nếu nối vào content script → phải **không** kéo Zod.
-- FR liên quan: `FR-CHAT-10`. Cần cập nhật `REQUIREMENTS.md` §4.x + `IMPLEMENTATION_PLAN.md` (T-M1-13 → ✅) + `SYSTEM_DESIGN.md` (hợp đồng export) + `DESIGN_SYSTEM_BRIEF.md` (nếu thêm UI) + `CHANGELOG.md` + `COMPARISON_MATRIX.md` (nếu là parity item).
+- File: `apps/eval/dataset/tasks.json` + `apps/eval/dataset/snapshots/*`.
+- **Contract đã có sẵn** → [`packages/shared/src/schemas/eval.ts`](../packages/shared/src/schemas/eval.ts) (`evalTaskSchema` + `EVAL_GROUPS` **8 nhóm** theo [`EVAL_PLAN.md`](EVAL_PLAN.md) §3.2) → `apps/eval` validate dataset bằng đúng schema đó.
+- AC (từ plan): ≥ 44 task · ≥ 80% có `must_include_facts` · ≥ 40% tiếng Việt · có nhóm `doc_extract` (PDF) + `video_transcript` (YouTube).
+- Field **snake_case**: `page.snapshot_path` · `page.content_hash` · `reference.key_points` / `must_include_facts` / `must_not_contain` · `expected_citations`.
+- Cần update: `REQUIREMENTS.md` §9 (deliverable) · `SYSTEM_DESIGN.md` §4.5 · `EVAL_PLAN.md` §3 · `IMPLEMENTATION_PLAN.md` (§4.1) · `CHANGELOG.md`.
 
 ### Ưu tiên 2 — M2, đề xuất thứ tự
 
 | Bước | Task | Lý do |
 |---|---|---|
-| 1 | **T-M2-01** multi-provider | Nền cho model picker + fallback + cost. `openaiCompatible.ts` đã có sẵn → OpenAI gần như xong. |
-| 2 | **T-M2-02** model picker + fallback | Dùng được ngay sau khi có nhiều provider. |
-| 3 | **T-M2-03** token & cost UI | `pricing.ts` + `request_logs` đã có → chỉ còn UI. |
-| 4 | **T-M2-12 → 13 → 14** dataset → harness → judge | **Ràng buộc báo cáo** — `EVAL_REPORT.md` là deliverable bắt buộc. Cần chạy song song với feature. |
-| 5 | **T-M2-15 → 16 → 17** thu thập tay → chấm tay → báo cáo | **Cần người** (thu thập Edge/Gemini, 2 người chấm) → nên **bắt đầu sớm**, tốn thời gian chờ. |
-| 6 | Skills / Tools / MCP / RAG | Tính năng độc quyền — ưu tiên sau eval vì cần thêm thời gian. |
+| 1 | **T-M2-12** dataset eval | **Ràng buộc báo cáo** — `EVAL_REPORT.md` là deliverable bắt buộc. Contract đã sẵn sàng. |
+| 2 | **T-M2-13 → 14** harness → judge | 1 lệnh chạy được + judge temperature 0 + blind mapping. |
+| 3 | **T-M2-15 → 16 → 17** thu thập tay → chấm tay → báo cáo | **Cần người** (thu thập Edge/Gemini, 2 người chấm) → nên **bắt đầu sớm**, tốn thời gian chờ. |
+| 4 | **T-M2-03b** budget cap | Priority C · FR-PROVIDER-06 — cảnh báo + tuỳ chọn chặn khi vượt ngưỡng chi phí. |
+| 5 | Skills / Tools / MCP / RAG | Tính năng độc quyền — ưu tiên sau eval vì cần thêm thời gian. |
+
+> ✅ **Đã xong:** T-M2-02 (model picker + fallback chain) · T-M2-03 (token & cost UI).
+> ⏸ **Tạm dừng:** T-M2-01 (multi-provider — quyết định user 2026-11-10: không thêm provider mới).
 
 > ⚠️ **Cảnh báo về timeline:** T-M2-15/16 cần **người thật** (mở Edge Copilot + Chrome Gemini, ghi transcript; 2 người chấm rubric) → nếu không làm sớm thì **phần eval bắt buộc sẽ không đủ dữ liệu**. Đây là **task có lead-time dài nhất** trong M2.
 

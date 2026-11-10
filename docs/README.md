@@ -1,7 +1,7 @@
 # Documentation Index — Sidekick AI (Chrome Extension Chat Sidebar)
 
 **Dự án:** Extension chat-bot sidebar cho trình duyệt, cạnh tranh với Edge Copilot Sidebar và Chrome Gemini Sidebar.
-**Giai đoạn hiện tại:** **M0 (Foundation) ✅** (tag `v0.1`) · **M1 (Parity) ✅ ĐÓNG** (tag `v0.2`) — **23/25 task** (T-M1-13 export ✅ 2026-11-09) · **M2 đang làm** (T-M2-02 model picker + fallback ✅ · T-M2-03 token/cost UI ✅ 2026-11-10) — **1394 unit test + 91 E2E** · kiểm chứng live trên Chrome thật **15/15** mục (`pnpm manual:checklist`) · tiếp theo: **T-M2-12 (dataset eval)** → `docs/EVAL_REPORT.md` (deliverable bắt buộc).
+**Giai đoạn hiện tại:** **M0 (Foundation) ✅** (tag `v0.1`) · **M1 (Parity) ✅ ĐÓNG** (tag `v0.2`) — **23/25 task** (T-M1-13 export ✅ 2026-11-09) · **M2 đang làm — 2/23 task** (T-M2-02 model picker + fallback ✅ · T-M2-03 token/cost UI ✅ 2026-11-10 · T-M2-03b budget cap ⬜) — **1394 unit test + 91 E2E** · kiểm chứng live trên Chrome thật **15/15** mục (`pnpm manual:checklist`) · tiếp theo: **T-M2-12 (dataset eval)** → `docs/EVAL_REPORT.md` (deliverable bắt buộc).
 **Entry point cho agent:** [`../AGENTS.md`](../AGENTS.md) · [`HANDOFF.md`](HANDOFF.md)
 
 ---
@@ -19,7 +19,7 @@
 | [`HANDOFF.md`](HANDOFF.md) | **Chuyển phiên chat** | Checklist bắt đầu chat mới (≤ 5 phút), trạng thái hiện tại, quyết định đã chốt, mẹo tiết kiệm token | **Đọc đầu tiên khi mở chat mới** |
 | [`CHANGELOG.md`](CHANGELOG.md) | **Lịch sử thay đổi** | Mọi thay đổi docs + code, mới → cũ | Xem gần đây đã làm gì |
 | [`MANUAL_TEST_GUIDE.md`](MANUAL_TEST_GUIDE.md) | **Hướng dẫn cài đặt & test tay** | Cài extension + chạy hạ tầng local · checklist test tay **từng tính năng** M1 · xử lý sự cố | **Khi bạn muốn tự dùng thử sản phẩm** |
-| [`CONTEXT_HANDOFF_2026-11-09.md`](CONTEXT_HANDOFF_2026-11-09.md) | **Bàn giao context** (snapshot 1 lần) | Tóm tắt context để chuyển sang chat mới mà không đọc lại toàn bộ `docs/` | Khi cần nhanh 1 trang tóm tắt |
+| [`CONTEXT_HANDOFF_2026-11-09.md`](CONTEXT_HANDOFF_2026-11-09.md) | **Bàn giao context** (snapshot 1 lần) | Tóm tắt context để chuyển sang chat mới mà không đọc lại toàn bộ `docs/` | Khi cần nhanh 1 trang tóm tắt · ⚠️ **đã refresh 2026-11-10** (M2 2/22 task) |
 
 ---
 
@@ -106,7 +106,7 @@ Chi tiết lý do & hệ quả: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §2 (12 A
 | EVAL_PLAN.md | v1.4 | 2026-11-09 | ✅ Đã cập nhật — §3.1 bảng field bắt buộc + ghi chú contract `evalTaskSchema` |
 | DESIGN_SYSTEM_BRIEF.md | v2.0 | 2026-11-08 | ✅ Đã cập nhật — §5 + §5.1 checklist a11y — T-M1-20 |
 | SYSTEM_DESIGN.md | v2.4 | 2026-11-10 | ✅ Đã cập nhật — **§7.22** model picker + fallback chain + **§7.23** token & chi phí (mới) |
-| IMPLEMENTATION_PLAN.md | v2.3 | 2026-11-10 | ✅ Đã cập nhật — T-M2-02/T-M2-03 ✅ · T-M2-01 ⏸ đẩy · ghi chú phạm vi M2 |
+| IMPLEMENTATION_PLAN.md | v2.4 | 2026-11-10 | ✅ Đã cập nhật — T-M2-02/T-M2-03 ✅ · row **T-M2-03b** (budget cap) mới · **§4.1 Kết quả M2** (verify · commit · ảnh hưởng gate) · T-M2-01 ⏸ đẩy |
 | HANDOFF.md | v2.4 | 2026-11-10 | ✅ Đã cập nhật — tiến độ M2 (T-M2-02 · T-M2-03) |
 | CHANGELOG.md | v2.4 | 2026-11-10 | ✅ Đang theo dõi |
 | MANUAL_TEST_GUIDE.md | v1.1 | 2026-11-10 | ✅ Đã cập nhật — **§11b** test model picker + fallback + chi phí (mới) |
@@ -117,7 +117,7 @@ Chi tiết lý do & hệ quả: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §2 (12 A
 |---|---|---|
 | **M0 — Foundation** (2 tuần) | Monorepo, shared types, Docker/Postgres, Drizzle, BFF skeleton, provider Gemini, SSE, side panel shell | ✅ Xong (tag `v0.1`) |
 | **M1 — Parity** (3 tuần) | Content extraction (HTML + PDF + YouTube transcript), context đính kèm chủ động + ngân sách token, `@` multi-tab, selection, citations, markdown/code, conversation CRUD, chat actions (regenerate/edit-resend/stop/continue), gợi ý theo trang + tóm tắt 1-click, toggle panel + context menu + phím tắt, settings, upload ảnh, onboarding, **error/loading/empty states + retry + connection status**, **request logging đầy đủ vào `request_logs`** (request-id xuyên suốt · cost thật · retention 90 ngày · API đọc metadata cho eval), **i18n VI/EN** (dictionary có kiểu · đổi ngôn ngữ áp dụng ngay), **phím tắt cấu hình được** (2 lớp: native Chrome + nhanh Sidekick), **responsive 320–640px + a11y pass cơ bản** (focus ring chuẩn hoá · live region streaming · skip-link · tap target 24px), **export conversation Markdown/JSON**, K2/K3 | ✅ **Xong (tag `v0.2`)** — 23/25 task (T-M1-15 + T-M1-16 ⏸ tạm dừng) · gate đạt: checklist §E **32/35 = 91.4%** · dòng "Must" §A/§B **21/23 = 91.3%** |
-| **M2 — Advanced & Eval** (3 tuần) | Multi-provider, skills, tool registry + MCP, RAG, token/cost UI, **EVAL_REPORT** | 🟡 **Đang làm** — T-M2-02 ✅ (model picker động + fallback chain runtime + event `provider_switch` + log `fallback_from`) · T-M2-03 ✅ (badge token/chi phí + section "Chi phí & sử dụng" theo ngày, có bộ chọn khoảng thời gian `today/7d/30d/all`) · T-M2-01 ⏸ đẩy (không thêm provider mới) · **tiếp theo: T-M2-12** |
+| **M2 — Advanced & Eval** (3 tuần) | Multi-provider, skills, tool registry + MCP, RAG, token/cost UI, **EVAL_REPORT** | 🟡 **Đang làm — 2/23 task** · T-M2-02 ✅ (model picker động + fallback chain runtime + event `provider_switch` + log `fallback_from`) · T-M2-03 ✅ (badge token/chi phí + section "Chi phí & sử dụng" theo ngày, có bộ chọn khoảng thời gian `today/7d/30d/all`) · T-M2-01 ⏸ đẩy (không thêm provider mới) · T-M2-03b ⬜ (budget cap) · **tiếp theo: T-M2-12** |
 | **M3 — Polish & Deliverable** (1 tuần) | Design system, states, a11y audit, i18n, demo video, slide, README, backup DB, ADR | ⬜ Chưa bắt đầu |
 | **M4 — Workflow** (tuỳ chọn, 2 tuần) | Scheduler, workflow CRUD, run log, import/export, notification | ⬜ Ngoài đường găng |
 

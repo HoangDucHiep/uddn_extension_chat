@@ -1,6 +1,6 @@
 # Feature Comparison Matrix — Edge Copilot vs Chrome Gemini vs Sidekick AI
 
-**Version:** v1.0 · **Ngày:** 2026-11-03 · **Nguồn:** tài liệu chính thức Microsoft Support, Google Chrome Help, Chrome DevDocs (đã tổng hợp ở §0)
+**Version:** v2.3 · **Ngày:** 2026-11-10 · **Nguồn:** tài liệu chính thức Microsoft Support, Google Chrome Help, Chrome DevDocs (đã tổng hợp ở §0)
 
 Ký hiệu: ✅ Có đầy đủ · ⚠️ Có nhưng có hạn chế / khác biệt · ➖ Không có · 🟢 Điểm mạnh độc quyền của Sidekick AI
 

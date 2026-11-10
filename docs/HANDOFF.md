@@ -42,6 +42,8 @@ _(Không có — M1 đóng xong 2026-11-09, tag `v0.2`)_
 | T-M2-03 Token & cost UI | ✅ **xong** (trừ budget cap) | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.23 · `TODO(T-M2-03b)` cho FR-PROVIDER-06 (priority C) |
 | T-M2-12..17 Eval | ⬜ chưa bắt đầu | `docs/EVAL_REPORT.md` là deliverable bắt buộc |
 
+> **Bảng kết quả chi tiết của M2** (trạng thái task · verify · commit · ảnh hưởng gate parity) nằm ở [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) **§4.1** — đọc ở đó thay vì tra lại từng file.
+
 **Tóm tắt T-M2-02 (FR-PROVIDER-03/04):**
 
 - **Danh sách model động:** `GET /api/providers/:id/models` → `ProviderAdapter.discoverModels?(apiKey)` (`openaiCompatible.ts` gửi `Authorization` · `gemini.ts` gửi `x-goog-api-key`) → trả `{ providerId, models, source: 'live' | 'fallback' }`. Trước đây `GET /models` **không** có key → provider trả 401 → luôn rơi về danh sách tĩnh.

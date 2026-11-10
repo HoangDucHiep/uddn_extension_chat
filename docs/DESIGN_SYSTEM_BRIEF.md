@@ -1,6 +1,6 @@
 # Design System Brief — Sidekick AI
 
-**Version:** v1.0 · **Ngày:** 2026-11-03 · **Trạng thái:** Baseline cho giai đoạn thiết kế UI
+**Version:** v2.0 · **Ngày:** 2026-11-10 · **Trạng thái:** Baseline cho giai đoạn thiết kế UI
 **Stack UI đã chốt:** Tailwind CSS + shadcn/ui (Radix primitives) + React 18 + TypeScript
 **Nguồn yêu cầu:** [`REQUIREMENTS.md`](REQUIREMENTS.md) (§4.8 FR-SETTINGS, §4.9 FR-UX, §5.4 a11y, §5.1 hiệu năng)
 
