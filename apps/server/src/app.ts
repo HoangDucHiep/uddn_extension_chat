@@ -18,6 +18,7 @@ import { createAttachmentsRouter } from './routes/attachments.js'
 import { createProvidersRouter } from './routes/providers.js'
 import { createConversationsRouter } from './routes/conversations.js'
 import { createLogsRouter } from './routes/logs.js'
+import { createBudgetRouter } from './routes/budget.js'
 import type { ChatServiceDeps } from './services/chatService.js'
 import type { ProviderServiceDeps } from './services/providerService.js'
 
@@ -49,6 +50,7 @@ export function createApp(deps: AppDeps): Express {
   const providersRouter = createProvidersRouter(deps)
   const conversationsRouter = createConversationsRouter({ db: deps.db })
   const logsRouter = createLogsRouter({ db: deps.db })
+  const budgetRouter = createBudgetRouter({ db: deps.db })
 
   // `/api/health` la endpoint chinh; `/health` la alias de smoke test nhanh.
   app.use(API_BASE_PATH, healthRouter)
@@ -59,6 +61,7 @@ export function createApp(deps: AppDeps): Express {
   app.use(API_BASE_PATH, providersRouter)
   app.use(API_BASE_PATH, conversationsRouter)
   app.use(API_BASE_PATH, logsRouter)
+  app.use(API_BASE_PATH, budgetRouter)
 
   app.use(notFoundHandler)
   app.use(errorHandler)

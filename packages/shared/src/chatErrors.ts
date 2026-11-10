@@ -22,6 +22,7 @@ import { ERROR_CODES } from './errors.js'
  * - `auth` — API key sai / thieu (401, 403) → **khong** retry.
  * - `provider` — provider loi nhung loi hon (model khong ton tai, loi tham so).
  * - `server` — loi 5xx cua BFF hoac provider.
+ * - `budget` — da vuot han muc chi phi (FR-PROVIDER-06) → **khong** retry.
  * - `unknown` — khong phan loai duoc → coi nhu `server` (an toan: cho retry).
  */
 export type ChatErrorKind =
@@ -30,6 +31,7 @@ export type ChatErrorKind =
   | 'auth'
   | 'provider'
   | 'server'
+  | 'budget'
   | 'unknown'
 
 /** Do dai mac dinh cua dem nguoc khi provider khong tra `Retry-After` (giay). */
@@ -77,6 +79,14 @@ const PROVIDER_ERROR_CODES: readonly string[] = [
 ]
 
 /**
+ * Cac error code la **vuot han muc chi phi** (FR-PROVIDER-06 — T-M2-03b).
+ *
+ * Retry vo ich (chi phi da vuot han muc → moi luot deu bi chan) → phai
+ * cho user doi cau hinh budget.
+ */
+const BUDGET_ERROR_CODES: readonly string[] = [ERROR_CODES.BUDGET_EXCEEDED]
+
+/**
  * Phan loai error code thanh nhom loi.
  *
  * Error code la chuoi (vi SSE `error.code` chi la string) → dung bang danh
@@ -92,6 +102,7 @@ export function classifyChatError(code: string): ChatErrorKind {
   if (NETWORK_ERROR_CODES.includes(code)) return 'network'
   if (SERVER_ERROR_CODES.includes(code)) return 'server'
   if (PROVIDER_ERROR_CODES.includes(code)) return 'provider'
+  if (BUDGET_ERROR_CODES.includes(code)) return 'budget'
   return 'unknown'
 }
 
@@ -99,13 +110,14 @@ export function classifyChatError(code: string): ChatErrorKind {
  * Nhom loi co **duoc** thu lai (thu cong) khong.
  *
  * - `auth` → **khong** retry (key sai → retry vo ich) — NFR-REL-02.
+ * - `budget` → **khong** retry (vuot han muc → phai doi cau hinh).
  * - `rate-limit` → retry sau khi het han (client dem nguoc).
  * - Con lai → retry duoc (mang, 5xx, provider loi tam thoi).
  *
  * @param kind - Nhom loi.
  */
 export function isRetryableKind(kind: ChatErrorKind): boolean {
-  return kind !== 'auth'
+  return kind !== 'auth' && kind !== 'budget'
 }
 
 /**
@@ -115,6 +127,7 @@ export function isRetryableKind(kind: ChatErrorKind): boolean {
  *  - `network` / `server` / `unknown` → co the loi mat ket noi tam thoi.
  *  - `rate-limit` → **khong** (phai doi het han).
  *  - `auth` → **khong** (key sai).
+ *  - `budget` → **khong** (vuot han muc — FR-PROVIDER-06).
  *  - `provider` → **khong** (model khong ton tai / tham so sai → retry cung loi).
  *
  * @param kind - Nhom loi.

@@ -39,7 +39,8 @@ _(Không có — M1 đóng xong 2026-11-09, tag `v0.2`)_
 |---|---|---|
 | T-M2-01 Multi-provider (OpenAI/Anthropic) | ⏸ **đẩy lại** | Quyết định user 2026-11-10: **không thêm provider mới** → giữ nguyên `PROVIDER_IDS` (`mock · groq · openrouter · gemini · ollama`). Phần "model list động" đã xong trong T-M2-02 |
 | T-M2-02 Model picker + fallback chain | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.22 |
-| T-M2-03 Token & cost UI | ✅ **xong** (trừ budget cap) | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.23 · `TODO(T-M2-03b)` cho FR-PROVIDER-06 (priority C) |
+| T-M2-03 Token & cost UI | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.23 |
+| T-M2-03b Budget cap (FR-PROVIDER-06) | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.24 · enforce **phía server** (`budget_settings` trong Postgres) |
 | T-M2-12..17 Eval | ⬜ chưa bắt đầu | `docs/EVAL_REPORT.md` là deliverable bắt buộc |
 
 > **Bảng kết quả chi tiết của M2** (trạng thái task · verify · commit · ảnh hưởng gate parity) nằm ở [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) **§4.1** — đọc ở đó thay vì tra lại từng file.
@@ -60,7 +61,20 @@ _(Không có — M1 đóng xong 2026-11-09, tag `v0.2`)_
 
 **Ảnh hưởng lên gate parity:** checklist §E `COMPARISON_MATRIX.md` **32/35 = 91.4%** → **33/35 = 94.3%** (đóng dòng "Token/cost hiển thị") — xem §E.1.3.
 
-**Số liệu test sau T-M2-02/03 (2026-11-10):** shared 245 · server 387 · extension 751 · eval 11 = **1394 unit** + **91 E2E** (24 file). `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm build` ✅ (`dist/content.js` 17.27 kB) · `pnpm test:e2e` ✅ (91/91).
+**Tóm tắt T-M2-03b (FR-PROVIDER-06 — budget cap):**
+
+- **Enforce phía server**: cấu hình hạn mức lưu trong **Postgres** (bảng `budget_settings`, singleton `id = 'default'`) → server là nguồn chặn sự thật; client **không** tự so sánh.
+- **Kỳ**: `daily` (từ 00:00 hôm nay) · `monthly` (từ 00:00 ngày 1) theo **giờ local của máy chạy BFF** (BFF chạy local cùng máy → khớp "hôm nay" của user).
+- **2 mức**: `warnThresholdPercent` (mặc định 80) → cảnh báo; vượt 100% → `exceeded`; `hardBlock` (tuỳ chọn, mặc định bật) → **chặn** lượt chat mới.
+- **Chặn = 0 chi phí**: kiểm tra budget **trước** `prepareTurn` → không tạo turn, **không gọi provider** → SSE `budget` → `error(BUDGET_EXCEEDED, 402, retryable:false)` → `done(finishReason:'error')`; lượt bị chặn vẫn ghi 1 dòng `request_logs` (cost 0).
+- **API**: `GET /api/budget` · `PUT /api/budget` (validate Zod ở biên).
+- **SSE event `budget`** `{ state, spentUsd, limitUsd, percentUsed, period }` — emit trước `meta` và thêm 1 lần sau lượt (đã cộng `costUsd`).
+- **UI**: section "Ngân sách chi phí" trong Settings + `BudgetBanner` dưới header (`warning` → `--warning`, `exceeded` → `--danger`) + `ErrorState` case `budget` (ẩn "Thử lại", hiện "Mở cài đặt hạn mức").
+- **Không ảnh hưởng gate parity** → checklist §E giữ nguyên **33/35 = 94.3%** (dòng C6 chỉ ghi thêm, không thêm dòng §E).
+
+**Kiểm chứng live (2026-11-10, BFF + Docker + `.env` có K1):** `GET /api/budget` → `state: "disabled"` · `PUT` hạn mức `0.01` USD → `state: "exceeded"` (đã dùng `0.0399`) → `POST /api/chat` → SSE `budget` (`exceeded`) → `error` `BUDGET_EXCEEDED` (`retryable: false`) → `done(finishReason: "error")` · `request_logs` ghi 1 dòng `error = BUDGET_EXCEEDED`, `cost_usd = 0` → **không** gọi provider · kỳ `daily` → `periodStart` = 00:00 hôm nay theo giờ local · `PUT` sai (`limitUsd = -1`) → **400 `VALIDATION_ERROR`**.
+
+**Số liệu test sau T-M2-02/03/03b (2026-11-10):** shared 263 · server 414 · extension 762 · eval 11 = **1450 unit** + **94 E2E** (25 file). `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm build` ✅ (`dist/content.js` 17.27 kB) · `pnpm test:e2e` ✅ (94/94).
 
 **Kiểm chứng live trên Chrome thật (2026-11-10):** `pnpm manual:checklist` (script mới — `scripts/manual-checklist.mjs`) load extension **unpacked** vào Chrome (profile tạm) → **15/15 mục** của `MANUAL_TEST_GUIDE.md` §11b **pass**:
 - **Model động:** `openrouter` → **428 model** (`source: "live"`) · lọc tìm kiếm `428 → 7` · lựa chọn lưu đúng `chrome.storage.local`.

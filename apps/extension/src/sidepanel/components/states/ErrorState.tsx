@@ -1,4 +1,4 @@
-import { AlertCircle, KeyRound, RefreshCw, X } from 'lucide-react'
+import { AlertCircle, Gauge, KeyRound, RefreshCw, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import {
   classifyChatError,
@@ -74,6 +74,8 @@ export function ErrorState({
   const countdown = resolveCountdownSeconds(code, retryAfterSeconds)
   const isRateLimit = kind === 'rate-limit'
   const isAuth = kind === 'auth'
+  /** Vuot han muc chi phi (FR-PROVIDER-06 — T-M2-03b) → retry vo ich. */
+  const isBudget = kind === 'budget'
 
   // Dem nguoc 429 — khi het thi mo lai nut "Thu lai".
   const [remaining, setRemaining] = useState(countdown)
@@ -92,7 +94,7 @@ export function ErrorState({
     }
   }, [isRateLimit])
 
-  const canRetry = retryable && !isAuth && remaining === 0
+  const canRetry = retryable && !isAuth && !isBudget && remaining === 0
 
   return (
     <div
@@ -137,7 +139,20 @@ export function ErrorState({
           </Button>
         ) : null}
 
-        {onRetry !== undefined && !isAuth ? (
+        {isBudget && onOpenSettings !== undefined ? (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={onOpenSettings}
+            disabled={isBusy}
+            data-testid="error-state-open-budget"
+          >
+            <Gauge className="h-3.5 w-3.5" aria-hidden="true" />
+            {t('state.error.openBudget')}
+          </Button>
+        ) : null}
+
+        {onRetry !== undefined && !isAuth && !isBudget ? (
           <Button
             variant="secondary"
             size="sm"
@@ -158,6 +173,15 @@ export function ErrorState({
             data-testid="error-state-hint"
           >
             {t('state.error.hint')}
+          </span>
+        ) : null}
+
+        {isBudget ? (
+          <span
+            className="text-[length:var(--font-size-xs)] text-[var(--text-tertiary)]"
+            data-testid="error-state-budget-hint"
+          >
+            {t('state.error.budgetHint')}
           </span>
         ) : null}
       </div>

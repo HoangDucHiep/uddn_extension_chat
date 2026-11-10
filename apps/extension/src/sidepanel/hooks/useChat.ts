@@ -5,6 +5,7 @@ import {
   AUTO_RETRY_BACKOFF_MS,
   classifyChatError,
   CONTEXT_WINDOWS,
+  DEFAULT_BUDGET_WARN_PERCENT,
   shouldAutoRetry,
   type ChatEvent,
   type ChatOperation,
@@ -25,6 +26,7 @@ import { readModelSelection } from '@/lib/modelSelection'
 import { SELECTION_EMPTY_ERROR_CODE, type PendingSelection } from '@/lib/selectionProtocol'
 import { activePathMessages, buildHistory } from '@/lib/chatTurns'
 import { useChatStore, type ChatImage, type ChatMessage } from '../store/chatStore'
+import { useBudgetStore } from '../store/budgetStore'
 import { useI18n } from './useI18n'
 
 /**
@@ -381,6 +383,31 @@ export function useChat() {
               })
             }
             toast.warning(t('providerSwitch.toast', { provider: event.to }))
+            break
+
+          case 'budget':
+            // Trang thai budget cap (FR-PROVIDER-06 — T-M2-03b) → cap nhat
+            // `budgetStore` de `BudgetBanner` hien thi canh bao ngay.
+            {
+              const current = useBudgetStore.getState().status
+              useBudgetStore.getState().setStatus({
+                settings: current?.settings ?? {
+                  enabled: event.limitUsd > 0,
+                  limitUsd: event.limitUsd,
+                  period: event.period,
+                  warnThresholdPercent: DEFAULT_BUDGET_WARN_PERCENT,
+                  hardBlock: true,
+                },
+                spentUsd: event.spentUsd,
+                limitUsd: event.limitUsd,
+                remainingUsd: Math.max(0, event.limitUsd - event.spentUsd),
+                percentUsed: event.percentUsed,
+                state: event.state,
+                period: event.period,
+                periodStart: current?.periodStart ?? new Date().toISOString(),
+                periodEnd: current?.periodEnd ?? new Date().toISOString(),
+              })
+            }
             break
 
           case 'error':

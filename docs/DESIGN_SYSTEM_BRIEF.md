@@ -1,6 +1,6 @@
 # Design System Brief — Sidekick AI
 
-**Version:** v2.0 · **Ngày:** 2026-11-10 · **Trạng thái:** Baseline cho giai đoạn thiết kế UI
+**Version:** v2.1 · **Ngày:** 2026-11-10 · **Trạng thái:** Baseline cho giai đoạn thiết kế UI
 **Stack UI đã chốt:** Tailwind CSS + shadcn/ui (Radix primitives) + React 18 + TypeScript
 **Nguồn yêu cầu:** [`REQUIREMENTS.md`](REQUIREMENTS.md) (§4.8 FR-SETTINGS, §4.9 FR-UX, §5.4 a11y, §5.1 hiệu năng)
 
@@ -437,6 +437,7 @@ Cache context chạy **hoàn toàn ngầm** ở tầng `lib/` (`contextCache.ts`
 | `ProviderSettings` | FR-PROVIDER-01/02/08 | ⏸ **tạm dừng** *(BYOK — quyết định user 2026-11-08)* |
 | `ModelPicker` | FR-PROVIDER-03 | ✅ **T-M2-02** — Radix `Popover` ở header panel · danh sách provider (`GET /api/providers`) + model **động** (`GET /api/providers/:id/models`) · search khi > 12 model · lưu `chrome.storage.local` key `sidekick.modelSelection` · chi tiết §3.7.2 |
 | `UsageSettings` | FR-PROVIDER-05 | ✅ **T-M2-03** — section "Chi phí & sử dụng" trong Settings · `GET /api/usage` → tổng token + tổng chi phí + bảng theo ngày · khoảng `today/7d/30d/all` + nút làm mới |
+| `BudgetSettings` | FR-PROVIDER-06 | ✅ **T-M2-03b** — section "Ngân sách chi phí" trong Settings · bật · hạn mức USD · kỳ (`daily`/`monthly`) · ngưỡng cảnh báo % · toggle chặn · `PUT /api/budget` — chi tiết §3.7.3 |
 | `ToolsSettings` | FR-TOOLS-01 | ⬜ T-M2-05 |
 | `SkillsSettings` | FR-SKILL-03, FR-SKILL-07 | ⬜ T-M2-04 |
 | `WorkflowSettings` | FR-WORKFLOW-08 (M4) | ⬜ M4 |
@@ -521,6 +522,41 @@ Cache context chạy **hoàn toàn ngầm** ở tầng `lib/` (`contextCache.ts`
 > **Token dùng:** `--surface-overlay` · `--surface-sunken` · `--text-primary` · `--text-secondary` · `--text-tertiary` · `--color-accent-subtle` · `--color-accent-hover` · `--warning` · `--danger` · `--border-focus` · `--radius-sm` · `--font-size-xs` · `--font-size-sm`.
 >
 > Chi tiết kỹ thuật: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.22 (model picker + fallback) · §7.23 (token & chi phí).
+
+#### 3.7.3 Section "Ngân sách chi phí" + `BudgetBanner` (đã implement T-M2-03b)
+
+**`BudgetSettings`** — section trong `SettingsDrawer` (FR-PROVIDER-06), đặt ngay **sau** `UsageSettings`:
+
+| Hạng mục | Nội dung |
+|---|---|
+| Bật | `ToggleRow` "Bật ngân sách chi phí" (mặc định **TẮT**) |
+| Hạn mức | `<input type="number" step="0.01">` + `<label htmlFor>` → USD |
+| Kỳ tính | `RadioGroup` → "Hôm nay" (`daily`) · "Tháng này" (`monthly`) |
+| Ngưỡng cảnh báo | `<input type="number" min=1 max=100>` → % |
+| Chặn lượt chat mới | `ToggleRow` (mặc định **BẬT**) |
+| Trạng thái | dòng "Đã dùng $x / $y" (4 chữ số thập phân — `formatCostUsd()`) |
+| Lưu | nút `Save` + icon `Loader2` khi đang gọi API |
+| Lỗi | `<p>` màu `--danger` **inline** — **không** crash drawer (response sai shape → `safeParse` fail → hiện lỗi) |
+
+**Cấu hình lưu phía server** → `PUT /api/budget`. Client **không** tự so sánh hạn mức (server là nguồn chặn sự thật) → xem [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.24.
+
+**`BudgetBanner`** — banner dưới header (cùng vị trí với banner offline §3.9.3):
+
+| Trạng thái | Hiển thị | Token màu |
+|---|---|---|
+| `disabled` / `ok` | **không render** | — |
+| `warning` | "Đã dùng {percent}% hạn mức chi phí trong kỳ này." | `--warning` |
+| `exceeded` | "Đã vượt hạn mức chi phí ({spent} / {limit}). Lượt chat mới bị chặn." | `--danger` |
+
+- **Vị trí:** ngay dưới `PanelHeader`, **phía trên** thread (giống banner offline).
+- **A11y:** `role="status"` + `aria-live="polite"` · icon `lucide-react` (`AlertTriangle` / `CircleAlert`) + **chữ** (DP-6: không chỉ dựa vào màu) · nút "Mở cài đặt" có focus ring rõ.
+- **Token:** `--surface-raised` · `--warning` · `--danger` · `--text-*` · `--radius-sm` · `--font-size-xs` · `--font-size-sm`. **Không hardcode màu.**
+
+**`ErrorState` — case budget:** khi server chặn lượt chat (`BUDGET_EXCEEDED`) → **ẩn** nút "Thử lại" (retry vô ích — `shouldAutoRetry('budget') === false`) → hiện nút "Mở cài đặt hạn mức" (`Gauge` icon) + gợi ý "Đã vượt hạn mức chi phí trong kỳ hiện tại…".
+
+> **Token dùng:** `--surface-raised` · `--warning` · `--danger` · `--success` · `--text-primary` · `--text-secondary` · `--text-tertiary` · `--border-default` · `--color-accent` · `--color-accent-contrast` · `--radius-md` · `--radius-sm` · `--font-size-xs` · `--font-size-sm` · `--border-focus`.
+>
+> Chi tiết kỹ thuật: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.24.
 
 ### 3.8 Onboarding (đã implement T-M1-25)
 

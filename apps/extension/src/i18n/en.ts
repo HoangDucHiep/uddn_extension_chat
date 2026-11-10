@@ -187,6 +187,9 @@ export const enDictionary: Dictionary = {
   'state.error.checkKey': 'Check API key',
   'state.error.retryIn': 'Retry in {seconds}s',
   'state.error.hint': 'Check your API key in Settings → server.',
+  'state.error.openBudget': 'Open budget settings',
+  'state.error.budgetHint':
+    'The cost limit for the current period has been exceeded. New chat turns are blocked.',
   'state.offline.banner': 'Cannot reach the server. Retrying…',
   'state.offline.retry': 'Retry',
 
@@ -309,6 +312,31 @@ export const enDictionary: Dictionary = {
   'usage.settings.range.30d': '30 days',
   'usage.settings.range.all': 'All',
   'usage.settings.day': '{date}: {tokens} tokens · {cost}',
+
+  // --- budget cap (T-M2-03b — FR-PROVIDER-06) ---
+  'budget.settings.title': 'Cost budget',
+  'budget.settings.description':
+    'Set a USD cost limit. Once exceeded, new chat turns are blocked.',
+  'budget.settings.enable': 'Enable cost budget',
+  'budget.settings.enableDescription':
+    'Track spend per period and block new chat turns once the limit is reached.',
+  'budget.settings.limit': 'Limit (USD)',
+  'budget.settings.period': 'Period',
+  'budget.settings.periodDaily': 'Today',
+  'budget.settings.periodMonthly': 'This month',
+  'budget.settings.warnThreshold': 'Warning threshold (%)',
+  'budget.settings.hardBlock': 'Block new chat turns when the limit is exceeded',
+  'budget.settings.hardBlockDescription':
+    'When off: only a warning is shown and chatting continues.',
+  'budget.settings.spentOfLimit': 'Spent {spent} / {limit}',
+  'budget.settings.save': 'Save limit',
+  'budget.settings.saved': 'Cost budget saved',
+  'budget.settings.saveError': 'Could not save the cost budget.',
+  'budget.settings.error': 'Could not load or save the cost budget settings.',
+  'budget.banner.warning': 'You have used {percent}% of the cost budget for this period.',
+  'budget.banner.exceeded':
+    'Cost budget exceeded ({spent} / {limit}). New chat turns are blocked.',
+  'budget.banner.openSettings': 'Open settings',
 
   // --- toast ---
   'toast.conversationCreated': 'New conversation created',

@@ -58,6 +58,10 @@ export const ERROR_CODES = {
   VISION_TOTAL_TOO_LARGE: 'VISION_TOTAL_TOO_LARGE',
   /** Provider/model hien tai khong ho tro xu ly anh. */
   PROVIDER_VISION_UNSUPPORTED: 'PROVIDER_VISION_UNSUPPORTED',
+
+  // Budget cap (FR-PROVIDER-06 — T-M2-03b)
+  /** Chi phi da vuot han muc → server chan luot chat moi. */
+  BUDGET_EXCEEDED: 'BUDGET_EXCEEDED',
 } as const
 
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES]
@@ -103,6 +107,8 @@ export const ERROR_STATUS_MAP: Record<ErrorCode, number> = {
   VISION_TOO_MANY_IMAGES: 400,
   VISION_TOTAL_TOO_LARGE: 413,
   PROVIDER_VISION_UNSUPPORTED: 400,
+
+  BUDGET_EXCEEDED: 402,
 }
 
 /** Error chuan hoa moi dien ra ngoai server. */

@@ -225,6 +225,31 @@ export const requestLogs = pgTable(
 )
 
 /** ------------------------------------------------------------------
+ * budget_settings — cau hinh budget cap (FR-PROVIDER-06 — T-M2-03b)
+ * ---------------------------------------------------------------- */
+export const budgetSettings = pgTable('budget_settings', {
+  /**
+   * Id cua cau hinh — **singleton** (chi 1 dong, id = `'default'`).
+   *
+   * Dung `text` pk thay vi uuid de upsert idempotent: server luon ghi vao
+   * cung 1 dong → khong sinh rac nhieu dong khi user bam "Luu" nhieu lan.
+   */
+  id: text('id').primaryKey().default('default'),
+  /** Bat/tat budget cap. Mac dinh **TAT** (user chu dong bat). */
+  enabled: boolean('enabled').notNull().default(false),
+  /** Han muc chi phi (USD) cho ky hien tai. `0` = khong gioi han. */
+  limitUsd: numeric('limit_usd', { precision: 12, scale: 6 }).notNull().default('0'),
+  /** Nguong canh bao (%) — vuot nguong nay → canh bao. */
+  warnThresholdPercent: integer('warn_threshold_percent').notNull().default(80),
+  /** Chu ky tinh: `daily` | `monthly`. */
+  period: text('period').notNull().default('monthly'),
+  /** Khi vuot han muc → chan luot chat moi. */
+  hardBlock: boolean('hard_block').notNull().default(true),
+  createdAt,
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+/** ------------------------------------------------------------------
  * Relations
  * ---------------------------------------------------------------- */
 export const conversationsRelations = relations(conversations, ({ many }) => ({
@@ -272,3 +297,5 @@ export type ProviderKeyRow = typeof providerKeys.$inferSelect
 export type NewProviderKeyRow = typeof providerKeys.$inferInsert
 export type RequestLogRow = typeof requestLogs.$inferSelect
 export type NewRequestLogRow = typeof requestLogs.$inferInsert
+export type BudgetSettingsRow = typeof budgetSettings.$inferSelect
+export type NewBudgetSettingsRow = typeof budgetSettings.$inferInsert

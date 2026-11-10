@@ -24,6 +24,7 @@ import {
   CONTEXT_WINDOWS,
   DEFAULT_SYSTEM_PROMPT,
   ERROR_CODES,
+  evaluateBudgetState,
   hashString,
   isRetryableKind,
   trimHistory,
@@ -45,6 +46,7 @@ import { resolveKey, type EnvKeys } from '../providers/keyResolver.js'
 import { loadRecentAttachments, persistAttachments } from './attachmentService.js'
 import { clearCitations, extractCitations, persistCitations } from './citationService.js'
 import { buildAutoTitle } from './conversationService.js'
+import { buildBudgetStatus } from './budgetService.js'
 import { insertRequestLog, type RequestLogData } from './requestLogService.js'
 import {
   derivePath,
@@ -181,6 +183,54 @@ export function createChatStream(
     // Bat dau do thoi gian **truoc moi buoc** → latency do duoc ca thoi gian
     // chuan bi turn (T-M1-14: latency phai do ca luot, khong chi stream).
     const startedAt = Date.now()
+
+    // --- 0. Kiem tra budget cap (FR-PROVIDER-06 — T-M2-03b) ---
+    // Tinh **truoc** moi thao tac len DB/turn → khi vuot han muc + hardBlock
+    // → khong tao turn, khong goi provider → **chi phi = 0**.
+    const budgetBefore = await buildBudgetStatus(deps.db, new Date(startedAt))
+
+    yield {
+      type: 'budget',
+      state: budgetBefore.state,
+      spentUsd: budgetBefore.spentUsd,
+      limitUsd: budgetBefore.limitUsd,
+      percentUsed: budgetBefore.percentUsed,
+      period: budgetBefore.period,
+    }
+
+    if (budgetBefore.state === 'exceeded' && budgetBefore.settings.hardBlock) {
+      // Ghi 1 dong `request_logs` voi chi phi 0 → AC "moi luot chat (ke ca
+      // that bai) co 1 dong log" (T-M1-14) va de user thay ly do bi chan.
+      await persistRequestLog(deps, {
+        requestId,
+        conversationId,
+        provider: request.provider ?? 'unknown',
+        model: request.model ?? 'unknown',
+        keySource: 'none',
+        promptText: '',
+        responseText: '',
+        contextItems: [],
+        tokensIn: 0,
+        tokensOut: 0,
+        ttftMs: 0,
+        latencyMs: Date.now() - startedAt,
+        error: ERROR_CODES.BUDGET_EXCEEDED,
+        costUsd: 0,
+        toolCalls: null,
+        fallbackFrom: null,
+      })
+
+      yield {
+        type: 'error',
+        code: ERROR_CODES.BUDGET_EXCEEDED,
+        message:
+          'Da vuot han muc chi phi trong ky hien tai. Luot chat moi bi chan. ' +
+          'Hay tang han muc hoac doi ky tinh trong cai dat.',
+        retryable: false,
+      }
+      yield { type: 'done', finishReason: 'error', messageId }
+      return
+    }
 
     // --- 1. Chuan bi turn (T-M1-10) ---
     const plan = await prepareTurn(deps, request, operation, conversationId)
@@ -524,6 +574,29 @@ export function createChatStream(
     // --- 5. Usage event ---
     if (tokensIn > 0 || tokensOut > 0) {
       yield { type: 'usage', tokensIn, tokensOut, costUsd }
+    }
+
+    // --- 5b. Budget cap: cap nhat trang thai sau luot (FR-PROVIDER-06) ---
+    // Chi phi cua luot nay vua duoc tinh → cong vao tong da dung de ky.
+    // Client dung event nay de banner canh bao **ngay** khi vua vuot nguong
+    // (thay vi doi den luot chat sau).
+    {
+      const spentAfter = budgetBefore.spentUsd + costUsd
+      const budgetAfter = evaluateBudgetState({
+        enabled: budgetBefore.settings.enabled,
+        limitUsd: budgetBefore.limitUsd,
+        spentUsd: spentAfter,
+        warnThresholdPercent: budgetBefore.settings.warnThresholdPercent,
+      })
+
+      yield {
+        type: 'budget',
+        state: budgetAfter.state,
+        spentUsd: spentAfter,
+        limitUsd: budgetBefore.limitUsd,
+        percentUsed: budgetAfter.percentUsed,
+        period: budgetBefore.period,
+      }
     }
 
     // --- 6. Luu assistant message + request_logs ---

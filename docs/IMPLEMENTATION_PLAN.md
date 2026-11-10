@@ -1,6 +1,6 @@
 # Implementation Plan — Sidekick AI
 
-**Version:** v2.4 · **Ngày:** 2026-11-10
+**Version:** v2.5 · **Ngày:** 2026-11-10
 **Tổng thời gian ước tính:** 11 tuần (M0–M3 bắt buộc) + 2 tuần tuỳ chọn (M4)
 
 > Đây là kế hoạch **task-level** để làm được ngay. Mỗi task có mã, FR liên quan, output files, acceptance criteria và estimate.
@@ -1028,8 +1028,8 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 |---|---|---|---|---|---|
 | T-M2-01 | Multi-provider: OpenAI, Anthropic, OpenRouter, Groq, Ollama | FR-PROVIDER-01/03/07 | `apps/server/src/providers/{openai,anthropic,openrouter,groq,ollama}.ts` | Mỗi provider stream được; model list lấy động; phát hiện được Ollama local khả dụng | L | ⏸ **đẩy lại** — xem ghi chú bên dưới |
 | T-M2-02 | Model picker + fallback chain | FR-PROVIDER-03/04 | `settings/ModelPicker.tsx`, `providers/fallback.ts` | Provider chính lỗi → tự chuyển provider dự phòng, ghi log | M | ✅ *(2026-11-10)* |
-| T-M2-03 | Token & cost calculator + usage UI + budget cap | FR-PROVIDER-05/06 | `lib/cost.ts`, `settings/DataSettings.tsx`, `chat/UsageBadge.tsx` | Hiện token/cost từng lượt; cảnh báo khi vượt budget | M | ✅ *(2026-11-10)* — phần **budget cap (FR-PROVIDER-06) chưa làm** → tách thành **T-M2-03b** |
-| T-M2-03b | Budget cap (cảnh báo + tuỳ chọn chặn khi vượt ngưỡng chi phí) | FR-PROVIDER-06 | `sidepanel/components/settings/BudgetSettings.tsx`, `apps/extension/src/lib/budget.ts` | Cấu hình ngưỡng ở Settings; cảnh báo khi tổng `cost_usd` vượt ngưỡng; tuỳ chọn chặn lượt chat mới | S | ⬜ |
+| T-M2-03 | Token & cost calculator + usage UI | FR-PROVIDER-05 | `lib/cost.ts`, `settings/DataSettings.tsx`, `chat/UsageBadge.tsx` | Hiện token/cost từng lượt | M | ✅ *(2026-11-10)* — phần **budget cap (FR-PROVIDER-06)** tách thành **T-M2-03b** (đã xong) |
+| T-M2-03b | Budget cap (cảnh báo + tuỳ chọn chặn khi vượt ngưỡng chi phí) | FR-PROVIDER-06 | `packages/shared/src/budget.ts`, `packages/shared/src/schemas/budget.ts`, `apps/server/src/services/budgetService.ts`, `apps/server/src/routes/budget.ts`, `apps/extension/src/sidepanel/components/settings/BudgetSettings.tsx`, `apps/extension/src/sidepanel/components/BudgetBanner.tsx` | Cấu hình ngưỡng ở Settings (**lưu phía server** — bảng `budget_settings`); cảnh báo khi tổng `cost_usd` vượt ngưỡng; tuỳ chọn chặn lượt chat mới (server **không gọi provider** → chi phí = 0) | M | ✅ *(2026-11-10)* |
 | T-M2-04 | Skills: menu `/`, CRUD, builtin library | FR-SKILL-01/02/03, NFR-MAINT-03 | `sidepanel/components/skills/*`, `POST /skills` | `/` → list skill; tạo skill từ message; CRUD đủ | L |
 | T-M2-05 | Skill import/export JSON | FR-SKILL-05 | `sidepanel/lib/skillIO.ts` | Export/import round-trip không mất dữ liệu | S |
 | T-M2-06 | Skill library browser nội bộ | FR-SKILL-07 | `sidepanel/components/skills/SkillLibrary.tsx` | Xem/lọc skill theo tag | M |
@@ -1061,9 +1061,11 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 
 **T-M2-01 được đẩy lại.** Quyết định của user (2026-11-10): **không thêm provider mới** (OpenAI/Anthropic) → giữ nguyên `PROVIDER_IDS` (`mock · groq · openrouter · gemini · ollama`), `packages/shared/src/constants.ts` **không đổi**, **không** migration bảng provider. Phần "model list động" của T-M2-01 đã được **T-M2-02** thực hiện xong (dùng adapter `discoverModels()` sẵn có) → khi nào làm lại T-M2-01 chỉ cần bổ sung adapter OpenAI/Anthropic.
 
-**T-M2-03 tách phần budget cap.** Phần hiển thị token/cost (FR-PROVIDER-05) đã xong; phần **budget cap** (FR-PROVIDER-06, priority `C`) **chưa làm** → tách thành task riêng **T-M2-03b** (row mới trong bảng §4) để có thể theo dõi độc lập.
+**T-M2-03 tách phần budget cap.** Phần hiển thị token/cost (FR-PROVIDER-05) đã xong; phần **budget cap** (FR-PROVIDER-06, priority `C`) tách thành task riêng **T-M2-03b** (row mới trong bảng §4) để có thể theo dõi độc lập → **T-M2-03b đã xong (2026-11-10)**.
 
 > **Không làm trong T-M2-02/03 (ngoài phạm vi):** budget cap (FR-PROVIDER-06 → T-M2-03b) · thêm provider OpenAI/Anthropic (T-M2-01) · K2/K3 BYOK (T-M1-15/16, ⏸ tạm dừng).
+
+**T-M2-03b đã xong (2026-11-10).** Quyết định thiết kế chính: **enforce phía server** (cấu hình lưu trong Postgres — bảng `budget_settings`, singleton) → client **không** tự so sánh hạn mức. Lý do: nếu client tự so sánh thì không phải "hạn mức" thật, và mỗi máy sẽ có 1 hạn mức riêng. Kỳ tính: `daily` · `monthly` theo **giờ địa phương của máy chạy BFF** (BFF chạy local cùng máy với trình duyệt → khớp "hôm nay" của user). Chi tiết: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.24.
 
 ### 4.1 Kết quả M2 — T-M2-02 + T-M2-03 (2026-11-10)
 
@@ -1074,8 +1076,8 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 | Task | Trạng thái | Commit | Bằng chứng |
 |---|---|---|---|
 | **T-M2-02** — Model picker + fallback chain (FR-PROVIDER-03/04) | ✅ **xong** | `1ea95cc` · `217328c` · `57865b8` | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.22 |
-| **T-M2-03** — Token & cost UI (FR-PROVIDER-05) | ✅ **xong** (trừ budget cap → tách **T-M2-03b**) | `57865b8` · `b02c806` | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.23 |
-| **T-M2-03b** — Budget cap (FR-PROVIDER-06) | ⬜ **chưa làm** | — | priority `C` — xem ghi chú phạm vi M2 ở trên |
+| **T-M2-03** — Token & cost UI (FR-PROVIDER-05) | ✅ **xong** (phần budget cap đã tách **T-M2-03b**, xong 2026-11-10) | `57865b8` · `b02c806` | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.23 |
+| **T-M2-03b** — Budget cap (FR-PROVIDER-06) | ✅ **xong** (2026-11-10) | (commit hiện tại) | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.24 |
 | **T-M2-01** — Multi-provider (OpenAI/Anthropic) | ⏸ **đẩy lại** | — | quyết định user 2026-11-10 — không thêm provider mới |
 
 #### 4.1.2 Verify
@@ -1104,8 +1106,32 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 | 1 | **T-M2-12** — dataset eval (≥ 44 task + snapshot trang) | **Ràng buộc báo cáo** — `docs/EVAL_REPORT.md` là deliverable bắt buộc. Contract đã có ở `packages/shared/src/schemas/eval.ts` |
 | 2 | **T-M2-13** → **T-M2-14** — harness → judge | 1 lệnh chạy được + judge temperature 0 + blind mapping |
 | 3 | **T-M2-15 → 16 → 17** — thu thập tay → chấm tay → báo cáo | **Cần người thật** → có lead-time dài nhất, nên bắt đầu sớm |
-| 4 | **T-M2-03b** — budget cap | Priority C — đóng nốt FR-PROVIDER-06 |
-| 5 | Skills / Tools / MCP / RAG | Tính năng độc quyền — ưu tiên sau eval |
+| 4 | Skills / Tools / MCP / RAG | Tính năng độc quyền — ưu tiên sau eval |
+
+### 4.2 Kết quả M2 — T-M2-03b Budget cap (2026-11-10)
+
+#### 4.2.1 Trạng thái task
+
+| Task | Trạng thái | Bằng chứng |
+|---|---|---|
+| **T-M2-03b** — Budget cap (FR-PROVIDER-06) | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.24 · [`DESIGN_SYSTEM_BRIEF.md`](DESIGN_SYSTEM_BRIEF.md) §3.7.3 |
+
+#### 4.2.2 Verify
+
+| Hạng mục | Kết quả |
+|---|---|
+| `pnpm typecheck` | ✅ pass (4 workspace) |
+| `pnpm lint` | ✅ pass (0 error, 0 warning) |
+| `pnpm test` | ✅ **1450 unit** (shared 263 · server 414 · extension 762 · eval 11) — thêm `packages/shared/tests/budget.test.ts` (18) · `apps/server/tests/budgetService.test.ts` (16) · `apps/server/tests/budgetRoute.test.ts` (6) · `apps/server/tests/chatBudget.test.ts` (5) · `apps/extension/tests/budgetSettings.test.tsx` (6) · `apps/extension/tests/budgetBanner.test.tsx` (5) |
+| `pnpm build` | ✅ pass — `dist/content.js` không phình (budget code chỉ nằm ở side panel + server) |
+| `pnpm db:migrate` | ✅ migration `0003_good_mimic.sql` — bảng `budget_settings` |
+| `pnpm test:e2e` | ✅ `apps/extension/e2e/budget.spec.ts` (3 kịch bản — stub `/api/budget`, không cần BFF thật) |
+| Kiểm chứng live (BFF + Docker + `.env` có K1) | ✅ `GET /api/budget` → `state: "disabled"` · `PUT` hạn mức `0.01` USD → `state: "exceeded"` (đã dùng `0.0399`) · `POST /api/chat` → SSE `budget` (`exceeded`) → `error` `BUDGET_EXCEEDED` (`retryable: false`) → `done(finishReason: "error")` · `request_logs` ghi 1 dòng `error = BUDGET_EXCEEDED`, `cost_usd = 0` (**không** gọi provider) · kỳ `daily` → `periodStart` = 00:00 hôm nay theo giờ local · `PUT` sai (`limitUsd = -1`) → **400 `VALIDATION_ERROR`** |
+
+#### 4.2.3 Ảnh hưởng lên gate parity
+
+- **Không** đổi checklist §E (`COMPARISON_MATRIX.md`) → giữ nguyên **33/35 = 94.3%** (budget cap là tính năng **độc quyền**, Edge/Gemini không có → ghi ở dòng C6 §C, **không** thêm dòng mới).
+- **Không** phá parity: không thêm permission, không đổi manifest, không đổi hành vi chat M1.
 
 ---
 

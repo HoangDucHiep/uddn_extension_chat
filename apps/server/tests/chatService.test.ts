@@ -305,7 +305,10 @@ describe('createChatStream', () => {
     const result = createChatStream(deps, request, new AbortController().signal)
     const events = await collectEvents(result.events)
 
-    expect(events[0]?.type).toBe('meta')
+    // Event `budget` den truoc `meta` (T-M2-03b — server tinh chi phi truoc
+    // khi goi provider) → `meta` van la event dau tien cua luot chat.
+    expect(events[0]?.type).toBe('budget')
+    expect(events[1]?.type).toBe('meta')
     expect(events[events.length - 1]?.type).toBe('done')
     const tokens = events.filter((event) => event.type === 'token')
     expect(tokens).toHaveLength(2)

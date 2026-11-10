@@ -10,6 +10,7 @@ import {
 import { useI18n } from '@/sidepanel/hooks/useI18n'
 import { useSettings } from '@/sidepanel/hooks/useSettings'
 import { AppearanceSettings } from './AppearanceSettings'
+import { BudgetSettings } from './BudgetSettings'
 import { DataSettings } from './DataSettings'
 import { EndpointSettings } from './EndpointSettings'
 import { LanguageSettings } from './LanguageSettings'
@@ -119,6 +120,9 @@ export function SettingsDrawer({
 
           {/* Chi phi & su dung (T-M2-03 — FR-PROVIDER-05). */}
           <UsageSettings />
+
+          {/* Ngan sach chi phi (T-M2-03b — FR-PROVIDER-06). */}
+          <BudgetSettings />
 
           <DataSettings {...(onHistoryDeleted !== undefined ? { onHistoryDeleted } : {})} />
 

@@ -7,8 +7,21 @@ import {
 import { AppError, ERROR_CODES, ERROR_STATUS_MAP } from '../src/errors.js'
 
 describe('events', () => {
-  it('co du 9 event type', () => {
-    expect(CHAT_EVENT_TYPES).toHaveLength(9)
+  it('co du 10 event type', () => {
+    expect(CHAT_EVENT_TYPES).toHaveLength(10)
+  })
+
+  it('parse budget event (T-M2-03b)', () => {
+    expect(
+      isChatEvent({
+        type: 'budget',
+        state: 'warning',
+        spentUsd: 8,
+        limitUsd: 10,
+        percentUsed: 80,
+        period: 'monthly',
+      }),
+    ).toBe(true)
   })
 
   it('parse meta event', () => {

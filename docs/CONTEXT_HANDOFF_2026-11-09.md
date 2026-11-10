@@ -5,7 +5,7 @@
 >
 > Cập nhật: **2026-11-10** (giờ VN) · HEAD = `000ddcc`
 >
-> ⚠️ **Đã refresh 2026-11-10** — tên file giữ nguyên theo lần tạo 2026-11-09, nhưng nội dung đã đồng bộ với trạng thái M2 mới nhất (2/23 task M2 xong). Đọc `docs/HANDOFF.md` §2 nếu cần số liệu mới hơn.
+> ⚠️ **Đã refresh 2026-11-10** — tên file giữ nguyên theo lần tạo 2026-11-09, nhưng nội dung đã đồng bộ với trạng thái M2 mới nhất (3/23 task M2 xong). Đọc `docs/HANDOFF.md` §2 nếu cần số liệu mới hơn.
 
 ---
 
@@ -14,7 +14,7 @@
 1. Đọc `AGENTS.md` (file gốc ở root) — chứa 90% context của dự án.
 2. Đọc `docs/HANDOFF.md` §2 — trạng thái hiện tại + quyết định đã chốt.
 3. Kiểm tra bằng chứng bằng `git log --oneline -10` + `git status`.
-4. M1 đã đóng **23/25 task** (tag `v0.2`). **M2 đang làm — 2/23 task xong** (T-M2-02 ✅ · T-M2-03 ✅). Việc tiếp theo: **T-M2-12** (điền dataset eval thật — contract đã sẵn sàng ở `packages/shared/src/schemas/eval.ts`).
+4. M1 đã đóng **23/25 task** (tag `v0.2`). **M2 đang làm — 3/23 task xong** (T-M2-02 ✅ · T-M2-03 ✅ · T-M2-03b ✅). Việc tiếp theo: **T-M2-12** (điền dataset eval thật — contract đã sẵn sàng ở `packages/shared/src/schemas/eval.ts`).
 5. **Bắt buộc** theo `.cursor/rules/docs-sync.mdc`: code → cập nhật `docs/` tương ứng + `docs/CHANGELOG.md` → 1 commit/task.
 
 ---
@@ -56,7 +56,7 @@
 |---|---|
 | **M0 — Foundation** | ✅ Xong (tag `v0.1`) — 15/15 task |
 | **M1 — Parity** | ✅ Xong (tag `v0.2`) — 23/25 task · gate đạt: checklist §E **32/35 = 91.4%** · dòng "Must" §A/§B **21/23 = 91.3%** |
-| **M2 — Advanced & Eval** | 🟡 **Đang làm — 2/23 task** · T-M2-02 ✅ · T-M2-03 ✅ · T-M2-01 ⏸ đẩy |
+| **M2 — Advanced & Eval** | 🟡 **Đang làm — 3/23 task** · T-M2-02 ✅ · T-M2-03 ✅ · T-M2-03b ✅ · T-M2-01 ⏸ đẩy |
 | **M3 — Polish & Deliverable** | ⬜ Chưa bắt đầu |
 | **M4 — Workflow** | ⬜ Ngoài đường găng (chỉ sau M3 + đã có eval report) |
 
@@ -71,11 +71,11 @@
 >
 > **BYOK tạm dừng:** ô nhập API key đã **gỡ khỏi onboarding** (bước 2) → provider cần key mà chưa có **K1** chỉ hiện thông báo hướng dẫn (`data-testid="onboarding-key-required"`). **Server giữ nguyên** `POST /api/providers/keys` · `GET/DELETE /api/providers/keys/:id` · `POST /api/providers/keys/:id/test` + bảng `provider_keys` (AES-256-GCM) → mở lại được bằng cách thêm lại UI, **không** migration. Ở M1 nguồn key duy nhất là **K1** (team key trong `.env` BFF) + Ollama local.
 
-### M2 — 23 task (2/23 xong)
+### M2 — 23 task (3/23 xong)
 
 | Nhóm | Task |
 |---|---|
-| **Provider** | T-M2-01 multi-provider (OpenAI, Anthropic, OpenRouter, Groq, Ollama) — ⏸ **đẩy lại** (quyết định user 2026-11-10: **không** thêm provider mới) · T-M2-02 model picker + fallback chain — ✅ **xong** · T-M2-03 token & cost UI — ✅ **xong** (trừ budget cap) · T-M2-03b budget cap — ⬜ |
+| **Provider** | T-M2-01 multi-provider (OpenAI, Anthropic, OpenRouter, Groq, Ollama) — ⏸ **đẩy lại** (quyết định user 2026-11-10: **không** thêm provider mới) · T-M2-02 model picker + fallback chain — ✅ **xong** · T-M2-03 token & cost UI — ✅ **xong** · T-M2-03b budget cap — ✅ **xong** (enforce phía server) |
 | **Skills** | T-M2-04 CRUD + menu `/` · T-M2-05 import/export JSON · T-M2-06 library browser · T-M2-21 built-in library (≥8 skill) + skill gắn điều kiện |
 | **Tools** | T-M2-07 tool registry (web search, calculator) · T-M2-08 MCP client (stdio) · T-M2-09 tool call UI + approval gate · T-M2-18 agentic action (cắt được) · T-M2-20 web search tool |
 | **RAG** | T-M2-10 embedding + `rag_documents` + search · T-M2-11 RAG UI + citation mở rộng |
@@ -93,6 +93,12 @@
 - `UsageBadge` dưới bubble assistant (token vào/ra + `~ $0.0123`) · provider local → chỉ hiện token.
 - Section **"Chi phí & sử dụng"** trong Settings: `GET /api/usage` → tổng + bảng theo ngày · khoảng `today/7d/30d/all`.
 - **Budget cap (FR-PROVIDER-06, priority C) chưa làm** → `TODO(T-M2-03b)`.
+
+**T-M2-03b (FR-PROVIDER-06) — budget cap (enforce phía server):**
+- Cấu hình hạn mức lưu trong **Postgres** (bảng `budget_settings`, singleton) → server là nguồn chặn sự thật.
+- Kỳ `daily` / `monthly` theo **giờ local của máy chạy BFF**; ngưỡng cảnh báo 80%; vượt 100% → `exceeded`.
+- `hardBlock` → chặn **trước khi gọi provider** (chi phí = 0) → SSE `budget` → `error(BUDGET_EXCEEDED, 402, retryable:false)` → `done(finishReason:'error')`; lượt bị chặn vẫn ghi 1 dòng `request_logs` (cost 0).
+- API `GET/PUT /api/budget` · UI: section "Ngân sách chi phí" trong Settings + `BudgetBanner` dưới header.
 
 **Ảnh hưởng lên gate parity:** checklist §E **32/35 = 91.4%** → **33/35 = 94.3%** (đóng dòng "Token/cost hiển thị").
 
@@ -333,10 +339,10 @@ Sau mỗi lần build → bấm **↻ reload** trên thẻ extension.
 | 1 | **T-M2-12** dataset eval | **Ràng buộc báo cáo** — `EVAL_REPORT.md` là deliverable bắt buộc. Contract đã sẵn sàng. |
 | 2 | **T-M2-13 → 14** harness → judge | 1 lệnh chạy được + judge temperature 0 + blind mapping. |
 | 3 | **T-M2-15 → 16 → 17** thu thập tay → chấm tay → báo cáo | **Cần người** (thu thập Edge/Gemini, 2 người chấm) → nên **bắt đầu sớm**, tốn thời gian chờ. |
-| 4 | **T-M2-03b** budget cap | Priority C · FR-PROVIDER-06 — cảnh báo + tuỳ chọn chặn khi vượt ngưỡng chi phí. |
+| 4 | ~~**T-M2-03b** budget cap~~ | ✅ **Đã xong** (2026-11-10) — enforce phía server. |
 | 5 | Skills / Tools / MCP / RAG | Tính năng độc quyền — ưu tiên sau eval vì cần thêm thời gian. |
 
-> ✅ **Đã xong:** T-M2-02 (model picker + fallback chain) · T-M2-03 (token & cost UI).
+> ✅ **Đã xong:** T-M2-02 (model picker + fallback chain) · T-M2-03 (token & cost UI) · T-M2-03b (budget cap enforce phía server).
 > ⏸ **Tạm dừng:** T-M2-01 (multi-provider — quyết định user 2026-11-10: không thêm provider mới).
 
 > ⚠️ **Cảnh báo về timeline:** T-M2-15/16 cần **người thật** (mở Edge Copilot + Chrome Gemini, ghi transcript; 2 người chấm rubric) → nếu không làm sớm thì **phần eval bắt buộc sẽ không đủ dữ liệu**. Đây là **task có lead-time dài nhất** trong M2.

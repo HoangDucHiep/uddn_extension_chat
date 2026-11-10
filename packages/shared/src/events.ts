@@ -13,6 +13,7 @@
  */
 
 import { z } from 'zod'
+import { BUDGET_PERIODS, BUDGET_STATES } from './budget.js'
 
 /** Metadata mo dau stream. */
 export const chatMetaEventSchema = z.object({
@@ -99,6 +100,28 @@ export const chatProviderSwitchEventSchema = z.object({
 })
 export type ChatProviderSwitchEvent = z.infer<typeof chatProviderSwitchEventSchema>
 
+/**
+ * Trang thai budget cap (FR-PROVIDER-06 — T-M2-03b).
+ *
+ * Server tinh tong chi phi da dung trong ky (`daily` | `monthly`) tu
+ * `request_logs.cost_usd` → client hien thi banner canh bao khi vuot
+ * nguong, va biet chinh xac khi nao bi **chan**.
+ */
+export const chatBudgetEventSchema = z.object({
+  type: z.literal('budget'),
+  /** Trang thai: `disabled` · `ok` · `warning` · `exceeded`. */
+  state: z.enum(BUDGET_STATES),
+  /** Chi phi da dung trong ky (USD). */
+  spentUsd: z.number().nonnegative(),
+  /** Han muc (USD). */
+  limitUsd: z.number().nonnegative(),
+  /** Phan tram da dung (%) — 0 khi budget tat. */
+  percentUsed: z.number().nonnegative(),
+  /** Ky dang tinh. */
+  period: z.enum(BUDGET_PERIODS),
+})
+export type ChatBudgetEvent = z.infer<typeof chatBudgetEventSchema>
+
 /** Loi giua luong. */
 export const chatErrorEventSchema = z.object({
   type: z.literal('error'),
@@ -130,7 +153,7 @@ export const chatDoneEventSchema = z.object({
 })
 export type ChatDoneEvent = z.infer<typeof chatDoneEventSchema>
 
-/** Union 9 event cua luong chat. */
+/** Union 10 event cua luong chat. */
 export const chatEventSchema = z.discriminatedUnion('type', [
   chatMetaEventSchema,
   chatTokenEventSchema,
@@ -139,6 +162,7 @@ export const chatEventSchema = z.discriminatedUnion('type', [
   chatToolResultEventSchema,
   chatUsageEventSchema,
   chatProviderSwitchEventSchema,
+  chatBudgetEventSchema,
   chatErrorEventSchema,
   chatDoneEventSchema,
 ])
@@ -152,6 +176,7 @@ export const CHAT_EVENT_TYPES = [
   'tool_result',
   'usage',
   'provider_switch',
+  'budget',
   'error',
   'done',
 ] as const

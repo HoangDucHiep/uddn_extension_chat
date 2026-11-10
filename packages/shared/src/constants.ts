@@ -146,6 +146,8 @@ export const API_ROUTES = {
   logs: `${API_BASE_PATH}/logs`,
   /** Tong hop token + chi phi theo ngay — T-M1-14. */
   usage: `${API_BASE_PATH}/usage`,
+  /** Cai dat + trang thai budget cap (FR-PROVIDER-06 — T-M2-03b). */
+  budget: `${API_BASE_PATH}/budget`,
 } as const
 
 /**

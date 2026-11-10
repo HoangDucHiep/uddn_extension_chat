@@ -194,6 +194,9 @@ export const viDictionary = {
   'state.error.checkKey': 'Kiem tra API key',
   'state.error.retryIn': 'Thu lai sau {seconds}s',
   'state.error.hint': 'Kiem tra API key trong Settings → may chu.',
+  'state.error.openBudget': 'Mở cài đặt hạn mức',
+  'state.error.budgetHint':
+    'Đã vượt hạn mức chi phí trong kỳ hiện tại. Lượt chat mới sẽ bị chặn.',
   'state.offline.banner': 'Không kết nối được máy chủ. Đang thử lại...',
   'state.offline.retry': 'Thử lại',
 
@@ -322,6 +325,30 @@ export const viDictionary = {
   'usage.settings.range.30d': '30 ngày',
   'usage.settings.range.all': 'Tất cả',
   'usage.settings.day': '{date}: {tokens} token · {cost}',
+
+  // --- budget cap (T-M2-03b — FR-PROVIDER-06) ---
+  'budget.settings.title': 'Ngân sách chi phí',
+  'budget.settings.description':
+    'Đặt hạn mức chi phí USD. Khi vượt hạn mức, lượt chat mới sẽ bị chặn.',
+  'budget.settings.enable': 'Bật ngân sách chi phí',
+  'budget.settings.enableDescription':
+    'Tính chi phí theo kỳ và chặn lượt chat mới khi vượt hạn mức.',
+  'budget.settings.limit': 'Hạn mức (USD)',
+  'budget.settings.period': 'Kỳ tính',
+  'budget.settings.periodDaily': 'Hôm nay',
+  'budget.settings.periodMonthly': 'Tháng này',
+  'budget.settings.warnThreshold': 'Ngưỡng cảnh báo (%)',
+  'budget.settings.hardBlock': 'Chặn lượt chat mới khi vượt hạn mức',
+  'budget.settings.hardBlockDescription':
+    'Khi bật: chỉ cảnh báo, vẫn cho phép chat tiếp.',
+  'budget.settings.spentOfLimit': 'Đã dùng {spent} / {limit}',
+  'budget.settings.save': 'Lưu hạn mức',
+  'budget.settings.saved': 'Đã lưu ngân sách chi phí',
+  'budget.settings.saveError': 'Không lưu được ngân sách chi phí.',
+  'budget.settings.error': 'Không tải/lưu được cấu hình ngân sách chi phí.',
+  'budget.banner.warning': 'Đã dùng {percent}% hạn mức chi phí trong kỳ này.',
+  'budget.banner.exceeded': 'Đã vượt hạn mức chi phí ({spent} / {limit}). Lượt chat mới bị chặn.',
+  'budget.banner.openSettings': 'Mở cài đặt',
 
   // --- toast ---
   'toast.conversationCreated': 'Đã tạo cuộc trò chuyện mới',

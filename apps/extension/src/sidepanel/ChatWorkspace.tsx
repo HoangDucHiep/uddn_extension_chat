@@ -24,11 +24,13 @@ import { SettingsDrawer } from './components/settings/SettingsDrawer'
 import { ScrollToBottomButton } from './components/chat/ScrollToBottomButton'
 import { ExportMenu } from './components/chat/ExportMenu'
 import { ModelPicker } from './components/ModelPicker'
+import { BudgetBanner } from './components/BudgetBanner'
 import { EmptyState } from './components/states/EmptyState'
 import { LoadingState } from './components/states/LoadingState'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { useChat } from './hooks/useChat'
 import { useConnectionStatus } from './hooks/useConnectionStatus'
+import { useBudgetStatus } from './hooks/useBudgetStatus'
 import { useI18n } from './hooks/useI18n'
 import { useMention } from './hooks/useMention'
 import { useSelection } from './hooks/useSelection'
@@ -37,6 +39,7 @@ import { useActivePage } from './hooks/useActivePage'
 import { useImageAttachments } from './hooks/useImageAttachments'
 import { useChatStore, type ChatMessage } from './store/chatStore'
 import { useConversationStore } from './store/conversationStore'
+import { useBudgetStore } from './store/budgetStore'
 import {
   activateVariant as activateVariantRequest,
   getConversationMessages,
@@ -124,6 +127,9 @@ export function ChatWorkspace({
 
   // --- NFR-REL-04: trang thai ket noi toi BFF (T-M1-19) ---
   const connection = useConnectionStatus()
+  // --- FR-PROVIDER-06: trang thai budget cap (T-M2-03b) ---
+  useBudgetStatus()
+  const budgetStatus = useBudgetStore((state) => state.status)
   /** Panel dang tai lich su hoi thoai → hien skeleton thay empty state. */
   const [isHydrating, setIsHydrating] = useState(false)
 
@@ -529,6 +535,14 @@ export function ChatWorkspace({
           </button>
         </div>
       ) : null}
+
+      {/* Banner budget cap (FR-PROVIDER-06 — T-M2-03b). */}
+      <BudgetBanner
+        status={budgetStatus}
+        onOpenSettings={() => {
+          setIsSettingsOpen(true)
+        }}
+      />
 
       <div className="relative flex min-h-0 flex-1 flex-col">
         <div

@@ -1,6 +1,6 @@
 # System Design — Sidekick AI
 
-**Version:** v2.4 · **Ngày:** 2026-11-10 · **Trạng thái:** Baseline
+**Version:** v2.5 · **Ngày:** 2026-11-10 · **Trạng thái:** Baseline
 **Yêu cầu:** [`REQUIREMENTS.md`](REQUIREMENTS.md) · **Đối chiếu tính năng:** [`COMPARISON_MATRIX.md`](COMPARISON_MATRIX.md) · **UI:** [`DESIGN_SYSTEM_BRIEF.md`](DESIGN_SYSTEM_BRIEF.md)
 
 > Tài liệu này trả lời "**code viết như thế nào**". Nó không lặp lại requirement — mỗi requirement đã có ở `REQUIREMENTS.md`.
@@ -349,6 +349,8 @@ X-Request-Id: <uuid v4>            // idempotency + tracing
 | POST | `/tools/invoke` | `{ toolName, args }` | `{ output, ok }` | `TOOL_ERROR`, `APPROVAL_REQUIRED` |
 | GET | `/logs` | `?limit=&offset=&provider=&from=&to=&conversationId=` ✅ | `{ items, total }` — **chỉ metadata**, không có `promptText`/`responseText`/`contextSnapshot` (T-M1-14) | `VALIDATION_ERROR` |
 | GET | `/usage` | `?from=&to=` ✅ | `{ totalTokens, totalCostUsd, byDay[] }` — tổng hợp token + chi phí theo ngày (T-M1-14) | `VALIDATION_ERROR` |
+| GET | `/budget` | — ✅ | `BudgetStatus` = `{ settings, spentUsd, limitUsd, remainingUsd, percentUsed, state, period, periodStart, periodEnd }` — cấu hình + chi phi đã dùng trong kỳ (T-M2-03b) | — |
+| PUT | `/budget` | `BudgetSettingsPatch` (partial) ✅ | `BudgetStatus` — sau khi upsert (T-M2-03b) | `VALIDATION_ERROR` |
 | POST | `/rag/search` | `{ query, topK? }` | `{ documents: [{ id, title, snippet, score }] }` | — |
 | GET | `/rag/documents` | `?q=&limit=` | `RagDocument[]` | — |
 | DELETE | `/rag/documents/:id` | — | `204` | `NOT_FOUND` |
@@ -517,6 +519,7 @@ type ChatEvent =
   | { type: 'tool_result'; id: string; ok: boolean; output: string; durationMs: number }
   | { type: 'usage'; tokensIn: number; tokensOut: number; costUsd: number }
   | { type: 'provider_switch'; from: string; to: string; reason: string; model?: string }
+  | { type: 'budget'; state: 'disabled' | 'ok' | 'warning' | 'exceeded'; spentUsd: number; limitUsd: number; percentUsed: number; period: 'daily' | 'monthly' }
   | { type: 'error'; code: string; message: string; retryable: boolean; retryAfterSeconds?: number }
   | { type: 'done'; finishReason: 'stop' | 'length' | 'tool' | 'aborted' | 'error'; messageId: string };
 ```
@@ -537,6 +540,7 @@ data: {"type":"done","finishReason":"stop","messageId":"..."}
 4. Khi lỗi: gửi `event: error` rồi `event: done` với `finishReason:'error'`.
 5. Client **phải** xử lý `done` cả khi stream bị cắt đột ngột (network drop) → coi như `finishReason:'aborted'`, hiện nút "Tiếp tục"/"Tạo lại".
 6. Reconnect: client không tự reconnect giữa luồng (mất context). Thay vào đó bấm "Tạo lại" (regenerate) — đơn giản và tránh trùng nội dung.
+7. `budget` (T-M2-03b) được emit **trước** `meta` (server kiểm tra hạn mức trước khi gọi provider) và **thêm 1 lần** sau lượt (đã cộng `costUsd` của lượt) → banner cập nhật ngay.
 7. Server gửi heartbeat comment `: ping` mỗi 15s để giữ kết nối qua proxy.
 8. `citation` (FR-CONTEXT-10 — T-M1-08) phát **sau** toàn bộ `token*`, **trước** `usage`/`done` — server chỉ biết marker `[N]` sau khi stream kết thúc. Chi tiết: [§7.9](#79-citation-marker-n--sse--chip-fr-context-10--t-m1-08).
 9. `error` mang **thông tin lỗi thật** (T-M1-19): `code` (error code chuẩn) · `retryable` (**suy ra từ `code`**, không hardcode `true`) · `retryAfterSeconds` (từ header `Retry-After` của provider khi HTTP 429). Chi tiết: [§7.15](#715-states--retry--connection-status-fr-chat-14--fr-ux-08--nfr-rel-02--nfr-rel-04--t-m1-19).
@@ -689,6 +693,7 @@ export const evalTaskListSchema = z.array(evalTaskSchema)
 | `workflow_step_runs` | id uuid pk, workflow_run_id fk, step_index int, status text, input jsonb, output text, tokens int, cost_usd numeric, error text | `(workflow_run_id, step_index)` |
 | `request_logs` | id uuid pk, request_id text unique, conversation_id, provider, model, key_source, prompt_text, context_hash, context_snapshot jsonb, response_text, tokens_in, tokens_out, cost_usd numeric, ttft_ms, latency_ms, tool_calls jsonb, error text, created_at | `(created_at desc)`, `(provider, created_at desc)` |
 | `provider_keys` | id uuid pk, provider_id text, label text, ciphertext text, iv text, auth_tag text, hint text (4 ký tự cuối), is_active bool, created_at, last_used_at | `(provider_id, is_active)` |
+| `budget_settings` | **id text pk** (`'default'` — singleton), enabled bool, limit_usd numeric(12,6), warn_threshold_percent int, period text (`daily`\|`monthly`), hard_block bool, created_at, updated_at | — |
 | `eval_datasets` | id uuid pk, version text unique, task_count int, source text, tasks jsonb, checksum text, created_at | — |
 | `eval_runs` | id uuid pk, dataset_id fk, dataset_version, judge_model, started_at, finished_at, notes | `(dataset_version)` |
 | `eval_results` | id uuid pk, run_id fk, task_id, system, rubric jsonb, overall numeric, judge_raw text, created_at | `(run_id, task_id)` |
@@ -3158,6 +3163,145 @@ Extension chỉ **lưu & hiển thị** → không lệch với giá thật.
 | Extension unit | `apps/extension/tests/costFormat.test.ts` | `formatCostUsd` — 0 · 0.0004 · 0.0123 · số lớn |
 | Extension unit | `apps/extension/tests/usageBadge.test.tsx` | ẩn khi chưa có token · chỉ token khi cost = 0 · có cost khi > 0 |
 | Extension unit | `apps/extension/tests/usageSettings.test.tsx` | render tổng · bảng theo ngày · response sai shape → không crash |
+
+---
+
+### 7.24 Budget cap (FR-PROVIDER-06 — T-M2-03b)
+
+> Nguồn sự thật cho hành vi: [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.6 (FR-PROVIDER-06).
+
+#### 7.24.1 Quyết định thiết kế: enforce **phía server**
+
+Cấu hình hạn mức **không** nằm trong `chrome.storage.local` mà nằm trong **Postgres** (bảng `budget_settings`, singleton). Lý do:
+
+| Nếu enforce ở client | Hậu quả |
+|---|---|
+| Extension tự so sánh | Client có thể bỏ qua → không phải "hạn mức" thật |
+| Config lưu local | Mỗi máy 1 hạn mức → user đổi máy là mất |
+| Server là nguồn chặn | Chi phí thật do server tính (§7.16.4) → chặn đúng số tiền đã dùng |
+
+#### 7.24.2 Mô hình dữ liệu
+
+Bảng `budget_settings` (migration `0003_good_mimic.sql`) — **1 dòng** (`id = 'default'`):
+
+| Cột | Kiểu | Mặc định | Ý nghĩa |
+|---|---|---|---|
+| `id` | `text` pk | `'default'` | Id singleton — upsert idempotent |
+| `enabled` | `boolean` | `false` | Bật/tắt budget cap (mặc định **TẮT**) |
+| `limit_usd` | `numeric(12,6)` | `0` | Hạn mức USD cho kỳ (`0` = không giới hạn) |
+| `warn_threshold_percent` | `integer` | `80` | Ngưỡng cảnh báo (%) |
+| `period` | `text` | `'monthly'` | Kỳ tính: `daily` \| `monthly` |
+| `hard_block` | `boolean` | `true` | Khi vượt hạn mức → **chặn** lượt chat mới |
+| `created_at` / `updated_at` | `timestamptz` | `now()` | |
+
+#### 7.24.3 Kỳ tính — giờ **địa phương** của máy chạy BFF
+
+`packages/shared/src/budget.ts` → `resolveBudgetPeriod(period, now)`:
+
+| Kỳ | Mốc bắt đầu | Mốc kết thúc |
+|---|---|---|
+| `daily` | 00:00 hôm nay | 00:00 ngày mai |
+| `monthly` | 00:00 ngày 1 tháng này | 00:00 ngày 1 tháng sau |
+
+BFF chạy **local cùng máy** với trình duyệt → `new Date()` của Node dùng đúng múi giờ của user → "hôm nay" khớp với cảm nhận của user. Postgres lưu timestamp theo UTC → khi query `created_at >= periodStart` thì `periodStart` đã là Date tuyệt đối (UTC nội bộ) → đúng.
+
+#### 7.24.4 Trạng thái budget
+
+`evaluateBudgetState({ enabled, limitUsd, spentUsd, warnThresholdPercent })` → `state` + `percentUsed`:
+
+| Điều kiện | `state` | Hành vi |
+|---|---|---|
+| `enabled === false` hoặc `limitUsd <= 0` | `disabled` | Không canh báo, không chặn |
+| `spent < limit × warn%` | `ok` | Bình thường |
+| `warn% ≤ spent/limit < 100%` | `warning` | Cảnh báo (`--warning`) |
+| `spent >= limit` | `exceeded` | Vượt hạn mức (`--danger`) |
+
+#### 7.24.5 Luồng enforce trong `chatService`
+
+```
+POST /api/chat
+  └─ buildBudgetStatus(db, now)            ← TRƯỚC prepareTurn
+       ├─ yield { type:'budget', state, spentUsd, limitUsd, percentUsed, period }
+       └─ state === 'exceeded' && hardBlock:
+            ├─ persistRequestLog(costUsd = 0, error = BUDGET_EXCEEDED)
+            ├─ yield { type:'error', code:'BUDGET_EXCEEDED', retryable:false }
+            ├─ yield { type:'done', finishReason:'error' }
+            └─ return   ← KHÔNG gọi provider → chi phí = 0
+  └─ (nếu không bị chặn) stream provider bình thường
+  └─ sau khi biết costUsd của lượt:
+       yield { type:'budget', state, spentUsd: spentTrước + costUsd, ... }
+```
+
+**Điểm quan trọng:** kiểm tra budget **trước** `prepareTurn` → không tạo turn, không ghi user message, không gọi provider. Lượt bị chặn vẫn ghi **1 dòng `request_logs`** (cost 0, `error = 'BUDGET_EXCEEDED'`) → đúng AC "mỗi lượt chat (kể cả thất bại) có 1 dòng log" (§7.16).
+
+#### 7.24.6 API
+
+| Method | Path | Body | Response |
+|---|---|---|---|
+| `GET` | `/api/budget` | — | `BudgetStatus` |
+| `PUT` | `/api/budget` | `BudgetSettingsPatch` (partial) | `BudgetStatus` (sau khi upsert) |
+
+`BudgetStatus` (`packages/shared/src/schemas/budget.ts`):
+
+```ts
+{
+  settings: { enabled, limitUsd, period, warnThresholdPercent, hardBlock }
+  spentUsd: number
+  limitUsd: number
+  remainingUsd: number
+  percentUsed: number
+  state: 'disabled' | 'ok' | 'warning' | 'exceeded'
+  period: 'daily' | 'monthly'
+  periodStart: string   // ISO 8601
+  periodEnd: string     // ISO 8601
+}
+```
+
+Validate ở biên bằng `budgetSettingsPatchSchema` → lỗi → `400 VALIDATION_ERROR`.
+
+#### 7.24.7 SSE event `budget`
+
+```ts
+{ type: 'budget', state, spentUsd, limitUsd, percentUsed, period }
+```
+
+Được emit **2 lần** mỗi lượt: (1) trước lượt (trạng thái hiện tại) · (2) sau lượt (đã cộng `costUsd`) → banner cập nhật **ngay** khi vừa vượt ngưỡng.
+
+#### 7.24.8 Taxonomy lỗi
+
+`packages/shared/src/chatErrors.ts`:
+
+| Mục | Giá trị |
+|---|---|
+| `ChatErrorKind` mới | `'budget'` |
+| `ERROR_CODES.BUDGET_EXCEEDED` | `'BUDGET_EXCEEDED'` |
+| `ERROR_STATUS_MAP` | `402` |
+| `isRetryableKind('budget')` | `false` (retry vô ích) |
+| `shouldAutoRetry('budget')` | `false` (tránh vòng lặp retry) |
+
+#### 7.24.9 Extension
+
+| Thành phần | File | Vai trò |
+|---|---|---|
+| Client | `apps/extension/src/lib/budgetClient.ts` | `fetchBudgetStatus()` · `updateBudgetSettings(patch)` — parse bằng `budgetStatusSchema` |
+| Store | `apps/extension/src/sidepanel/store/budgetStore.ts` | Zustand `useBudgetStore` → `status` (**khác** `chatStore.budget` = context budget) |
+| Hook | `apps/extension/src/sidepanel/hooks/useBudgetStatus.ts` | `GET /api/budget` khi mở panel → ghi vào store |
+| Section | `apps/extension/src/sidepanel/components/settings/BudgetSettings.tsx` | Bật · hạn mức USD · kỳ (radio) · ngưỡng cảnh báo % · toggle chặn · thanh tiến trình + nút "Lưu hạn mức" |
+| Banner | `apps/extension/src/sidepanel/components/BudgetBanner.tsx` | Dưới header: `warning` → `--warning` · `exceeded` → `--danger` · có nút "Mở cài đặt" |
+| Error | `apps/extension/src/sidepanel/components/states/ErrorState.tsx` | `kind === 'budget'` → ẩn "Thử lại", hiện "Mở cài đặt hạn mức" |
+| SSE | `apps/extension/src/sidepanel/hooks/useChat.ts` | `case 'budget'` → `budgetStore.setStatus` |
+
+#### 7.24.10 Kiểm thử
+
+| Tầng | File | Phủ |
+|---|---|---|
+| Shared unit | `packages/shared/tests/budget.test.ts` | `resolveBudgetPeriod` (daily/monthly, tháng 12) · `evaluateBudgetState` (4 trạng thái) · schema reject sai |
+| Server unit | `apps/server/tests/budgetService.test.ts` | đọc/ghi settings · `sumSpendSince` · `buildBudgetStatus` · `isBudgetBlocked` |
+| Server unit | `apps/server/tests/budgetRoute.test.ts` | `GET` 200 · `PUT` hợp lệ 200 · `PUT` sai → 400 `VALIDATION_ERROR` |
+| Server unit | `apps/server/tests/chatBudget.test.ts` | vượt hạn mức + `hardBlock` → **không gọi provider** + event `budget` + `error` + `done` error · `hardBlock` tắt → vẫn chat |
+| Extension unit | `apps/extension/tests/budgetSettings.test.tsx` | render section · lưu → gọi `PUT` · API lỗi → không crash |
+| Extension unit | `apps/extension/tests/budgetBanner.test.tsx` | warning → `--warning` · exceeded → `--danger` · không có budget → không render |
+| E2E | `apps/extension/e2e/budget.spec.ts` | stub `/api/budget` → mở Settings → bật + đặt hạn mức → reload vẫn giữ · banner `exceeded` |
 
 ---
 

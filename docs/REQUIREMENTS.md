@@ -1,7 +1,7 @@
 ﻿# Requirements Specification — AI Chat Sidebar Browser Extension
 
 **Project code name:** Sidekick AI
-**Document version:** v2.3 · 2026-11-10
+**Document version:** v2.4 · 2026-11-10
 **Status:** Baseline — Requirements & Design System
 **Related docs:** [`README.md`](README.md) · [`COMPARISON_MATRIX.md`](COMPARISON_MATRIX.md) · [`EVAL_PLAN.md`](EVAL_PLAN.md) · [`DESIGN_SYSTEM_BRIEF.md`](DESIGN_SYSTEM_BRIEF.md) · [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) · [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md)
 
@@ -321,7 +321,7 @@ Quy ước ưu tiên: **M** = Must (bắt buộc cho M1) · **S** = Should (bắ
 | FR-PROVIDER-03 | Chuyển model trong lúc chat (dropdown ở header) | M | Đổi model giữa cuộc trò chuyện không mất lịch sử — **✅ ĐÃ IMPLEMENT (T-M2-02):** `ModelPicker` (Radix Popover) ở header → danh sách provider (`GET /api/providers`) + danh sách model **động** (`GET /api/providers/:id/models`, gọi API provider thật có auth header; lỗi → `source: 'fallback'` về danh sách tĩnh + cảnh báo nhỏ). Lựa chọn lưu `chrome.storage.local` (`sidekick.modelSelection`) → persist qua reload, dùng cho **mọi** lượt chat sau (gửi `provider` + `model` trong `POST /api/chat`). Đổi provider → xoá model đã chọn; > 12 model → có ô tìm kiếm. Lịch sử cuộc trò chuyện **không** mất khi đổi model |
 | FR-PROVIDER-04 | Fallback khi provider lỗi (429/5xx) sang provider dự phòng | S | Có log; người dùng được thông báo "đã chuyển sang provider X" — **✅ ĐÃ IMPLEMENT (T-M2-02):** `chatService` lặp qua chuỗi ứng viên; fallback **chỉ** khi lỗi `retryable` **và** chưa phát token nào (`streamedToken === false`) → không sinh nội dung trùng lặp. Lỗi 401/403 → **không** fallback (giữ hành vi M1). Phát SSE `provider_switch` `{from, to, reason, model}` → extension đổi chip provider + **toast** "Đã chuyển sang provider X". Ghi log vào cột mới `request_logs.fallback_from` (migration `0002_certain_vector.sql`) → truy vết được provider nào đã lỗi. Khi chuyển provider, context budget + prompt được **tính lại** theo context window của provider mới |
 | FR-PROVIDER-05 | Hiển thị token in/out + chi phí ước tính theo lượt | S | Cập nhật sau mỗi lượt; tổng theo ngày trong Settings — **✅ ĐÃ IMPLEMENT (T-M2-03):** server đã tính `cost_usd` thật trong `request_logs` (T-M1-14, từ `PROVIDER_PRICING`) + SSE `usage` mang `costUsd`; extension lưu `costUsd` vào `ChatMessage` → `UsageBadge` dưới bubble assistant (token vào/ra + `~ $0.0123`, 4 chữ số thập phân; provider local → chỉ hiện token, không hiện `$0.0000`). Section **"Chi phí & sử dụng"** trong Settings: tổng token + tổng chi phí + bảng phân rã **theo ngày** (`GET /api/usage`, khoảng `today/7d/30d/all`) + nút tải lại |
-| FR-PROVIDER-06 | Budget cap: cảnh báo khi vượt ngưỡng, tuỳ chọn chặn | C | |
+| FR-PROVIDER-06 | Budget cap: cảnh báo khi vượt ngưỡng, tuỳ chọn chặn | C | — **✅ ĐÃ IMPLEMENT (T-M2-03b):** cấu hình hạn mức **lưu phía server** (bảng `budget_settings`, singleton) → server là nguồn chặn sự thật (client không tự so sánh). Kỳ tính: `daily` (từ 00:00 hôm nay) · `monthly` (từ 00:00 ngày 1) theo **giờ địa phương của máy chạy BFF** → khớp "hôm nay" của user. Server tự tính `SUM(request_logs.cost_usd)` trong kỳ. 2 mức: `warnThresholdPercent` (mặc định 80) → cảnh báo; vượt 100% → `exceeded`. `hardBlock` bật → server **không gọi provider** (chi phí = 0) → SSE `budget` + `error` `BUDGET_EXCEEDED` (HTTP 402, `retryable: false`, không auto-retry) + `done(finishReason:'error')`; lượt bị chặn vẫn ghi 1 dòng `request_logs` (cost 0). Extension: section **"Ngân sách chi phí"** trong Settings (bật · hạn mức USD · kỳ · ngưỡng cảnh báo % · toggle chặn · thanh tiến trình) + `BudgetBanner` dưới header (`--warning` / `--danger`) + `ErrorState` case riêng (ẩn nút "Thử lại", hiện nút "Mở cài đặt hạn mức") |
 | FR-PROVIDER-07 | Chế độ offline: dùng Ollama/local model, không gọi cloud | S | Tự phát hiện provider local khả dụng |
 | FR-PROVIDER-08 | Team key (shared key) cấu hình qua biến môi trường server | S | Không có key team → extension tự chuyển sang chế độ BYOK/direct và báo rõ — **⏸ phần "BYOK/direct" TẠM DỪNG 2026-11-08**; phần **K1 (team key trong `.env` BFF) vẫn hoạt động** và là nguồn key duy nhất ở M1 |
 | FR-PROVIDER-09 | Chọn được "key source" cho mỗi conversation: Team key / BYOK của user | S | Hiển thị nguồn đang dùng ở header; đổi được giữa chừng — **⏸ TẠM DỪNG 2026-11-08**; ở M1 chỉ có **K1**, chip ở header hiện nguồn key đang dùng |
@@ -1194,7 +1194,7 @@ Chỉ bắt đầu M4 khi **đồng thời** thỏa:
 | FR-PROVIDER-03 | M | T-M0-08 ✅ · T-M2-02 ✅ | M0→M2 |
 | FR-PROVIDER-04 | S | T-M2-02 ✅ | M2 |
 | FR-PROVIDER-05 | S | T-M2-03 ✅ | M2 |
-| FR-PROVIDER-06 | C | T-M2-03 ⏸ (chỉ phần hiển thị, **budget cap chưa làm**) | M2 |
+| FR-PROVIDER-06 | C | T-M2-03b ✅ | M2 |
 | FR-PROVIDER-07 | S | T-M2-01 | M2 |
 | FR-PROVIDER-08 | S ⏸ | T-M1-15 ⏸ | M1 (tạm dừng) |
 | FR-PROVIDER-09 | S ⏸ | T-M1-15 ⏸ | M1 (tạm dừng) |

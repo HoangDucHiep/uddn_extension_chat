@@ -529,7 +529,7 @@ pnpm manual:checklist
 | **Onboarding** | 3 bước, skippable, mở lại được |
 | **Responsive + a11y** | 320–640px không tràn · focus ring chuẩn · live region · skip-link · tap target 24px |
 | **Quan sát** | `request_logs` đầy đủ (token/cost/ttft/latency/hash/request-id/fallback_from) + API đọc metadata |
-| **M2 (2026-11-10)** | **Model picker động** (chọn provider + model, persist, search) · **fallback chain runtime** (tự chuyển provider + toast + log `fallback_from`) · **token & chi phí** (badge theo lượt + tổng theo ngày trong Settings) |
+| **M2 (2026-11-10)** | **Model picker động** (chọn provider + model, persist, search) · **fallback chain runtime** (tự chuyển provider + toast + log `fallback_from`) · **token & chi phí** (badge theo lượt + tổng theo ngày trong Settings) · **budget cap** (cấu hình hạn mức trong Settings + banner cảnh báo / chặn lượt chat mới khi vượt hạn mức) |
 
 ### Chưa có (để biết khi nào phàn nàn)
 
@@ -539,7 +539,7 @@ pnpm manual:checklist
 | BYOK (người dùng tự mang key) | ⏸ **tạm dừng** theo quyết định của bạn |
 | Skills / MCP / RAG / web search / workflow | ⬜ thuộc **M2–M4** |
 | Thêm provider OpenAI / Anthropic | ⬜ T-M2-01 — **đẩy lại** (quyết định 2026-11-10) |
-| Budget cap (cảnh báo / chặn khi vượt ngưỡng) | ⬜ T-M2-03b — FR-PROVIDER-06, priority C |
+| Budget cap (cảnh báo / chặn khi vượt ngưỡng) | ✅ T-M2-03b — FR-PROVIDER-06 — **đã có** (enforce phía server) |
 | Model picker + fallback chain | ✅ T-M2-02 — **đã có** |
 | Token & cost calculator trong UI | ✅ T-M2-03 — **đã có** |
 
