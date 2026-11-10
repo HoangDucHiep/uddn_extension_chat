@@ -68,9 +68,9 @@ Cột ưu tiên: **M** = Must (M1) · **S** = Should (M2) · **C** = Could (M2/M
 | B3 | Tắt share tab hiện tại | Người dùng chủ động tắt được | M |
 | B4 | Multi-tab share | Tối đa **10 tab** gần đây qua `@` hoặc nút "Add tabs"; tab đã share có dấu check, tab đang dùng có gạch chân phát sáng | M (không giới hạn) |
 | B5 | Select content để hỏi | Bôi đen text / chọn ảnh / chọn sản phẩm → hỏi về đúng nội dung đó | M |
-| B6 | Skills (`/`) | Lưu prompt tái sử dụng, gọi bằng `/`; có thể remix từ library có sẵn; chạy trên tab hiện tại + tab được chọn | M — ✅ T-M2-04 (menu `/` lọc prefix + Enter chọn + Tab autocomplete; server resolve `prompt_template` + `model` override) · chạy trên tab điều kiện → T-M2-21 |
+| B6 | Skills (`/`) | Lưu prompt tái sử dụng, gọi bằng `/`; có thể remix từ library có sẵn; chạy trên tab hiện tại + tab được chọn | M — ✅ T-M2-04 (menu `/` lọc prefix + Enter chọn + Tab autocomplete; server resolve `prompt_template` + `model` override) · ✅ T-M2-21 (chạy trên tab điều kiện: `useCurrentTab` / `useSelectedTabs`) |
 | B7 | Tạo Skill mới | Từ 1 prompt trong chat history | M — ✅ T-M2-04 (action "Lưu thành kỹ năng" trên user message → prefill form) |
-| B8 | Library Skill có sẵn | Sẵn nhiều skill mẫu (protein max, check job fit, explain simply…) | S — 🟡 T-M2-04 seed **tối thiểu 3** (`tom-tat` · `giai-thich-don-gian` · `dich`) · thư viện ≥ 8 → T-M2-21 |
+| B8 | Library Skill có sẵn | Sẵn nhiều skill mẫu (protein max, check job fit, explain simply…) | S — ✅ T-M2-21 (**9 skill** built-in: `tom-tat` · `giai-thich-don-gian` · `dich` · `so-sanh` · `trich-xuat-du-lieu` · `viet-email` · `sinh-quiz` · `kiem-tra-hieu` · `so-sanh-nhieu-tab` — registry trong code, uuid cố định, mỗi skill ≥ 1 tag) |
 | B9 | Summarize | Tóm tắt trang, bài viết, thread | M |
 | B10 | Tóm tắt video YouTube | Dùng transcript video | M |
 | B11 | Nano Banana | Tạo/sửa ảnh ngay trong tab | C |
@@ -88,7 +88,7 @@ Cột ưu tiên: **M** = Must (M1) · **S** = Should (M2) · **C** = Could (M2/M
 | B23 | Chạy ngoài Chrome | Không | 🟢 (thiết kế không cấm Firefox) |
 | B24 | Log / export transcript | Không có API; người dùng phải copy tay | 🟢 FR-CHAT-10, NFR-MAINT-04 — ✅ T-M1-13 (export .md/.json + copy Markdown) |
 | B25 | Self-host | Không | 🟢 FR-PROVIDER-07 |
-| B26 | Skill library browser (`chrome://skills/browse`) | Trang xem sẵn skill mẫu, lọc theo loại/tên | S — ⬜ T-M2-06 (lọc theo tag/tên + click để chạy ngay) |
+| B26 | Skill library browser (`chrome://skills/browse`) | Trang xem sẵn skill mẫu, lọc theo loại/tên | S — ✅ T-M2-06 (tab "Thư viện" trong drawer Kỹ năng · lọc theo tag/tên phía server + click để chạy ngay) |
 | B27 | Yêu cầu đăng nhập | Bắt buộc đăng nhập Google Account; Skills cần **Chrome ≥ 147**, ngôn ngữ **en-US**, ChromeOS/Mac/Windows; không dùng được trên managed/Enterprise account (trừ khi admin bật) | 🟢 Không cần tài khoản hãng; chạy offline được |
 | B28 | Tasks / Schedules (chạy nền theo lịch) | **Không có trong sidebar.** Nằm ở **Gemini Apps** (`gemini.google.com`) — không phải Gemini in Chrome. Hỗ trợ time-based (once/hourly/daily/weekly/monthly/yearly), Gmail monitor, topic monitor. Skill = cách làm, Schedule = khi nào chạy | 🟢 FR-WORKFLOW-03/04 (M4) |
 | B29 | Trích dẫn nguồn (citations) | Câu trả lời từ nội dung tab được share hiện **số tham chiếu** → bấm xem nguồn | M (chi tiết hơn: chip + popover đoạn nguồn) |
@@ -103,10 +103,10 @@ Cột ưu tiên: **M** = Must (M1) · **S** = Should (M2) · **C** = Could (M2/M
 | C1 | **Multi-provider + model picker** (OpenAI, Gemini, Anthropic, OpenRouter, Groq, Ollama) | FR-PROVIDER-01/03 | Đánh trực tiếp A22, B21 |
 | C2 | **BYOK** — tự mang API key, key mã hoá phía server | FR-PROVIDER-02 ⏸ | Đánh trực tiếp A23, B22 — **⏸ tạm dừng 2026-11-08** (BYOK bị gỡ khỏi sản phẩm; server giữ nguyên `provider_keys` để mở lại sau) |
 | C3 | **Self-host BFF** qua Docker Compose, chạy hoàn toàn local | §6, FR-PROVIDER-07 | Đánh trực tiếp B25 |
-| C4 | **MCP-native tool integration** | FR-TOOLS-01/02 | Đánh trực tiếp B13 (thay thế bằng chuẩn mở) |
+| C4 | **MCP-native tool integration** | FR-TOOLS-01/02 | Đánh trực tiếp B13 (thay thế bằng chuẩn mở) — ⬜ **chưa implement** (T-M2-08) |
 | C5 | **Log request đầy đủ có cấu trúc** (prompt, context hash, token, cost, latency, tool call) | NFR-MAINT-04, §7.2 | Đánh trực tiếp B24; **đây là nền tảng cho eval** — T-M1-06 đã sửa `context_hash` thành hash của **context thật đã gửi** (trước đó là hash toàn bộ prompt) + thêm `context_snapshot` theo setting |
 | C6 | **Token & cost visibility** theo lượt + budget cap | FR-PROVIDER-05/06 | Không có ở A/B — **T-M2-03 (FR-PROVIDER-05)** ✅: badge token/cost theo lượt + section "Chi phí & sử dụng" (tổng + theo ngày). **T-M2-03b (FR-PROVIDER-06)** ✅: budget cap **enforce phía server** (hạn mức USD theo kỳ `daily`/`monthly`, cảnh báo ở ngưỡng, **tùy chọn chặn** lượt chat mới khi vượt hạn mức — server **không gọi provider** → chi phí = 0). Cấu hình lưu trong Postgres (bảng `budget_settings`) → server là nguồn chặn sự thật. Chi tiết: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.23 · §7.24 |
-| C7 | **RAG local** trên lịch sử chat + tài liệu, có trích dẫn | FR-TOOLS-05 | Minh bạch hơn B15 (Personal Intelligence) |
+| C7 | **RAG local** trên lịch sử chat + tài liệu, có trích dẫn | FR-TOOLS-05 | Minh bạch hơn B15 (Personal Intelligence) — ⬜ **chưa implement** (T-M2-10/11) |
 | C8 | **Allowlist/denylist context theo domain** | FR-CONTEXT-08 | Mạnh hơn A2 (chỉ bật/tắt toàn cục) |
 | C9 | **Công cụ eval tích hợp** (dataset, judge, dashboard) | `EVAL_PLAN.md` | Không có ở A/B |
 | C10 | **Skill import/export JSON** | FR-SKILL-05 | Mở hơn B6 (phụ thuộc tài khoản Google) — ✅ **T-M2-05 (2026-11-10)** — nút "Xuất JSON" / "Nhập JSON" trong drawer Kỹ năng · file `version: 1` + `exportedAt` + `skills[]` · export chỉ scope `user` · import bỏ `id`/`scope`/timestamp (server tự sinh id mới) · trùng tên → bỏ qua |
@@ -132,7 +132,7 @@ Cột ưu tiên: **M** = Must (M1) · **S** = Should (M2) · **C** = Could (M2/M
 | Summarize 1-click | ✅ | ✅ | ✅ | — |
 | Prompt gợi ý theo trang | ✅ | ✅ | ✅ | — |
 | Lịch sử / nhiều conversation | ✅ | ✅ | ✅ (T-M1-09 — drawer quản lý chat: tạo/đổi tên/xoá/ghim/lưu trữ/search) | — |
-| Skills | ➖ | ✅ | ➖ | S (M2 — ✅ T-M2-04: `/` + CRUD · 🟡 T-M2-06 library browser · ⬜ T-M2-21 thư viện ≥ 8 skill) |
+| Skills | ➖ | ✅ | ✅ | — (**T-M2-04** menu `/` + CRUD · **T-M2-05** import/export JSON · **T-M2-06** library browser lọc theo tag · **T-M2-21** 9 skill built-in + skill gắn điều kiện tab) |
 | Voice | ✅ (M365) | ✅ | ➖ | C |
 | Vision / screen share | ✅ (M365) | ➖ | ⚠️ | C |
 | Image gen | ✅ | ✅ | ➖ | C |
@@ -140,7 +140,7 @@ Cột ưu tiên: **M** = Must (M1) · **S** = Should (M2) · **C** = Could (M2/M
 | Connected apps | ✅ M365 | ✅ Google | ➖ (MCP) | C |
 | Multi-model / BYOK | ➖ | ➖ | 🟢 | — |
 | Self-host / offline | ➖ | ➖ | 🟢 | — |
-| MCP | ➖ | ➖ | 🟢 | — |
+| MCP | ➖ | ➖ | ⬜ (T-M2-08 — chưa implement) | — |
 | Log & eval | ➖ | ➖ | 🟢 | — |
 | Cost visibility | ➖ | ➖ | 🟢 | — |
 | Per-domain privacy | ⚠️ | ➖ | 🟢 | — |
@@ -183,7 +183,7 @@ Dùng làm acceptance checklist cho M1.
 - [x] Stop / Regenerate / Edit-resend — ✅ T-M1-10 (regenerate tạo **biến thể** (switcher "1/2") lưu phía server `messages.meta` → không mất khi reload · edit-resend tạo **branch** (nhánh cũ giữ trong DB, hiển thị ở "Phiên bản cũ") · stop giữ nội dung dở + nút "Tiếp tục" (continue UPDATE message cũ) · Enter gửi / Shift+Enter xuống dòng / Esc dừng · tự lưu draft · auto-scroll chỉ khi ở đáy + nút "Cuộn xuống")
 - [x] Export conversation (Markdown / JSON) — ✅ T-M1-13 (menu `ExportMenu` (Radix Popover) trong header panel · 3 hành động: **Sao chép Markdown** · **Xuất .md** · **Xuất .json** · `.md` có metadata đầu file + metadata từng lượt assistant (provider · model · token · request-id) + nguồn `[N]` · `.json` có `version`/`exportedAt`/`conversation`/`messages[]` · tên file `sidekick-<title>-<yyyyMMdd-HHmm>.<ext>` · chỉ xuất **đường đi active** · E2E `e2e/export.spec.ts` + unit `tests/export.test.ts`)
 - [x] **Error / loading / empty states + retry + trạng thái kết nối** — ✅ **T-M1-19** (4 trạng thái có UI riêng trong `sidepanel/components/states/`: `LoadingState` skeleton · `EmptyState` (wrapper `PromptGallery`) · `ErrorState` card inline · `ConnectionBadge` + banner offline · **hành động khôi phục theo nhóm lỗi**: 401 → "Kiểm tra API key" (mở Settings) · 429 → đếm ngược rồi "Thử lại" · 5xx/network → "Thử lại" · retry tự động **1 lần** backoff 800 ms, **không** retry lỗi auth)
-- [ ] Skills `/` + tạo/sửa/xoá skill + library có sẵn + trang duyệt skill library — 🟡 **T-M2-04 ✅ (2026-11-10)** · **T-M2-05 ✅** (import/export JSON) · **T-M2-06 ✅** (library browser lọc theo tag) · ⬜ T-M2-21 (thư viện ≥ 8 skill + skill gắn điều kiện) — *chi tiết ở §E.1.4*
+- [x] Skills `/` + tạo/sửa/xoá skill + library có sẵn + trang duyệt skill library — ✅ **T-M2-04** (menu `/` lọc prefix + Enter chọn + Tab autocomplete · server resolve `prompt_template` + `model` override · CRUD trong drawer Kỹ năng) · ✅ **T-M2-05** (import/export JSON) · ✅ **T-M2-06** (library browser lọc theo tag) · ✅ **T-M2-21** (**9 skill** built-in + skill gắn **điều kiện tab**) — *chi tiết ở §E.1.4 · §E.1.5*
 - [x] Onboarding lần đầu 3 bước — ✅ T-M1-25 (bước 1 giải thích quyền · bước 2 chọn provider + nhập API key (BYOK K2) hoặc dùng Ollama không cần key · bước 3 thử câu hỏi bằng SSE thật · skippable ở mọi bước · mở lại được từ nút "Hướng dẫn" trong header) — *2026-11-08: ô nhập API key đã **gỡ** khỏi bước 2 (BYOK tạm dừng); provider cần key mà chưa có K1 hiện thông báo hướng dẫn*
 - [x] Không bắt buộc đăng nhập tài khoản Microsoft/Google (BYOK hoặc local model) — ✅ T-M1-25 (BYOK K2 qua onboarding + Ollama local không cần key) — *2026-11-08: nhánh BYOK ⏸ tạm dừng; còn nhánh Ollama local không cần key (FR-PROVIDER-07)*
 - [x] Settings: theme, cỡ chữ, chiều rộng, quản lý dữ liệu, i18n VI/EN — ✅ **T-M1-12** (drawer Settings trượt từ phải · theme light/dark/system theo `prefers-color-scheme` · cỡ chữ 4 mức + mật độ 3 mức + bề rộng 3 mức · quản lý dữ liệu: xoá lịch sử chat + xoá dữ liệu cục bộ (đều có confirm) + import/export JSON · endpoint BFF có validate qua `/api/health` · telemetry/history OFF mặc định · *provider/key → ⏸ T-M1-16*) · ✅ **T-M1-17** (i18n đầy đủ — dictionary có kiểu `vi.ts` là nguồn sự thật → thiếu key = lỗi `pnpm typecheck` · đổi ngôn ngữ áp dụng **ngay**, không reload · context menu extension + nút nổi content script cũng đổi theo)
@@ -207,12 +207,13 @@ Dùng làm acceptance checklist cho M1.
 | Còn `- [ ]` (tại thời điểm đóng M1) | **3** (xem bên dưới) |
 | **Tỉ lệ pass (lúc đóng M1)** | **32/35 = 91.4%** ✅ **≥ 90% → gate đạt** |
 | **Cập nhật sau T-M2-03 (2026-11-10)** | **33/35 = 94.3%** (đóng thêm dòng "Token/cost hiển thị" — xem §E.1.3) |
+| **Cập nhật sau T-M2-21 (2026-11-10)** | **34/35 = 97.1%** (đóng thêm dòng "Skills" — xem §E.1.5) |
 
 **3 dòng còn mở — đều có lý do và task kế tiếp (không phải thiếu sót):**
 
 | # | Dòng | Lý do | Task kế tiếp |
 |---|---|---|---|
-| 1 | Skills `/` + tạo/sửa/xoá skill + library + trang duyệt skill library | **Cố ý đẩy sang M2** — Edge/Gemini cũng cần tài khoản Google cho Skills, không phải đường găng M1 | 🟡 T-M2-04 ✅ (2026-11-10) · ✅ T-M2-05 ✅ T-M2-06 (2026-11-10) · ⬜ T-M2-21 (thư viện ≥ 8 skill + skill gắn điều kiện) — xem §E.1.4 |
+| 1 | Skills `/` + tạo/sửa/xoá skill + library + trang duyệt skill library | **Cố ý đẩy sang M2** — Edge/Gemini cũng cần tài khoản Google cho Skills, không phải đường găng M1 | ✅ T-M2-04 (2026-11-10) · ✅ T-M2-05 ✅ T-M2-06 ✅ T-M2-21 (2026-11-10) → **đã đóng** — xem §E.1.4 · §E.1.5 |
 | 2 | Token/cost hiển thị | **UI hiển thị** token/cost là M2; **phần log đầy đủ đã có** ở M1 (T-M1-14: `request_logs` + `GET /api/logs` + `GET /api/usage` → eval harness dùng được) | T-M2-03 → **✅ đã đóng 2026-11-10 (§E.1.3)** |
 | 3 | Direct/BYOK fallback khi BFF down | **⏸ tạm dừng theo quyết định user 2026-11-08** (BYOK gỡ khỏi sản phẩm); server giữ nguyên `provider_keys` để mở lại | T-M1-15 (K3) · T-M1-16 (K2) |
 
@@ -230,7 +231,7 @@ Gate M1 ghi trong [`REQUIREMENTS.md`](REQUIREMENTS.md) §9 là "≥ 90% các dò
 | Nhóm | Dòng Must | Đã đóng | Còn nợ | Ghi chú |
 |---|---|---|---|---|
 | §A — Edge Copilot | 10 | **10** | — | A24 (vị trí panel trái/phải) tính ✅ vì **Chrome tự quản lý** vị trí side panel (user kéo trong Chrome settings) → Edge Copilot cũng là sidebar native, **cùng cơ chế**; extension **không** cần (và **không thể**) tự set vị trí |
-| §B — Chrome Gemini | 13 | **11** | **B6, B7** (Skills `/` + tạo Skill) | Chrome Gemini **yêu cầu đăng nhập Google** cho Skills (B27) — Sidekick cố ý **không** phụ thuộc tài khoản hãng (C13) → đẩy Skills sang **M2** (T-M2-04 ✅ 2026-11-10 · T-M2-06 · T-M2-21 — xem §E.1.4) |
+| §B — Chrome Gemini | 13 | **11** | **B6, B7** (Skills `/` + tạo Skill) | Chrome Gemini **yêu cầu đăng nhập Google** cho Skills (B27) — Sidekick cố ý **không** phụ thuộc tài khoản hãng (C13) → đẩy Skills sang **M2** (T-M2-04 ✅ · T-M2-05 ✅ · T-M2-06 ✅ · T-M2-21 ✅ — 2026-11-10 → xem §E.1.4 · §E.1.5) |
 | **Tổng** | **23** | **21** | **2 dòng** (1 nhóm) | **21/23 = 91.3%** ✅ **≥ 90% → gate đạt** |
 
 > **Lưu ý:** gate **chính** của M1 là checklist §E (32/35 = 91.4%). Bảng trên là **cross-check độc lập** theo cách đọc thứ hai của gate (dòng Must ở §A/§B) → cả 2 cách đều **vượt 90%**.
@@ -282,13 +283,28 @@ Dòng **"Skills `/` + tạo/sửa/xoá skill + library có sẵn + trang duyệt
 | Phần còn thiếu | Task |
 |---|---|
 | **Trang duyệt skill library** (xem/lọc theo tag/tên, click để chạy ngay) | ✅ **T-M2-06 (2026-11-10)** — tab "Thư viện" trong drawer Kỹ năng · `SkillLibrary` (`apps/extension/src/sidepanel/components/skills/SkillLibrary.tsx`) · lọc server `?q=` + `?tags=` (mode `any`) · chip tag toggle · click card → chen `/ten-skill` + đóng drawer + focus composer · unit `tests/skillLibrary.test.tsx` (8) |
-| **Thư viện ≥ 8 skill built-in** (so sánh · trích xuất dữ liệu · viết email · sinh quiz · kiểm tra hiểu) | ⬜ **T-M2-21** |
-| Skill gắn điều kiện (chạy trên tab hiện tại / tab kèm theo — tương đương B6 của Chrome Gemini) | ⬜ **T-M2-21** |
+| **Thư viện ≥ 8 skill built-in** (so sánh · trích xuất dữ liệu · viết email · sinh quiz · kiểm tra hiểu) | ✅ **T-M2-21 (2026-11-10)** — xem §E.1.5 |
+| Skill gắn điều kiện (chạy trên tab hiện tại / tab kèm theo — tương đương B6 của Chrome Gemini) | ✅ **T-M2-21 (2026-11-10)** — xem §E.1.5 |
 | Import/export skill JSON | ✅ **T-M2-05 (2026-11-10)** (độc quyền C10 — không nằm trong gate §E) |
 
-> **Không** đóng dòng §E này ở T-M2-04/T-M2-05/T-M2-06 — chỉ ghi chú tiến độ. Tỉ lệ pass §E **giữ nguyên 33/35 = 94.3%** (đóng được khi **T-M2-21** xong).
+> **Đóng dòng §E này ở T-M2-21 (2026-11-10)** → tỉ lệ pass §E **34/35 = 97.1%**.
 
 > **Ghi chú công bằng:** Chrome Gemini (B6) **yêu cầu đăng nhập Google** + Chrome ≥ 147 + `en-US` (B27) → Skills của Sidekick cố ý **không** phụ thuộc tài khoản hãng (C13) → khi đối chiếu eval phải nói rõ khác biệt này, không tính là "thắng" 1-1.
+
+#### E.1.5 Cập nhật sau T-M2-21 — Thư viện 9 skill built-in + skill gắn điều kiện tab (2026-11-10)
+
+Dòng **"Skills `/` + tạo/sửa/xoá skill + library có sẵn + trang duyệt skill library"** ở §E → **✅ ĐÓNG** → checklist §E tăng từ **33/35 = 94.3%** lên **34/35 = 97.1%**.
+
+**Bằng chứng:**
+
+| Hạng mục | Bằng chứng |
+|---|---|
+| **9 skill built-in** (FR-SKILL-04) | `apps/server/src/skills/builtin.ts` — `tom-tat` (`summary`) · `giai-thich-don-gian` (`explain`) · `dich` (`translate`) · `so-sanh` (`analysis`,`compare`) · `trich-xuat-du-lieu` (`extract`,`data`) · `viet-email` (`email`,`writing`) · `sinh-quiz` (`quiz`,`learning`) · `kiem-tra-hieu` (`learning`,`quiz`) · `so-sanh-nhieu-tab` (`analysis`,`compare`) — **uuid cố định** `a1000000-0000-4000-8000-0000000000NN` → **không** cần migration seed. Mỗi skill ≥ 1 tag (dùng cho chip lọc T-M2-06) + `promptTemplate` có `{input}` |
+| **Điều kiện tab** (FR-SKILL-06) | Cột `skills.tab_condition` **jsonb** (migration `0005_skill_tab_condition.sql`) · contract `SkillTabCondition` + `skillTabConditionSchema` (`packages/shared`) · `hasTabCondition()` hàm thuần. UI: 2 checkbox trong `SkillFormDialog` ("Chạy trên tab hiện tại" · "Chạy trên tab được chọn") + badge `SkillConditionBadge` ở menu `/` + thư viện + popover chọn tab `SkillTabPicker`. Hành vi: chọn skill có điều kiện → `useCurrentTab` tự đính kèm trang hiện tại · `useSelectedTabs` mở popover chọn tab → tab được chọn được đính kèm. Skill **không** có điều kiện → **không** tự đính kèm (giữ nguyên FR-CONTEXT-13) |
+| Kiểm thử | Server `apps/server/tests/skillService.test.ts` (built-in ≥ 8 · tên/id không trùng · ≥ 1 tag · lọc tag mode `any` · round-trip `tabCondition`) · Shared `packages/shared/tests/skill.test.ts` (`hasTabCondition` · schema `tabCondition` · query `tags`) · Extension `apps/extension/tests/skillTabCondition.test.tsx` (checkbox · badge · tab picker) · E2E `apps/extension/e2e/skills.spec.ts` (**9/9** — thêm badge điều kiện · export file JSON · import file JSON → skill mới) |
+| Ảnh hưởng §B/§C | **B8** (Library Skill có sẵn) 🟡 → ✅ · **B26** (skill library browser) ⬜ → ✅ (T-M2-06) · **C10** (import/export JSON) ⬜ → ✅ (T-M2-05) · **C14** (skill library browser nội bộ) ⬜ → ✅ (T-M2-06) |
+
+> **Sửa claim sai (2026-11-10):** §C4 (**MCP-native tool integration**) và §C7 (**RAG local**) là 2 tính năng **độc quyền** chưa có thật (T-M2-08 · T-M2-10/11 chưa implement) → trước đây bảng §C ghi **không có trạng thái** (đọc như đã có) → giờ đánh dấu **⬜ chưa implement**. §D dòng **MCP** 🟢 → **⬜ (T-M2-08 — chưa implement)**. §B15 (Personal Intelligence → "S (RAG local)") để nguyên vì RAG chưa có.
 
 ### E.2 Checklist M4 — Workflow (ngoài đường găng, chỉ làm sau khi M0–M3 xong)
 

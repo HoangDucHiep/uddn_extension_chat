@@ -101,13 +101,13 @@ Chi tiết lý do & hệ quả: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §2 (12 A
 
 | Tài liệu | Phiên bản | Ngày | Trạng thái |
 |---|---|---|---|
-| REQUIREMENTS.md | v2.5 | 2026-11-10 | ✅ Đã cập nhật — §4.6 AC của FR-PROVIDER-03/04/05/06 (T-M2-02 · T-M2-03 · T-M2-03b) + **§4.5 AC FR-SKILL-01/02/03** (T-M2-04) |
-| COMPARISON_MATRIX.md | v2.5 | 2026-11-10 | ✅ Đã cập nhật — §E đóng dòng "Token/cost hiển thị" → **33/35 = 94.3%** + **§E.1.3** (mới) + dòng C6 ghi budget cap (T-M2-03b) + **§E.1.4** (T-M2-04 — dòng "Skills" vẫn mở, còn T-M2-06/21) |
+| REQUIREMENTS.md | v2.6 | 2026-11-10 | ✅ Đã cập nhật — §4.5 AC **FR-SKILL-01 → 07** (T-M2-04 · T-M2-05 · T-M2-06 · **T-M2-21**) + §9 traceability |
+| COMPARISON_MATRIX.md | v2.6 | 2026-11-10 | ✅ Đã cập nhật — §E đóng dòng **"Skills `/` + CRUD + library + trang duyệt skill library"** → **34/35 = 97.1%** + **§E.1.5** (T-M2-21) · §B8/B26/C10/C14 ✅ · **sửa claim sai** (§C4 MCP / §C7 RAG → ⬜ chưa implement) |
 | EVAL_PLAN.md | v1.4 | 2026-11-09 | ✅ Đã cập nhật — §3.1 bảng field bắt buộc + ghi chú contract `evalTaskSchema` |
-| DESIGN_SYSTEM_BRIEF.md | v2.2 | 2026-11-10 | ✅ Đã cập nhật — §5 + §5.1 checklist a11y — T-M1-20 · **§3.7.3** section "Ngân sách chi phí" + `BudgetBanner` (T-M2-03b) + **§3.13** Skills (`SkillMenu` · `SkillManager` · `SkillFormDialog`) (T-M2-04) |
-| SYSTEM_DESIGN.md | v2.6 | 2026-11-10 | ✅ Đã cập nhật — **§7.22** model picker + fallback chain + **§7.23** token & chi phí + **§7.24** budget cap + **§7.25** Skills (mới) |
-| IMPLEMENTATION_PLAN.md | v2.6 | 2026-11-10 | ✅ Đã cập nhật — T-M2-02/T-M2-03/T-M2-03b/T-M2-04 ✅ · **§4.1 Kết quả M2** (verify · commit · ảnh hưởng gate) + **§4.3** (T-M2-04) · T-M2-01 ⏸ đẩy |
-| HANDOFF.md | v2.6 | 2026-11-10 | ✅ Đã cập nhật — tiến độ M2 (T-M2-02 · T-M2-03 · T-M2-03b · T-M2-04) |
+| DESIGN_SYSTEM_BRIEF.md | v2.3 | 2026-11-10 | ✅ Đã cập nhật — §5 + §5.1 checklist a11y — T-M1-20 · **§3.7.3** section "Ngân sách chi phí" + `BudgetBanner` (T-M2-03b) + **§3.13** Skills (`SkillMenu` · `SkillManager` · `SkillFormDialog` · `SkillLibrary` · `SkillConditionBadge` · `SkillTabPicker`) (T-M2-04 · T-M2-05 · T-M2-06 · **T-M2-21**) |
+| SYSTEM_DESIGN.md | v2.7 | 2026-11-10 | ✅ Đã cập nhật — **§7.22** model picker + fallback chain + **§7.23** token & chi phí + **§7.24** budget cap + **§7.25** Skills (mới · **§7.25.8** import/export · **§7.25.9** library browser · **§7.25.10** built-in 9 skill + điều kiện tab) |
+| IMPLEMENTATION_PLAN.md | v2.7 | 2026-11-10 | ✅ Đã cập nhật — T-M2-02/T-M2-03/T-M2-03b/T-M2-04/**T-M2-05**/**T-M2-06**/**T-M2-21** ✅ · **§4.1 Kết quả M2** (verify · commit · ảnh hưởng gate) + **§4.3** (T-M2-04) · **§4.4** (T-M2-21) · T-M2-01 ⏸ đẩy |
+| HANDOFF.md | v2.7 | 2026-11-10 | ✅ Đã cập nhật — tiến độ M2 (T-M2-02 · T-M2-03 · T-M2-03b · T-M2-04 · T-M2-05 · T-M2-06 · **T-M2-21**) |
 | CHANGELOG.md | v2.6 | 2026-11-10 | ✅ Đang theo dõi |
 | MANUAL_TEST_GUIDE.md | v1.1 | 2026-11-10 | ✅ Đã cập nhật — **§11b** test model picker + fallback + chi phí (mới) |
 

@@ -727,6 +727,7 @@ export const evalTaskListSchema = z.array(evalTaskSchema)
 | `0002_certain_vector.sql` | `request_logs.fallback_from` (T-M2-02) |
 | `0003_good_mimic.sql` | `budget_settings` (FR-PROVIDER-06 — T-M2-03b) |
 | `0004_worthless_earthquake.sql` | **Bảng `skills`** (FR-SKILL-01/02/03 — T-M2-04): `id` · `name` unique · `description` · `prompt_template` · `scope` · `enabled` · `tags text[]` · `model` · `created_at` · `updated_at` + index `skills_name_idx` (unique) + `skills_scope_enabled_idx` |
+| `0005_skill_tab_condition.sql` | `skills.tab_condition` **jsonb** nullable (FR-SKILL-06 — T-M2-21) — `{ useCurrentTab, useSelectedTabs }` |
 
 ---
 
@@ -3346,19 +3347,26 @@ Bảng `skills` (migration `0004_worthless_earthquake.sql`):
 | `enabled` | `boolean` | `true` | Skill có bật hay không |
 | `tags` | `text[]` | `'{}'` | Tag để lọc (FR-SKILL-07 — T-M2-06) |
 | `model` | `text` nullable | `null` | Model mặc định của skill (**ghi đè** model của request) |
+| `tab_condition` | `jsonb` nullable | `null` | **Điều kiện tab** của skill (FR-SKILL-06 — T-M2-21) — `{ useCurrentTab, useSelectedTabs }` |
 | `created_at` / `updated_at` | `timestamptz` | `now()` | — |
 
 Index: `skills_name_idx` (unique trên `name`) · `skills_scope_enabled_idx` (`scope`, `enabled`).
 
-**Built-in seed** (`apps/server/src/skills/builtin.ts`) — 3 skill, **uuid cố định** (để client gửi `skillId` hợp lệ, không cần migration seed):
+**Built-in seed** (`apps/server/src/skills/builtin.ts`) — **9 skill** (T-M2-21 mở rộng từ 3), **uuid cố định** (để client gửi `skillId` hợp lệ, không cần migration seed):
 
-| `name` | `id` | `description` |
-|---|---|---|
-| `tom-tat` | `a1000000-0000-4000-8000-000000000001` | Tóm tắt nội dung thành 5 ý chính + 2 con số nổi bật |
-| `giai-thich-don-gian` | `a1000000-0000-4000-8000-000000000002` | Giải thích như cho người mới, ví dụ đời thường |
-| `dich` | `a1000000-0000-4000-8000-000000000003` | Dịch sang tiếng Việt, giữ nguyên thuật ngữ kỹ thuật |
+| `name` | `id` (suffix) | `description` | `tags` | Điều kiện tab |
+|---|---|---|---|---|
+| `tom-tat` | `…0001` | Tóm tắt nội dung thành 5 ý chính + 2 con số nổi bật | `summary` | — |
+| `giai-thich-don-gian` | `…0002` | Giải thích như cho người mới, ví dụ đời thường | `explain` | — |
+| `dich` | `…0003` | Dịch sang tiếng Việt, giữ nguyên thuật ngữ kỹ thuật | `translate` | — |
+| `so-sanh` | `…0004` | So sánh 2+ đối tượng theo bảng tiêu chí | `analysis`, `compare` | `useCurrentTab` |
+| `trich-xuat-du-lieu` | `…0005` | Rút bảng / danh sách dữ liệu có cấu trúc từ trang | `extract`, `data` | `useCurrentTab` |
+| `viet-email` | `…0006` | Soạn email trình bày + chủ đề ngắn gọn | `email`, `writing` | — |
+| `sinh-quiz` | `…0007` | Sinh câu đối kèm đáp án từ nội dung đã đọc | `quiz`, `learning` | `useCurrentTab` |
+| `kiem-tra-hieu` | `…0008` | Kiểm tra hiểu bằng câu hỏi mở, không đưa đáp án sẵn | `learning`, `quiz` | — |
+| `so-sanh-nhieu-tab` | `…0009` | So sánh nội dung giữa nhiều tab đã chọn | `analysis`, `compare` | `useSelectedTabs` |
 
-> Phạm vi chốt: seed **tối thiểu 3 skill** (T-M2-04). Thư viện ≥ 8 skill nằm ở **T-M2-21** — chưa implement, không ghi là đã có.
+> Đầy đủ uuid: `a1000000-0000-4000-8000-0000000000NN` (NN = 01..09). Registry nằm trong **code** → **không** cần migration seed; mỗi skill có **≥ 1 tag** (dùng cho chip lọc ở FR-SKILL-07) + `promptTemplate` chứa placeholder `{input}`.
 
 #### 7.25.3 Luồng ghép prompt (server)
 
@@ -3394,9 +3402,9 @@ POST /api/chat { messages: [...], skillId?: uuid }
 
 | Method | Path | Body | Response | Lỗi |
 |---|---|---|---|---|
-| `GET` | `/api/skills` | query `scope?` · `q?` (prefix) | `{ items: Skill[] }` — **gộp** built-in + user, sắp xếp `scope` rồi `name` | `VALIDATION_ERROR` |
-| `POST` | `/api/skills` | `{ name, description?, promptTemplate, tags?, model? }` | `201` + `Skill` | `VALIDATION_ERROR`, `CONFLICT` (tên trùng) |
-| `PATCH` | `/api/skills/:id` | `{ name?, description?, promptTemplate?, enabled?, tags?, model? }` | `Skill` | `VALIDATION_ERROR`, `NOT_FOUND`, `FORBIDDEN` (sửa built-in) |
+| `GET` | `/api/skills` | query `scope?` · `q?` (tên/mô tả) · `tags?` (mode `any`) | `{ items: Skill[] }` — **gộp** built-in + user, sắp xếp `scope` rồi `name` | `VALIDATION_ERROR` |
+| `POST` | `/api/skills` | `{ name, description?, promptTemplate, tags?, model?, tabCondition? }` | `201` + `Skill` | `VALIDATION_ERROR`, `CONFLICT` (tên trùng) |
+| `PATCH` | `/api/skills/:id` | `{ name?, description?, promptTemplate?, enabled?, tags?, model?, tabCondition? }` | `Skill` | `VALIDATION_ERROR`, `NOT_FOUND`, `FORBIDDEN` (sửa built-in) |
 | `DELETE` | `/api/skills/:id` | — | `204` | `NOT_FOUND`, `FORBIDDEN` (xoá built-in) |
 
 Validate ở biên bằng Zod (`createSkillSchema` / `updateSkillSchema` trong `packages/shared/src/schemas/skill.ts`).
@@ -3415,6 +3423,7 @@ Tên được **chuẩn hoá thành slug** (`normalizeSkillName`) ở tầng sch
   enabled: boolean
   tags: string[]
   model?: string        // optional
+  tabCondition?: { useCurrentTab: boolean; useSelectedTabs: boolean }  // FR-SKILL-06
   createdAt: string
   updatedAt: string
 }
@@ -3430,6 +3439,8 @@ Tên được **chuẩn hoá thành slug** (`normalizeSkillName`) ở tầng sch
 | `applySkillTemplate(template, input)` | `src/skill.ts` | thay `{input}` cho user turn |
 | `buildSkillInstruction(template)` | `src/skill.ts` | loại `{input}` cho system prompt |
 | `stripSkillToken(text, name)` | `src/skill.ts` | bỏ token `/name` khỏi câu hỏi |
+| `hasTabCondition(condition)` | `src/skill.ts` | skill có điều kiện tab hay không (FR-SKILL-06) |
+| `DEFAULT_SKILL_TAB_CONDITION` | `src/skill.ts` | `{ useCurrentTab: false, useSelectedTabs: false }` |
 
 > `đ`/`Đ` **không** tách được bằng NFD (U+0110 không phải base char + dấu) → cần `.replace(/đ/g, 'd')` riêng. Đã có test (`packages/shared/tests/skill.test.ts`).
 
@@ -3564,6 +3575,55 @@ Tên được **chuẩn hoá thành slug** (`normalizeSkillName`) ở tầng sch
 | Server route | `apps/server/tests/skillsRoute.test.ts` | `?tags=` lọc đúng · nhiều tag (mode `any`) · lọc cả built-in · `q` khớp cả mô tả |
 | Extension unit | `apps/extension/tests/skillLibrary.test.tsx` | nap danh sách · chip tag suy ra · bấm chip → gọi API với `tags` · gõ → gọi API với `q` · click card → `onUse` · rỗng · lỗi · badge phạm vi |
 | Extension unit | `apps/extension/tests/skillManager.test.tsx` | mặc định tab "Quản lý" · bấm tab "Thư viện" → hiện `SkillLibrary` |
+
+#### 7.25.10 Thư viện built-in mở rộng + skill gắn điều kiện tab (FR-SKILL-04/06 — T-M2-21)
+
+> Nguồn sự thật cho hành vi: [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.5 (FR-SKILL-04/06).
+
+**7.25.10.1 Thư viện built-in ≥ 8 skill (FR-SKILL-04)**
+
+- Registry `apps/server/src/skills/builtin.ts` mở rộng từ **3** lên **9 skill** (xem bảng ở §7.25.2).
+- **Uuid cố định** `a1000000-0000-4000-8000-0000000000NN` (NN = 01..09) → client gọi được bằng id ổn định.
+- **Không** cần migration seed (registry nằm trong code) → **không** thêm migration.
+- Mỗi skill: `description` ngắn · `tags` (≥ 1) · `promptTemplate` chứa placeholder `{input}`.
+- Một số skill khai báo **điều kiện tab** (xem 7.25.10.2).
+
+**7.25.10.2 Điều kiện tab của skill (FR-SKILL-06)**
+
+| Quyết định | Chốt | Lý do |
+|---|---|---|
+| Nơi lưu | Cột `skills.tab_condition` (**jsonb**) — migration `0005_skill_tab_condition.sql` | Cùng bảng `skills` → không cần bảng mới; jsonb vì điều kiện có thể mở rộng |
+| Hình dạng | `{ useCurrentTab: boolean, useSelectedTabs: boolean }` | 2 điều kiện tương ứng B6 của Chrome Gemini ("chạy trên tab hiện tại + tab được chọn") |
+| Contract | `SkillTabCondition` (interface, `packages/shared/src/skill.ts`) + `skillTabConditionSchema` (Zod, `packages/shared/src/schemas/skill.ts`) | Kiểu dùng chung cho server + extension; `hasTabCondition()` là hàm thuần kiểm tra |
+| Built-in cũng khai báo được | `BuiltinSkill.tabCondition?` (registry trong code) | Skill `so-sanh` / `trich-xuat-du-lieu` / `sinh-quiz` → `useCurrentTab`; `so-sanh-nhieu-tab` → `useSelectedTabs` |
+
+**Hành vi khi user chọn skill có điều kiện** (`ChatWorkspace.applySkillTabCondition`):
+
+```
+user chọn skill (menu `/` hoặc thư viện)
+  └─ skill.tabCondition
+       ├─ useCurrentTab  → attachCurrentTab()   (tự đính kèm trang hiện tại)
+       ├─ useSelectedTabs→ mở popover SkillTabPicker → user chọn tab → attachTab(tabId)
+       └─ không có       → KHÔNG đính kèm gì (hành vi cũ)
+```
+
+> **Nguyên tắc FR-CONTEXT-13:** context **chỉ** được gửi khi user **chủ động** đính kèm. Ở đây "chủ động" = user **chọn một skill có điều kiện** → tương đương Chrome Gemini (B6). Skill **không** có điều kiện → **không** tự đính kèm.
+
+**UI:**
+- `SkillFormDialog` — 2 checkbox trong `<fieldset>`: "Chạy trên tab hiện tại" (`data-testid="skill-form-use-current-tab"`) · "Chạy trên tab được chọn" (`data-testid="skill-form-use-selected-tabs"`).
+  - Tạo mới: không tick → **không** gửi `tabCondition`.
+  - Sửa: bỏ cả 2 tick → gửi `{ useCurrentTab: false, useSelectedTabs: false }` → xoá được điều kiện cũ.
+- `SkillConditionBadge` — badge nhỏ (icon `Globe` = tab hiện tại · `Layers` = tab được chọn) cạnh skill trong **menu `/`** và **thư viện** → `data-testid="skill-condition-badge"`.
+- `SkillTabPicker` — popover chọn tab (render trong `Composer` qua prop `skillTabPopover`) → `data-testid="skill-tab-picker"` · `data-testid="skill-tab-option"`.
+
+**API:** không có endpoint mới · dùng `POST /api/skills` + `PATCH /api/skills/:id` với field `tabCondition` đã có trong schema.
+
+| Tầng | File | Phủ |
+|---|---|---|
+| Shared unit | `packages/shared/tests/skill.test.ts` | `hasTabCondition` (4 case) · `skillTabConditionSchema` (default · reject) · `createSkillSchema`/`updateSkillSchema` nhận `tabCondition` · `skillListQuerySchema.tags` (mảng · chuỗi phân tách) |
+| Server unit | `apps/server/tests/skillService.test.ts` | built-in ≥ 8 · tên/id không trùng · mỗi skill ≥ 1 tag · có `{input}` · lọc theo tag (built-in + user · mode `any` · rỗng) · `tabCondition` round-trip (create · update · undefined) |
+| Extension unit | `apps/extension/tests/skillTabCondition.test.tsx` | 2 checkbox trong form · tick → truyền `tabCondition` khi lưu · không tick → `undefined` · sửa skill có điều kiện → checkbox đã tick · badge · `SkillTabPicker` |
+| Extension E2E | `apps/extension/e2e/skills.spec.ts` | badge điều kiện hiện trong menu `/` |
 
 ---
 

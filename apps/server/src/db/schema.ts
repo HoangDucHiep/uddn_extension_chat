@@ -273,6 +273,13 @@ export const skills = pgTable(
       .default(sql`'{}'::text[]`),
     /** Model mac dinh cua skill (optional — FR-SKILL-02). */
     model: text('model'),
+    /**
+     * Dieu kien tab cua skill (FR-SKILL-06 — T-M2-21).
+     *
+     * Shape: `{ useCurrentTab: boolean, useSelectedTabs: boolean }`.
+     * `null` → skill khong co dieu kien tab (chi dung prompt mau).
+     */
+    tabCondition: jsonb('tab_condition'),
     createdAt,
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },

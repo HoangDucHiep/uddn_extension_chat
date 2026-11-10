@@ -24,6 +24,7 @@ interface SkillFixture {
   enabled: boolean
   tags: string[]
   model?: string
+  tabCondition?: { useCurrentTab: boolean; useSelectedTabs: boolean }
   createdAt: string
   updatedAt: string
 }
@@ -57,6 +58,33 @@ const SKILL_DICH: SkillFixture = {
   updatedAt: '2026-11-01T00:00:00.000Z',
 }
 
+/** Skill cua user (scope `user`) — dung cho test import/export. */
+const SKILL_USER: SkillFixture = {
+  id: 'a1000000-0000-4000-8000-000000000010',
+  name: 'skill-cua-toi',
+  description: 'Skill của tôi',
+  promptTemplate: 'Làm theo {input}',
+  scope: 'user',
+  enabled: true,
+  tags: ['email'],
+  createdAt: '2026-11-01T00:00:00.000Z',
+  updatedAt: '2026-11-01T00:00:00.000Z',
+}
+
+/** Skill co dieu kien tab (FR-SKILL-06 — T-M2-21). */
+const SKILL_SO_SANH: SkillFixture = {
+  id: 'a1000000-0000-4000-8000-000000000004',
+  name: 'so-sanh',
+  description: 'So sánh 2+ đối tượng',
+  promptTemplate: 'So sánh: {input}',
+  scope: 'builtin',
+  enabled: true,
+  tags: ['analysis'],
+  tabCondition: { useCurrentTab: true, useSelectedTabs: false },
+  createdAt: '2026-11-01T00:00:00.000Z',
+  updatedAt: '2026-11-01T00:00:00.000Z',
+}
+
 /** SSE stream gia lap. */
 const SSE_BODY = [
   'event: meta',
@@ -76,11 +104,35 @@ async function stubApi(panel: Page): Promise<CapturedChatRequest[]> {
   const captured: CapturedChatRequest[] = []
 
   await panel.route('**/api/skills**', async (route) => {
+    const request = route.request()
+    // `POST /api/skills` (tao skill) → tra ve skill vua tao.
+    if (request.method() === 'POST') {
+      const raw = request.postData()
+      const body = raw !== null ? (JSON.parse(raw) as Record<string, unknown>) : {}
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        headers: { 'Access-Control-Allow-Origin': '*' },
+        body: JSON.stringify({
+          id: '33333333-3333-4333-8333-333333333333',
+          name: body['name'] ?? 'skill-moi',
+          description: body['description'] ?? '',
+          promptTemplate: body['promptTemplate'] ?? '',
+          scope: 'user',
+          enabled: true,
+          tags: body['tags'] ?? [],
+          createdAt: '2026-11-10T00:00:00.000Z',
+          updatedAt: '2026-11-10T00:00:00.000Z',
+        }),
+      })
+      return
+    }
+
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
       headers: { 'Access-Control-Allow-Origin': '*' },
-      body: JSON.stringify({ items: [SKILL_TOM_TAT, SKILL_DICH] }),
+      body: JSON.stringify({ items: [SKILL_TOM_TAT, SKILL_DICH, SKILL_SO_SANH, SKILL_USER] }),
     })
   })
 
@@ -110,7 +162,7 @@ test('go / → popover hien danh sach skill', async ({ context, extensionId }) =
 
   const popover = panel.getByTestId('skill-popover')
   await expect(popover).toBeVisible({ timeout: 20_000 })
-  await expect(panel.getByTestId('skill-option')).toHaveCount(2)
+  await expect(panel.getByTestId('skill-option')).toHaveCount(4)
   await expect(popover).toContainText('tom-tat')
   await expect(popover).toContainText('dich')
 
@@ -128,6 +180,21 @@ test('loc skill theo prefix', async ({ context, extensionId }) => {
 
   await expect(panel.getByTestId('skill-option')).toHaveCount(1)
   await expect(panel.getByTestId('skill-popover')).not.toContainText('dich')
+
+  await panel.close()
+})
+
+test('skill co dieu kien tab → hien badge dieu kien', async ({ context, extensionId }) => {
+  const panel = await context.newPage()
+  await stubApi(panel)
+
+  await panel.goto(`chrome-extension://${extensionId}/sidepanel.html`)
+
+  await panel.getByTestId('composer-input').fill('/')
+  await panel.getByTestId('skill-popover').waitFor({ state: 'visible', timeout: 20_000 })
+
+  // Chi skill `so-sanh` co dieu kien tab → 1 badge.
+  await expect(panel.getByTestId('skill-condition-badge')).toHaveCount(1)
 
   await panel.close()
 })
@@ -215,6 +282,69 @@ test('bam "Dung" skill trong drawer → token vao composer', async ({
   await panel.getByTestId('skill-use').first().click()
 
   await expect(panel.getByTestId('composer-input')).toHaveValue(/\/tom-tat/)
+
+  await panel.close()
+})
+
+// --- FR-SKILL-05: import/export JSON (T-M2-05) ---
+
+test('bam "Xuat JSON" → tai file skill JSON', async ({ context, extensionId }) => {
+  const panel = await context.newPage()
+  await stubApi(panel)
+
+  await panel.goto(`chrome-extension://${extensionId}/sidepanel.html`)
+
+  await panel.getByTestId('skills-button').click()
+  await panel.getByTestId('skill-manager').waitFor({ state: 'visible', timeout: 20_000 })
+
+  const downloadPromise = panel.waitForEvent('download', { timeout: 20_000 })
+  await panel.getByTestId('skill-export').click()
+
+  const download = await downloadPromise
+  expect(download.suggestedFilename()).toMatch(/^sidekick-skills-.*\.json$/)
+
+  await panel.close()
+})
+
+test('nhap file JSON → skill moi xuat hien trong menu /', async ({
+  context,
+  extensionId,
+}) => {
+  const panel = await context.newPage()
+  await stubApi(panel)
+
+  await panel.goto(`chrome-extension://${extensionId}/sidepanel.html`)
+
+  await panel.getByTestId('skills-button').click()
+  await panel.getByTestId('skill-manager').waitFor({ state: 'visible', timeout: 20_000 })
+
+  const payload = {
+    version: 1,
+    exportedAt: '2026-11-10T00:00:00.000Z',
+    skills: [
+      {
+        id: '22222222-2222-4222-8222-222222222222',
+        name: 'skill-nhap',
+        description: 'Skill duoc nhap tu file',
+        promptTemplate: 'Lam theo {input}',
+        scope: 'user',
+        enabled: true,
+        tags: [],
+        createdAt: '2026-11-10T00:00:00.000Z',
+        updatedAt: '2026-11-10T00:00:00.000Z',
+      },
+    ],
+  }
+  await panel.getByTestId('skill-import-input').setInputFiles({
+    name: 'skills.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(payload), 'utf-8'),
+  })
+
+  // Skill da tao → danh sach trong drawer co "skill-nhap".
+  await expect(panel.getByTestId('skill-manager')).toContainText('skill-nhap', {
+    timeout: 20_000,
+  })
 
   await panel.close()
 })

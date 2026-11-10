@@ -65,6 +65,8 @@ export interface FakeSkillRow {
   enabled: boolean
   tags: string[]
   model: string | null
+  /** Dieu kien tab (FR-SKILL-06 — T-M2-21) — gia tri `jsonb` (unknown). */
+  tabCondition: unknown
   createdAt: Date
   updatedAt: Date
 }
@@ -79,6 +81,7 @@ const SKILL_COLUMN_TO_PROP: Record<string, keyof FakeSkillRow> = {
   enabled: 'enabled',
   tags: 'tags',
   model: 'model',
+  tab_condition: 'tabCondition',
   created_at: 'createdAt',
   updated_at: 'updatedAt',
 }
@@ -584,6 +587,7 @@ export function createFakeConversationDb(
         enabled: row.enabled ?? true,
         tags: row.tags ?? [],
         model: row.model ?? null,
+        tabCondition: row.tabCondition ?? null,
         createdAt: row.createdAt ?? new Date('2026-01-01T00:00:00.000Z'),
         updatedAt: row.updatedAt ?? new Date('2026-01-01T00:00:00.000Z'),
       }
@@ -669,6 +673,7 @@ export function createFakeConversationDb(
             enabled: (values['enabled'] as boolean) ?? true,
             tags: (values['tags'] as string[]) ?? [],
             model: (values['model'] as string | null) ?? null,
+            tabCondition: values['tabCondition'] ?? null,
             createdAt: (values['createdAt'] as Date) ?? new Date(),
             updatedAt: (values['updatedAt'] as Date) ?? new Date(),
           }

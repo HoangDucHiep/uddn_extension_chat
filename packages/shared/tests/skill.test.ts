@@ -1,9 +1,17 @@
 import { describe, expect, it } from 'vitest'
-import { filterSkills, matchesSkillPrefix, normalizeSkillName } from '../src/skill.js'
+import {
+  DEFAULT_SKILL_TAB_CONDITION,
+  filterSkills,
+  hasTabCondition,
+  matchesSkillPrefix,
+  normalizeSkillName,
+} from '../src/skill.js'
 import {
   createSkillSchema,
+  skillListQuerySchema,
   skillListResponseSchema,
   skillSchema,
+  skillTabConditionSchema,
   updateSkillSchema,
 } from '../src/schemas/skill.js'
 
@@ -169,5 +177,87 @@ describe('skillListResponseSchema', () => {
 
   it('items thieu → sai', () => {
     expect(skillListResponseSchema.safeParse({}).success).toBe(false)
+  })
+})
+
+// --- FR-SKILL-06 — T-M2-21 ---
+describe('hasTabCondition', () => {
+  it('undefined → false', () => {
+    expect(hasTabCondition(undefined)).toBe(false)
+  })
+
+  it('ca 2 deu false → false', () => {
+    expect(
+      hasTabCondition({ useCurrentTab: false, useSelectedTabs: false }),
+    ).toBe(false)
+  })
+
+  it('bat 1 dieu kien → true', () => {
+    expect(hasTabCondition({ useCurrentTab: true, useSelectedTabs: false })).toBe(
+      true,
+    )
+    expect(hasTabCondition({ useCurrentTab: false, useSelectedTabs: true })).toBe(
+      true,
+    )
+  })
+
+  it('dieu kien mac dinh → false', () => {
+    expect(hasTabCondition(DEFAULT_SKILL_TAB_CONDITION)).toBe(false)
+  })
+})
+
+describe('skillTabConditionSchema (FR-SKILL-06)', () => {
+  it('parse dieu kien day du', () => {
+    const parsed = skillTabConditionSchema.parse({
+      useCurrentTab: true,
+      useSelectedTabs: false,
+    })
+    expect(parsed.useCurrentTab).toBe(true)
+    expect(parsed.useSelectedTabs).toBe(false)
+  })
+
+  it('thieu field → default false', () => {
+    const parsed = skillTabConditionSchema.parse({})
+    expect(parsed.useCurrentTab).toBe(false)
+    expect(parsed.useSelectedTabs).toBe(false)
+  })
+
+  it('gia tri khong phai boolean → sai', () => {
+    expect(skillTabConditionSchema.safeParse({ useCurrentTab: 'yes' }).success).toBe(
+      false,
+    )
+  })
+
+  it('createSkillSchema nhan tabCondition', () => {
+    const parsed = createSkillSchema.parse({
+      name: 'a',
+      promptTemplate: 'x',
+      tabCondition: { useCurrentTab: true, useSelectedTabs: false },
+    })
+    expect(parsed.tabCondition?.useCurrentTab).toBe(true)
+  })
+
+  it('updateSkillSchema nhan tabCondition', () => {
+    const parsed = updateSkillSchema.parse({
+      tabCondition: { useCurrentTab: false, useSelectedTabs: true },
+    })
+    expect(parsed.tabCondition?.useSelectedTabs).toBe(true)
+  })
+})
+
+describe('skillListQuerySchema.tags (FR-SKILL-07)', () => {
+  it('mang → giu nguyen', () => {
+    const parsed = skillListQuerySchema.parse({ tags: ['a', 'b'] })
+    expect(parsed.tags).toEqual(['a', 'b'])
+  })
+
+  it('chuoi tach bang dau phay → tach ra', () => {
+    const parsed = skillListQuerySchema.parse({ tags: 'a, b' })
+    expect(parsed.tags).toEqual(['a', 'b'])
+  })
+
+  it('khong co tags → undefined', () => {
+    const parsed = skillListQuerySchema.parse({})
+    expect(parsed.tags).toBeUndefined()
   })
 })

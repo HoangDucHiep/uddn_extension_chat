@@ -24,10 +24,10 @@
 | Hạng mục | Trạng thái |
 |---|---|
 | Docs | ✅ Đầy đủ 11 file (`docs/`) + `AGENTS.md` ở root |
-| Code | ✅ **M1 (Parity) ĐÓNG** — 23/25 task (T-M1-15 + T-M1-16 ⏸ tạm dừng) — 4 workspace, **1565 unit test + 100 E2E** · **M2 đang làm** (T-M2-02 ✅ · T-M2-03 ✅ · T-M2-03b ✅ · T-M2-04 ✅ · kiểm chứng live Chrome **15/15** mục §11b) |
+| Code | ✅ **M1 (Parity) ĐÓNG** — 23/25 task (T-M1-15 + T-M1-16 ⏸ tạm dừng) — 4 workspace, **1565 unit test + 100 E2E** · **M2 đang làm** (T-M2-02 ✅ · T-M2-03 ✅ · T-M2-03b ✅ · T-M2-04 ✅ · T-M2-05 ✅ · T-M2-06 ✅ · T-M2-21 ✅ · kiểm chứng live Chrome **15/15** mục §11b) |
 | Git | ✅ Đã init (`main`) · tag `v0.1` (M0) · tag **`v0.2`** (M1 đóng 2026-11-09) |
 | Milestone hiện tại | **M2 — Advanced & Eval** (M0 ✅ · M1 ✅) |
-| Task tiếp theo | **T-M2-21** — thư viện ≥ 8 built-in skill (FR-SKILL-04) + skill gắn điều kiện tab (FR-SKILL-06) → **T-M2-07 → 11** (Tools/MCP/RAG) → **T-M2-12 → 17** (eval — deliverable bắt buộc `docs/EVAL_REPORT.md`) |
+| Task tiếp theo | **T-M2-07 → 11** (Tools/MCP/RAG — greenfield) → **T-M2-12 → 17** (eval — deliverable bắt buộc `docs/EVAL_REPORT.md`) |
 
 ### Đang làm dở
 
@@ -44,7 +44,7 @@ _(Không có — M1 đóng xong 2026-11-09, tag `v0.2`)_
 | T-M2-04 Skills: menu `/`, CRUD, seed built-in (FR-SKILL-01/02/03) | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.25 · server resolve `prompt_template` + `model` override · seed **3** skill built-in |
 | T-M2-05 Skill import/export JSON (FR-SKILL-05) | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.25.8 — file `version: 1` + `exportedAt` + `skills[]`; export **chỉ** scope `user`; import bỏ `id`/`scope`/timestamp; trùng tên → bỏ qua + toast; nút **Xuất JSON** / **Nhập JSON** trong drawer Kỹ năng |
 | T-M2-06 Skill library browser (FR-SKILL-07) | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.25.9 — tab "Thư viện" trong drawer Kỹ năng · lọc server `?q=` (tên/mô tả) + `?tags=` (mode `any`) · chip tag toggle · click card → chạy ngay |
-| T-M2-21 Skill library built-in ≥ 8 + skill gắn điều kiện tab (FR-SKILL-04/06) | ⬜ chưa bắt đầu | **Task tiếp theo** — mở rộng registry `apps/server/src/skills/builtin.ts` (3 → ≥ 8) + migration `0005` (cột `tab_condition` jsonb) |
+| T-M2-21 Skill library built-in ≥ 8 + skill gắn điều kiện tab (FR-SKILL-04/06) | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.25.10 — **9** skill built-in (uuid cố định, mỗi skill ≥ 1 tag) · migration `0005_skill_tab_condition.sql` (cột `skills.tab_condition` jsonb) · 2 checkbox trong `SkillFormDialog` + badge `SkillConditionBadge` + popover `SkillTabPicker` · chọn skill có điều kiện → tự đính kèm tab hiện tại / tab được chọn (skill **không** có điều kiện → **không** tự đính kèm, giữ FR-CONTEXT-13) |
 | T-M2-12..17 Eval | ⬜ chưa bắt đầu | `docs/EVAL_REPORT.md` là deliverable bắt buộc · **để sau** (quyết định user 2026-11-10) |
 
 > **Bảng kết quả chi tiết của M2** (trạng thái task · verify · commit · ảnh hưởng gate parity) nằm ở [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) **§4.1** — đọc ở đó thay vì tra lại từng file.
@@ -101,7 +101,29 @@ _(Không có — M1 đóng xong 2026-11-09, tag `v0.2`)_
 - **CRUD**: drawer `SkillManager` trượt **trái** (mở từ nút icon `Sparkles` ở header) · 2 nhóm **Có sẵn** / **Của tôi** · dùng nhanh · sửa (`SkillFormDialog`) · nhân bản (`${name}-copy`) · xoá (có `ConfirmDialog`) · xoá/sửa built-in bị server **từ chối** (`FORBIDDEN`).
 - **Tạo skill từ message**: action **"Lưu thành kỹ năng"** trên **user message** → prefill form với nội dung message.
 - **API**: `GET/POST/PATCH/DELETE /api/skills` (validate Zod ở biên → `400 VALIDATION_ERROR`; tên trùng → `CONFLICT`).
-- **Không ảnh hưởng gate parity** → checklist §E giữ nguyên **33/35 = 94.3%** (dòng "Skills" **vẫn mở** — còn T-M2-06 library browser + T-M2-21 thư viện ≥ 8 skill → xem `COMPARISON_MATRIX.md` §E.1.4).
+- **Ảnh hưởng gate parity (cập nhật cuối):** dòng §E "Skills `/` + tạo/sửa/xoá skill + library có sẵn + trang duyệt skill library" → **✅ ĐÓNG** ở **T-M2-21** → checklist §E **33/35 = 94.3%** → **34/35 = 97.1%** (xem `COMPARISON_MATRIX.md` §E.1.5).
+
+**Tóm tắt T-M2-05 (FR-SKILL-05 — import/export JSON):**
+
+- **Định dạng file:** `version: 1` + `exportedAt` (ISO 8601) + `skills[]` → `sidekick-skills-<yyyyMMdd-HHmm>.json`.
+- Export **chỉ** scope `user` (built-in nằm trong registry trong code → export ra rồi import lại sẽ đụng tên) · import **bỏ** `id`/`scope`/timestamps → server tự sinh id mới → không ghi đè skill máy khác.
+- Skill **trùng tên** → **bỏ qua** + toast tổng kết (tối đa 100 skill / lần import).
+- **Không** cần endpoint mới — export dùng `GET /api/skills?scope=user`, import dùng `POST /api/skills` (server trả `CONFLICT` → client bỏ qua).
+- UI: nút **"Xuất JSON"** / **"Nhập JSON"** trong drawer Kỹ năng (`downloadTextFile` có sẵn → **không** cần permission `chrome.downloads`).
+
+**Tóm tắt T-M2-06 (FR-SKILL-07 — skill library browser):**
+
+- Lọc **phía server** (`GET /api/skills?q=...&tags=a,b`) → không tải toàn bộ skill về client. Chế độ khớp tag = **`any`** · `q` khớp **tên hoặc mô tả**.
+- Contract: `skillListQuerySchema.tags` nhận **2 dạng** (`?tags=a&tags=b` hoặc `?tags=a,b`).
+- UI: tab **"Thư viện"** trong drawer Kỹ năng (`SkillLibrary`) · ô tìm kiếm · chip tag toggle (`aria-pressed`) · click card → **chạy ngay** (chen `/ten-skill` + đóng drawer + focus composer) · trạng thái `loading`/`empty`/`emptyFiltered`/`error`.
+
+**Tóm tắt T-M2-21 (FR-SKILL-04/06 — thư viện built-in + điều kiện tab):**
+
+- **9 skill built-in** (`tom-tat` · `giai-thich-don-gian` · `dich` · `so-sanh` · `trich-xuat-du-lieu` · `viet-email` · `sinh-quiz` · `kiem-tra-hieu` · `so-sanh-nhieu-tab`) — uuid cố định `a1000000-0000-4000-8000-0000000000NN` · mỗi skill ≥ 1 tag (dùng cho chip lọc T-M2-06) · **không** cần migration seed.
+- **Điều kiện tab** (FR-SKILL-06): cột `skills.tab_condition` **jsonb** (migration `0005_skill_tab_condition.sql`) · contract `SkillTabCondition` + `hasTabCondition()`.
+- UI: 2 checkbox trong `SkillFormDialog` ("Chạy trên tab hiện tại" · "Chạy trên tab được chọn") · badge `SkillConditionBadge` ở menu `/` + thư viện · popover chọn tab `SkillTabPicker` (dùng lại `useTabs`).
+- **Hành vi:** chọn skill có điều kiện → `useCurrentTab` tự đính kèm trang hiện tại · `useSelectedTabs` mở popover chọn tab → tab được chọn được đính kèm. Skill **không** có điều kiện → **không** tự đính kèm (giữ nguyên FR-CONTEXT-13).
+- **Đóng dòng §E "Skills"** → **34/35 = 97.1%** (§E.1.5) · **B8** ✅ · **B26** ✅ · **C10** ✅ · **C14** ✅.
 
 **Số liệu test sau T-M2-04 (2026-11-10):** shared 284 · server 458 · extension 812 · eval 11 = **1565 unit** + **100 E2E** (26 file). `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm build` ✅ (`dist/content.js` **17.27 kB** — code skill **không** lọt vào content script) · E2E skills **6/6** ✅.
 

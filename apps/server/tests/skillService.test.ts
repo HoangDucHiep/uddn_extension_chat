@@ -54,12 +54,13 @@ describe('listSkills', () => {
 
   it('loc theo q (ten chua chuoi) → ket qua dung', async () => {
     const fake = createFakeConversationDb()
-    fake.seedSkill({ name: 'viet-email', scope: 'user' })
+    fake.seedSkill({ name: 'soan-email-nhanh', scope: 'user' })
 
     const items = await listSkills(fake.db as never, { q: 'email' })
 
-    expect(items).toHaveLength(1)
-    expect(items[0]?.name).toBe('viet-email')
+    // Built-in `viet-email` cung khop → chi assert skill cua user co mat.
+    expect(items.some((item) => item.name === 'soan-email-nhanh')).toBe(true)
+    expect(items.every((item) => item.name.includes('email'))).toBe(true)
   })
 
   it('skill user co model → tra kem model', async () => {
@@ -77,13 +78,13 @@ describe('createSkill', () => {
     const fake = createFakeConversationDb()
 
     const created = await createSkill(fake.db as never, {
-      name: 'viet-email',
+      name: 'soan-mail',
       description: 'Soan email',
       promptTemplate: 'Soan email ngan gon.',
       tags: ['email'],
     })
 
-    expect(created.name).toBe('viet-email')
+    expect(created.name).toBe('soan-mail')
     expect(created.scope).toBe('user')
     expect(created.enabled).toBe(true)
     expect(created.id).toMatch(/^[0-9a-f-]{36}$/)
@@ -91,11 +92,11 @@ describe('createSkill', () => {
 
   it('ten trung → CONFLICT', async () => {
     const fake = createFakeConversationDb()
-    fake.seedSkill({ name: 'viet-email' })
+    fake.seedSkill({ name: 'soan-mail', scope: 'user' })
 
     await expect(
       createSkill(fake.db as never, {
-        name: 'viet-email',
+        name: 'soan-mail',
         description: '',
         promptTemplate: 'x',
         tags: [],
@@ -234,5 +235,131 @@ describe('AppError shape', () => {
     const error = new AppError(ERROR_CODES.NOT_FOUND, 'Khong tim thay skill')
     expect(error.code).toBe(ERROR_CODES.NOT_FOUND)
     expect(error.status).toBe(404)
+  })
+})
+
+// --- FR-SKILL-04/06 — T-M2-21 ---
+describe('registry skill co san (FR-SKILL-04 — T-M2-21)', () => {
+  it('co it nhat 8 skill', () => {
+    expect(BUILTIN_SKILLS.length).toBeGreaterThanOrEqual(8)
+  })
+
+  it('ten khong trung nhau', () => {
+    const names = BUILTIN_SKILLS.map((skill) => skill.name)
+    expect(new Set(names).size).toBe(names.length)
+  })
+
+  it('id on dinh, khong trung nhau, dung dinh dang uuid', () => {
+    const ids = BUILTIN_SKILLS.map((skill) => skill.id)
+    expect(new Set(ids).size).toBe(ids.length)
+    for (const id of ids) {
+      expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
+    }
+  })
+
+  it('moi skill deu co it nhat 1 tag', () => {
+    for (const skill of BUILTIN_SKILLS) {
+      expect(skill.tags.length).toBeGreaterThan(0)
+    }
+  })
+
+  it('promptTemplate co placeholder {input}', () => {
+    for (const skill of BUILTIN_SKILLS) {
+      expect(skill.promptTemplate).toContain('{input}')
+    }
+  })
+})
+
+describe('loc theo tag (FR-SKILL-07 — T-M2-06)', () => {
+  it('loc built-in theo tag', async () => {
+    const fake = createFakeConversationDb()
+
+    const items = await listSkills(fake.db as never, { tags: ['summary'] })
+
+    expect(items.length).toBeGreaterThan(0)
+    expect(items.every((item) => item.tags.includes('summary'))).toBe(true)
+  })
+
+  it('loc ca built-in lan skill cua user theo tag', async () => {
+    const fake = createFakeConversationDb()
+    fake.seedSkill({ name: 've-email', tags: ['email'] })
+
+    const items = await listSkills(fake.db as never, { tags: ['email'] })
+
+    expect(items.some((item) => item.scope === 'builtin')).toBe(true)
+    expect(items.some((item) => item.name === 've-email')).toBe(true)
+  })
+
+  it('che do any — khop it nhat 1 tag', async () => {
+    const fake = createFakeConversationDb()
+    fake.seedSkill({ name: 've-email', tags: ['email'] })
+
+    const items = await listSkills(fake.db as never, { tags: ['email', 'khong-ton-tai'] })
+
+    expect(items.some((item) => item.name === 've-email')).toBe(true)
+  })
+
+  it('tag khong khop → rong', async () => {
+    const fake = createFakeConversationDb()
+    fake.seedSkill({ name: 've-email', tags: ['email'] })
+
+    const items = await listSkills(fake.db as never, { tags: ['khong-ton-tai'] })
+
+    expect(items).toHaveLength(0)
+  })
+})
+
+describe('tabCondition (FR-SKILL-06 — T-M2-21)', () => {
+  it('tao skill co dieu kien tab → round-trip', async () => {
+    const fake = createFakeConversationDb()
+
+    const created = await createSkill(fake.db as never, {
+      name: 'so-sanh-tab-cua-toi',
+      description: '',
+      promptTemplate: 'So sanh',
+      tags: [],
+      tabCondition: { useCurrentTab: false, useSelectedTabs: true },
+    })
+
+    expect(created.tabCondition).toEqual({
+      useCurrentTab: false,
+      useSelectedTabs: true,
+    })
+  })
+
+  it('skill khong co dieu kien tab → undefined', async () => {
+    const fake = createFakeConversationDb()
+
+    const created = await createSkill(fake.db as never, {
+      name: 've-email',
+      description: '',
+      promptTemplate: 'Ve email',
+      tags: [],
+    })
+
+    expect(created.tabCondition).toBeUndefined()
+  })
+
+  it('sua dieu kien tab → cap nhat', async () => {
+    const fake = createFakeConversationDb()
+    const row = fake.seedSkill({ name: 've-email' })
+
+    const updated = await updateSkill(fake.db as never, row.id, {
+      tabCondition: { useCurrentTab: true, useSelectedTabs: false },
+    })
+
+    expect(updated.tabCondition).toEqual({
+      useCurrentTab: true,
+      useSelectedTabs: false,
+    })
+  })
+
+  it('built-in co dieu kien tab → listSkills tra kem', async () => {
+    const fake = createFakeConversationDb()
+
+    const items = await listSkills(fake.db as never, { scope: 'builtin' })
+    const withCondition = items.filter((item) => item.tabCondition !== undefined)
+
+    expect(withCondition.length).toBeGreaterThan(0)
   })
 })

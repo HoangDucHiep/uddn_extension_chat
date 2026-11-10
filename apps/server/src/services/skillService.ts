@@ -76,6 +76,26 @@ function matchesQuery(name: string, description: string, query: string): boolean
 }
 
 /**
+ * Chuyen gia tri `jsonb` cua dong DB thanh dieu kien tab.
+ *
+ * `jsonb` trong Drizzle duoc khai bao la `unknown` → phai **narrow** lai
+ * truoc khi dung (khong cast truc tiep).
+ *
+ * @param value - Gia tri raw tu DB.
+ * @returns Dieu kien tab hoac `null` (khong hop le / rong).
+ */
+function toTabCondition(
+  value: unknown,
+): { useCurrentTab: boolean; useSelectedTabs: boolean } | null {
+  if (typeof value !== 'object' || value === null) return null
+  const record = value as Record<string, unknown>
+  const useCurrentTab = record['useCurrentTab'] === true
+  const useSelectedTabs = record['useSelectedTabs'] === true
+  if (!useCurrentTab && !useSelectedTabs) return null
+  return { useCurrentTab, useSelectedTabs }
+}
+
+/**
  * Chuyen dong DB thanh contract `Skill`.
  *
  * @param row - Dong tu bang `skills`.
@@ -89,9 +109,11 @@ function toSkill(row: {
   enabled: boolean
   tags: string[]
   model: string | null
+  tabCondition: unknown
   createdAt: Date
   updatedAt: Date
 }): Skill {
+  const tabCondition = toTabCondition(row.tabCondition)
   return {
     id: row.id,
     name: row.name,
@@ -101,6 +123,7 @@ function toSkill(row: {
     enabled: row.enabled,
     tags: [...row.tags],
     ...(row.model !== null && row.model.length > 0 ? { model: row.model } : {}),
+    ...(tabCondition !== null ? { tabCondition } : {}),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   }
@@ -120,6 +143,7 @@ function builtinToSkill(skill: (typeof BUILTIN_SKILLS)[number]): Skill {
     scope: 'builtin',
     enabled: true,
     tags: [...skill.tags],
+    ...(skill.tabCondition !== undefined ? { tabCondition: { ...skill.tabCondition } } : {}),
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
   }
@@ -207,6 +231,7 @@ export async function createSkill(
     promptTemplate: string
     tags: string[]
     model?: string | undefined
+    tabCondition?: { useCurrentTab: boolean; useSelectedTabs: boolean } | undefined
   },
 ): Promise<Skill> {
   if (await nameExists(db, input.name)) {
@@ -226,6 +251,9 @@ export async function createSkill(
       enabled: true,
       tags: input.tags,
       ...(input.model !== undefined ? { model: input.model } : {}),
+      ...(input.tabCondition !== undefined
+        ? { tabCondition: input.tabCondition }
+        : {}),
     })
     .returning()
 
@@ -254,6 +282,7 @@ export async function updateSkill(
     enabled?: boolean | undefined
     tags?: string[] | undefined
     model?: string | null | undefined
+    tabCondition?: { useCurrentTab: boolean; useSelectedTabs: boolean } | undefined
   },
 ): Promise<Skill> {
   if (findBuiltinSkillById(id) !== undefined) {
@@ -279,6 +308,7 @@ export async function updateSkill(
   if (patch.enabled !== undefined) values['enabled'] = patch.enabled
   if (patch.tags !== undefined) values['tags'] = patch.tags
   if (patch.model !== undefined) values['model'] = patch.model
+  if (patch.tabCondition !== undefined) values['tabCondition'] = patch.tabCondition
 
   const rows = await db
     .update(skills)

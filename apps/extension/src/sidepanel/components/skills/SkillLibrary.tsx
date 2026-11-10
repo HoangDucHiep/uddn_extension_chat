@@ -3,6 +3,7 @@ import { Loader2, Play, Search } from 'lucide-react'
 import type { Skill } from '@sidekick/shared'
 import { listSkills } from '@/lib/skillClient'
 import { useI18n } from '@/sidepanel/hooks/useI18n'
+import { SkillConditionBadge } from './SkillConditionBadge'
 
 /**
  * Trang duyet **thu vien skill** (FR-SKILL-07 — T-M2-06).
@@ -207,6 +208,7 @@ export function SkillLibrary({ onUse }: SkillLibraryProps) {
                   <span className="min-w-0 flex-1 truncate text-[length:var(--font-size-sm)] font-medium text-[var(--text-primary)]">
                     {skill.name}
                   </span>
+                  <SkillConditionBadge skill={skill} />
                   <span
                     className="shrink-0 rounded-[var(--radius-full)] bg-[var(--surface-sunken)] px-1.5 py-0.5 text-[length:var(--font-size-xs)] text-[var(--text-tertiary)]"
                     data-testid="skill-library-scope"

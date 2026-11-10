@@ -29,6 +29,41 @@ export const SKILL_MAX_TAGS = 10
 export const SKILL_MAX_TAG_CHARS = 30
 
 /**
+ * Dieu kien tab cua mot skill (FR-SKILL-06 — T-M2-21).
+ *
+ * Skill co dieu kien tab → khi user **chon skill do** (tu menu `/` hoac tu
+ * thu vien) → extension tu dinh kem context theo dieu kien:
+ * - `useCurrentTab` → dinh kem trang hien tai.
+ * - `useSelectedTabs` → mo popover cho user chon tab.
+ *
+ * > Khong co dieu kien → skill chi dung prompt mau, **khong** tu dong
+ * > dinh kem context (giu nguyen nguyen tac FR-CONTEXT-13).
+ */
+export interface SkillTabCondition {
+  /** Chay tren tab hien tai. */
+  useCurrentTab: boolean
+  /** Chay tren cac tab duoc user chon. */
+  useSelectedTabs: boolean
+}
+
+/** Dieu kien tab mac dinh — khong co dieu kien nao. */
+export const DEFAULT_SKILL_TAB_CONDITION: SkillTabCondition = {
+  useCurrentTab: false,
+  useSelectedTabs: false,
+}
+
+/**
+ * Kiem tra skill co dieu kien tab hay khong.
+ *
+ * @param condition - Dieu kien (co the `undefined`).
+ * @returns `true` neu skill can dinh kem context theo dieu kien.
+ */
+export function hasTabCondition(condition: SkillTabCondition | undefined): boolean {
+  if (condition === undefined) return false
+  return condition.useCurrentTab || condition.useSelectedTabs
+}
+
+/**
  * Chuan hoa ten skill thanh "slug" de go bang `/` khong bi rui.
  *
  * - lowercase

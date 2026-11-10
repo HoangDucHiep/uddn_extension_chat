@@ -23,6 +23,20 @@ export const skillScopeSchema = z.enum(SKILL_SCOPES)
 export type SkillScopeInput = z.infer<typeof skillScopeSchema>
 
 /**
+ * Dieu kien tab cua skill (FR-SKILL-06 — T-M2-21).
+ *
+ * Skill co dieu kien → khi chay, extension tu dinh kem context tu tab theo
+ * dieu kien (xem `hasTabCondition` trong `packages/shared/src/skill.ts`).
+ */
+export const skillTabConditionSchema = z.object({
+  /** Chay tren tab hien tai. */
+  useCurrentTab: z.boolean().default(false),
+  /** Chay tren cac tab duoc user chon. */
+  useSelectedTabs: z.boolean().default(false),
+})
+export type SkillTabConditionInput = z.infer<typeof skillTabConditionSchema>
+
+/**
  * Mot skill (prompt mau dung lai duoc).
  *
  * `scope` = `builtin` (san co, khong sua/xoa) · `user` (user tu tao).
@@ -43,6 +57,8 @@ export const skillSchema = z.object({
   tags: z.array(z.string().min(1).max(SKILL_MAX_TAG_CHARS)).max(SKILL_MAX_TAGS).default([]),
   /** Model mac dinh cua skill (optional — FR-SKILL-02). */
   model: z.string().max(200).optional(),
+  /** Dieu kien tab (FR-SKILL-06 — T-M2-21). */
+  tabCondition: skillTabConditionSchema.optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 })
@@ -71,6 +87,8 @@ export const createSkillSchema = z.object({
   promptTemplate: z.string().min(1).max(SKILL_MAX_PROMPT_CHARS),
   tags: z.array(z.string().min(1).max(SKILL_MAX_TAG_CHARS)).max(SKILL_MAX_TAGS).optional().default([]),
   model: z.string().max(200).optional(),
+  /** Dieu kien tab (FR-SKILL-06 — T-M2-21). */
+  tabCondition: skillTabConditionSchema.optional(),
 })
 export type CreateSkillInput = z.infer<typeof createSkillSchema>
 
@@ -93,6 +111,8 @@ export const updateSkillSchema = z
     enabled: z.boolean().optional(),
     tags: z.array(z.string().min(1).max(SKILL_MAX_TAG_CHARS)).max(SKILL_MAX_TAGS).optional(),
     model: z.string().max(200).nullable().optional(),
+    /** Dieu kien tab (FR-SKILL-06 — T-M2-21). */
+    tabCondition: skillTabConditionSchema.optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: 'Can it nhat mot truong de cap nhat',

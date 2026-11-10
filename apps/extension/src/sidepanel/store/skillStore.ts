@@ -86,6 +86,10 @@ export const useSkillStore = create<SkillState>((set, get) => ({
             next.model = patch.model
           }
         }
+        // FR-SKILL-06 — dieu kien tab (co the duoc xoa bo bang 2 co false).
+        if (patch.tabCondition !== undefined) {
+          next.tabCondition = patch.tabCondition
+        }
         return next
       }),
       error: undefined,
@@ -132,6 +136,10 @@ export const useSkillStore = create<SkillState>((set, get) => ({
       promptTemplate: source.promptTemplate,
       tags: source.tags,
       ...(source.model !== undefined ? { model: source.model } : {}),
+      // FR-SKILL-06 — nhan ban ke ca dieu kien tab.
+      ...(source.tabCondition !== undefined
+        ? { tabCondition: source.tabCondition }
+        : {}),
     })
     set((state) => ({ items: [...state.items, created], error: undefined }))
     return created

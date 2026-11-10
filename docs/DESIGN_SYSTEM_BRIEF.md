@@ -743,7 +743,15 @@ Component `SkillMenu` (popover `/`) + `SkillManager` (drawer) + `SkillFormDialog
 - **Trạng thái:** `skill-library-loading` (icon `Loader2` xoay) · `skill-library-empty` · `skill-library-emptyFiltered` · `skill-library-error` (`role="alert"`, màu `--danger`).
 - **Focus ring:** chuẩn `focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]`.
 
-**3.13.6 Action trên bubble (`MessageActions`)**
+**3.13.6 Điều kiện tab của skill (FR-SKILL-06 — T-M2-21)**
+
+- **Form (`SkillFormDialog`):** 1 `<fieldset>` + `<legend>` ("Điều kiện tab") chứa **2 checkbox** — "Chạy trên tab hiện tại" (`data-testid="skill-form-use-current-tab"`) · "Chạy trên tab được chọn" (`data-testid="skill-form-use-selected-tabs"`). Checkbox dùng `accent-[var(--color-accent)]` → **không** hardcode màu.
+- **Badge điều kiện (`SkillConditionBadge`):** badge nhỏ `bg-[var(--surface-sunken)]` + `rounded-[var(--radius-full)]` cạnh skill ở **menu `/`** và **thư viện** → `data-testid="skill-condition-badge"`. Icon: `Globe` (tab hiện tại) · `Layers` (tab được chọn) — cả hai `aria-hidden="true"`; nhãn đầy đủ nằm trong `<span class="sr-only">` + `title` (screen reader đọc được).
+- **Popover chọn tab (`SkillTabPicker`):** render trong `Composer` qua prop `skillTabPopover` → `role="listbox"` + `aria-label={t('skill.tabPicker.label')}` · tiêu đề "Chọn tab để đính kèm vào câu hỏi" (`data-testid="skill-tab-picker-title"`) · mỗi tab là `role="option"` (`data-testid="skill-tab-option"`). Dùng lại **token** của `MentionPopover` (`--surface-overlay` · `--border-default` · `--shadow-2` · `--radius-md`).
+- **Focus ring:** chuẩn `focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]`.
+- **A11y:** mọi icon trang trí có `aria-hidden="true"`; badge có nhãn `sr-only` (không chỉ dựa vào icon).
+
+**3.13.7 Action trên bubble (`MessageActions`)**
 
 - Chỉ hiện ở **user message** (assistant không có) → nút "Lưu thành kỹ năng" (`BookmarkPlus`).
 - **Điều kiện:** message có nội dung **và** không đang stream.

@@ -4,6 +4,7 @@ import {
   normalizeSkillName,
   updateSkillSchema,
   type Skill,
+  type SkillTabCondition,
 } from '@sidekick/shared'
 import {
   Dialog,
@@ -43,6 +44,7 @@ export interface SkillFormDialogProps {
     promptTemplate: string
     model: string | undefined
     tags: string[]
+    tabCondition: SkillTabCondition | undefined
   }) => Promise<void>
 }
 
@@ -59,6 +61,8 @@ export function SkillFormDialog({
   const [promptTemplate, setPromptTemplate] = useState('')
   const [model, setModel] = useState('')
   const [tags, setTags] = useState('')
+  const [useCurrentTab, setUseCurrentTab] = useState(false)
+  const [useSelectedTabs, setUseSelectedTabs] = useState(false)
   const [error, setError] = useState<string | undefined>(undefined)
   const [isBusy, setIsBusy] = useState(false)
 
@@ -72,6 +76,8 @@ export function SkillFormDialog({
     setPromptTemplate(skill?.promptTemplate ?? initialPrompt ?? '')
     setModel(skill?.model ?? '')
     setTags(skill?.tags.join(', ') ?? '')
+    setUseCurrentTab(skill?.tabCondition?.useCurrentTab ?? false)
+    setUseSelectedTabs(skill?.tabCondition?.useSelectedTabs ?? false)
     setError(undefined)
   }, [open, skill, initialPrompt])
 
@@ -88,6 +94,14 @@ export function SkillFormDialog({
         .split(',')
         .map((tag) => tag.trim())
         .filter((tag) => tag.length > 0),
+      // FR-SKILL-06 — chi gui khi it nhat 1 dieu kien bat (undefined = khong co dieu kien).
+      // Khi **sua** → gui luon (ke ca ca 2 deu false) de xoa duoc dieu kien cu.
+      tabCondition:
+        useCurrentTab || useSelectedTabs
+          ? { useCurrentTab, useSelectedTabs }
+          : isEditing
+            ? { useCurrentTab: false, useSelectedTabs: false }
+            : undefined,
     }
 
     // Ten: khi sua → co thể giu nguyen ten cu (chuoi rong → bo qua).
@@ -98,6 +112,9 @@ export function SkillFormDialog({
           promptTemplate: payload.promptTemplate,
           ...(payload.model !== undefined ? { model: payload.model } : {}),
           ...(payload.tags.length > 0 ? { tags: payload.tags } : {}),
+          ...(payload.tabCondition !== undefined
+            ? { tabCondition: payload.tabCondition }
+            : {}),
         })
       : createSkillSchema.safeParse(payload)
 
@@ -120,6 +137,7 @@ export function SkillFormDialog({
         promptTemplate: payload.promptTemplate,
         model: payload.model,
         tags: payload.tags,
+        tabCondition: payload.tabCondition,
       })
       onOpenChange(false)
     } catch {
@@ -240,6 +258,39 @@ export function SkillFormDialog({
               data-testid="skill-form-tags"
             />
           </div>
+
+          {/* FR-SKILL-06 — dieu kien tab cua skill. */}
+          <fieldset className="flex flex-col gap-1">
+            <legend className="text-[length:var(--font-size-sm)] font-medium text-[var(--text-secondary)]">
+              {t('skill.form.tabCondition')}
+            </legend>
+            <label className="flex items-center gap-2 text-[length:var(--font-size-sm)] text-[var(--text-primary)]">
+              <input
+                type="checkbox"
+                checked={useCurrentTab}
+                onChange={(event) => {
+                  setUseCurrentTab(event.target.checked)
+                }}
+                aria-label={t('skill.form.useCurrentTab')}
+                data-testid="skill-form-use-current-tab"
+                className="h-4 w-4 accent-[var(--color-accent)]"
+              />
+              {t('skill.form.useCurrentTab')}
+            </label>
+            <label className="flex items-center gap-2 text-[length:var(--font-size-sm)] text-[var(--text-primary)]">
+              <input
+                type="checkbox"
+                checked={useSelectedTabs}
+                onChange={(event) => {
+                  setUseSelectedTabs(event.target.checked)
+                }}
+                aria-label={t('skill.form.useSelectedTabs')}
+                data-testid="skill-form-use-selected-tabs"
+                className="h-4 w-4 accent-[var(--color-accent)]"
+              />
+              {t('skill.form.useSelectedTabs')}
+            </label>
+          </fieldset>
 
           {error !== undefined ? (
             <p

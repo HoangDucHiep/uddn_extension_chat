@@ -33,6 +33,12 @@ export interface ComposerProps {
    */
   skillPopover?: ReactNode
   /**
+   * Popover chon tab cho **skill co dieu kien tab** (FR-SKILL-06 — T-M2-21).
+   *
+   * `undefined` → khong render popover.
+   */
+  skillTabPopover?: ReactNode
+  /**
    * Handler phim khi menu `/` dang mo.
    *
    * Tra ve `true` → Composer **khong** xu ly Enter/Tab (menu `/` lo).
@@ -78,6 +84,7 @@ export function Composer({
   disabled = false,
   mentionPopover,
   skillPopover,
+  skillTabPopover,
   onSkillKeyDown,
   onCursorChange,
   onEscape,
@@ -181,6 +188,7 @@ export function Composer({
         <div className="relative min-w-0 flex-1">
           {mentionPopover}
           {skillPopover}
+          {skillTabPopover}
           <Textarea
             ref={inputRef}
             id="sidekick-composer-input"

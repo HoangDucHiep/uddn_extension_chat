@@ -3,6 +3,7 @@ import { toast } from 'sonner'
 import { WifiOff } from 'lucide-react'
 import {
   filterSkills,
+  hasTabCondition,
   SKILL_DEFAULT_INPUT,
   type ConversationMessage,
   type Settings,
@@ -27,6 +28,7 @@ import { MentionPopover } from './components/context/MentionPopover'
 import { SkillMenu } from './components/skills/SkillMenu'
 import { SkillManager } from './components/skills/SkillManager'
 import { SkillFormDialog } from './components/skills/SkillFormDialog'
+import { SkillTabPicker } from './components/skills/SkillTabPicker'
 import { AttachmentTray } from './components/composer/AttachmentTray'
 import { ConversationList } from './components/chat/ConversationList'
 import { SettingsDrawer } from './components/settings/SettingsDrawer'
@@ -139,13 +141,20 @@ export function ChatWorkspace({
   const [isSkillFormOpen, setIsSkillFormOpen] = useState(false)
   /** Chi so dong dang active trong menu `/`. */
   const [skillActiveIndex, setSkillActiveIndex] = useState(0)
+  /**
+   * Popover chon tab cho skill co dieu kien `useSelectedTabs`
+   * (FR-SKILL-06 — T-M2-21).
+   */
+  const [isSkillTabPickerOpen, setIsSkillTabPickerOpen] = useState(false)
   const [isAtBottom, setIsAtBottom] = useState(true)
   const threadRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
   const mention = useMention()
   const skillCommand = useSkillCommand()
-  const { tabs, isLoading: isLoadingTabs } = useTabs(mention.state.open)
+  const { tabs, isLoading: isLoadingTabs } = useTabs(
+    mention.state.open || isSkillTabPickerOpen,
+  )
   const imageAttachments = useImageAttachments()
 
   // --- FR-SKILL-01: danh sach skill cho menu `/` + drawer (T-M2-04) ---
@@ -433,6 +442,38 @@ export function ChatWorkspace({
   )
 
   /**
+   * FR-SKILL-06 — ap dieu kien tab cua skill khi user **chon** skill do.
+   *
+   * - `useCurrentTab` → tu dinh kem trang hien tai.
+   * - `useSelectedTabs` → mo popover chon tab (user chon tab moi dinh kem).
+   *
+   * Skill khong co dieu kien → khong lam gi (giu nguyen FR-CONTEXT-13:
+   * context chi gui khi user **chu dong** dinh kem).
+   *
+   * @param skill - Skill vua duoc chon.
+   */
+  const applySkillTabCondition = useCallback(
+    async (skill: Skill): Promise<void> => {
+      const condition = skill.tabCondition
+      if (!hasTabCondition(condition) || condition === undefined) return
+
+      if (condition.useCurrentTab && canAttachPage) {
+        setIsAttaching(true)
+        try {
+          await attachCurrentTab()
+        } finally {
+          setIsAttaching(false)
+        }
+      }
+      if (condition.useSelectedTabs) {
+        // Popover chon tab → user chon tab nao se dinh kem tab do.
+        setIsSkillTabPickerOpen(true)
+      }
+    },
+    [attachCurrentTab, canAttachPage],
+  )
+
+  /**
    * Chon skill tu menu `/` → chen token `/ten-skill` vao textarea.
    *
    * @param skill - Skill duoc chon.
@@ -444,6 +485,9 @@ export function ChatWorkspace({
     setDraft(next.value)
     setSelectedSkillId(skill.id)
     skillCommand.close()
+
+    // FR-SKILL-06 — skill co dieu kien tab → tu dinh kem context.
+    void applySkillTabCondition(skill)
 
     // Dua con tro ve sau chuoi vua chen.
     requestAnimationFrame(() => {
@@ -508,6 +552,25 @@ export function ChatWorkspace({
       query={skillCommand.state.query}
       activeIndex={skillActiveIndex}
       onSelect={handleSelectSkill}
+    />
+  ) : undefined
+
+  /**
+   * Popover chon tab (skill co dieu kien `useSelectedTabs` — FR-SKILL-06).
+   */
+  const skillTabPopover = isSkillTabPickerOpen ? (
+    <SkillTabPicker
+      tabs={filteredTabs}
+      activeTabId={activeTabId}
+      attachedTabIds={attachedTabIds}
+      isLoading={isLoadingTabs}
+      onSelect={(tab) => {
+        setIsSkillTabPickerOpen(false)
+        setIsAttaching(true)
+        void attachTab(tab.id).finally(() => {
+          setIsAttaching(false)
+        })
+      }}
     />
   ) : undefined
 
@@ -813,6 +876,7 @@ export function ChatWorkspace({
         isStreaming={isStreaming}
         mentionPopover={mentionPopover}
         skillPopover={skillPopover}
+        skillTabPopover={skillTabPopover}
         onSkillKeyDown={handleSkillKeyDown}
         onCursorChange={(value, cursor) => {
           mention.sync(value, cursor)
@@ -873,6 +937,8 @@ export function ChatWorkspace({
               setDraft(next.value)
               setSelectedSkillId(skill.id)
               setIsSkillsOpen(false)
+              // FR-SKILL-06 — skill co dieu kien tab → tu dinh kem context.
+              void applySkillTabCondition(skill)
               requestAnimationFrame(() => {
                 const node = inputRef.current
                 if (node === null) return
@@ -911,6 +977,9 @@ export function ChatWorkspace({
                 promptTemplate: values.promptTemplate,
                 tags: values.tags,
                 ...(values.model !== undefined ? { model: values.model } : {}),
+                ...(values.tabCondition !== undefined
+                  ? { tabCondition: values.tabCondition }
+                  : {}),
               })
               toast.success(t('toast.skillUpdated'))
             } else {
@@ -920,6 +989,9 @@ export function ChatWorkspace({
                 promptTemplate: values.promptTemplate,
                 tags: values.tags,
                 ...(values.model !== undefined ? { model: values.model } : {}),
+                ...(values.tabCondition !== undefined
+                  ? { tabCondition: values.tabCondition }
+                  : {}),
               })
               toast.success(t('toast.skillCreated'))
             }

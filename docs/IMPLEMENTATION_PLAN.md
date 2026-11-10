@@ -970,7 +970,7 @@ Estimate: **S** = ≤ 0.5 ngày · **M** = 1–2 ngày · **L** = 3–5 ngày
 
 | Dòng §E | Lý do | Task kế tiếp |
 |---|---|---|
-| Skills `/` + library + trang duyệt skill | Chrome Gemini cần **đăng nhập Google** cho Skills; Sidekick cố ý **không** phụ thuộc tài khoản hãng → đẩy M2 | T-M2-04 · T-M2-06 · T-M2-21 |
+| Skills `/` + library + trang duyệt skill | Chrome Gemini cần **đăng nhập Google** cho Skills; Sidekick cố ý **không** phụ thuộc tài khoản hãng → đẩy M2 | T-M2-04 ✅ · T-M2-05 ✅ · T-M2-06 ✅ · T-M2-21 ✅ |
 | Token/cost **hiển thị** (UI) | Phần **log** đã có đầy đủ ở M1; **UI** hiển thị là M2 | ✅ **T-M2-03 (2026-11-10)** → §E = **33/35 = 94.3%** |
 | Direct/BYOK fallback khi BFF down | ⏸ tạm dừng theo quyết định user 2026-11-08 | T-M1-15 · T-M1-16 |
 
@@ -1004,7 +1004,7 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 | FR-CONTEXT-01..13 | 13 FR | T-M1-01/02/04/05/**06 ✅**/**08 ✅**/**14 ✅** · **T-M1-21/22/23** · **T-M2-19** | FR-CONTEXT-05/06 nâng lên Must (2026-11-04) · FR-CONTEXT-13 (chat không cần context) do T-M1-23 · **FR-CONTEXT-03 (`@` multi-tab) do T-M1-05 ✅** · **FR-CONTEXT-04 (selection) do T-M1-02 ✅** · **FR-CONTEXT-01 (cache URL+hash) + FR-CONTEXT-12 (snapshot) do T-M1-06 ✅** · **FR-CONTEXT-10 (citation chip + popover) do T-M1-08 ✅ (2026-11-06)** · **FR-CONTEXT-12 (log đầy đủ + cost thật + read API metadata-only) do T-M1-14 ✅ (2026-11-07)** |
 | FR-VISION-01..05 | 5 FR | **T-M1-24 ✅** (upload) · **T-M2-22** (mở rộng) | FR-VISION-01 nâng lên M · **T-M1-24 xong 2026-11-05** (vision đầy đủ Gemini + OpenAI-compatible, lưu Postgres, multi-turn) |
 | FR-TOOLS-01..06 | 6 FR | T-M2-07/08/09/10/11/18 · **T-M2-20** | FR-TOOLS-03 (web search) tách riêng khỏi tool registry |
-| FR-SKILL-01..07 | 7 FR | **T-M2-04 ✅**/05/06 · **T-M2-21** | **FR-SKILL-01/02/03 (menu `/` + CRUD skill) do T-M2-04 ✅ (2026-11-10)** — server resolve `prompt_template` + `model` override; seed tối thiểu 3 skill built-in · **FR-SKILL-05 (import/export JSON) do T-M2-05 ✅ (2026-11-10)** · **FR-SKILL-07 (library browser lọc theo tag) do T-M2-06 ✅ (2026-11-10)** · FR-SKILL-04 (skill mẫu ≥8) + FR-SKILL-06 (điều kiện) tách task **T-M2-21** |
+| FR-SKILL-01..07 | 7 FR | **T-M2-04 ✅**/05/06/21 ✅ | **FR-SKILL-01/02/03 (menu `/` + CRUD skill) do T-M2-04 ✅ (2026-11-10)** — server resolve `prompt_template` + `model` override; seed tối thiểu 3 skill built-in · **FR-SKILL-05 (import/export JSON) do T-M2-05 ✅ (2026-11-10)** · **FR-SKILL-07 (library browser lọc theo tag) do T-M2-06 ✅ (2026-11-10)** · **FR-SKILL-04 (skill mẫu ≥8 → 9 skill) + FR-SKILL-06 (điều kiện tab) do T-M2-21 ✅ (2026-11-10)** |
 | FR-PROVIDER-01..09 | 9 FR | T-M0-07/08 · T-M1-15/16 · T-M2-01/02/03 | FR-PROVIDER-04 (fallback) nằm trong T-M2-02 |
 | FR-WORKFLOW-01..13 | 13 FR | T-M4-01..08 · `FR-WORKFLOW-04` → **M5** | FR-WORKFLOW-04 deferred (rủi ro MV3 `tabs.onUpdated`) |
 | FR-SETTINGS-01..07 | 7 FR | T-M0-14 · **T-M1-12 ✅**/17 ✅ · **T-M2-19** (FR-SETTINGS-04) | **FR-SETTINGS-01/02/03/05/06/07 do T-M1-12 ✅ (2026-11-07)** (theme · cỡ chữ/mật độ/bề rộng · xoá lịch sử + xoá local + import/export · endpoint BFF có validate · lưu lựa chọn VI/EN) · FR-SETTINGS-04 (cờ telemetry/history, OFF mặc định) cũng do T-M1-12 ✅ — hành vi telemetry thật → T-M2-19 · **dịch UI VI/EN do T-M1-17 ✅ (2026-11-08)** (dictionary có kiểu → thiếu key = lỗi typecheck; đổi ngôn ngữ áp dụng ngay, không reload) |
@@ -1047,7 +1047,7 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 | T-M2-18 | Agentic action (nếu kịp — cắt được) | FR-TOOLS-04 | `apps/server/src/tools/agentic/*` | Diff preview + bước xác nhận trước khi ghi | L |
 | T-M2-19 | Chính sách context theo domain + lịch sử duyệt opt-in + mode "chỉ dùng trang" | FR-CONTEXT-08/09/11, FR-SETTINGS-04, NFR-SEC-02/06 | `sidepanel/components/settings/ContextPolicy.tsx`, `lib/contextPolicy.ts` | Domain bị chặn → không đọc content, hiện badge; lịch sử duyệt **mặc định TẮT**, bật thì cảnh báo rõ + xoá được; toggle "chỉ dùng trang" per-request | M |
 | T-M2-20 | Web search tool (bật/tắt được) | FR-TOOLS-03 | `apps/server/src/tools/builtin/webSearch.ts` | Kết quả có nguồn + ngày; tắt thì model không được gọi tool này | M |
-| T-M2-21 | Skill library built-in + skill gắn điều kiện (tab hiện tại / tab kèm theo) | FR-SKILL-04/06 | `sidepanel/components/skills/builtinLibrary.ts`, `apps/server/src/skills/builtin.ts` | ≥ 8 skill mẫu (tóm tắt, giải thích đơn giản, dịch, so sánh, trích xuất dữ liệu, viết email, sinh quiz, kiểm tra hiểu); skill gắn điều kiện chạy được trên tab chỉ định | M |
+| T-M2-21 | Skill library built-in + skill gắn điều kiện (tab hiện tại / tab kèm theo) | FR-SKILL-04/06 | `apps/server/src/skills/builtin.ts`, `packages/shared/src/skill.ts`, `sidepanel/components/skills/SkillConditionBadge.tsx` | ≥ 8 skill mẫu (tóm tắt, giải thích đơn giản, dịch, so sánh, trích xuất dữ liệu, viết email, sinh quiz, kiểm tra hiểu); skill gắn điều kiện chạy được trên tab chỉ định | M | ✅ *(2026-11-10)* — registry **9 skill** (uuid cố định, ≥ 1 tag) · cột `skills.tab_condition` jsonb (migration `0005`) · 2 checkbox trong form + badge + popover chọn tab |
 | T-M2-22 | Vision mở rộng: chụp vùng, OCR, image-capable provider, alt text | FR-VISION-02/03/04/05 | `sidepanel/components/composer/RegionCapture.tsx`, `apps/server/src/lib/ocr.ts` | Chọn vùng bằng overlay; OCR trả text; provider không hỗ trợ image → ẩn tính năng không lỗi; alt text lưu lại để tiết kiệm token | L |
 
 **Định mức M2:** 3 tuần · 23 task · ~40 ngày công
@@ -1149,7 +1149,7 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 |---|---|
 | Skill được áp dụng ở đâu? | **Server resolve** — client gửi `skillId` trong `POST /api/chat` → server nối `prompt_template` vào system prompt + `model` của skill **ghi đè** model của request |
 | Skill lưu ở đâu? | Postgres (bảng `skills`) cho skill của **user** + registry **trong code** cho built-in (`apps/server/src/skills/builtin.ts`) |
-| Seed built-in | **Tối thiểu 3 skill** (`tom-tat` · `giai-thich-don-gian` · `dich`, uuid cố định) → **thư viện ≥ 8 skill nằm ở T-M2-21** |
+| Seed built-in | **Tối thiểu 3 skill** (`tom-tat` · `giai-thich-don-gian` · `dich`, uuid cố định) → **thư viện ≥ 8 skill nằm ở T-M2-21** (→ **✅ xong T-M2-21**: registry mở rộng lên **9 skill**) |
 | Menu `/` | Popover ngay trên textarea (giống `MentionPopover`), lọc **prefix** · Enter chọn · Tab autocomplete |
 | Quản lý skill | Drawer trượt từ **trái** (Radix `Dialog`, y hệt `ConversationList`), mở từ nút icon `Sparkles` ở header |
 
@@ -1180,10 +1180,54 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 |---|---|---|
 | 1 | **T-M2-05** — skill import/export JSON (FR-SKILL-05) | ✅ *(2026-11-10)* — mở rộng CRUD đã có |
 | 2 | **T-M2-06** — skill library browser (FR-SKILL-07) | ✅ *(2026-11-10)* — cột `tags` đã có sẵn → lọc theo tag dễ |
-| 3 | **T-M2-21** — thư viện ≥ 8 skill + skill gắn điều kiện (FR-SKILL-04/06) | Hoàn tất dòng §E "Skills" |
+| 3 | **T-M2-21** — thư viện ≥ 8 skill + skill gắn điều kiện (FR-SKILL-04/06) | ✅ *(2026-11-10)* — **đóng dòng §E "Skills"** → §E **34/35 = 97.1%** |
 | 4 | **T-M2-07 → 11** — Tools/MCP/RAG | Greenfield · MCP (C4) + RAG (C7) là 2 claim độc quyền hiện **chưa có thật** |
 | 5 | **T-M2-12 → 17** — eval | Deliverable bắt buộc (`docs/EVAL_REPORT.md`) — làm **sau** khi feature ổn định |
 | 6 | **T-M2-18 → 20** — agentic · web search · context policy | Could — cắt được nếu thiếu thời gian |
+
+### 4.4 Kết quả M2 — T-M2-21 Thư viện 9 skill + skill gắn điều kiện tab (2026-11-10)
+
+#### 4.4.1 Trạng thái task
+
+| Task | Trạng thái | Bằng chứng |
+|---|---|---|
+| **T-M2-21** — Thư viện built-in ≥ 8 skill (FR-SKILL-04) + skill gắn điều kiện tab (FR-SKILL-06) | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.25.10 · [`DESIGN_SYSTEM_BRIEF.md`](DESIGN_SYSTEM_BRIEF.md) §3.13.6 |
+
+**Phạm vi đã chốt:**
+
+| Hạng mục | Chốt |
+|---|---|
+| Số skill built-in | **9** (từ 3 lên 9 — vượt yêu cầu ≥ 8) · uuid cố định `a1000000-0000-4000-8000-0000000000NN` · **không** cần migration seed |
+| Tag của built-in | Mỗi skill **≥ 1 tag** → dùng cho chip lọc ở T-M2-06 (`GET /api/skills?tags=`) |
+| Nơi lưu điều kiện tab | Cột `skills.tab_condition` (**jsonb**) — migration `0005_skill_tab_condition.sql` (cùng bảng `skills`, không bảng mới) |
+| Hình dạng điều kiện | `{ useCurrentTab: boolean, useSelectedTabs: boolean }` — `SkillTabCondition` (interface thuần) + `skillTabConditionSchema` (Zod) |
+| Khi user chọn skill có điều kiện | `useCurrentTab` → tự đính kèm trang hiện tại · `useSelectedTabs` → mở popover chọn tab → tab được chọn được đính kèm |
+| Skill **không** có điều kiện | **Không** tự đính kèm context — giữ nguyên nguyên tắc FR-CONTEXT-13 (context chỉ gửi khi user **chủ động**) |
+
+#### 4.4.2 Verify
+
+| Hạng mục | Kết quả |
+|---|---|
+| `pnpm typecheck` | ✅ pass (4 workspace) |
+| `pnpm lint` | ✅ pass |
+| `pnpm test` | ✅ pass — thêm `packages/shared/tests/skill.test.ts` (hasTabCondition + schema tabCondition + query tags) · `apps/server/tests/skillService.test.ts` (built-in ≥ 8 · lọc tag · round-trip tabCondition) · `apps/extension/tests/skillTabCondition.test.tsx` (checkbox · badge · tab picker) |
+| `pnpm build` | ✅ pass — `dist/content.js` **17.27 kB** (gzip 6.65 kB) — không phình (skill code không lọt vào content script) |
+| `pnpm db:migrate` | ✅ migration `0005_skill_tab_condition.sql` — thêm cột `tab_condition jsonb` |
+| `pnpm test:e2e` | ✅ `apps/extension/e2e/skills.spec.ts` — **9/9** (thêm: badge điều kiện · export file JSON · import file JSON → skill mới) |
+
+#### 4.4.3 Ảnh hưởng lên gate parity
+
+- Checklist §E (`COMPARISON_MATRIX.md`) dòng **"Skills `/` + tạo/sửa/xoá skill + library có sẵn + trang duyệt skill library"** → **✅ ĐÓNG** → §E **34/35 = 97.1%**.
+- §B8 (Chrome Gemini — Skills có sẵn) 🟡 → ✅ · §C10 (import/export JSON) ⬜ → ✅ (T-M2-05) · §C14 (skill library browser nội bộ) ⬜ → ✅ (T-M2-06).
+- **Không** phá parity: không thêm permission, không đổi manifest, hành vi chat M1 không đổi (skill **tuỳ chọn**).
+
+#### 4.4.4 Việc tiếp theo trong M2
+
+| Ưu tiên | Task | Lý do |
+|---|---|---|
+| 1 | **T-M2-07 → 11** — Tools/MCP/RAG | Greenfield · MCP (C4) + RAG (C7) là 2 claim độc quyền hiện **chưa có thật** → sửa claim trong [`COMPARISON_MATRIX.md`](COMPARISON_MATRIX.md) §D |
+| 2 | **T-M2-12 → 17** — eval | Deliverable bắt buộc (`docs/EVAL_REPORT.md`) |
+| 3 | **T-M2-18 → 20** — agentic · web search · context policy | Could — cắt được nếu thiếu thời gian |
 
 ---
 

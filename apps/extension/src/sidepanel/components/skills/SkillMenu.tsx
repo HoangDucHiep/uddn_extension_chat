@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { Sparkles } from 'lucide-react'
 import { filterSkills, type Skill } from '@sidekick/shared'
 import { useI18n } from '@/sidepanel/hooks/useI18n'
+import { SkillConditionBadge } from './SkillConditionBadge'
 
 /**
  * Popover `/` — danh sach skill de goi nhanh (T-M2-04, FR-SKILL-01).
@@ -100,6 +101,7 @@ export function SkillMenu({ skills, query, activeIndex, onSelect }: SkillMenuPro
                     </span>
                   ) : null}
                 </span>
+                <SkillConditionBadge skill={skill} />
                 <span
                   className="shrink-0 rounded-[var(--radius-full)] bg-[var(--surface-sunken)] px-1.5 py-0.5 text-[length:var(--font-size-xs)] text-[var(--text-tertiary)]"
                   data-testid="skill-scope"
