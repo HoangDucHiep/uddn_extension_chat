@@ -24,7 +24,7 @@
 | Hạng mục | Trạng thái |
 |---|---|
 | Docs | ✅ Đầy đủ 11 file (`docs/`) + `AGENTS.md` ở root |
-| Code | ✅ **M1 (Parity) ĐÓNG** — 23/25 task (T-M1-15 + T-M1-16 ⏸ tạm dừng) — 4 workspace, **1337 unit test + 88 E2E** · **M2 bắt đầu** (T-M2-02 ✅ · T-M2-03 ✅) |
+| Code | ✅ **M1 (Parity) ĐÓNG** — 23/25 task (T-M1-15 + T-M1-16 ⏸ tạm dừng) — 4 workspace, **1391 unit test + 91 E2E** · **M2 đang làm** (T-M2-02 ✅ · T-M2-03 ✅) |
 | Git | ✅ Đã init (`main`) · tag `v0.1` (M0) · tag **`v0.2`** (M1 đóng 2026-11-09) |
 | Milestone hiện tại | **M2 — Advanced & Eval** (M0 ✅ · M1 ✅) |
 | Task tiếp theo | **T-M2-12** — điền dataset eval thật (`apps/eval/dataset/tasks.json` + `dataset/snapshots/*`) → T-M2-13 harness → T-M2-14 judge → T-M2-15..17 → **`docs/EVAL_REPORT.md`** (deliverable bắt buộc) |
@@ -53,12 +53,16 @@ _(Không có — M1 đóng xong 2026-11-09, tag `v0.2`)_
 **Tóm tắt T-M2-03 (FR-PROVIDER-05):**
 
 - `UsageBadge` dưới bubble assistant: token vào/ra + `~ $0.0123` (4 chữ số thập phân) · provider local (`mock`/`ollama`) → chỉ hiện token.
-- Section **"Chi phí & sử dụng"** trong Settings: `GET /api/usage` → tổng token + tổng chi phí + bảng **theo ngày** (`byDay[]`) · khoảng `today/7d/30d/all`.
+- Section **"Chi phí & sử dụng"** trong Settings: `GET /api/usage` → tổng token + tổng chi phí + bảng **theo ngày** (`byDay[]`) · khoảng `today/7d/30d/all` (mặc định `7d`, đổi khoảng → gọi lại API).
 - Chi phí do **server** tính từ `PROVIDER_PRICING` → extension chỉ hiển thị → **không** lệch với giá thật.
 
 **Ảnh hưởng lên gate parity:** checklist §E `COMPARISON_MATRIX.md` **32/35 = 91.4%** → **33/35 = 94.3%** (đóng dòng "Token/cost hiển thị") — xem §E.1.3.
 
-**Số liệu test sau T-M2-02/03 (2026-11-10):** shared 245 · server 387 · extension 745 · eval 11 = **1388 unit** + **91 E2E** (24 file). `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm build` ✅ (`dist/content.js` 17.27 kB) · `pnpm test:e2e` ✅ (91/91).
+**Số liệu test sau T-M2-02/03 (2026-11-10):** shared 245 · server 387 · extension 748 · eval 11 = **1391 unit** + **91 E2E** (24 file). `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm build` ✅ (`dist/content.js` 16.87 kB) · `pnpm test:e2e` ✅ (91/91).
+
+**Bộ chọn khoảng thời gian trong Settings (bổ sung T-M2-03):** section "Chi phí & sử dụng" có 4 nút `Hôm nay / 7 ngày / 30 ngày / Tất cả` (mặc định `7d`) → `GET /api/usage?from=…` (`from` = ISO 8601, canh đầu ngày theo giờ local). Khoảng `all` → không gửi `from`. Đổi khoảng → gọi lại API ngay (không cần bấm "Làm mới").
+
+**Lưu ý vận hành:** Postgres chạy trong container `sidekick-db` → **Docker Desktop phải chạy** trước khi `pnpm dev:server`, nếu không `/api/usage` + `/api/logs` trả **500** (health báo `db: "down"`). Đã ghi trong `MANUAL_TEST_GUIDE.md` §12.
 
 > **Flake đã biết:** lần chạy E2E đầu tiên có `e2e/contextCache.spec.ts > trang đang lỗi → fallback về nội dung đã cache` fail (`expect(request?.context?.items).toHaveLength(1)` → `received value must have a length property`) — chạy lại **riêng** file đó thì **3/3 pass**, chạy lại **cả suite** thì **91/91 pass** → **flake do tải song song**, không phải hồi quy code. Nếu gặp lại: chạy lại `pnpm test:e2e` trước khi sửa code.
 

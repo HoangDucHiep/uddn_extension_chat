@@ -24,8 +24,13 @@
   - `apps/extension/src/sidepanel/components/chat/UsageBadge.tsx` (mới) — badge dưới bubble assistant: `↑ {tokensIn} ↓ {tokensOut} token · ~ $0.0123` · chưa có `usage` event → **không** render rỗng.
   - `apps/extension/src/sidepanel/components/settings/UsageSettings.tsx` (mới) + `apps/extension/src/lib/usageClient.ts` (mới) — section **"Chi phí & sử dụng"** trong `SettingsDrawer`: `GET /api/usage` → tổng token + tổng chi phí + bảng phân rã **theo ngày** (`byDay[]`) · khoảng `today/7d/30d/all` + nút làm mới.
   - **Test:** `apps/extension/tests/costFormat.test.ts` · `usageBadge.test.tsx` · `usageSettings.test.tsx`.
+- **T-M2-03 (bổ sung) — Bộ chọn khoảng thời gian trong section "Chi phí & sử dụng"**
+  - `apps/extension/src/sidepanel/components/settings/UsageSettings.tsx` — 4 nút `Hôm nay / 7 ngày / 30 ngày / Tất cả` (mặc định `7d`) → tính mốc `from` (**ISO 8601**, canh đầu ngày theo giờ local) → `GET /api/usage?from=…`. Khoảng `all` → **không** gửi `from` (lấy toàn bộ). Đổi khoảng → gọi lại API (không cần bấm "Làm mới").
+  - i18n: `usage.settings.rangeLabel` + `usage.settings.range.{today,7d,30d,all}` (`vi.ts` · `en.ts`).
+  - **Test:** `apps/extension/tests/usageSettings.test.tsx` (+3 test: mặc định `7d` · đổi khoảng → `from` đúng mốc đầu ngày · khoảng `all` → không có tham số `from`) · `apps/extension/e2e/modelPicker.spec.ts` (mở rộng: đổi khoảng không crash).
 
 ### Fixed
+- **`GET /api/usage` trả 500 khi Docker Desktop chưa chạy** — BFF báo `db: "down"` nhưng `/api/usage` ném lỗi `INTERNAL_ERROR` thay vì trả thông báo dễ hiểu. **Nguyên nhân gốc:** Postgres chạy trong container `sidekick-db` → Docker Desktop tắt là mất DB. Đã xác nhận lại: mở Docker → `sidekick-db` healthy → `/api/usage` trả `200` với `byDay[]` đúng, và bộ lọc `?from=` hoạt động (from hôm nay → `totalTokens: 0`, from 3 ngày trước → đủ 3 ngày). **Lưu ý vận hành:** `pnpm dev:server` phải chạy **sau** `docker compose up -d`, nếu không thì `/api/usage` + `/api/logs` trả 500.
 - `packages/shared/tests/events.test.ts` — assert `CHAT_EVENT_TYPES` còn **8** event type trong khi union đã có **9** (thêm `provider_switch` ở T-M2-02) → `pnpm test` fail ở `packages/shared`. Sửa thành **9** + thêm 2 test: parse `provider_switch` + từ chối event thiếu `to`.
 - **Flake E2E** (không phải hồi quy): `e2e/contextCache.spec.ts > trang đang lỗi → fallback về nội dung đã cache` fail 1 lần khi chạy song song (`toHaveLength` trên `undefined`) → chạy lại riêng file: **3/3 pass**; chạy lại cả suite: **91/91 pass** → tải song song. Ghi nhận trong `docs/HANDOFF.md` §2.
 

@@ -459,6 +459,7 @@ docker exec -it sidekick-db psql -U sidekick -d sidekick -c \
 | Docker daemon không chạy | Docker Desktop chưa start | Mở Docker Desktop, đợi `docker compose ps` hiện `healthy` |
 | `Cau hinh moi truong khong hop le` | `.env` thiếu `DATABASE_URL` | So sánh với `apps/server/.env.example` |
 | `/api/health` → `db: "down"` | Postgres chưa sẵn sàng | `docker compose ps` → đợi `healthy` → `pnpm db:migrate` |
+| `/api/usage` trả **500** | Docker Desktop đã tắt → mất Postgres | Mở Docker Desktop → `docker compose up -d` → `docker compose ps` (container `sidekick-db` phải `healthy`) |
 | Panel mở nhưng chat báo lỗi auth | Thiếu API key | Thêm key vào `apps/server/.env` → **restart** `pnpm dev:server` |
 | Panel báo "Offline" | BFF chết | Kiểm tra terminal `pnpm dev:server` còn chạy không |
 | Extension không load được | Chưa build | Chạy `pnpm build` → load `apps/extension/dist` |
