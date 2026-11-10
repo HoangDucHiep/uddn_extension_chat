@@ -70,6 +70,8 @@ _(Không có — M1 đóng xong 2026-11-09, tag `v0.2`)_
 
 **Lưu ý vận hành:** Postgres chạy trong container `sidekick-db` → **Docker Desktop phải chạy** trước khi `pnpm dev:server`, nếu không `/api/usage` + `/api/logs` trả **500** (health báo `db: "down"`). Đã ghi trong `MANUAL_TEST_GUIDE.md` §12.
 
+**Quan sát về độ ổn định của E2E (2026-11-10):** E2E gọi **provider thật** (Groq/OpenRouter) → tỉ lệ lỗi phụ thuộc **quota provider**, không phải logic repo. 1 lần chạy bị **4 failed / 87 passed** và kéo dài **52 phút** vì Groq trả **413 TPM** → fallback sang OpenRouter (chậm hơn) → timeout. Chạy lại ngay: **91/91 pass trong 3.9 phút**. Khi thấy E2E chậm bất thường → kiểm tra `request_logs` xem có lỗi `413` / rate-limit không trước khi nghi ngờ hồi quy.
+
 > **Flake đã biết:** lần chạy E2E đầu tiên có `e2e/contextCache.spec.ts > trang đang lỗi → fallback về nội dung đã cache` fail (`expect(request?.context?.items).toHaveLength(1)` → `received value must have a length property`) — chạy lại **riêng** file đó thì **3/3 pass**, chạy lại **cả suite** thì **91/91 pass** → **flake do tải song song**, không phải hồi quy code. Nếu gặp lại: chạy lại `pnpm test:e2e` trước khi sửa code.
 
 **Endpoint đã kiểm chứng live** (BFF + Docker + `.env` có K1):
@@ -87,8 +89,7 @@ GET /api/providers/gemini/models      → source=live  count=47
 - **3 dòng §E còn mở** — đều có task kế tiếp, không phải thiếu sót: Skills `/` + library → **T-M2-04/06/21** (Chrome Gemini cần đăng nhập Google cho Skills; Sidekick cố ý không phụ thuộc tài khoản hãng) · token/cost **UI** → **T-M2-03** (phần log đã đầy đủ ở M1) · Direct/BYOK fallback → **T-M1-15/16** (⏸ tạm dừng).
 - **Giới hạn đã ghi rõ:** vế "≥ 8/10 trang thật" của gate là **dataset eval M2** (hiện rỗng `[]`) → cover bằng **15 fixture HTML** + E2E trang thật ở M1, **không** tuyên bố đã đạt 8/10 trang thật.
 - **Test tại lúc đóng M1:** shared 243 · server 377 · extension 706 · eval 11 = **1337 unit** + **88 E2E** (23 file). `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm build` ✅ · `pnpm test:e2e` ✅ (88/88).
-- **Lưu ý chạy E2E:** cần **Docker Desktop đang chạy** + BFF lên (`pnpm dev:server`) → 4 kịch bản `citation` · `markdown` · `sidepanel` · `vision` gọi BFF thật. Docker tắt → 4 test fail (không phải hồi quy code).
-- Chi tiết: [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) §3.1u · [`COMPARISON_MATRIX.md`](COMPARISON_MATRIX.md) §E.1 / §E.1.1 / §E.1.2 · [`REQUIREMENTS.md`](REQUIREMENTS.md) §9.
+- **Lưu ý chạy E2E:** cần **Docker Desktop đang chạy** + BFF lên (`pnpm dev:server`) → 4 kịch bản `citation` · `markdown` · `sidepanel` · `vision` gọi BFF thật. Docker tắt → 4 test fail (không phải hồi quy code).- Chi tiết: [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) §3.1u · [`COMPARISON_MATRIX.md`](COMPARISON_MATRIX.md) §E.1 / §E.1.1 / §E.1.2 · [`REQUIREMENTS.md`](REQUIREMENTS.md) §9.
 
 ### Hướng dẫn test tay cho người dùng
 
