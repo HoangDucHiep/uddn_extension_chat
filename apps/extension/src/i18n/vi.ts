@@ -316,6 +316,11 @@ export const viDictionary = {
   'usage.settings.loading': 'Đang tải số liệu…',
   'usage.settings.error': 'Không tải được số liệu sử dụng.',
   'usage.settings.refresh': 'Làm mới',
+  'usage.settings.rangeLabel': 'Khoảng thời gian',
+  'usage.settings.range.today': 'Hôm nay',
+  'usage.settings.range.7d': '7 ngày',
+  'usage.settings.range.30d': '30 ngày',
+  'usage.settings.range.all': 'Tất cả',
   'usage.settings.day': '{date}: {tokens} token · {cost}',
 
   // --- toast ---

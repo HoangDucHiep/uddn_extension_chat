@@ -303,6 +303,11 @@ export const enDictionary: Dictionary = {
   'usage.settings.loading': 'Loading usage data…',
   'usage.settings.error': 'Could not load usage data.',
   'usage.settings.refresh': 'Refresh',
+  'usage.settings.rangeLabel': 'Time range',
+  'usage.settings.range.today': 'Today',
+  'usage.settings.range.7d': '7 days',
+  'usage.settings.range.30d': '30 days',
+  'usage.settings.range.all': 'All',
   'usage.settings.day': '{date}: {tokens} tokens · {cost}',
 
   // --- toast ---

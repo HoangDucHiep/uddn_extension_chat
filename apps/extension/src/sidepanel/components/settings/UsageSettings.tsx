@@ -18,17 +18,53 @@ import { SettingsSection } from './SettingsControls'
  *
  * Docs: docs/DESIGN_SYSTEM_BRIEF.md §3.7 · docs/SYSTEM_DESIGN.md §7.23
  */
+
+/** Khoang thoi gian xem thong ke. */
+const USAGE_RANGES = ['today', '7d', '30d', 'all'] as const
+
+/** Mot khoang thoi gian xem thong ke. */
+type UsageRange = (typeof USAGE_RANGES)[number]
+
+/**
+ * Tinh moc thoi gian `from` cho 1 khoang.
+ *
+ * Server nhan `from`/`to` la ISO 8601 → canh goc ngay (giay) de khong
+ * bo qua phan thoi gian trong ngay hien tai.
+ *
+ * @param range - Khoang da chon.
+ * @returns Moc `from` (ISO) hoac `undefined` cho khoang `all`.
+ */
+function resolveRangeStart(range: UsageRange): string | undefined {
+  const now = new Date()
+
+  if (range === 'all') return undefined
+
+  if (range === 'today') {
+    const start = new Date(now)
+    start.setHours(0, 0, 0, 0)
+    return start.toISOString()
+  }
+
+  const days = range === '7d' ? 7 : 30
+  const start = new Date(now)
+  start.setDate(start.getDate() - (days - 1))
+  start.setHours(0, 0, 0, 0)
+  return start.toISOString()
+}
+
 export function UsageSettings() {
   const { t } = useI18n()
   const [usage, setUsage] = useState<UsageResponse | undefined>(undefined)
   const [isLoading, setIsLoading] = useState(false)
   const [hasError, setHasError] = useState(false)
+  const [range, setRange] = useState<UsageRange>('7d')
 
   const load = useCallback(async (): Promise<void> => {
     setIsLoading(true)
     setHasError(false)
     try {
-      const response = await fetchUsage()
+      const from = resolveRangeStart(range)
+      const response = await fetchUsage(from !== undefined ? { from } : undefined)
       const parsed = usageResponseSchema.safeParse(response)
       if (!parsed.success) {
         // Response sai shape → coi nhu loi (khong lam crash drawer).
@@ -42,9 +78,9 @@ export function UsageSettings() {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [range])
 
-  // Nap khi section duoc render (drawer mo).
+  // Nap khi section duoc render (drawer mo) hoac khi doi khoang.
   useEffect(() => {
     void load()
   }, [load])
@@ -57,6 +93,35 @@ export function UsageSettings() {
       description={t('usage.settings.description')}
     >
       <div className="flex items-center justify-between gap-2">
+        <div
+          className="flex flex-wrap gap-1"
+          role="group"
+          aria-label={t('usage.settings.rangeLabel')}
+          data-testid="usage-settings-ranges"
+        >
+          {USAGE_RANGES.map((option) => {
+            const isActive = option === range
+            return (
+              <button
+                key={option}
+                type="button"
+                onClick={() => {
+                  setRange(option)
+                }}
+                aria-pressed={isActive}
+                className={`rounded-[var(--radius-sm)] px-2 py-1 text-[length:var(--font-size-xs)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)] ${
+                  isActive
+                    ? 'bg-[var(--color-accent-subtle)] text-[var(--color-accent-hover)]'
+                    : 'text-[var(--text-secondary)] hover:bg-[var(--surface-sunken)] hover:text-[var(--text-primary)]'
+                }`}
+                data-testid={`usage-settings-range-${option}`}
+              >
+                {t(`usage.settings.range.${option}`)}
+              </button>
+            )
+          })}
+        </div>
+
         <button
           type="button"
           onClick={() => {

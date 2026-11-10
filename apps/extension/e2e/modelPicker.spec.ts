@@ -145,5 +145,14 @@ test('section "Chi phi & su dung" trong Settings tai duoc so lieu', async ({
   await expect(panel.getByTestId('usage-total-tokens')).toBeVisible({ timeout: 20_000 })
   await expect(panel.getByTestId('usage-total-cost')).toBeVisible()
 
+  // Bo chon khoang thoi gian.
+  await expect(panel.getByTestId('usage-settings-ranges')).toBeVisible()
+  await expect(panel.getByTestId('usage-settings-range-7d')).toHaveAttribute('aria-pressed', 'true')
+
+  // Doi khoang → van hien so lieu (khong crash).
+  await panel.getByTestId('usage-settings-range-today').click()
+  await expect(panel.getByTestId('usage-settings-range-today')).toHaveAttribute('aria-pressed', 'true')
+  await expect(panel.getByTestId('usage-settings-refresh')).toBeVisible()
+
   await panel.close()
 })

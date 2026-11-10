@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 
 const fetchUsageMock = vi.fn()
 
 vi.mock('@/lib/usageClient', () => ({
-  fetchUsage: () => fetchUsageMock(),
+  // Giu nguyen tham so de test kiem tra `from` theo khoang thoi gian.
+  fetchUsage: (...args: unknown[]) => fetchUsageMock(...args),
 }))
 
 vi.mock('sonner', () => ({
@@ -85,5 +86,63 @@ describe('UsageSettings', () => {
     await waitFor(() => {
       expect(screen.getByTestId('usage-settings-empty')).toBeTruthy()
     })
+  })
+
+  it('co bo chon khoang thoi gian (mac dinh 7 ngay)', async () => {
+    fetchUsageMock.mockResolvedValue({ totalTokens: 0, totalCostUsd: 0, byDay: [] })
+
+    render(<UsageSettings />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('usage-settings-ranges')).toBeTruthy()
+    })
+    expect(screen.getByTestId('usage-settings-range-7d').getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('doi khoang → goi API voi `from` tuong ung', async () => {
+    fetchUsageMock.mockResolvedValue({ totalTokens: 0, totalCostUsd: 0, byDay: [] })
+
+    render(<UsageSettings />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('usage-settings-ranges')).toBeTruthy()
+    })
+
+    const callCountBefore = fetchUsageMock.mock.calls.length
+
+    fireEvent.click(screen.getByTestId('usage-settings-range-today'))
+    await waitFor(() => {
+      expect(fetchUsageMock.mock.calls.length).toBeGreaterThan(callCountBefore)
+    })
+
+    const lastCall = fetchUsageMock.mock.calls.at(-1)
+    const rangeArg = lastCall?.[0] as { from?: string } | undefined
+    expect(rangeArg?.from).toBeDefined()
+
+    const from = new Date(rangeArg?.from ?? '')
+    const startOfToday = new Date()
+    startOfToday.setHours(0, 0, 0, 0)
+    expect(from.getTime()).toBe(startOfToday.getTime())
+  })
+
+  it('khoang "all" → goi API khong co tham so `from`', async () => {
+    fetchUsageMock.mockResolvedValue({ totalTokens: 0, totalCostUsd: 0, byDay: [] })
+
+    render(<UsageSettings />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('usage-settings-ranges')).toBeTruthy()
+    })
+
+    const callCountBefore = fetchUsageMock.mock.calls.length
+
+    fireEvent.click(screen.getByTestId('usage-settings-range-all'))
+
+    await waitFor(() => {
+      expect(fetchUsageMock.mock.calls.length).toBeGreaterThan(callCountBefore)
+    })
+
+    const lastCall = fetchUsageMock.mock.calls.at(-1)
+    expect(lastCall?.[0]).toBeUndefined()
   })
 })
