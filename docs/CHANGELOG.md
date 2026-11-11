@@ -9,7 +9,7 @@
 ## [Unreleased]
 
 ### Added
-- **T-M2-08 — MCP client (stdio transport) + server manager (FR-TOOLS-01)**
+- **T-M2-08 — MCP client (stdio transport) + server manager (FR-TOOLS-01)** · commit `5ab8d1c` (server) · `c475488` (UI)
   - **Contract (`packages/shared`):** `src/schemas/mcp.ts` (mới) — `mcpTransportSchema` (`'stdio'`) · `mcpServerStatusSchema` · `mcpServerNameSchema` (`^[a-z0-9_-]+$`) · `createMcpServerSchema` (name · transport · command · args · env · enabled · **autoApprove**) · `updateMcpServerSchema` · `mcpServerSchema` (+ `status` · `toolCount` · `lastError` · `lastConnectedAt`) · `mcpServerListResponseSchema` · `mcpToolSchema` · `mcpToolListResponseSchema` · `mcpReconnectResponseSchema`. Mở rộng `src/constants.ts` — `MCP_SERVER_STATUSES` (`disconnected` · `connecting` · `connected` · `error`) + `MCP_LIMITS` (`MAX_SERVERS: 8` · `REQUEST_TIMEOUT_MS: 10_000` · `TOOL_CACHE_TTL_MS: 30_000` · `MAX_OUTPUT_CHARS: 8_000`) + `API_ROUTES.mcpServers` + `API_ROUTES.mcpTools`.
   - **Server — lớp MCP (mới `apps/server/src/tools/mcp/`):**
     - `protocol.ts` — framing **JSON-RPC 2.0** thuần (không Zod): `JSON_RPC_VERSION` · `MCP_PROTOCOL_VERSION` (`2024-11-05`) · `createRequest` · `createResult` · `createError` · `encodeMessage` (newline-delimited JSON) · `parseMessages` (bỏ qua dòng không phải JSON).

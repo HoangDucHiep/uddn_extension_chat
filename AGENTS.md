@@ -123,6 +123,7 @@ pnpm manual:checklist        # chạy checklist test tay trên Chrome thật (lo
 > - **Script mẫu:** `apps/server/scripts/sample-mcp-server.mjs` (tool `echo` + `add`) để demo tay/test offline.
 > - **Giới hạn:** chỉ transport **stdio** (HTTP/SSE → task sau) · `gemini` chưa hỗ trợ tool.
 > - **Test:** server `mcpProtocol` · `mcpClient` · `mcpManager` · `mcpRoute` (helper `fakeMcpDb`) · extension `mcpClient` · `mcpSettings` · E2E `mcp.spec.ts` (**4/4**).
+> - **Commit:** `5ab8d1c` (server) · `c475488` (UI).
 > - **Số liệu test sau T-M2-08 (2026-11-11):** shared 329 · server 632 · extension 876 · eval 11 = **1848 unit** + **108 E2E** (28 file).
 > Chi tiết: [`SYSTEM_DESIGN.md`](docs/SYSTEM_DESIGN.md) §7.27 · [`REQUIREMENTS.md`](docs/REQUIREMENTS.md) §4.4 · [`COMPARISON_MATRIX.md`](docs/COMPARISON_MATRIX.md) §E.1.7 · [`IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) §4.1.
 
