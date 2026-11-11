@@ -1,6 +1,6 @@
 ﻿# Implementation Plan — Sidekick AI
 
-**Version:** v2.6 · **Ngày:** 2026-11-10
+**Version:** v2.7 · **Ngày:** 2026-11-11
 **Tổng thời gian ước tính:** 11 tuần (M0–M3 bắt buộc) + 2 tuần tuỳ chọn (M4)
 
 > Đây là kế hoạch **task-level** để làm được ngay. Mỗi task có mã, FR liên quan, output files, acceptance criteria và estimate.
@@ -1024,40 +1024,42 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 **Mục tiêu:** các tính năng độc quyền (BYOK, multi-provider, MCP, RAG, skills, log) + **báo cáo eval đầy đủ**.
 **Gate:** `docs/EVAL_REPORT.md` hoàn chỉnh (bảng + phân tích + radar + kết luận) · dataset ≥ 40 task × 3 hệ thống · judge đã kiểm chứng.
 
-| ID | Task | FR | Output files | AC | Est |
-|---|---|---|---|---|---|
-| T-M2-01 | Multi-provider: OpenAI, Anthropic, OpenRouter, Groq, Ollama | FR-PROVIDER-01/03/07 | `apps/server/src/providers/{openai,anthropic,openrouter,groq,ollama}.ts` | Mỗi provider stream được; model list lấy động; phát hiện được Ollama local khả dụng | L | ⏸ **đẩy lại** — xem ghi chú bên dưới |
+| ID | Task | FR | Output files | AC | Est | Status |
+|---|---|---|---|---|---|---|
+| T-M2-01 | Multi-provider: OpenAI, Anthropic, OpenRouter, Groq, Ollama | FR-PROVIDER-01/03/07 | `apps/server/src/providers/{openai,anthropic,openrouter,groq,ollama}.ts` | Mỗi provider stream được; model list lấy động; phát hiện được Ollama local khả dụng | L | ⏸ **đẩy lại** *(quyết định user 2026-11-10 — không thêm provider mới)* |
 | T-M2-02 | Model picker + fallback chain | FR-PROVIDER-03/04 | `settings/ModelPicker.tsx`, `providers/fallback.ts` | Provider chính lỗi → tự chuyển provider dự phòng, ghi log | M | ✅ *(2026-11-10)* |
-| T-M2-03 | Token & cost calculator + usage UI | FR-PROVIDER-05 | `lib/cost.ts`, `settings/DataSettings.tsx`, `chat/UsageBadge.tsx` | Hiện token/cost từng lượt | M | ✅ *(2026-11-10)* — phần **budget cap (FR-PROVIDER-06)** tách thành **T-M2-03b** (đã xong) |
+| T-M2-03 | Token & cost calculator + usage UI | FR-PROVIDER-05 | `lib/cost.ts`, `settings/DataSettings.tsx`, `chat/UsageBadge.tsx` | Hiện token/cost từng lượt | M | ✅ *(2026-11-10)* · budget cap tách **T-M2-03b** |
 | T-M2-03b | Budget cap (cảnh báo + tuỳ chọn chặn khi vượt ngưỡng chi phí) | FR-PROVIDER-06 | `packages/shared/src/budget.ts`, `packages/shared/src/schemas/budget.ts`, `apps/server/src/services/budgetService.ts`, `apps/server/src/routes/budget.ts`, `apps/extension/src/sidepanel/components/settings/BudgetSettings.tsx`, `apps/extension/src/sidepanel/components/BudgetBanner.tsx` | Cấu hình ngưỡng ở Settings (**lưu phía server** — bảng `budget_settings`); cảnh báo khi tổng `cost_usd` vượt ngưỡng; tuỳ chọn chặn lượt chat mới (server **không gọi provider** → chi phí = 0) | M | ✅ *(2026-11-10)* |
-| T-M2-04 | Skills: menu `/`, CRUD, builtin library | FR-SKILL-01/02/03, NFR-MAINT-03 | `sidepanel/components/skills/*`, `POST /skills` | `/` → list skill; tạo skill từ message; CRUD đủ | L | ✅ *(2026-11-10)* — seed **tối thiểu 3 skill** built-in; thư viện ≥8 skill → T-M2-21 |
-| T-M2-05 | Skill import/export JSON | FR-SKILL-05 | `packages/shared/src/skillIO.ts`, `packages/shared/src/schemas/skillIO.ts`, `apps/extension/src/lib/skillIO.ts` | Export/import round-trip không mất dữ liệu | S | ✅ *(2026-11-10)* — file `version: 1` + `exportedAt` + `skills[]`; export **chỉ** scope `user`; import bỏ `id`/`scope`/timestamp; trùng tên → bỏ qua + toast; ≤ 100 skill/lần |
-| T-M2-06 | Skill library browser nội bộ | FR-SKILL-07 | `sidepanel/components/skills/SkillLibrary.tsx` | Xem/lọc skill theo tag | M | ✅ *(2026-11-10)* — tab 2 trong drawer Kỹ năng · lọc server `?q=` + `?tags=` (mode `any`) · click card → chạy ngay |
-| T-M2-07 | Tool registry (builtin: web search, calculator) | FR-TOOLS-01/02, NFR-MAINT-03 | `apps/server/src/tools/{registry.ts,builtin/*}` | Tool được liệt kê; invoke trả kết quả | L |
-| T-M2-08 | MCP client (stdio transport) + server manager | FR-TOOLS-01/02 | `apps/server/src/tools/mcp/{client.ts,manager.ts}` | Kết nối MCP server, liệt kê tool, gọi tool | L |
-| T-M2-09 | Tool call UI (collapsible block + approval) | FR-TOOLS-02/06, FR-TOOLS-04 | `sidepanel/components/tools/ToolCallBlock.tsx` | Hiện args/result/kết quả lỗi; approval gate chặn hành động | M |
-| T-M2-10 | RAG: embedding + `rag_documents` + search | FR-TOOLS-05 | `apps/server/src/rag/{embedder.ts,retriever.ts,indexer.ts}` | Index lịch sử chat; search trả đoạn liên quan kèm score | L |
-| T-M2-11 | RAG UI: toggle + hiện nguồn trong câu trả lời | FR-TOOLS-05 | `settings/ToolsSettings.tsx`, `CitationChip` (mở rộng) | Bật RAG → câu trả lời có citation tới đoạn đã index | M |
-| T-M2-12 | Eval: dataset 48 task + snapshot trang | NFR-MAINT-04 | `apps/eval/dataset/tasks.json`, `dataset/snapshots/*` | ≥ 44 task, ≥ 80% có `must_include_facts`, ≥ 40% tiếng Việt; có nhóm `doc_extract` (PDF) + `video_transcript` (YouTube) | L |
-| T-M2-13 | Eval: harness runner cho hệ thống ta | NFR-MAINT-04, NFR-MAINT-02 | `apps/eval/runners/{ours.ts,aggregate.ts}` | 1 lệnh chạy được; log TTFT/latency/token/cost; coverage ≥ 70% core logic | L |
-| T-M2-14 | Eval: judge prompt + runner + blind mapping | NFR-MAINT-04 | `apps/eval/judge/{prompt.ts,run_judge.ts}` | Judge temperature 0; nhãn ngẫu nhiên; `blind_map.json` | M |
-| T-M2-15 | Eval: thu thập thủ công Edge + Gemini (n=3) | NFR-MAINT-04 | `apps/eval/results/manual/**` | Transcript đúng template; ghi rõ điều kiện phụ thuộc gói | L |
-| T-M2-16 | Eval: chấm tay Tầng B (2 người) + độ tin cậy | NFR-MAINT-04 | `apps/eval/results/human_rubric.csv` | Tính ρ (judge vs human) và κ (human vs human) | M |
-| T-M2-17 | Eval: báo cáo `EVAL_REPORT.md` + radar chart | NFR-MAINT-04 | `docs/EVAL_REPORT.md`, `apps/eval/reports/*` | Có bảng 3 hệ thống, phân tích, kết luận, mục "chỗ ta thua" | L |
-| T-M2-18 | Agentic action (nếu kịp — cắt được) | FR-TOOLS-04 | `apps/server/src/tools/agentic/*` | Diff preview + bước xác nhận trước khi ghi | L |
-| T-M2-19 | Chính sách context theo domain + lịch sử duyệt opt-in + mode "chỉ dùng trang" | FR-CONTEXT-08/09/11, FR-SETTINGS-04, NFR-SEC-02/06 | `sidepanel/components/settings/ContextPolicy.tsx`, `lib/contextPolicy.ts` | Domain bị chặn → không đọc content, hiện badge; lịch sử duyệt **mặc định TẮT**, bật thì cảnh báo rõ + xoá được; toggle "chỉ dùng trang" per-request | M |
-| T-M2-20 | Web search tool (bật/tắt được) | FR-TOOLS-03 | `apps/server/src/tools/builtin/webSearch.ts` | Kết quả có nguồn + ngày; tắt thì model không được gọi tool này | M |
-| T-M2-21 | Skill library built-in + skill gắn điều kiện (tab hiện tại / tab kèm theo) | FR-SKILL-04/06 | `apps/server/src/skills/builtin.ts`, `packages/shared/src/skill.ts`, `sidepanel/components/skills/SkillConditionBadge.tsx` | ≥ 8 skill mẫu (tóm tắt, giải thích đơn giản, dịch, so sánh, trích xuất dữ liệu, viết email, sinh quiz, kiểm tra hiểu); skill gắn điều kiện chạy được trên tab chỉ định | M | ✅ *(2026-11-10)* — registry **9 skill** (uuid cố định, ≥ 1 tag) · cột `skills.tab_condition` jsonb (migration `0005`) · 2 checkbox trong form + badge + popover chọn tab |
-| T-M2-22 | Vision mở rộng: chụp vùng, OCR, image-capable provider, alt text | FR-VISION-02/03/04/05 | `sidepanel/components/composer/RegionCapture.tsx`, `apps/server/src/lib/ocr.ts` | Chọn vùng bằng overlay; OCR trả text; provider không hỗ trợ image → ẩn tính năng không lỗi; alt text lưu lại để tiết kiệm token | L |
+| T-M2-04 | Skills: menu `/`, CRUD, builtin library | FR-SKILL-01/02/03, NFR-MAINT-03 | `sidepanel/components/skills/*`, `POST /skills` | `/` → list skill; tạo skill từ message; CRUD đủ | L | ✅ *(2026-11-10)* · seed 3 skill → thư viện 9 skill ở **T-M2-21** |
+| T-M2-05 | Skill import/export JSON | FR-SKILL-05 | `packages/shared/src/skillIO.ts`, `packages/shared/src/schemas/skillIO.ts`, `apps/extension/src/lib/skillIO.ts` | Export/import round-trip không mất dữ liệu | S | ✅ *(2026-11-10)* |
+| T-M2-06 | Skill library browser nội bộ | FR-SKILL-07 | `sidepanel/components/skills/SkillLibrary.tsx` | Xem/lọc skill theo tag | M | ✅ *(2026-11-10)* |
+| T-M2-07 | Tool registry (builtin: web search, calculator) | FR-TOOLS-01/02, NFR-MAINT-03 | `apps/server/src/tools/{registry.ts,builtin/*}` | Tool được liệt kê; invoke trả kết quả | L | ⬜ — nền: SSE `tool_call`/`tool_result` + bảng `tool_calls` (M0) |
+| T-M2-08 | MCP client (stdio transport) + server manager | FR-TOOLS-01/02 | `apps/server/src/tools/mcp/{client.ts,manager.ts}` | Kết nối MCP server, liệt kê tool, gọi tool | L | ⬜ — **chưa** có `apps/server/src/tools/` |
+| T-M2-09 | Tool call UI (collapsible block + approval) | FR-TOOLS-02/06, FR-TOOLS-04 | `sidepanel/components/tools/ToolCallBlock.tsx` | Hiện args/result/kết quả lỗi; approval gate chặn hành động | M | ⬜ — nền: cột `tool_calls.approval_required` (M0) |
+| T-M2-10 | RAG: embedding + `rag_documents` + search | FR-TOOLS-05 | `apps/server/src/rag/{embedder.ts,retriever.ts,indexer.ts}` | Index lịch sử chat; search trả đoạn liên quan kèm score | L | ⬜ — nền: Postgres `pgvector` + extension `vector` |
+| T-M2-11 | RAG UI: toggle + hiện nguồn trong câu trả lời | FR-TOOLS-05 | `settings/ToolsSettings.tsx`, `CitationChip` (mở rộng) | Bật RAG → câu trả lời có citation tới đoạn đã index | M | ⬜ — nền: `CitationChip` (T-M1-08) |
+| T-M2-12 | Eval: dataset 48 task + snapshot trang | NFR-MAINT-04 | `apps/eval/dataset/tasks.json`, `dataset/snapshots/*` | ≥ 44 task, ≥ 80% có `must_include_facts`, ≥ 40% tiếng Việt; có nhóm `doc_extract` (PDF) + `video_transcript` (YouTube) | L | ⬜ — nền: contract `evalTaskSchema` + `EVAL_GROUPS`; dataset **đang rỗng `[]`** |
+| T-M2-13 | Eval: harness runner cho hệ thống ta | NFR-MAINT-04, NFR-MAINT-02 | `apps/eval/runners/{ours.ts,aggregate.ts}` | 1 lệnh chạy được; log TTFT/latency/token/cost; coverage ≥ 70% core logic | L | ⬜ — nền: CLI `apps/eval` (dataset loader + `logs`) |
+| T-M2-14 | Eval: judge prompt + runner + blind mapping | NFR-MAINT-04 | `apps/eval/judge/{prompt.ts,run_judge.ts}` | Judge temperature 0; nhãn ngẫu nhiên; `blind_map.json` | M | ⬜ — chưa bắt đầu |
+| T-M2-15 | Eval: thu thập thủ công Edge + Gemini (n=3) | NFR-MAINT-04 | `apps/eval/results/manual/**` | Transcript đúng template; ghi rõ điều kiện phụ thuộc gói | L | ⬜ — **cần người thật** (lead-time dài nhất) |
+| T-M2-16 | Eval: chấm tay Tầng B (2 người) + độ tin cậy | NFR-MAINT-04 | `apps/eval/results/human_rubric.csv` | Tính ρ (judge vs human) và κ (human vs human) | M | ⬜ — **cần 2 người chấm tay** |
+| T-M2-17 | Eval: báo cáo `EVAL_REPORT.md` + radar chart | NFR-MAINT-04 | `docs/EVAL_REPORT.md`, `apps/eval/reports/*` | Có bảng 3 hệ thống, phân tích, kết luận, mục "chỗ ta thua" | L | ⬜ — **deliverable bắt buộc** · `docs/EVAL_REPORT.md` chưa tồn tại |
+| T-M2-18 | Agentic action (nếu kịp — cắt được) | FR-TOOLS-04 | `apps/server/src/tools/agentic/*` | Diff preview + bước xác nhận trước khi ghi | L | ⬜ — Could · cắt được theo §10 |
+| T-M2-19 | Chính sách context theo domain + lịch sử duyệt opt-in + mode "chỉ dùng trang" | FR-CONTEXT-08/09/11, FR-SETTINGS-04, NFR-SEC-02/06 | `sidepanel/components/settings/ContextPolicy.tsx`, `lib/contextPolicy.ts` | Domain bị chặn → không đọc content, hiện badge; lịch sử duyệt **mặc định TẮT**, bật thì cảnh báo rõ + xoá được; toggle "chỉ dùng trang" per-request | M | ⬜ — Could · cắt được theo §10 |
+| T-M2-20 | Web search tool (bật/tắt được) | FR-TOOLS-03 | `apps/server/src/tools/builtin/webSearch.ts` | Kết quả có nguồn + ngày; tắt thì model không được gọi tool này | M | ⬜ — Could · phụ thuộc T-M2-07 |
+| T-M2-21 | Skill library built-in + skill gắn điều kiện (tab hiện tại / tab kèm theo) | FR-SKILL-04/06 | `apps/server/src/skills/builtin.ts`, `packages/shared/src/skill.ts`, `sidepanel/components/skills/SkillConditionBadge.tsx` | ≥ 8 skill mẫu (tóm tắt, giải thích đơn giản, dịch, so sánh, trích xuất dữ liệu, viết email, sinh quiz, kiểm tra hiểu); skill gắn điều kiện chạy được trên tab chỉ định | M | ✅ *(2026-11-11)* · registry **9 skill** + cột `skills.tab_condition` |
+| T-M2-22 | Vision mở rộng: chụp vùng, OCR, image-capable provider, alt text | FR-VISION-02/03/04/05 | `sidepanel/components/composer/RegionCapture.tsx`, `apps/server/src/lib/ocr.ts` | Chọn vùng bằng overlay; OCR trả text; provider không hỗ trợ image → ẩn tính năng không lỗi; alt text lưu lại để tiết kiệm token | L | ⬜ — Could · cắt được theo §10 |
 
 **Định mức M2:** 3 tuần · 23 task · ~40 ngày công
+> **Tiến độ (2026-11-11): 7/23 task ✅** (T-M2-02 · T-M2-03 · T-M2-03b · T-M2-04 · T-M2-05 · T-M2-06 · T-M2-21) · **1 task ⏸** (T-M2-01) · **15 task ⬜** chưa bắt đầu — chi tiết & bằng chứng ở **§4.1**.
+
 > Nếu trễ: **cắt T-M2-18 (agentic)** → không ảnh hưởng tiêu chí bắt buộc. Cắt T-M2-10/11 (RAG) nếu cần — theo §10. Cắt T-M2-22 (vision mở rộng) trước — chỉ ảnh hưởng tính năng Could.
 
 > **Ghi chú T-M2-12 (2026-11-09):** **contract dataset đã hiện thực** ở [`packages/shared/src/schemas/eval.ts`](../packages/shared/src/schemas/eval.ts) (`evalTaskSchema` + `EVAL_GROUPS` 8 nhóm theo [`EVAL_PLAN.md`](EVAL_PLAN.md) §3.2) → `apps/eval` validate dataset bằng đúng schema đó. Khi điền `apps/eval/dataset/tasks.json` + `dataset/snapshots/*` phải tuân thủ shape §3.1 (`page.snapshot_path` · `page.content_hash` · `reference.key_points` / `must_include_facts` / `must_not_contain` — **snake_case**). Dataset hiện **rỗng `[]`** là **đúng chuẩn M1** (chưa có nội dung trang thật để chụp snapshot) — **không phải bug**.
 
 ##### Ghi chú phạm vi M2 — đổi ngày 2026-11-10 (T-M2-02 · T-M2-03 ✅)
 
-> **Bảng kết quả chi tiết (verify · commit · bằng chứng · ảnh hưởng gate parity) nằm ở [§4.1](#41-kết-quả-m2--t-m2-02--t-m2-03-2026-11-10)** bên dưới. Block này chỉ giữ **quyết định phạm vi**.
+> **Bảng kết quả chi tiết (verify · commit · bằng chứng · ảnh hưởng gate parity) nằm ở [§4.1](#41-kết-quả-m2-tổng-hợp--2026-11-10--2026-11-11) bên dưới. Block này chỉ giữ **quyết định phạm vi**.
 
 **T-M2-01 được đẩy lại.** Quyết định của user (2026-11-10): **không thêm provider mới** (OpenAI/Anthropic) → giữ nguyên `PROVIDER_IDS` (`mock · groq · openrouter · gemini · ollama`), `packages/shared/src/constants.ts` **không đổi**, **không** migration bảng provider. Phần "model list động" của T-M2-01 đã được **T-M2-02** thực hiện xong (dùng adapter `discoverModels()` sẵn có) → khi nào làm lại T-M2-01 chỉ cần bổ sung adapter OpenAI/Anthropic.
 
@@ -1067,20 +1069,27 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 
 **T-M2-03b đã xong (2026-11-10).** Quyết định thiết kế chính: **enforce phía server** (cấu hình lưu trong Postgres — bảng `budget_settings`, singleton) → client **không** tự so sánh hạn mức. Lý do: nếu client tự so sánh thì không phải "hạn mức" thật, và mỗi máy sẽ có 1 hạn mức riêng. Kỳ tính: `daily` · `monthly` theo **giờ địa phương của máy chạy BFF** (BFF chạy local cùng máy với trình duyệt → khớp "hôm nay" của user). Chi tiết: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.24.
 
-### 4.1 Kết quả M2 — T-M2-02 + T-M2-03 (2026-11-10)
+### 4.1 Kết quả M2 (tổng hợp — 2026-11-10 → 2026-11-11)
 
-> Đây là 2 task đầu của M2. Cả 2 đều nằm trong nhóm **Provider** (FR-PROVIDER-03/04/05) — phần **eval** (T-M2-12 → 17) chưa bắt đầu.
+> **Trạng thái tổng:** **7/23 task ✅** · **1 task ⏸** (T-M2-01) · **15 task ⬜** chưa bắt đầu.
+> Nhóm **Provider** (T-M2-02 · T-M2-03 · T-M2-03b) và nhóm **Skills** (T-M2-04 · T-M2-05 · T-M2-06 · T-M2-21) đã xong. Nhóm **Tools/MCP/RAG** và **Eval** chưa bắt đầu.
 
-#### 4.1.1 Trạng thái task
+#### 4.1.1 Bảng trạng thái + commit + bằng chứng
 
 | Task | Trạng thái | Commit | Bằng chứng |
 |---|---|---|---|
 | **T-M2-02** — Model picker + fallback chain (FR-PROVIDER-03/04) | ✅ **xong** | `1ea95cc` · `217328c` · `57865b8` | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.22 |
-| **T-M2-03** — Token & cost UI (FR-PROVIDER-05) | ✅ **xong** (phần budget cap đã tách **T-M2-03b**, xong 2026-11-10) | `57865b8` · `b02c806` | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.23 |
-| **T-M2-03b** — Budget cap (FR-PROVIDER-06) | ✅ **xong** (2026-11-10) | `ac52dd5` | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.24 |
+| **T-M2-03** — Token & cost UI (FR-PROVIDER-05) | ✅ **xong** | `57865b8` · `b02c806` | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.23 |
+| **T-M2-03b** — Budget cap (FR-PROVIDER-06) | ✅ **xong** | `ac52dd5` | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.24 · [`DESIGN_SYSTEM_BRIEF.md`](DESIGN_SYSTEM_BRIEF.md) §3.7.3 |
+| **T-M2-04** — Skills: menu `/`, CRUD, seed built-in (FR-SKILL-01/02/03, NFR-MAINT-03) | ✅ **xong** | `de1e24c` | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.25 · [`DESIGN_SYSTEM_BRIEF.md`](DESIGN_SYSTEM_BRIEF.md) §3.13 |
+| **T-M2-05** — Skill import/export JSON (FR-SKILL-05) | ✅ **xong** | `3ed87f6` | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.25.8 · [`DESIGN_SYSTEM_BRIEF.md`](DESIGN_SYSTEM_BRIEF.md) §3.13.4 |
+| **T-M2-06** — Skill library browser lọc theo tag (FR-SKILL-07) | ✅ **xong** | `ac63ff1` | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.25.9 · [`DESIGN_SYSTEM_BRIEF.md`](DESIGN_SYSTEM_BRIEF.md) §3.13.5 |
+| **T-M2-21** — Thư viện 9 built-in skill + skill gắn điều kiện tab (FR-SKILL-04/06) | ✅ **xong** | `36383cd` | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.25.10 · [`DESIGN_SYSTEM_BRIEF.md`](DESIGN_SYSTEM_BRIEF.md) §3.13.6 |
 | **T-M2-01** — Multi-provider (OpenAI/Anthropic) | ⏸ **đẩy lại** | — | quyết định user 2026-11-10 — không thêm provider mới |
 
 #### 4.1.2 Verify
+
+**Nhóm Provider — T-M2-02 / T-M2-03 / T-M2-03b (2026-11-10)**
 
 | Hạng mục | Kết quả |
 |---|---|
@@ -1088,146 +1097,70 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 | `pnpm lint` | ✅ pass (0 error, 0 warning) |
 | `pnpm test` | ✅ **1394 unit** (shared 245 · server 387 · extension 751 · eval 11) |
 | `pnpm build` | ✅ pass — `dist/content.js` **17.27 kB** (gzip 6.65 kB) · IIFE 1 file (guard bundle pass) |
-| `pnpm db:migrate` | ✅ migration `0002_certain_vector.sql` — cột `request_logs.fallback_from` |
-| `pnpm test:e2e` | ✅ **91/91** (24 file — cần Docker + BFF thật) |
+| `pnpm db:migrate` | ✅ migration `0002_certain_vector.sql` — cột `request_logs.fallback_from` · `0003_good_mimic.sql` — bảng `budget_settings` |
+| `pnpm test:e2e` | ✅ **91/91** (24 file — cần Docker + BFF thật) · `e2e/budget.spec.ts` (3 kịch bản — stub `/api/budget`) |
 | Kiểm chứng live (`pnpm manual:checklist`) | ✅ **15/15 mục** — load unpacked vào Chrome thật: model động **428 model** (`source: "live"`) · lọc `428 → 7` · fallback live `ollama → groq` với `fallback_from` ghi trong DB · badge `↑ 124 ↓ 212 token · $0.0002` · bảng chi phí theo ngày 4 dòng |
+| Kiểm chứng live (budget cap) | ✅ `GET /api/budget` → `state: "disabled"` · `PUT` hạn mức `0.01` USD → `state: "exceeded"` · `POST /api/chat` → SSE `budget` (`exceeded`) → `error` `BUDGET_EXCEEDED` (`retryable: false`) → `done(finishReason: "error")` · `request_logs` ghi `error = BUDGET_EXCEEDED`, `cost_usd = 0` (**không** gọi provider) · `PUT` sai (`limitUsd = -1`) → **400 `VALIDATION_ERROR`** |
 
 > **Flake E2E đã ghi nhận** (không phải hồi quy code): 1 lần chạy song song cho **4 failed / 87 passed** do Groq trả **413 TPM** (`Limit 8000, Requested 24413`) → server fallback sang OpenRouter chậm hơn timeout chuỗi. Chạy lại ngay sau đó: **91/91 pass**. Bài học: E2E phụ thuộc **provider thật** → tỉ lệ lỗi phụ thuộc quota provider, không phải logic repo.
 
-#### 4.1.3 Ảnh hưởng lên gate parity
-
-- Checklist §E (`COMPARISON_MATRIX.md`) đóng thêm dòng **"Token/cost hiển thị"** → **32/35 = 91.4%** → **33/35 = 94.3%** (xem `COMPARISON_MATRIX.md` §E.1.3).
-- **Không** phá parity: không thêm permission, không đổi manifest, không đổi hành vi chat M1.
-
-#### 4.1.4 Việc tiếp theo trong M2
-
-| Ưu tiên | Task | Lý do |
-|---|---|---|
-| 1 | **T-M2-12** — dataset eval (≥ 44 task + snapshot trang) | **Ràng buộc báo cáo** — `docs/EVAL_REPORT.md` là deliverable bắt buộc. Contract đã có ở `packages/shared/src/schemas/eval.ts` |
-| 2 | **T-M2-13** → **T-M2-14** — harness → judge | 1 lệnh chạy được + judge temperature 0 + blind mapping |
-| 3 | **T-M2-15 → 16 → 17** — thu thập tay → chấm tay → báo cáo | **Cần người thật** → có lead-time dài nhất, nên bắt đầu sớm |
-| 4 | Skills / Tools / MCP / RAG | Tính năng độc quyền — ưu tiên sau eval |
-
-### 4.2 Kết quả M2 — T-M2-03b Budget cap (2026-11-10)
-
-#### 4.2.1 Trạng thái task
-
-| Task | Trạng thái | Bằng chứng |
-|---|---|---|
-| **T-M2-03b** — Budget cap (FR-PROVIDER-06) | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.24 · [`DESIGN_SYSTEM_BRIEF.md`](DESIGN_SYSTEM_BRIEF.md) §3.7.3 |
-
-#### 4.2.2 Verify
-
-| Hạng mục | Kết quả |
-|---|---|
-| `pnpm typecheck` | ✅ pass (4 workspace) |
-| `pnpm lint` | ✅ pass (0 error, 0 warning) |
-| `pnpm test` | ✅ **1450 unit** (shared 263 · server 414 · extension 762 · eval 11) — thêm `packages/shared/tests/budget.test.ts` (18) · `apps/server/tests/budgetService.test.ts` (16) · `apps/server/tests/budgetRoute.test.ts` (6) · `apps/server/tests/chatBudget.test.ts` (5) · `apps/extension/tests/budgetSettings.test.tsx` (6) · `apps/extension/tests/budgetBanner.test.tsx` (5) |
-| `pnpm build` | ✅ pass — `dist/content.js` không phình (budget code chỉ nằm ở side panel + server) |
-| `pnpm db:migrate` | ✅ migration `0003_good_mimic.sql` — bảng `budget_settings` |
-| `pnpm test:e2e` | ✅ `apps/extension/e2e/budget.spec.ts` (3 kịch bản — stub `/api/budget`, không cần BFF thật) |
-| Kiểm chứng live (BFF + Docker + `.env` có K1) | ✅ `GET /api/budget` → `state: "disabled"` · `PUT` hạn mức `0.01` USD → `state: "exceeded"` (đã dùng `0.0399`) · `POST /api/chat` → SSE `budget` (`exceeded`) → `error` `BUDGET_EXCEEDED` (`retryable: false`) → `done(finishReason: "error")` · `request_logs` ghi 1 dòng `error = BUDGET_EXCEEDED`, `cost_usd = 0` (**không** gọi provider) · kỳ `daily` → `periodStart` = 00:00 hôm nay theo giờ local · `PUT` sai (`limitUsd = -1`) → **400 `VALIDATION_ERROR`** |
-
-#### 4.2.3 Ảnh hưởng lên gate parity
-
-- **Không** đổi checklist §E (`COMPARISON_MATRIX.md`) → giữ nguyên **33/35 = 94.3%** (budget cap là tính năng **độc quyền**, Edge/Gemini không có → ghi ở dòng C6 §C, **không** thêm dòng mới).
-- **Không** phá parity: không thêm permission, không đổi manifest, không đổi hành vi chat M1.
-
----
-
-### 4.3 Kết quả M2 — T-M2-04 Skills (2026-11-10)
-
-#### 4.3.1 Trạng thái task
-
-| Task | Trạng thái | Bằng chứng |
-|---|---|---|
-| **T-M2-04** — Skills: menu `/`, CRUD, seed built-in tối thiểu (FR-SKILL-01/02/03, NFR-MAINT-03) | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.25 · [`DESIGN_SYSTEM_BRIEF.md`](DESIGN_SYSTEM_BRIEF.md) §3.13 |
-
-**Phạm vi đã chốt:**
-
-| Hạng mục | Chốt |
-|---|---|
-| Skill được áp dụng ở đâu? | **Server resolve** — client gửi `skillId` trong `POST /api/chat` → server nối `prompt_template` vào system prompt + `model` của skill **ghi đè** model của request |
-| Skill lưu ở đâu? | Postgres (bảng `skills`) cho skill của **user** + registry **trong code** cho built-in (`apps/server/src/skills/builtin.ts`) |
-| Seed built-in | **Tối thiểu 3 skill** (`tom-tat` · `giai-thich-don-gian` · `dich`, uuid cố định) → **thư viện ≥ 8 skill nằm ở T-M2-21** (→ **✅ xong T-M2-21**: registry mở rộng lên **9 skill**) |
-| Menu `/` | Popover ngay trên textarea (giống `MentionPopover`), lọc **prefix** · Enter chọn · Tab autocomplete |
-| Quản lý skill | Drawer trượt từ **trái** (Radix `Dialog`, y hệt `ConversationList`), mở từ nút icon `Sparkles` ở header |
-
-#### 4.3.2 Verify
-
-| Hạng mục | Kết quả |
-|---|---|
-| `pnpm typecheck` | ✅ pass (4 workspace) |
-| `pnpm lint` | ✅ pass (0 error, 0 warning) |
-| `pnpm test` | ✅ **1565 unit** (shared 284 · server 458 · extension 812 · eval 11) — thêm `packages/shared/tests/skill.test.ts` (21) · `apps/server/tests/skillService.test.ts` (21) · `apps/server/tests/skillsRoute.test.ts` (13) · `apps/server/tests/chatSkill.test.ts` (10) · `apps/extension/tests/skillClient.test.ts` (9) · `apps/extension/tests/skillStore.test.ts` (11) · `apps/extension/tests/useSkillCommand.test.ts` (14) · `apps/extension/tests/skillMenu.test.tsx` (6) · `apps/extension/tests/skillManager.test.tsx` (10) |
-| `pnpm build` | ✅ pass — `dist/content.js` **17.27 kB** (gzip 6.65 kB) · IIFE 1 file (guard bundle pass — code skill **không** lọt vào content script) |
-| `pnpm db:migrate` | ✅ migration `0004_worthless_earthquake.sql` — bảng `skills` (unique `name` · `tags text[]` · `model` nullable) |
-| `pnpm test:e2e` | ✅ `apps/extension/e2e/skills.spec.ts` — **6/6** (stub `/api/skills` + `/api/chat`, không cần BFF thật) |
-
-#### 4.3.3 Ảnh hưởng lên gate parity
-
-- Checklist §E (`COMPARISON_MATRIX.md`) dòng **"Skills"** → **giữ nguyên mở**: còn thiếu **library browser** (T-M2-06) + **thư viện ≥ 8 skill** (T-M2-21) → ghi chú tiến độ, **không** tick sai (xem `COMPARISON_MATRIX.md` §E.1.4).
-- **Không** phá parity: không thêm permission, không đổi manifest, không đổi hành vi chat M1 (skill là **tuỳ chọn** — không gửi `skillId` → hành vi cũ y hệt).
-
-#### 4.3.4 Việc tiếp theo trong M2
-
-> **Thứ tự đã chốt (2026-11-10, sau T-M2-04):** làm **hết nhóm Skills** (T-M2-05 → 06 → 21) **trước**, rồi mới sang Tools/MCP/RAG. Lý do:
-> - 3 task Skills đều là **mở rộng trên code đã có** (CRUD + `tags` + `scope` sẵn trong schema) → khối lượng nhỏ hơn hẳn nhóm Tools/MCP/RAG (greenfield).
-> - Đóng được dòng §E "Skills" + các hàng B8/C10/C14 → claim trong báo cáo khớp thực tế.
-> - **Eval (T-M2-12 → 17) để sau** (quyết định user 2026-11-10): eval đo chất lượng sản phẩm → chạy trên feature chưa ổn định thì phải chạy lại; T-M2-15/16 cần người thật → nên chạy **song song** khi feature đã ổn định.
-
-| Ưu tiên | Task | Lý do |
-|---|---|---|
-| 1 | **T-M2-05** — skill import/export JSON (FR-SKILL-05) | ✅ *(2026-11-10)* — mở rộng CRUD đã có |
-| 2 | **T-M2-06** — skill library browser (FR-SKILL-07) | ✅ *(2026-11-10)* — cột `tags` đã có sẵn → lọc theo tag dễ |
-| 3 | **T-M2-21** — thư viện ≥ 8 skill + skill gắn điều kiện (FR-SKILL-04/06) | ✅ *(2026-11-10)* — **đóng dòng §E "Skills"** → §E **34/35 = 97.1%** |
-| 4 | **T-M2-07 → 11** — Tools/MCP/RAG | Greenfield · MCP (C4) + RAG (C7) là 2 claim độc quyền hiện **chưa có thật** |
-| 5 | **T-M2-12 → 17** — eval | Deliverable bắt buộc (`docs/EVAL_REPORT.md`) — làm **sau** khi feature ổn định |
-| 6 | **T-M2-18 → 20** — agentic · web search · context policy | Could — cắt được nếu thiếu thời gian |
-
-### 4.4 Kết quả M2 — T-M2-21 Thư viện 9 skill + skill gắn điều kiện tab (2026-11-10)
-
-#### 4.4.1 Trạng thái task
-
-| Task | Trạng thái | Bằng chứng |
-|---|---|---|
-| **T-M2-21** — Thư viện built-in ≥ 8 skill (FR-SKILL-04) + skill gắn điều kiện tab (FR-SKILL-06) | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.25.10 · [`DESIGN_SYSTEM_BRIEF.md`](DESIGN_SYSTEM_BRIEF.md) §3.13.6 |
-
-**Phạm vi đã chốt:**
-
-| Hạng mục | Chốt |
-|---|---|
-| Số skill built-in | **9** (từ 3 lên 9 — vượt yêu cầu ≥ 8) · uuid cố định `a1000000-0000-4000-8000-0000000000NN` · **không** cần migration seed |
-| Tag của built-in | Mỗi skill **≥ 1 tag** → dùng cho chip lọc ở T-M2-06 (`GET /api/skills?tags=`) |
-| Nơi lưu điều kiện tab | Cột `skills.tab_condition` (**jsonb**) — migration `0005_skill_tab_condition.sql` (cùng bảng `skills`, không bảng mới) |
-| Hình dạng điều kiện | `{ useCurrentTab: boolean, useSelectedTabs: boolean }` — `SkillTabCondition` (interface thuần) + `skillTabConditionSchema` (Zod) |
-| Khi user chọn skill có điều kiện | `useCurrentTab` → tự đính kèm trang hiện tại · `useSelectedTabs` → mở popover chọn tab → tab được chọn được đính kèm |
-| Skill **không** có điều kiện | **Không** tự đính kèm context — giữ nguyên nguyên tắc FR-CONTEXT-13 (context chỉ gửi khi user **chủ động**) |
-
-#### 4.4.2 Verify
+**Nhóm Skills — T-M2-04 / T-M2-05 / T-M2-06 / T-M2-21 (2026-11-10 → 2026-11-11)**
 
 | Hạng mục | Kết quả |
 |---|---|
 | `pnpm typecheck` | ✅ pass (4 workspace) |
 | `pnpm lint` | ✅ pass |
-| `pnpm test` | ✅ pass — thêm `packages/shared/tests/skill.test.ts` (hasTabCondition + schema tabCondition + query tags) · `apps/server/tests/skillService.test.ts` (built-in ≥ 8 · lọc tag · round-trip tabCondition) · `apps/extension/tests/skillTabCondition.test.tsx` (checkbox · badge · tab picker) |
+| `pnpm test` | ✅ **1565 unit** (shared 284 · server 458 · extension 812 · eval 11) — thêm `skill.test.ts` · `skillService.test.ts` · `skillsRoute.test.ts` · `chatSkill.test.ts` · `skillClient.test.ts` · `skillStore.test.ts` · `useSkillCommand.test.ts` · `skillMenu.test.tsx` · `skillManager.test.tsx` · `skillTabCondition.test.tsx` |
 | `pnpm build` | ✅ pass — `dist/content.js` **17.27 kB** (gzip 6.65 kB) — không phình (skill code không lọt vào content script) |
-| `pnpm db:migrate` | ✅ migration `0005_skill_tab_condition.sql` — thêm cột `tab_condition jsonb` |
-| `pnpm test:e2e` | ✅ `apps/extension/e2e/skills.spec.ts` — **9/9** (thêm: badge điều kiện · export file JSON · import file JSON → skill mới) |
+| `pnpm db:migrate` | ✅ `0004_worthless_earthquake.sql` — bảng `skills` (unique `name` · `tags text[]` · `model` nullable) · `0005_skill_tab_condition.sql` — cột `tab_condition jsonb` |
+| `pnpm test:e2e` | ✅ `e2e/skills.spec.ts` — **9/9** (menu `/` · CRUD · import/export JSON · badge điều kiện · tab picker — stub `/api/skills` + `/api/chat`, không cần BFF thật) |
 
-#### 4.4.3 Ảnh hưởng lên gate parity
+**Phạm vi đã chốt (nhóm Skills)**
 
-- Checklist §E (`COMPARISON_MATRIX.md`) dòng **"Skills `/` + tạo/sửa/xoá skill + library có sẵn + trang duyệt skill library"** → **✅ ĐÓNG** → §E **34/35 = 97.1%**.
-- §B8 (Chrome Gemini — Skills có sẵn) 🟡 → ✅ · §C10 (import/export JSON) ⬜ → ✅ (T-M2-05) · §C14 (skill library browser nội bộ) ⬜ → ✅ (T-M2-06).
-- **Không** phá parity: không thêm permission, không đổi manifest, hành vi chat M1 không đổi (skill **tuỳ chọn**).
+| Hạng mục | Chốt |
+|---|---|
+| Skill được áp dụng ở đâu? | **Server resolve** — client gửi `skillId` trong `POST /api/chat` → server nối `prompt_template` vào system prompt + `model` của skill **ghi đè** model của request |
+| Skill lưu ở đâu? | Postgres (bảng `skills`) cho skill của **user** + registry **trong code** cho built-in (`apps/server/src/skills/builtin.ts`) |
+| Số skill built-in | **9** (uuid cố định `a1000000-0000-4000-8000-0000000000NN` · mỗi skill **≥ 1 tag**) → **không** cần migration seed |
+| Nơi lưu điều kiện tab | Cột `skills.tab_condition` (**jsonb**) — migration `0005_skill_tab_condition.sql` (cùng bảng `skills`, không bảng mới) |
+| Hình dạng điều kiện | `{ useCurrentTab: boolean, useSelectedTabs: boolean }` — `SkillTabCondition` (interface thuần) + `skillTabConditionSchema` (Zod) |
+| Khi user chọn skill có điều kiện | `useCurrentTab` → tự đính kèm trang hiện tại · `useSelectedTabs` → mở popover chọn tab → tab được chọn được đính kèm |
+| Skill **không** có điều kiện | **Không** tự đính kèm context — giữ nguyên nguyên tắc FR-CONTEXT-13 (context chỉ gửi khi user **chủ động**) |
+| Menu `/` | Popover ngay trên textarea (giống `MentionPopover`), lọc **prefix** · Enter chọn · Tab autocomplete |
+| Quản lý skill | Drawer trượt từ **trái** (Radix `Dialog`, y hệt `ConversationList`), mở từ nút icon `Sparkles` ở header |
+| Import/export JSON | File `version: 1` + `exportedAt` + `skills[]` · export **chỉ** scope `user` · import bỏ `id`/`scope`/timestamp · trùng tên → **bỏ qua** + toast · ≤ 100 skill/lần |
 
-#### 4.4.4 Việc tiếp theo trong M2
+#### 4.1.3 Ảnh hưởng lên gate parity
+
+- **T-M2-03** đóng dòng §E **"Token/cost hiển thị"** → **32/35 = 91.4%** → **33/35 = 94.3%** (xem `COMPARISON_MATRIX.md` §E.1.3).
+- **T-M2-21** đóng dòng §E **"Skills `/` + tạo/sửa/xoá skill + library có sẵn + trang duyệt skill library"** → **33/35 = 94.3%** → **34/35 = 97.1%** (xem `COMPARISON_MATRIX.md` §E.1.5). §B8 🟡 → ✅ · §C10 ⬜ → ✅ (T-M2-05) · §C14 ⬜ → ✅ (T-M2-06).
+- **T-M2-03b** (budget cap) là tính năng **độc quyền** → ghi ở dòng **C6** §C, **không** thêm dòng §E → giữ nguyên **34/35 = 97.1%**.
+- **Không** phá parity: không thêm permission, không đổi manifest, không đổi hành vi chat M1 (skill và budget là **tuỳ chọn**).
+
+#### 4.1.4 Nhóm còn lại — trạng thái nền (15 task ⬜)
+
+> Bảng này ghi rõ **đã có gì** và **còn thiếu gì** — không tick sai dòng §E nào chưa đạt.
+
+| Nhóm | Task | Nền đã có sẵn | Còn thiếu |
+|---|---|---|---|
+| **Tools / MCP** | T-M2-07 · T-M2-08 · T-M2-09 | SSE event `tool_call`/`tool_result` (M0) · bảng `tool_calls` + cột `approval_required` (M0) | `apps/server/src/tools/` (**chưa** tồn tại) · `ToolCallBlock` UI · MCP client (stdio) |
+| **RAG** | T-M2-10 · T-M2-11 | Postgres `pgvector/pgvector:pg16` + extension `vector` · `CitationChip` (T-M1-08) | `apps/server/src/rag/` (**chưa** tồn tại) · bảng `rag_documents` · embedder/retriever/indexer · `ToolsSettings` toggle |
+| **Eval** | T-M2-12 · T-M2-13 · T-M2-14 | Contract `evalTaskSchema` + `EVAL_GROUPS` 8 nhóm (T-M1-14, commit `03a1d69`) · CLI `apps/eval` (dataset loader + subcommand `logs`) · `request_logs` đủ metric đo (T-M1-14) | `apps/eval/dataset/tasks.json` đang **rỗng `[]`** · `dataset/snapshots/*` · `runners/` · `judge/` |
+| **Eval — cần người thật** | T-M2-15 · T-M2-16 · T-M2-17 | Template rubric trong [`EVAL_PLAN.md`](EVAL_PLAN.md) | Transcript Edge/Gemini · 2 người chấm tay · **`docs/EVAL_REPORT.md` chưa tồn tại** (deliverable bắt buộc) |
+| **Could — cắt được** | T-M2-18 · T-M2-19 · T-M2-20 · T-M2-22 | — | Agentic action · context policy theo domain · web search tool · chụp vùng/OCR/alt text |
+
+#### 4.1.5 Việc tiếp theo trong M2
+
+> **Thứ tự đã chốt (2026-11-10, sau T-M2-04):** làm **hết nhóm Skills** (T-M2-05 → 06 → 21) **trước**, rồi mới sang Tools/MCP/RAG. Nhóm Skills đã xong ✅ → giờ chuyển sang **Tools/MCP/RAG**. Lý do:
+> - Nhóm Skills là **mở rộng trên code đã có** (CRUD + `tags` + `scope` sẵn trong schema) → khối lượng nhỏ hơn hẳn nhóm Tools/MCP/RAG (greenfield).
+> - Đóng được dòng §E "Skills" + các hàng B8/C10/C14 → claim trong báo cáo khớp thực tế.
+> - **Eval (T-M2-12 → 17) để sau** (quyết định user 2026-11-10): eval đo chất lượng sản phẩm → chạy trên feature chưa ổn định thì phải chạy lại; T-M2-15/16 cần người thật → nên chạy **song song** khi feature đã ổn định.
 
 | Ưu tiên | Task | Lý do |
 |---|---|---|
 | 1 | **T-M2-07 → 11** — Tools/MCP/RAG | Greenfield · MCP (C4) + RAG (C7) là 2 claim độc quyền hiện **chưa có thật** → sửa claim trong [`COMPARISON_MATRIX.md`](COMPARISON_MATRIX.md) §D |
-| 2 | **T-M2-12 → 17** — eval | Deliverable bắt buộc (`docs/EVAL_REPORT.md`) |
-| 3 | **T-M2-18 → 20** — agentic · web search · context policy | Could — cắt được nếu thiếu thời gian |
+| 2 | **T-M2-12 → 17** — eval | Deliverable bắt buộc (`docs/EVAL_REPORT.md`) — làm **sau** khi feature ổn định |
+| 3 | **T-M2-18 → 20** · **T-M2-22** — agentic · web search · context policy · vision mở rộng | Could — cắt được nếu thiếu thời gian (theo §10) |
 
 ---
 
@@ -1318,6 +1251,8 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 | W11 | buffer | Sửa lỗi, nộp bài | Cả 3 |
 | W12–13 | M4 (tuỳ chọn) | T-M4-01 → T-M4-09 | Nếu đủ điều kiện §6 |
 
+> **Trạng thái thực tế (2026-11-11):** timeline gốc lên kế hoạch. Thực tế **W6 đã xong** nhóm **Provider** (T-M2-02 · T-M2-03 · T-M2-03b) + nhóm **Skills** (T-M2-04 · T-M2-05 · T-M2-06 · T-M2-21) → **7/23 task ✅**; T-M2-01 ⏸ đẩy lại. **W7 (Tools/MCP/RAG)** là khối tiếp theo — xem §4.1.5.
+
 ---
 
 ## 9. Phân công gợi ý cho 3 thành viên
@@ -1343,11 +1278,12 @@ Tuần theo [`REQUIREMENTS.md`](REQUIREMENTS.md) §9.3 — thứ tự cắt an t
 | 3 | RAG | T-M2-10, T-M2-11 | Đã có log + export transcript thay thế một phần |
 | 4 | Vision mở rộng (chụp vùng, OCR, alt text) | T-M2-22 | Chỉ ảnh hưởng tính năng Could |
 | 5 | Web search tool | T-M2-20 | Model vẫn trả lời được, chỉ thiếu tool search |
-| 6 | Skill library built-in + điều kiện | T-M2-21 | Vẫn có CRUD skill cơ bản (T-M2-04) |
-| 7 | Chính sách context theo domain | T-M2-19 | Chỉ ảnh hưởng nhóm tính năng riêng tư — đánh dấu N/A trong eval |
-| 8 | Voice | (chưa có task riêng) | Đánh dấu N/A trong eval |
-| 9 | Skill library browser | T-M2-06 | Vẫn có CRUD skill cơ bản |
-| 10 | Budget cap / usage chart | T-M2-03 (giảm scope) | Vẫn hiện token/cost từng lượt |
+| 6 | Chính sách context theo domain | T-M2-19 | Chỉ ảnh hưởng nhóm tính năng riêng tư — đánh dấu N/A trong eval |
+| 7 | Voice | (chưa có task riêng) | Đánh dấu N/A trong eval |
+| 8 | Tool registry + tool call UI | T-M2-07, T-M2-09 | Mất claim độc quyền §C (tool call có approval gate) — chấp nhận được |
+| 9 | MCP client (stdio) | T-M2-08 | Mất claim độc quyền **C4** — cắt sau T-M2-07/09 để giữ chất lượng tool registry |
+
+> **Đã bỏ khỏi danh sách cắt (2026-11-11)** — các task sau **đã xong** nên không còn là phương án cắt: **T-M2-21** (thư viện 9 skill + điều kiện tab) · **T-M2-06** (skill library browser) · **T-M2-03** (token/cost UI) · **T-M2-03b** (budget cap). Chi tiết: §4.1.1.
 
 **Không được cắt:** streaming chat · đọc nội dung trang (HTML) · **trích xuất PDF** (T-M1-21) · **transcript YouTube** (T-M1-22) · **ngân sách context** (T-M1-23) · **upload ảnh** (T-M1-24) · **onboarding** (T-M1-25) · multi-tab `@` · selection context · citations · lịch sử conversation · settings · logging đầy đủ · toàn bộ phần eval.
 

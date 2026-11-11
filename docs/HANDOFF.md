@@ -33,21 +33,18 @@
 
 _(Không có — M1 đóng xong 2026-11-09, tag `v0.2`)_
 
-### M2 — tiến độ (2026-11-10)
+### M2 — tiến độ (2026-11-11) — **7/23 task ✅**
 
-| Task | Trạng thái | Ghi chú |
+| Nhóm / Task | Trạng thái | Ghi chú |
 |---|---|---|
+| **Nhóm Provider** — T-M2-02 · T-M2-03 · T-M2-03b | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.22 (model picker + fallback chain) · §7.23 (token/cost UI) · §7.24 (budget cap — enforce **phía server**, bảng `budget_settings`) |
+| **Nhóm Skills** — T-M2-04 · T-M2-05 · T-M2-06 · T-M2-21 | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.25 (menu `/` + CRUD) · §7.25.8 (import/export JSON) · §7.25.9 (library browser lọc theo tag) · §7.25.10 (**9** skill built-in + điều kiện tab, migration `0005_skill_tab_condition.sql`) |
 | T-M2-01 Multi-provider (OpenAI/Anthropic) | ⏸ **đẩy lại** | Quyết định user 2026-11-10: **không thêm provider mới** → giữ nguyên `PROVIDER_IDS` (`mock · groq · openrouter · gemini · ollama`). Phần "model list động" đã xong trong T-M2-02 |
-| T-M2-02 Model picker + fallback chain | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.22 |
-| T-M2-03 Token & cost UI | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.23 |
-| T-M2-03b Budget cap (FR-PROVIDER-06) | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.24 · enforce **phía server** (`budget_settings` trong Postgres) |
-| T-M2-04 Skills: menu `/`, CRUD, seed built-in (FR-SKILL-01/02/03) | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.25 · server resolve `prompt_template` + `model` override · seed **3** skill built-in |
-| T-M2-05 Skill import/export JSON (FR-SKILL-05) | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.25.8 — file `version: 1` + `exportedAt` + `skills[]`; export **chỉ** scope `user`; import bỏ `id`/`scope`/timestamp; trùng tên → bỏ qua + toast; nút **Xuất JSON** / **Nhập JSON** trong drawer Kỹ năng |
-| T-M2-06 Skill library browser (FR-SKILL-07) | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.25.9 — tab "Thư viện" trong drawer Kỹ năng · lọc server `?q=` (tên/mô tả) + `?tags=` (mode `any`) · chip tag toggle · click card → chạy ngay |
-| T-M2-21 Skill library built-in ≥ 8 + skill gắn điều kiện tab (FR-SKILL-04/06) | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.25.10 — **9** skill built-in (uuid cố định, mỗi skill ≥ 1 tag) · migration `0005_skill_tab_condition.sql` (cột `skills.tab_condition` jsonb) · 2 checkbox trong `SkillFormDialog` + badge `SkillConditionBadge` + popover `SkillTabPicker` · chọn skill có điều kiện → tự đính kèm tab hiện tại / tab được chọn (skill **không** có điều kiện → **không** tự đính kèm, giữ FR-CONTEXT-13) |
-| T-M2-12..17 Eval | ⬜ chưa bắt đầu | `docs/EVAL_REPORT.md` là deliverable bắt buộc · **để sau** (quyết định user 2026-11-10) |
+| **Nhóm Tools/MCP/RAG** — T-M2-07 → T-M2-11 | ⬜ **chưa bắt đầu** | Nền có sẵn: SSE `tool_call`/`tool_result` + bảng `tool_calls` (M0) · Postgres `pgvector`. **Chưa** có `apps/server/src/tools/` hay `apps/server/src/rag/` → khối tiếp theo (xem §4.1.5) |
+| **Nhóm Eval** — T-M2-12 → T-M2-17 | ⬜ **chưa bắt đầu** | Nền có sẵn: contract `evalTaskSchema` + `EVAL_GROUPS` + CLI `apps/eval`. Dataset `apps/eval/dataset/tasks.json` đang **rỗng `[]`** · `docs/EVAL_REPORT.md` **chưa tồn tại** (deliverable bắt buộc) · **để sau** (quyết định user 2026-11-10) |
+| **Nhóm Could** — T-M2-18 · T-M2-19 · T-M2-20 · T-M2-22 | ⬜ **chưa bắt đầu** | Agentic action · context policy theo domain · web search tool · vision mở rộng — **cắt được** nếu thiếu thời gian (xem §10) |
 
-> **Bảng kết quả chi tiết của M2** (trạng thái task · verify · commit · ảnh hưởng gate parity) nằm ở [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) **§4.1** — đọc ở đó thay vì tra lại từng file.
+> **Bảng kết quả chi tiết của M2** (trạng thái task · verify · commit · ảnh hưởng gate parity · trạng thái nền nhóm còn lại) nằm ở [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) **§4.1** — đọc ở đó thay vì tra lại từng file.
 
 ### Quyết định mới (2026-11-10) — thứ tự ưu tiên M2
 
