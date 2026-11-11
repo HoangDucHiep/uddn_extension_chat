@@ -20,6 +20,7 @@ import { createConversationsRouter } from './routes/conversations.js'
 import { createLogsRouter } from './routes/logs.js'
 import { createBudgetRouter } from './routes/budget.js'
 import { createSkillsRouter } from './routes/skills.js'
+import { createToolsRouter } from './routes/tools.js'
 import type { ChatServiceDeps } from './services/chatService.js'
 import type { ProviderServiceDeps } from './services/providerService.js'
 
@@ -53,6 +54,10 @@ export function createApp(deps: AppDeps): Express {
   const logsRouter = createLogsRouter({ db: deps.db })
   const budgetRouter = createBudgetRouter({ db: deps.db })
   const skillsRouter = createSkillsRouter({ db: deps.db })
+  const toolsRouter = createToolsRouter({
+    db: deps.db,
+    ...(deps.toolRegistry !== undefined ? { toolRegistry: deps.toolRegistry } : {}),
+  })
 
   // `/api/health` la endpoint chinh; `/health` la alias de smoke test nhanh.
   app.use(API_BASE_PATH, healthRouter)
@@ -65,6 +70,7 @@ export function createApp(deps: AppDeps): Express {
   app.use(API_BASE_PATH, logsRouter)
   app.use(API_BASE_PATH, budgetRouter)
   app.use(API_BASE_PATH, skillsRouter)
+  app.use(API_BASE_PATH, toolsRouter)
 
   app.use(notFoundHandler)
   app.use(errorHandler)

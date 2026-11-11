@@ -3627,6 +3627,192 @@ user chọn skill (menu `/` hoặc thư viện)
 
 ---
 
+### 7.26 Tool registry + agent loop + tool call UI (FR-TOOLS-01/02/04/06 — T-M2-07/09)
+
+> Nguồn sự thật cho hành vi: [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.8 (FR-TOOLS-01/02/04/06).
+
+**Tool** = hàm có tên + mô tả + JSON Schema tham số, model được gọi trong lúc chat (function calling). Server thực thi tool → kết quả quay lại model → model trả lời cuối.
+
+#### 7.26.1 Phạm vi lot T-M2-07/09
+
+| Hạng mục | Trong lot | Ngoài lot (task sau) |
+|---|---|---|
+| Provider hỗ trợ tool | `groq` · `openrouter` · `ollama` (OpenAI-compatible) + `mock` | **`gemini`** — shape function-calling riêng (`functionDeclarations` + `functionCall`/`functionResponse` parts) |
+| Tool built-in | `calculator` (read-only) | `web_search` (T-M2-20) · tool từ **MCP server** (T-M2-08) |
+| Approval gate | Hạ tầng + UI (badge "Cần duyệt" + nút Duyệt/Từ chối) | Tool **ghi dữ liệu thật** (T-M2-18 agentic) |
+| RAG / vector | Không | T-M2-10/11 |
+
+> **Giới hạn cần ghi rõ:** `calculator` là tool **chỉ đọc** → không có tool nguy hiểm thật trong lot này. Approval gate là **hạ tầng sẵn sàng**, chưa phải hành vi end-to-end có tool ghi dữ liệu.
+
+#### 7.26.2 Contract (`packages/shared`)
+
+**`packages/shared/src/schemas/tool.ts`** (mới):
+
+| Schema | Nội dung |
+|---|---|
+| `toolDefinitionSchema` | `{ name, description, parameters }` — `parameters` là JSON Schema `type: 'object'` |
+| `toolResultSchema` | `{ ok: boolean, output: string, error?: string }` |
+| `toolRequiresApprovalSchema` | `z.boolean()` |
+| `toolCallRecordSchema` | `{ id, name, args, output?, status, approvalRequired, approvedByUser, durationMs? }` |
+| `toolListResponseSchema` | `{ items: [{ name, description, requiresApproval }] }` |
+| `toolApprovalResponseSchema` | `{ id, approvedByUser }` |
+
+**Mở rộng `packages/shared/src/schemas/provider.ts`**:
+
+- `providerStreamRequestSchema.messages[].role` mở rộng `'system' \| 'user' \| 'assistant' \| 'tool'`.
+- `providerStreamRequestSchema.messages[]` thêm `toolCallId?` (turn `tool`) + `toolCalls?` (turn `assistant`).
+- `providerStreamRequestSchema.tools?: ToolDefinition[]` — server chỉ gán khi provider hỗ trợ tool.
+- `providerChunkSchema.kind` mở rộng thêm `'tool_call'` + field `toolCallId?` / `name?` / `args?`.
+
+**Mở rộng `packages/shared/src/events.ts`**:
+
+- `chatToolCallEventSchema` thêm `approvalRequired: z.boolean()` (bắt buộc).
+- Thêm `chatToolApprovalEventSchema` = `{ type: 'tool_approval', id, name, args, reason }`.
+- `CHAT_EVENT_TYPES` 10 → **11** event.
+
+**`packages/shared/src/constants.ts`**:
+
+```typescript
+export const TOOL_LIMITS = {
+  MAX_TOOL_ROUNDS: 5,          // So vong toi da cua agent loop (FR-TOOLS-02)
+  MAX_TOOL_OUTPUT_CHARS: 8_000, // Do dai toi da cua output tool
+  MAX_TOOLS_PER_REQUEST: 20,    // So tool toi da gui cho provider
+} as const
+```
+
+`API_ROUTES.tools = '/api/tools'`.
+
+#### 7.26.3 Server — tool registry (`apps/server/src/tools/`)
+
+| File | Nội dung |
+|---|---|
+| `types.ts` | `Tool` (name · description · parameters · requiresApproval · approvalReason? · execute) + `ToolContext` (requestId · signal?) |
+| `registry.ts` | `ToolRegistry` — `register` · `get` · `list` · `listEnabled` · `requiresApproval` · `approvalReason` · `toDefinitions`. `createDefaultToolRegistry()` đăng ký sẵn `calculator` |
+| `executor.ts` | `executeTool(registry, name, args, ctx)` → `ToolExecutionOutcome`. **Lỗi tool không làm hỏng lượt chat** → trả `ok: false` |
+| `builtin/calculator.ts` | Tool `calculator` — **không dùng `eval`** → tokenizer → shunting-yard → RPN → interpreter |
+
+**Calculator — grammar hỗ trợ:**
+
+| Nhóm | Hỗ trợ |
+|---|---|
+| Toán tử | `+` `-` `*` `/` `%` `^` (lũy thừa **phải bên phải**) |
+| Ngoặc | `( )` |
+| Hằng số | `pi` `e` |
+| Hàm | `sqrt` `abs` `round` `floor` `ceil` `min` `max` `pow` |
+| Phủ âm | `-3`, `-(1+2)` — ưu tiên **giữa** `*` và `^` → `-2^2 = -4` (quy ước toán học) |
+
+Giới hạn: biểu thức ≤ **200 ký tự** · chia 0 → lỗi `TOOL_DIVISION_BY_ZERO` · kết quả vượt `1e15` → lỗi `TOOL_OVERFLOW` · làm tròn **10 chữ số thập phân**, bỏ số 0 thừa.
+
+> Registry là **in-memory** → **không migration**. Bảng `tool_calls` **đã có sẵn từ M0** → cũng **không migration**.
+
+#### 7.26.4 Agent loop (`apps/server/src/services/chatService.ts`)
+
+```
+for (round = 0; round < TOOL_LIMITS.MAX_TOOL_ROUNDS; round++) {
+  stream provider -> token | usage | tool_call | done | error
+    neu co tool_call:
+      - emit SSE `tool_call`  { id, name, args, approvalRequired }
+      - neu can duyet: emit SSE `tool_approval` { id, name, args, reason }
+                     va KHONG chay tool
+      - chay tool (executeTool) -> emit SSE `tool_result` { id, ok, output, durationMs }
+      - them turn `assistant`(toolCalls) + turn `tool`(toolCallId, output) vao messages
+      - tiep tuc vong sau (round++)
+    neu done: break
+}
+```
+
+**Quy tắc quan trọng:**
+
+| Quy tắc | Chi tiết |
+|---|---|
+| Token đã stream phải được giữ | Text vòng trước **cộng dồn** vào `text` chung → không mất |
+| Vượt `MAX_TOOL_ROUNDS` | Dừng vòng lặp · trả câu trả lời hiện có + 1 dòng cảnh báo (stream cho client) · **không crash** |
+| Lỗi tool | `ok: false` → model nhận kết quả → tự quyết định bước tiếp |
+| Provider fallback | `supportsTools` theo từng provider → provider không hỗ trợ → **không** gửi `tools` → chat bình thường |
+
+**`ProviderAdapter.supportsTools`** (mới, optional, mặc định `false`):
+
+| Provider | `supportsTools` |
+|---|---|
+| `openAiCompatible` (`groq` · `openrouter` · `ollama`) | `true` |
+| `mock` | `true` (phục vụ test offline) |
+| `gemini` | `false` (lot sau) |
+
+#### 7.26.5 Provider adapters
+
+**`apps/server/src/providers/openaiCompatible.ts`**
+
+- **Gửi tools**: body có `tools: [{ type: 'function', function: { name, description, parameters } }]` + `tool_choice: 'auto'` — chỉ khi `request.tools` khác rỗng.
+- **Nhận tool call**: `delta.tool_calls[]` có `index` · `id` · `function.name` · `function.arguments` (**chuỗi JSON partial**).
+  - Gom theo `index` trong 1 request → `JSON.parse` khi stream kết thúc → phát chunk `{ kind: 'tool_call', toolCallId, name, args }`.
+  - `finish_reason: 'tool_calls'` → chunk `done` với `finishReason: 'tool'`.
+  - Arguments không phải JSON hợp lệ → `args = {}` (không crash).
+- **Gửi kết quả tool**: turn `tool` → `tool_call_id`; turn `assistant` có `toolCalls` → `tool_calls[]`.
+
+**`apps/server/src/providers/mock.ts`**
+
+- `MockProviderOptions.toolCall?: { name, args }` → mock trả tool call khi request có `tools` **và** messages **chưa** có turn `tool`.
+- Lần gọi provider thứ 2 (messages có turn `tool`) → trả text cuối cùng (`toolFinalResponse`).
+- Đây là kênh **offline** duy nhất để E2E test tool loop **không cần API key**.
+
+#### 7.26.6 Ghi DB + log (FR-TOOLS-06)
+
+| Nơi | Nội dung |
+|---|---|
+| Bảng `tool_calls` | 1 dòng / tool call: `message_id` · `name` · `args` (jsonb) · `output` · `status` (`ok`/`error`) · `approval_required` · `approved_by_user` · `started_at` · `finished_at` |
+| `request_logs.tool_calls` (jsonb) | Danh sách tool call của lượt → **nguồn dữ liệu cho eval** (FR-TOOLS-06) |
+| Service | `apps/server/src/services/toolCallService.ts` — `persistToolCalls` · `loadToolCalls` · `setToolCallApproval` |
+
+Ghi DB **không** làm hỏng lượt chat — lỗi insert bị nuốt (tool call chỉ là thông tin phụ).
+
+#### 7.26.7 API (`apps/server/src/routes/tools.ts`)
+
+| Method | Path | Ý nghĩa |
+|---|---|---|
+| `GET` | `/api/tools` | Danh sách tool server đang có (name · description · requiresApproval) |
+| `POST` | `/api/tools/:callId/approve` | Duyệt tool call → set `approved_by_user = true` |
+| `POST` | `/api/tools/:callId/deny` | Từ chối tool call → set `approved_by_user = false` |
+
+Tool call không tồn tại → `404 NOT_FOUND`.
+
+#### 7.26.8 Approval gate (FR-TOOLS-04 — T-M2-09)
+
+**Vấn đề:** SSE là **một chiều** (server → client) → server không thể chờ user duyệt trong cùng stream.
+
+**Thiết kế chọn (lot T-M2-07/09):** approval gate ở **tầng client**.
+
+```
+model goi tool can duyet
+  └─ server emit `tool_call` { approvalRequired: true }
+  └─ server KHONG chay tool
+  └─ server emit `tool_approval` { id, name, args, reason }
+  └─ server emit `tool_result` { ok: false, output: "can nguoi dung duyet" }
+       → model nhan ket qua → luot chat tiep tuc binh thuong
+  └─ user bam "Duyệt" trong UI → POST /api/tools/:callId/approve → ghi approved_by_user
+```
+
+> Đây là **hạ tầng** — chưa có tool nguy hiểm thật trong lot này (`calculator` là read-only). Task T-M2-18 (agentic) sẽ dùng chính đường đi này.
+
+#### 7.26.9 Kiểm thử
+
+| Tầng | File | Phủ |
+|---|---|---|
+| Shared unit | `packages/shared/tests/tool.test.ts` | `toolDefinitionSchema` · `toolResultSchema` · `toolCallRecordSchema` · `toolListResponseSchema` · `TOOL_LIMITS` |
+| Shared unit | `packages/shared/tests/events.test.ts` | 11 event type · `tool_call` **bắt buộc** `approvalRequired` · `tool_approval` bắt buộc `reason` |
+| Server unit | `apps/server/tests/calculatorTool.test.ts` | 22 case biểu thức hợp lệ · 9 case lỗi (chia 0 · quá dài · ký tự lạ · ngoặc lệch · hàm không tồn tại) · tokenizer + RPN · tool interface |
+| Server unit | `apps/server/tests/toolRegistry.test.ts` | register · get · ghi đè trùng tên · `requiresApproval` · `toDefinitions` |
+| Server unit | `apps/server/tests/toolExecutor.test.ts` | tool ok · tool throw → `ok: false` · tool không tồn tại · output quá dài → cắt |
+| Server unit | `apps/server/tests/toolAgentLoop.test.ts` | thứ tự `tool_call` → `tool_result` → `token` · ghi `tool_calls` · vượt `MAX_TOOL_ROUNDS` → dừng + cảnh báo · approval gate (không chạy tool · emit `tool_approval`) · `resolveToolDefinitions` theo provider |
+| Server unit | `apps/server/tests/openaiToolCall.test.ts` | gom partial JSON theo `index` · nhiều tool call · `finish_reason: 'tool_calls'` → `finishReason: 'tool'` · body có `tools` + `tool_choice` · `parseToolArguments` |
+| Server unit | `apps/server/tests/mockToolCall.test.ts` | mock trả tool call · vòng 2 trả text · request không có `tools` → không gọi tool |
+| Server unit | `apps/server/tests/toolsRoute.test.ts` | `GET /api/tools` · approve/deny · 404 |
+| Extension unit | `apps/extension/tests/toolCallBlock.test.tsx` | render tên/args/output · trạng thái lỗi · badge "cần duyệt" + nút duyệt/từ chối |
+| Extension unit | `apps/extension/tests/useChatTools.test.ts` | SSE `tool_call` → `addToolCall` · SSE `tool_result` → update |
+| Extension unit | `apps/extension/tests/toolClient.test.ts` | gọi đúng URL + method |
+| Extension E2E | `apps/extension/e2e/tools.spec.ts` | mock provider offline: thấy tool call block · mở rộng thấy args + output · tool lỗi không làm hỏng thread |
+
+---
+
 ## 8. Hiệu năng
 
 | Chỉ số | Mục tiêu | Cách đạt |

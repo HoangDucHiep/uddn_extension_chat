@@ -7,8 +7,8 @@ import {
 import { AppError, ERROR_CODES, ERROR_STATUS_MAP } from '../src/errors.js'
 
 describe('events', () => {
-  it('co du 10 event type', () => {
-    expect(CHAT_EVENT_TYPES).toHaveLength(10)
+  it('co du 11 event type', () => {
+    expect(CHAT_EVENT_TYPES).toHaveLength(11)
   })
 
   it('parse budget event (T-M2-03b)', () => {
@@ -48,7 +48,37 @@ describe('events', () => {
   })
 
   it('parse tool_call event', () => {
-    expect(isChatEvent({ type: 'tool_call', id: 't1', name: 'read', args: { a: 1 } })).toBe(true)
+    expect(
+      isChatEvent({
+        type: 'tool_call',
+        id: 't1',
+        name: 'read',
+        args: { a: 1 },
+        approvalRequired: false,
+      }),
+    ).toBe(true)
+  })
+
+  it('tool_call event thieu approvalRequired bi tu choi (T-M2-09)', () => {
+    expect(isChatEvent({ type: 'tool_call', id: 't1', name: 'read', args: {} })).toBe(false)
+  })
+
+  it('parse tool_approval event (T-M2-09)', () => {
+    expect(
+      isChatEvent({
+        type: 'tool_approval',
+        id: 't1',
+        name: 'delete_file',
+        args: { path: '/tmp/x' },
+        reason: 'Tool nay ghi du lieu',
+      }),
+    ).toBe(true)
+  })
+
+  it('tool_approval event thieu reason bi tu choi', () => {
+    expect(
+      isChatEvent({ type: 'tool_approval', id: 't1', name: 'delete_file', args: {} }),
+    ).toBe(false)
   })
 
   it('parse tool_result event', () => {

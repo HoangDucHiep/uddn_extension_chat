@@ -293,12 +293,12 @@ Quy ước ưu tiên: **M** = Must (bắt buộc cho M1) · **S** = Should (bắ
 
 | ID | Requirement | Priority | Acceptance criteria |
 |---|---|---|---|
-| FR-TOOLS-01 | Tool registry: khai báo tool nội bộ + MCP server | S | Settings → Tools; kết nối/thử tool; lỗi cấu hình hiện rõ |
-| FR-TOOLS-02 | Gọi tool theo vòng lặp (agent loop) có giới hạn số vòng | S | Tool call hiển thị trong chat dạng collapsible "Đang dùng tool: X"; max 5 vòng |
+| FR-TOOLS-01 | Tool registry: khai báo tool nội bộ + MCP server | S | Settings → Tools; kết nối/thử tool; lỗi cấu hình hiện rõ — **⚠️ IMPLEMENT MỘT PHẦN (T-M2-07):** tool registry **in-memory** (`apps/server/src/tools/registry.ts`) + tool built-in `calculator` (`requiresApproval: false`) đã chạy được end-to-end: server khai báo tool cho provider → model gọi tool → server thực thi → kết quả quay lại model. Phần **Settings → Tools** (UI bật/tắt, kết nối MCP) chưa làm → thuộc **T-M2-08**. Provider hỗ trợ: `groq` · `openrouter` · `ollama` (OpenAI-compatible) + `mock` — **`gemini` chưa** (shape function-calling riêng). API `GET /api/tools` → danh sách tool (name · description · requiresApproval) |
+| FR-TOOLS-02 | Gọi tool theo vòng lặp (agent loop) có giới hạn số vòng | S | Tool call hiển thị trong chat dạng collapsible "Đang dùng tool: X"; max 5 vòng — **✅ ĐÃ IMPLEMENT (T-M2-07):** agent loop trong `chatService` tối đa **5 vòng** (`TOOL_LIMITS.MAX_TOOL_ROUNDS`). Mỗi vòng: stream provider → nếu có tool call → emit SSE `tool_call` → thực thi tool → emit SSE `tool_result` → thêm turn `assistant`(toolCalls) + turn `tool`(toolCallId) → stream tiếp. Text đã stream **cộng dồn** (không mất giữa các vòng). Vượt 5 vòng → dừng + trả câu trả lời hiện có + 1 dòng cảnh báo (không crash). Lỗi tool → `ok: false` → model tự quyết định bước tiếp (lượt chat **không** hỏng). Tool call hiển thị dạng collapsible → xem FR-TOOLS-02 (UI) ở T-M2-09 |
 | FR-TOOLS-03 | Web search tool (tùy chọn, bật/tắt) | S | Kết quả có nguồn + ngày; nếu tắt thì model không được gọi |
-| FR-TOOLS-04 | Agentic action trên trang: click, nhập liệu, submit | C | Luôn có bước **xác nhận** hiển thị plan + diff; có thể dừng |
+| FR-TOOLS-04 | Agentic action trên trang: click, nhập liệu, submit | C | Luôn có bước **xác nhận** hiển thị plan + diff; có thể dừng — **⚠️ HẠ TẦNG ĐÃ SẴN SÀNG (T-M2-09):** approval gate hoạt động end-to-end ở tầng contract + UI: tool khai báo `requiresApproval: true` → server emit SSE `tool_call` (`approvalRequired: true`) + `tool_approval` (kèm `reason`) → **KHÔNG** chạy tool → emit `tool_result` (`ok: false`) để lượt chat tiếp tục → user bấm "Duyệt" / "Từ chối" trong UI → `POST /api/tools/:callId/approve` (hoặc `/deny`) → ghi `approved_by_user`. **Giới hạn:** lot T-M2-07/09 chỉ có tool **read-only** (`calculator`) → **chưa** có tool ghi dữ liệu thật để chứng minh luồng xác nhận đầy đủ (plan + diff + dừng) → thuộc **T-M2-18** (agentic) |
 | FR-TOOLS-05 | RAG: index lịch sử chat + tài liệu local (PDF/MD/TXT) | S | Vector store local (sqlite-vec/pgvector); trả kèm trích dẫn nguồn |
-| FR-TOOLS-06 | Tool call audit log (đầu vào cho eval) | M | Log: tên tool, args, kết quả, thời gian, status |
+| FR-TOOLS-06 | Tool call audit log (đầu vào cho eval) | S | Log: tên tool, args, kết quả, thời gian, status — **✅ ĐÃ IMPLEMENT (T-M2-07):** mỗi tool call ghi 1 dòng vào bảng \	ool_calls\ (Postgres): ame\ · \rgs\ (jsonb) · \output\ · \status\ (\ok\/\error\) · \pproval_required\ · \pproved_by_user\ · \started_at\ · \inished_at\. Đồng thời ghi vào equest_logs.tool_calls\ (jsonb) → **nguồn dữ liệu cho eval** (đọc qua \GET /api/logs\ → \	oolCallCount\). Bảng \	ool_calls\ **đã có sẵn từ M0** → **không migration**. Ghi DB lỗi **không** làm hỏng lượt chat |
 
 ### 4.5 FR-SKILL — Skills / Prompt library
 
@@ -1166,12 +1166,12 @@ Chỉ bắt đầu M4 khi **đồng thời** thỏa:
 
 | FR | Priority | Task | Milestone |
 |---|---|---|---|
-| FR-TOOLS-01 | M | T-M2-07 · T-M2-08 | M2 |
-| FR-TOOLS-02 | M | T-M2-07 · T-M2-09 | M2 |
+| FR-TOOLS-01 | M | T-M2-07 ⚠️ (một phần) · T-M2-08 | M2 |
+| FR-TOOLS-02 | M | T-M2-07 ✅ · T-M2-09 ✅ | M2 |
 | FR-TOOLS-03 | S | **T-M2-20** | M2 |
-| FR-TOOLS-04 | C | T-M2-18 | M2 |
+| FR-TOOLS-04 | C | T-M2-09 ⚠️ (hạ tầng) · T-M2-18 | M2 |
 | FR-TOOLS-05 | S | T-M2-10 · T-M2-11 | M2 |
-| FR-TOOLS-06 | M | T-M2-09 | M2 |
+| FR-TOOLS-06 | M | T-M2-07 ✅ | M2 |
 
 #### FR-SKILL — Skills / Prompt library
 

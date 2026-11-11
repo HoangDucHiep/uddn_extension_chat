@@ -74,17 +74,48 @@ export interface OpenAiCompatibleOptions {
 
 interface OpenAiStreamDelta {
   choices?: Array<{
-    delta?: { content?: string | null }
+    delta?: {
+      content?: string | null
+      /**
+       * Tool call dang stream (FR-TOOLS-02 — T-M2-07).
+       *
+       * `arguments` la **chuoi JSON partial** — nhieu event SSE mang tung
+       * phan → phai gom theo `index` roi `JSON.parse` moi duoc.
+       */
+      tool_calls?: Array<{
+        index?: number
+        id?: string
+        type?: string
+        function?: { name?: string; arguments?: string }
+      }>
+    }
     finish_reason?: string | null
   }>
   usage?: { prompt_tokens?: number; completion_tokens?: number } | null
   error?: { message?: string; code?: string } | null
 }
 
+/**
+ * Trang thai gom tool call trong 1 request stream.
+ *
+ * Luu theo `index` (chi so trong mang `delta.tool_calls`) vi provider
+ * co the tach 1 tool call thanh nhieu event SSE.
+ */
+interface ToolCallAccumulator {
+  /** Id tool call do provider sinh. */
+  id: string
+  /** Ten tool. */
+  name: string
+  /** Chuoi JSON arguments chua hoan chinh — gom dan vao day. */
+  argsRaw: string
+}
+
 export class OpenAiCompatibleProvider implements ProviderAdapter {
   readonly id: string
   readonly name: string
   readonly requiresKey: boolean
+  /** OpenAI-compatible API ho tro function calling (FR-TOOLS-01 — T-M2-07). */
+  readonly supportsTools = true
 
   private readonly options: OpenAiCompatibleOptions
 
@@ -262,10 +293,42 @@ export class OpenAiCompatibleProvider implements ProviderAdapter {
             role: message.role,
             // Anh dinh kem → `content` thanh mang parts (FR-VISION-01 — T-M1-24).
             content: buildOpenAiContent(message.content, message.attachments),
+            // Tool call (FR-TOOLS-02 — T-M2-07): turn `tool` can `tool_call_id`,
+            // turn `assistant` can `tool_calls` de provider ghep ket qua.
+            ...(message.toolCallId !== undefined
+              ? { tool_call_id: message.toolCallId }
+              : {}),
+            ...(message.toolCalls !== undefined && message.toolCalls.length > 0
+              ? {
+                  tool_calls: message.toolCalls.map((call) => ({
+                    id: call.id,
+                    type: 'function',
+                    function: {
+                      name: call.name,
+                      arguments: JSON.stringify(call.args ?? {}),
+                    },
+                  })),
+                }
+              : {}),
           })),
           stream: true,
           ...(request.temperature !== undefined ? { temperature: request.temperature } : {}),
           ...(request.maxOutputTokens !== undefined ? { max_tokens: request.maxOutputTokens } : {}),
+          // Tool calling (FR-TOOLS-01/02 — T-M2-07). Chi gui khi server
+          // xac nhan provider ho tro (`request.tools` da duoc loc o server).
+          ...(request.tools !== undefined && request.tools.length > 0
+            ? {
+                tools: request.tools.map((tool) => ({
+                  type: 'function',
+                  function: {
+                    name: tool.name,
+                    description: tool.description,
+                    parameters: tool.parameters,
+                  },
+                })),
+                tool_choice: 'auto',
+              }
+            : {}),
         }),
         signal: controller.signal,
       })
@@ -300,9 +363,13 @@ export class OpenAiCompatibleProvider implements ProviderAdapter {
       }
 
       const chunks: ProviderChunk[] = []
+      // Gom tool call theo `index` (FR-TOOLS-02 — T-M2-07).
+      const toolCalls = new Map<number, ToolCallAccumulator>()
       for await (const data of readSseData(response.body)) {
-        this.handleSseData(data, chunks)
+        this.handleSseData(data, chunks, toolCalls)
       }
+      // Tool call chi duoc emit khi stream ket thuc → args da gom day du.
+      chunks.push(...this.buildToolCallChunks(toolCalls))
       return { ok: true, chunks }
     } catch (error) {
       const isAbort = error instanceof Error && error.name === 'AbortError'
@@ -323,8 +390,18 @@ export class OpenAiCompatibleProvider implements ProviderAdapter {
     }
   }
 
-  /** Xu ly mot `data:` payload cua provider, day chunk vao mang. */
-  private handleSseData(data: string, chunks: ProviderChunk[]): void {
+  /**
+   * Xu ly mot `data:` payload cua provider, day chunk vao mang.
+   *
+   * @param data - Chuoi `data:` cua SSE.
+   * @param chunks - Mang chunk da thu thap.
+   * @param toolCalls - Accumulator gom tool call theo `index`.
+   */
+  private handleSseData(
+    data: string,
+    chunks: ProviderChunk[],
+    toolCalls: Map<number, ToolCallAccumulator>,
+  ): void {
     if (data === '[DONE]') {
       chunks.push({ kind: 'done', finishReason: 'stop' })
       return
@@ -352,6 +429,30 @@ export class OpenAiCompatibleProvider implements ProviderAdapter {
       chunks.push({ kind: 'token', text: delta })
     }
 
+    // Tool call (FR-TOOLS-02 — T-M2-07): gom partial theo `index`.
+    const streamToolCalls = payload.choices?.[0]?.delta?.tool_calls
+    if (streamToolCalls !== undefined) {
+      for (const [position, entry] of streamToolCalls.entries()) {
+        const index = entry.index ?? position
+        const existing = toolCalls.get(index)
+        const accumulator: ToolCallAccumulator = existing ?? {
+          id: entry.id ?? `tool-${index}`,
+          name: '',
+          argsRaw: '',
+        }
+        if (entry.id !== undefined && entry.id.length > 0) {
+          accumulator.id = entry.id
+        }
+        if (entry.function?.name !== undefined && entry.function.name.length > 0) {
+          accumulator.name = entry.function.name
+        }
+        if (entry.function?.arguments !== undefined) {
+          accumulator.argsRaw += entry.function.arguments
+        }
+        toolCalls.set(index, accumulator)
+      }
+    }
+
     if (payload.usage) {
       chunks.push({
         kind: 'usage',
@@ -362,10 +463,59 @@ export class OpenAiCompatibleProvider implements ProviderAdapter {
 
     const finishReason = payload.choices?.[0]?.finish_reason
     if (typeof finishReason === 'string' && finishReason.length > 0) {
+      // `tool_calls` → model muon goi tool → server chay agent loop tiep.
+      const mapped =
+        finishReason === 'length' ? 'length' : finishReason === 'tool_calls' ? 'tool' : 'stop'
+      chunks.push({ kind: 'done', finishReason: mapped })
+    }
+  }
+
+  /**
+   * Chuyen accumulator thanh chunk `tool_call`.
+   *
+   * Args la chuoi JSON partial → parse; parse loi → `{}` (khong lam hong
+   * luot chat — model se thu lai hoac tra loi nhu binh thuong).
+   *
+   * @param toolCalls - Accumulator theo `index`.
+   * @returns Danh sach chunk `tool_call`.
+   */
+  private buildToolCallChunks(
+    toolCalls: ReadonlyMap<number, ToolCallAccumulator>,
+  ): ProviderChunk[] {
+    const chunks: ProviderChunk[] = []
+    // Sort theo `index` de thu tu tool call deu determinist.
+    const entries = [...toolCalls.entries()].sort((a, b) => a[0] - b[0])
+    for (const [, accumulator] of entries) {
+      if (accumulator.name.length === 0) continue
       chunks.push({
-        kind: 'done',
-        finishReason: finishReason === 'length' ? 'length' : 'stop',
+        kind: 'tool_call',
+        toolCallId: accumulator.id,
+        name: accumulator.name,
+        args: parseToolArguments(accumulator.argsRaw),
       })
     }
+    return chunks
+  }
+}
+
+/**
+ * Parse chuoi JSON arguments cua tool call.
+ *
+ * Args rong → `{}`. JSON hong → `{}` (khong nem loi ra ngoai).
+ *
+ * @param raw - Chuoi JSON (co the partial hoac rong).
+ * @returns Object da parse.
+ */
+export function parseToolArguments(raw: string): Record<string, unknown> {
+  const trimmed = raw.trim()
+  if (trimmed.length === 0) return {}
+  try {
+    const parsed: unknown = JSON.parse(trimmed)
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      return {}
+    }
+    return parsed as Record<string, unknown>
+  } catch {
+    return {}
   }
 }

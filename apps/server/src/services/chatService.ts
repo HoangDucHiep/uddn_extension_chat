@@ -30,6 +30,7 @@ import {
   hashString,
   isRetryableKind,
   stripSkillToken,
+  TOOL_LIMITS,
   trimHistory,
   VISION,
   type ChatEvent,
@@ -40,6 +41,7 @@ import {
   type ImageAttachment,
   type ProviderId,
   type ProviderImage,
+  type ToolDefinition,
 } from '@sidekick/shared'
 import { and, desc, eq } from 'drizzle-orm'
 import type { Database } from '../db/index.js'
@@ -52,6 +54,9 @@ import { buildAutoTitle } from './conversationService.js'
 import { buildBudgetStatus } from './budgetService.js'
 import { resolveSkillForChat, type ResolvedSkill } from './skillService.js'
 import { insertRequestLog, type RequestLogData } from './requestLogService.js'
+import { persistToolCalls, type ToolCallRecordInput } from './toolCallService.js'
+import { executeTool, type ToolExecutionOutcome } from '../tools/executor.js'
+import { createDefaultToolRegistry, type ToolRegistry } from '../tools/registry.js'
 import {
   derivePath,
   loadMessage,
@@ -69,6 +74,34 @@ import {
  * Provider dua `max_tokens` vao billings check — dat qua lon se bi 402 (khong du credit).
  */
 export const DEFAULT_MAX_OUTPUT_TOKENS = 2048
+
+/**
+ * Chuyen danh sach tool thanh `ToolDefinition` de gui cho provider.
+ *
+ * Chi tra ve danh sach khi provider **ho tro** function calling
+ * (`ProviderAdapter.supportsTools`) → Gemini (chua ho tro trong lot
+ * T-M2-07) chat binh thuong, khong loi.
+ *
+ * @param toolRegistry - Registry tool.
+ * @param providerRegistry - Registry provider.
+ * @param providerId - Id provider se xu ly request.
+ * @param _model - Model se xu ly request (hien chua dung — tool khong phu thuoc model).
+ * @returns Danh sach definition (rong neu provider khong ho tro tool).
+ */
+export function resolveToolDefinitions(
+  toolRegistry: ToolRegistry,
+  providerRegistry: ProviderRegistry,
+  providerId: ProviderId,
+  _model: string,
+): ToolDefinition[] {
+  const provider = providerRegistry.get(providerId)
+  if (provider === undefined || provider.supportsTools !== true) {
+    return []
+  }
+  return toolRegistry
+    .toDefinitions(toolRegistry.listEnabled().map((tool) => tool.name))
+    .slice(0, TOOL_LIMITS.MAX_TOOLS_PER_REQUEST)
+}
 
 export interface ChatServiceDeps {
   db: Database
@@ -94,6 +127,13 @@ export interface ChatServiceDeps {
    * **Optional** de test cu khong phai khai bao (mac dinh 90).
    */
   logRetentionDays?: number
+  /**
+   * Registry tool cho agent loop (FR-TOOLS-01 — T-M2-07).
+   *
+   * **Optional** → mac dinh `createDefaultToolRegistry()` (chi `calculator`).
+   * Inject de test voi tool gia lap.
+   */
+  toolRegistry?: ToolRegistry
 }
 
 export interface ChatStreamResult {
@@ -419,12 +459,12 @@ export function createChatStream(
     let errorMessage: string | undefined
     let tokenIndex = 0
     /**
-     * Cac tool call phat sinh trong luot nay (T-M1-14).
+     * Cac tool call phat sinh trong luot nay (FR-TOOLS-06 — T-M2-07).
      *
-     * M1 chua co tool/MCP that → mang thuong rong → ghi `null` vao DB.
-     * M2 (T-M2-*) se yield `tool_call` / `tool_result` → day la nơi gom.
+     * Ghi vao `tool_calls` (Postgres) + `request_logs.tool_calls` (jsonb) →
+     * lai du lieu cho eval va hien thi lai trong lich su chat.
      */
-    const toolCallRecords: Array<Record<string, unknown>> = []
+    const toolCallRecords: ToolCallRecordInput[] = []
 
     // Gioi han max tokens — provider dua `max_tokens` vao billings/credit check.
     // Khong dat thi OpenRouter bao 402 (credit khong du cho 65535 tokens).
@@ -480,56 +520,203 @@ export function createChatStream(
       /** Provider da stream token → khong duoc chuyen (tranh noi dung trung). */
       let streamedToken = false
 
-      for await (const chunk of provider.stream({
-        model: candidate.model,
-        messages: messagesForProvider,
-        temperature: request.temperature,
-        maxOutputTokens,
-        apiKey: candidate.apiKey,
-        // Request-id → provider gui header `X-Request-Id` (NFR-MAINT-04).
-        requestId,
-        signal: abortSignal,
-      })) {
-        if (abortSignal.aborted) {
-          finishReason = 'aborted'
+      // Tool definitions cho provider nay (FR-TOOLS-01 — T-M2-07).
+      // Provider khong ho tro function calling → khong gui `tools`.
+      const candidateTools = resolveToolDefinitions(
+        deps.toolRegistry ?? createDefaultToolRegistry(),
+        deps.registry,
+        candidate.providerId,
+        candidate.model,
+      )
+
+      /**
+       * Agent loop (FR-TOOLS-02 — T-M2-07).
+       *
+       * Vong 0 = stream provider. Neu model goi tool → chay tool → them
+       * assistant(tool_calls) + tool(result) vao messages → stream lai (vong 1).
+       * toi da `TOOL_LIMITS.MAX_TOOL_ROUNDS` vong.
+       */
+      for (let round = 0; round < TOOL_LIMITS.MAX_TOOL_ROUNDS; round += 1) {
+        /** Tool call model yeu cau trong vong nay. */
+        const pendingToolCalls: Array<{
+          toolCallId: string
+          name: string
+          args: unknown
+        }> = []
+
+        for await (const chunk of provider.stream({
+          model: candidate.model,
+          messages: messagesForProvider,
+          temperature: request.temperature,
+          maxOutputTokens,
+          apiKey: candidate.apiKey,
+          // Request-id → provider gui header `X-Request-Id` (NFR-MAINT-04).
+          requestId,
+          signal: abortSignal,
+          // Tool calling (FR-TOOLS-01 — T-M2-07).
+          ...(candidateTools.length > 0 ? { tools: candidateTools } : {}),
+        })) {
+          if (abortSignal.aborted) {
+            finishReason = 'aborted'
+            break
+          }
+
+          if (chunk.kind === 'token') {
+            if (firstTokenAt === undefined) firstTokenAt = Date.now()
+            const delta = chunk.text ?? ''
+            text += delta
+            streamedToken = true
+            yield { type: 'token', delta, index: tokenIndex }
+            tokenIndex += 1
+            continue
+          }
+
+          if (chunk.kind === 'usage') {
+            tokensIn = chunk.tokensIn ?? tokensIn
+            tokensOut = chunk.tokensOut ?? tokensOut
+            continue
+          }
+
+          if (chunk.kind === 'tool_call') {
+            // Gom tool call de chay sau khi stream ket thuc (args da parse day du).
+            pendingToolCalls.push({
+              toolCallId: chunk.toolCallId ?? `tool-${round}-${pendingToolCalls.length}`,
+              name: chunk.name ?? '',
+              args: chunk.args ?? {},
+            })
+            continue
+          }
+
+          if (chunk.kind === 'done') {
+            const reason = chunk.finishReason
+            finishReason =
+              reason === 'length' ? 'length' : reason === 'tool' ? 'tool' : 'stop'
+            continue
+          }
+
+          if (chunk.kind === 'error') {
+            const errorCode = chunk.errorCode ?? 'PROVIDER_ERROR'
+            // `retryable` phai phan anh `errorCode` thuc te — KHONG hardcode
+            // `true`, vi loi 401 (sai API key) retry vo ich (FR-CHAT-14 / NFR-REL-02).
+            const retryable =
+              chunk.errorRetryable ?? isRetryableKind(classifyChatError(errorCode))
+            providerError = {
+              code: errorCode,
+              message: chunk.errorMessage ?? 'Provider loi',
+              retryable,
+              ...(chunk.retryAfterSeconds !== undefined
+                ? { retryAfterSeconds: chunk.retryAfterSeconds }
+                : {}),
+            }
+            break
+          }
+        }
+
+        if (providerError !== undefined) break
+        if (abortSignal.aborted) break
+
+        // Khong co tool call → vong nay la vong ket thuc.
+        if (pendingToolCalls.length === 0) {
+          finishReason = finishReason === 'tool' ? 'stop' : finishReason
           break
         }
 
-        if (chunk.kind === 'token') {
-          if (firstTokenAt === undefined) firstTokenAt = Date.now()
-          const delta = chunk.text ?? ''
-          text += delta
-          streamedToken = true
-          yield { type: 'token', delta, index: tokenIndex }
-          tokenIndex += 1
-          continue
-        }
+        // --- Chay tool (FR-TOOLS-02 — T-M2-07) ---
+        const toolRegistry = deps.toolRegistry ?? createDefaultToolRegistry()
+        const assistantToolCalls: Array<{ id: string; name: string; args: unknown }> = []
 
-        if (chunk.kind === 'usage') {
-          tokensIn = chunk.tokensIn ?? tokensIn
-          tokensOut = chunk.tokensOut ?? tokensOut
-          continue
-        }
+        for (const call of pendingToolCalls) {
+          const approvalRequired = toolRegistry.requiresApproval(call.name)
+          const approvalReason =
+            toolRegistry.approvalReason(call.name) ??
+            `Tool "${call.name}" can ban duyet truoc khi chay.`
 
-        if (chunk.kind === 'done') {
-          const reason = chunk.finishReason
-          finishReason = reason === 'length' ? 'length' : 'stop'
-          continue
-        }
+          // Tool can duyet → server KHONG chay (FR-TOOLS-04 — T-M2-09).
+          // Luot chat tiep tuc: model nhan `tool_result` voi `ok: false`.
+          const outcome: ToolExecutionOutcome = approvalRequired
+            ? {
+                name: call.name,
+                ok: false,
+                output: `Tool "${call.name}" can nguoi dung duyet truoc khi chay.`,
+                error: 'TOOL_APPROVAL_REQUIRED',
+                durationMs: 0,
+                approvalRequired: true,
+              }
+            : await executeTool(toolRegistry, call.name, call.args, {
+                requestId,
+                signal: abortSignal,
+              })
 
-        if (chunk.kind === 'error') {
-          const errorCode = chunk.errorCode ?? 'PROVIDER_ERROR'
-          // `retryable` phai phan anh `errorCode` thuc te — KHONG hardcode
-          // `true`, vi loi 401 (sai API key) retry vo ich (FR-CHAT-14 / NFR-REL-02).
-          const retryable = chunk.errorRetryable ?? isRetryableKind(classifyChatError(errorCode))
-          providerError = {
-            code: errorCode,
-            message: chunk.errorMessage ?? 'Provider loi',
-            retryable,
-            ...(chunk.retryAfterSeconds !== undefined
-              ? { retryAfterSeconds: chunk.retryAfterSeconds }
-              : {}),
+          const toolCallId = call.toolCallId
+
+          yield {
+            type: 'tool_call',
+            id: toolCallId,
+            name: call.name,
+            args: call.args,
+            approvalRequired,
           }
+
+          if (approvalRequired) {
+            // Yeu cau duyet (FR-TOOLS-04 — T-M2-09).
+            yield {
+              type: 'tool_approval',
+              id: toolCallId,
+              name: call.name,
+              args: call.args,
+              reason: approvalReason,
+            }
+          }
+
+          yield {
+            type: 'tool_result',
+            id: toolCallId,
+            ok: outcome.ok,
+            output: outcome.output,
+            durationMs: outcome.durationMs,
+          }
+
+          toolCallRecords.push({
+            id: toolCallId,
+            name: call.name,
+            args: call.args,
+            output: outcome.output,
+            status: outcome.ok ? 'ok' : 'error',
+            approvalRequired,
+            approvedByUser: false,
+            durationMs: outcome.durationMs,
+          })
+
+          assistantToolCalls.push({
+            id: toolCallId,
+            name: call.name,
+            args: call.args,
+          })
+
+          // Ket qua tool → dua vao messages cho vong stream tiep theo.
+          messagesForProvider.push({
+            role: 'tool',
+            content: outcome.output,
+            toolCallId,
+          })
+        }
+
+        // Turn assistant chua tool call → provider biet can tra loi bang ket qua.
+        messagesForProvider.push({
+          role: 'assistant',
+          content: '',
+          toolCalls: assistantToolCalls,
+        })
+
+        // Het vong → dung vong lap, tra loi hien co + canh bao.
+        if (round === TOOL_LIMITS.MAX_TOOL_ROUNDS - 1) {
+          finishReason = 'stop'
+          const warning =
+            '\n\n_[Da dung het so vong goi tool toi da. Cau tra loi co the chua day du.]_'
+          text += warning
+          // Canh bao cung duoc stream cho client (token) → UI hien thi ngay.
+          yield { type: 'token', delta: warning, index: tokenIndex }
+          tokenIndex += 1
           break
         }
       }
@@ -637,6 +824,14 @@ export function createChatStream(
       })
     }
 
+    // Tool call (FR-TOOLS-06 — T-M2-07) → ghi vao bang `tool_calls`.
+    // Chi ghi khi co tool call that → tranh insert rong.
+    await persistToolCalls(
+      deps.db,
+      plan.continueMessageId ?? messageId,
+      toolCallRecords,
+    )
+
     // Conversation vua hoat dong → dua len dau danh sach (FR-CHAT-09).
     await touchConversation(deps.db, conversationId)
 
@@ -689,7 +884,10 @@ export function createChatStream(
       latencyMs,
       error: errorMessage,
       costUsd,
-      toolCalls: toolCallRecords.length > 0 ? toolCallRecords : null,
+      toolCalls:
+        toolCallRecords.length > 0
+          ? toolCallRecords.map((record) => ({ ...record }))
+          : null,
       fallbackFrom: fallbackFrom ?? null,
     })
 
@@ -928,9 +1126,21 @@ export interface BuildProviderMessagesOptions {
 
 /** Mot turn san de gui cho provider (co the kem anh). */
 export interface ProviderMessage {
-  role: 'system' | 'user' | 'assistant'
+  role: 'system' | 'user' | 'assistant' | 'tool'
   content: string
   attachments?: ProviderImage[]
+  /**
+   * Id tool call ma turn nay tra loi (FR-TOOLS-02 — T-M2-07).
+   *
+   * Chi dung khi `role === 'tool'`.
+   */
+  toolCallId?: string
+  /**
+   * Danh sach tool model da goi trong turn nay (FR-TOOLS-02 — T-M2-07).
+   *
+   * Chi dung khi `role === 'assistant'`.
+   */
+  toolCalls?: Array<{ id: string; name: string; args: unknown }>
 }
 
 /**

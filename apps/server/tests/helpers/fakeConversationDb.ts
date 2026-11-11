@@ -19,7 +19,7 @@
  * Docs: docs/SYSTEM_DESIGN.md §5
  */
 
-import { citations, conversations, messages, skills } from '../../src/db/schema.js'
+import { citations, conversations, messages, skills, toolCalls } from '../../src/db/schema.js'
 
 /** Mot dong trong bang `conversations`. */
 export interface FakeConversationRow {
@@ -86,6 +86,34 @@ const SKILL_COLUMN_TO_PROP: Record<string, keyof FakeSkillRow> = {
   updated_at: 'updatedAt',
 }
 
+/** Mot dong trong bang `tool_calls` (T-M2-07). */
+export interface FakeToolCallRow {
+  id: string
+  messageId: string
+  name: string
+  args: unknown
+  output: string | null
+  status: string
+  approvalRequired: boolean
+  approvedByUser: boolean
+  startedAt: Date
+  finishedAt: Date | null
+}
+
+/** Map ten cot DB (snake_case) sang ten truong TS (camelCase). */
+const TOOL_CALL_COLUMN_TO_PROP: Record<string, keyof FakeToolCallRow> = {
+  id: 'id',
+  message_id: 'messageId',
+  name: 'name',
+  args: 'args',
+  output: 'output',
+  status: 'status',
+  approval_required: 'approvalRequired',
+  approved_by_user: 'approvedByUser',
+  started_at: 'startedAt',
+  finished_at: 'finishedAt',
+}
+
 /** Map ten cot DB (snake_case) sang ten truong TS (camelCase). */
 const CONVERSATION_COLUMN_TO_PROP: Record<string, keyof FakeConversationRow> = {
   id: 'id',
@@ -119,7 +147,12 @@ const CITATION_COLUMN_TO_PROP: Record<string, keyof FakeCitationRow> = {
 }
 
 /** Bang nguon cua fake. */
-type FakeTable = typeof conversations | typeof messages | typeof citations | typeof skills
+type FakeTable =
+  | typeof conversations
+  | typeof messages
+  | typeof citations
+  | typeof skills
+  | typeof toolCalls
 
 /** Cay dieu kien da phan tich tu SQL chunk. */
 type Predicate =
@@ -490,6 +523,8 @@ export interface FakeConversationDb {
   citationRows: FakeCitationRow[]
   /** Cac dong `skills` (T-M2-04). */
   skillRows: FakeSkillRow[]
+  /** Cac dong `tool_calls` (T-M2-07). */
+  toolCallRows: FakeToolCallRow[]
   /** DB gia lap cho Drizzle. */
   db: unknown
   /** Them conversation truc tiep (test setup). */
@@ -500,6 +535,19 @@ export interface FakeConversationDb {
   seedCitation: (row: Partial<FakeCitationRow>) => FakeCitationRow
   /** Them skill truc tiep (test setup). */
   seedSkill: (row: Partial<FakeSkillRow>) => FakeSkillRow
+  /** Them tool call truc tiep (test setup). */
+  seedToolCall: (row: Partial<FakeToolCallRow>) => FakeToolCallRow
+}
+
+/** Bo dem id cho conversation (uuid gia lap cho route test). */
+let conversationCounter = 0
+
+/**
+ * Sinh id conversation hieu luc (uuid gia lap cho route test).
+ */
+function nextUuid(): string {
+  conversationCounter += 1
+  return `00000000-0000-4000-8000-${String(conversationCounter).padStart(12, '0')}`
 }
 
 /**
@@ -513,23 +561,23 @@ export function createFakeConversationDb(
     messages?: FakeMessageRow[]
     citations?: FakeCitationRow[]
     skills?: FakeSkillRow[]
+    toolCalls?: FakeToolCallRow[]
   } = {},
 ): FakeConversationDb {
   const conversationRows: FakeConversationRow[] = [...(initial.conversations ?? [])]
   const messageRows: FakeMessageRow[] = [...(initial.messages ?? [])]
   const citationRows: FakeCitationRow[] = [...(initial.citations ?? [])]
   const skillRows: FakeSkillRow[] = [...(initial.skills ?? [])]
+  const toolCallRows: FakeToolCallRow[] = [...(initial.toolCalls ?? [])]
 
   let conversationCounter = 0
-  let messageCounter = 0
-  let citationCounter = 0
-  let skillCounter = 0
 
   const state: FakeConversationDb = {
     conversationRows,
     messageRows,
     citationRows,
     skillRows,
+    toolCallRows,
     db: undefined,
     seedConversation: (row) => {
       conversationCounter += 1
@@ -546,9 +594,8 @@ export function createFakeConversationDb(
       return full
     },
     seedMessage: (row) => {
-      messageCounter += 1
       const full: FakeMessageRow = {
-        id: row.id ?? `msg-${messageCounter}`,
+        id: row.id ?? `msg-${messageRows.length + 1}`,
         conversationId: row.conversationId ?? 'conv-1',
         role: row.role ?? 'user',
         content: row.content ?? '',
@@ -559,9 +606,8 @@ export function createFakeConversationDb(
       return full
     },
     seedCitation: (row) => {
-      citationCounter += 1
       const full: FakeCitationRow = {
-        id: row.id ?? `cite-${citationCounter}`,
+        id: row.id ?? `cite-${citationRows.length + 1}`,
         messageId: row.messageId ?? 'msg-1',
         idx: row.idx ?? 1,
         url: row.url ?? '',
@@ -575,12 +621,11 @@ export function createFakeConversationDb(
       return full
     },
     seedSkill: (row) => {
-      skillCounter += 1
       const full: FakeSkillRow = {
         id:
           row.id ??
-          `00000000-0000-4000-8000-${String(skillCounter).padStart(12, '0')}`,
-        name: row.name ?? `skill-${skillCounter}`,
+          `00000000-0000-4000-8000-${String(skillRows.length + 1).padStart(12, '0')}`,
+        name: row.name ?? `skill-${skillRows.length + 1}`,
         description: row.description ?? '',
         promptTemplate: row.promptTemplate ?? 'prompt',
         scope: row.scope ?? 'user',
@@ -594,12 +639,22 @@ export function createFakeConversationDb(
       skillRows.push(full)
       return full
     },
-  }
-
-  /** Chuoi de sinh id conversation hieu luc (uuid gia lap cho route test). */
-  const nextUuid = (): string => {
-    conversationCounter += 1
-    return `00000000-0000-4000-8000-${String(conversationCounter).padStart(12, '0')}`
+    seedToolCall: (row) => {
+      const full: FakeToolCallRow = {
+        id: row.id ?? `tool-${toolCallRows.length + 1}`,
+        messageId: row.messageId ?? 'msg-1',
+        name: row.name ?? 'calculator',
+        args: row.args ?? {},
+        output: row.output ?? null,
+        status: row.status ?? 'ok',
+        approvalRequired: row.approvalRequired ?? false,
+        approvedByUser: row.approvedByUser ?? false,
+        startedAt: row.startedAt ?? new Date('2026-01-01T00:00:00.000Z'),
+        finishedAt: row.finishedAt ?? null,
+      }
+      toolCallRows.push(full)
+      return full
+    },
   }
 
   const db = {
@@ -616,69 +671,16 @@ export function createFakeConversationDb(
     }),
 
     insert: (table: FakeTable) => ({
-      values: (values: Record<string, unknown>) => {
+      values: (values: Record<string, unknown> | Array<Record<string, unknown>>) => {
         const source = resolveSource(table, state)
+        // Insert nhieu dong (`values([...])`) -> fan ra nhieu row.
+        const valueRows = Array.isArray(values) ? values : [values]
         const builder = new QueryBuilder<unknown[]>(async () => {
-          if (source.table === conversations) {
-            const row: FakeConversationRow = {
-              id: (values['id'] as string) ?? nextUuid(),
-              title: (values['title'] as string) ?? 'Cuộc trò chuyện mới',
-              pinned: (values['pinned'] as boolean) ?? false,
-              archived: (values['archived'] as boolean) ?? false,
-              meta: (values['meta'] as Record<string, unknown>) ?? {},
-              createdAt: (values['createdAt'] as Date) ?? new Date(),
-              updatedAt: (values['updatedAt'] as Date) ?? new Date(),
-            }
-            conversationRows.push(row)
-            return [row]
+          const inserted: unknown[] = []
+          for (const value of valueRows) {
+            inserted.push(...insertRow(source, value, state))
           }
-
-          if (source.table === messages) {
-            const row: FakeMessageRow = {
-              id: (values['id'] as string) ?? `msg-${++messageCounter}`,
-              conversationId: (values['conversationId'] as string) ?? '',
-              role: (values['role'] as string) ?? 'user',
-              content: (values['content'] as string) ?? '',
-              meta: (values['meta'] as Record<string, unknown>) ?? {},
-              createdAt: (values['createdAt'] as Date) ?? new Date(),
-            }
-            messageRows.push(row)
-            return [row]
-          }
-
-          if (source.table === citations) {
-            const row: FakeCitationRow = {
-              id: (values['id'] as string) ?? `cite-${++citationCounter}`,
-              messageId: (values['messageId'] as string) ?? '',
-              idx: (values['idx'] as number) ?? 0,
-              url: (values['url'] as string) ?? '',
-              title: (values['title'] as string) ?? '',
-              snippet: (values['snippet'] as string) ?? '',
-              tabId: (values['tabId'] as number | null) ?? null,
-              score: (values['score'] as number | null) ?? null,
-              createdAt: (values['createdAt'] as Date) ?? new Date(),
-            }
-            citationRows.push(row)
-            return [row]
-          }
-
-          const row: FakeSkillRow = {
-            id:
-              (values['id'] as string) ??
-              `00000000-0000-4000-8000-${String(++skillCounter).padStart(12, '0')}`,
-            name: (values['name'] as string) ?? '',
-            description: (values['description'] as string) ?? '',
-            promptTemplate: (values['promptTemplate'] as string) ?? '',
-            scope: (values['scope'] as string) ?? 'user',
-            enabled: (values['enabled'] as boolean) ?? true,
-            tags: (values['tags'] as string[]) ?? [],
-            model: (values['model'] as string | null) ?? null,
-            tabCondition: values['tabCondition'] ?? null,
-            createdAt: (values['createdAt'] as Date) ?? new Date(),
-            updatedAt: (values['updatedAt'] as Date) ?? new Date(),
-          }
-          skillRows.push(row)
-          return [row]
+          return inserted
         })
 
         // Chat service goi `.onConflictDoNothing()` truoc `.returning()`.
@@ -819,6 +821,98 @@ async function runSelect(
 }
 
 /**
+ * Tao 1 row moi cho bang tuong ung va them vao mang du lieu cua fake.
+ *
+ * @param source - Nguon du lieu cua bang.
+ * @param values - Gia tri cot can insert.
+ * @param state - State cua fake (de gan vao mang dung).
+ * @returns Mang row vua tao (1 phan tu).
+ */
+function insertRow(
+  source: Source,
+  values: Record<string, unknown>,
+  state: FakeConversationDb,
+): unknown[] {
+  if (source.table === conversations) {
+    const row: FakeConversationRow = {
+      id: (values['id'] as string) ?? nextUuid(),
+      title: (values['title'] as string) ?? 'Cuoc tro chuyen moi',
+      pinned: (values['pinned'] as boolean) ?? false,
+      archived: (values['archived'] as boolean) ?? false,
+      meta: (values['meta'] as Record<string, unknown>) ?? {},
+      createdAt: (values['createdAt'] as Date) ?? new Date(),
+      updatedAt: (values['updatedAt'] as Date) ?? new Date(),
+    }
+    state.conversationRows.push(row)
+    return [row]
+  }
+
+  if (source.table === messages) {
+    const row: FakeMessageRow = {
+      id: (values['id'] as string) ?? `msg-${state.messageRows.length + 1}`,
+      conversationId: (values['conversationId'] as string) ?? '',
+      role: (values['role'] as string) ?? 'user',
+      content: (values['content'] as string) ?? '',
+      meta: (values['meta'] as Record<string, unknown>) ?? {},
+      createdAt: (values['createdAt'] as Date) ?? new Date(),
+    }
+    state.messageRows.push(row)
+    return [row]
+  }
+
+  if (source.table === citations) {
+    const row: FakeCitationRow = {
+      id: (values['id'] as string) ?? `cite-${state.citationRows.length + 1}`,
+      messageId: (values['messageId'] as string) ?? '',
+      idx: (values['idx'] as number) ?? 0,
+      url: (values['url'] as string) ?? '',
+      title: (values['title'] as string) ?? '',
+      snippet: (values['snippet'] as string) ?? '',
+      tabId: (values['tabId'] as number | null) ?? null,
+      score: (values['score'] as number | null) ?? null,
+      createdAt: (values['createdAt'] as Date) ?? new Date(),
+    }
+    state.citationRows.push(row)
+    return [row]
+  }
+
+  if (source.table === toolCalls) {
+    const row: FakeToolCallRow = {
+      id: (values['id'] as string) ?? `tool-${state.toolCallRows.length + 1}`,
+      messageId: (values['messageId'] as string) ?? '',
+      name: (values['name'] as string) ?? '',
+      args: values['args'] ?? {},
+      output: (values['output'] as string | null) ?? null,
+      status: (values['status'] as string) ?? 'pending',
+      approvalRequired: (values['approvalRequired'] as boolean) ?? false,
+      approvedByUser: (values['approvedByUser'] as boolean) ?? false,
+      startedAt: (values['startedAt'] as Date) ?? new Date(),
+      finishedAt: (values['finishedAt'] as Date | null) ?? null,
+    }
+    state.toolCallRows.push(row)
+    return [row]
+  }
+
+  const row: FakeSkillRow = {
+    id:
+      (values['id'] as string) ??
+      `00000000-0000-4000-8000-${String(state.skillRows.length + 1).padStart(12, '0')}`,
+    name: (values['name'] as string) ?? '',
+    description: (values['description'] as string) ?? '',
+    promptTemplate: (values['promptTemplate'] as string) ?? '',
+    scope: (values['scope'] as string) ?? 'user',
+    enabled: (values['enabled'] as boolean) ?? true,
+    tags: (values['tags'] as string[]) ?? [],
+    model: (values['model'] as string | null) ?? null,
+    tabCondition: values['tabCondition'] ?? null,
+    createdAt: (values['createdAt'] as Date) ?? new Date(),
+    updatedAt: (values['updatedAt'] as Date) ?? new Date(),
+  }
+  state.skillRows.push(row)
+  return [row]
+}
+
+/**
  * Xac dinh nguon du lieu theo bang Drizzle.
  *
  * @param table - Bang can tra.
@@ -851,6 +945,13 @@ function resolveSource(table: FakeTable, state: FakeConversationDb): Source {
       table,
       rows: state.skillRows as unknown[],
       columnToProp: SKILL_COLUMN_TO_PROP as Record<string, string>,
+    }
+  }
+  if (table === toolCalls) {
+    return {
+      table,
+      rows: state.toolCallRows as unknown[],
+      columnToProp: TOOL_CALL_COLUMN_TO_PROP as Record<string, string>,
     }
   }
   // Bang khac (vd `message_attachments`) → rong (fake khong mo phong).

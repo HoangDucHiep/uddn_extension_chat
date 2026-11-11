@@ -16,16 +16,38 @@ export interface MockProviderOptions {
   /** Token usage gia lap. */
   tokensIn?: number
   tokensOut?: number
+  /**
+   * Tool call gia lap (FR-TOOLS-02 — T-M2-07).
+   *
+   * Khi request co `tools` **va** option nay duoc dat → mock tra tool call
+   * thay vi text. Luot goi provider thu 2 (sau khi tool da chay) → mock
+   * tra text cuoi cung (nhan biet qua `tool` turn trong messages).
+   *
+   * Day la kenh **offline** de test agent loop khong can API key.
+   */
+  toolCall?: { name: string; args: Record<string, unknown> }
+  /**
+   * Text tra ve o luot goi provider **thu 2** (sau khi tool da chay).
+   *
+   * Mac dinh: `DEFAULT_TOOL_FINAL_RESPONSE`.
+   */
+  toolFinalResponse?: string
 }
 
 const DEFAULT_RESPONSE =
   'Day la phan hoi mau tu MockProvider. Ban co the dung provider nay de kiem thu ' +
   'luong chat ma khong can mang hay API key nao.'
 
+/** Text tra ve sau khi tool da chay xong. */
+const DEFAULT_TOOL_FINAL_RESPONSE =
+  'Da chay xong tool va day la phan hoi cuoi cung tu MockProvider.'
+
 export class MockProvider implements ProviderAdapter {
   readonly id = 'mock'
   readonly name = 'Mock Provider'
   readonly requiresKey = false
+  /** Mock ho tro function calling → phuc vu test agent loop offline (T-M2-07). */
+  readonly supportsTools = true
 
   private readonly options: MockProviderOptions
 
@@ -53,8 +75,35 @@ export class MockProvider implements ProviderAdapter {
   }
 
   async *stream(request: ProviderStreamRequest): AsyncGenerator<ProviderChunk, void, undefined> {
-    const text = this.options.response ?? DEFAULT_RESPONSE
     const delayMs = this.options.delayMs ?? 10
+
+    // --- Tool calling (FR-TOOLS-02 — T-M2-07) ---
+    // Mock duoc cau hinh tool call + request co `tools` + chua co turn `tool`
+    // (nghia la server chua chay tool) → mock tra tool call.
+    const hasToolResult = (request.messages ?? []).some(
+      (message) => message.role === 'tool',
+    )
+    const configuredTool = this.options.toolCall
+    if (
+      configuredTool !== undefined &&
+      request.tools !== undefined &&
+      request.tools.length > 0 &&
+      !hasToolResult
+    ) {
+      yield {
+        kind: 'tool_call',
+        toolCallId: 'mock-tool-call-1',
+        name: configuredTool.name,
+        args: configuredTool.args,
+      }
+      yield { kind: 'done', finishReason: 'tool' }
+      return
+    }
+
+    // Luot thu 2 (tool da chay) → tra phan hoi cuoi cung.
+    const text = hasToolResult
+      ? this.options.toolFinalResponse ?? DEFAULT_TOOL_FINAL_RESPONSE
+      : this.options.response ?? DEFAULT_RESPONSE
 
     // Echo so anh nhan duoc → E2E co bang chung anh di het pipeline toi
     // tang provider (FR-VISION-01 — T-M1-24).

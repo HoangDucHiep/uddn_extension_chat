@@ -48,13 +48,26 @@ export interface ProviderAdapter {
   testKey(apiKey: string): Promise<ProviderKeyCheck>
 
   /**
-    * Provider/model co ho tro xu ly anh (FR-VISION-01 — T-M1-24) hay khong.
+   * Provider/model co ho tro xu ly anh (FR-VISION-01 — T-M1-24) hay khong.
    *
    * Server dung ham nay de **bo qua** provider/model khong ho tro vision khi
    * request co anh → fallback sang provider khac. Neu khong con provider
    * nao → tra loi `PROVIDER_VISION_UNSUPPORTED`.
    */
   supportsVision(model: string): boolean
+
+  /**
+   * Provider co ho tro **function calling** (tool calling) khong (FR-TOOLS-01 — T-M2-07).
+   *
+   * Server chi gui `tools` cho provider co `true`. Provider khong ho tro →
+   * `tools` khong duoc gui → model chat binh thuong (khong loi).
+   *
+   * - `openAiCompatible` (groq · openrouter · ollama) → `true`.
+   * - `gemini` → `false` trong lot T-M2-07 (Gemini dung shape rieng:
+   *   `functionDeclarations` + `functionCall`/`functionResponse` parts).
+   * - `mock` → `true` (phuc vu test offline).
+   */
+  readonly supportsTools?: boolean
 
   /**
    * Tra ve danh sach model dang hoat dong.

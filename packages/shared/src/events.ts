@@ -58,10 +58,22 @@ export const chatToolCallEventSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   args: z.unknown(),
+  /**
+   * Tool co can user duyet khong (FR-TOOLS-04 — T-M2-09).
+   *
+   * `true` → UI hien thi badge "Can duyet" + nut Duyet / Tu choi.
+   * Server **khong** cho chay tool dang cho duyet.
+   */
+  approvalRequired: z.boolean(),
 })
 export type ChatToolCallEvent = z.infer<typeof chatToolCallEventSchema>
 
-/** Ket qua tool. */
+/**
+ * Ket qua tool.
+ *
+ * `ok: false` → tool that bai nhung luot chat **khong** hỏng — model
+ * nhan ket qua nay de tu quyet dinh buoc tiep theo.
+ */
 export const chatToolResultEventSchema = z.object({
   type: z.literal('tool_result'),
   id: z.string().min(1),
@@ -122,9 +134,25 @@ export const chatBudgetEventSchema = z.object({
 })
 export type ChatBudgetEvent = z.infer<typeof chatBudgetEventSchema>
 
+/**
+ * Yeu cau user duyet 1 tool call (FR-TOOLS-04 — T-M2-09).
+ *
+ * Server emit event nay khi model goi 1 tool **can duyet**. Luot chat tiep
+ * tuc (model nhan `tool_result` voi `ok: false`) — user duyet o UI roi
+ * `POST /api/tools/:callId/approve` ghi `approved_by_user`.
+ */
+export const chatToolApprovalEventSchema = z.object({
+  type: z.literal('tool_approval'),
+  id: z.string().min(1),
+  name: z.string().min(1),
+  args: z.unknown(),
+  /** Ly do canh bao (tieng Viet) — hien thi cho user. */
+  reason: z.string().min(1),
+})
+export type ChatToolApprovalEvent = z.infer<typeof chatToolApprovalEventSchema>
+
 /** Loi giua luong. */
-export const chatErrorEventSchema = z.object({
-  type: z.literal('error'),
+export const chatErrorEventSchema = z.object({  type: z.literal('error'),
   code: z.string().min(1),
   message: z.string(),
   /**
@@ -153,13 +181,14 @@ export const chatDoneEventSchema = z.object({
 })
 export type ChatDoneEvent = z.infer<typeof chatDoneEventSchema>
 
-/** Union 10 event cua luong chat. */
+/** Union 11 event cua luong chat. */
 export const chatEventSchema = z.discriminatedUnion('type', [
   chatMetaEventSchema,
   chatTokenEventSchema,
   chatCitationEventSchema,
   chatToolCallEventSchema,
   chatToolResultEventSchema,
+  chatToolApprovalEventSchema,
   chatUsageEventSchema,
   chatProviderSwitchEventSchema,
   chatBudgetEventSchema,
@@ -174,6 +203,7 @@ export const CHAT_EVENT_TYPES = [
   'citation',
   'tool_call',
   'tool_result',
+  'tool_approval',
   'usage',
   'provider_switch',
   'budget',

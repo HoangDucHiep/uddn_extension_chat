@@ -65,6 +65,26 @@ export const CONTEXT_SAFETY_MARGIN_TOKENS = 2_000
 export const MAX_CONTEXT_ITEMS = 20
 
 /**
+ * Gioi han cua he tool (FR-TOOLS-01/02 — T-M2-07).
+ *
+ * Agent loop co the goi tool lien tiep → can gioi han so vong de tranh
+ * model lap vong vo han (tran token + tien).
+ */
+export const TOOL_LIMITS = {
+  /**
+   * So vong toi da cua agent loop (FR-TOOLS-02 — "max 5 vong").
+   *
+   * Vong = 1 lan provider stream. Vong cuoi cung co the ket thuc bang
+   * `tool_call` → server dung loop va tra loi hien co + canh bao.
+   */
+  MAX_TOOL_ROUNDS: 5,
+  /** Do dai toi da cua output tool (ky tu) — cat bo truoc khi gui lai cho model. */
+  MAX_TOOL_OUTPUT_CHARS: 8_000,
+  /** So tool toi da gui cho provider trong 1 request. */
+  MAX_TOOLS_PER_REQUEST: 20,
+} as const
+
+/**
  * Thoi gian cache context theo URL (ms) — T-M1-06.
  *
  * Cache dung de (a) khong trich xuat lai trang da doc va (b) fallback khi
@@ -150,6 +170,14 @@ export const API_ROUTES = {
   budget: `${API_BASE_PATH}/budget`,
   /** CRUD skill — GET/POST/PATCH/DELETE (FR-SKILL-01/02/03 — T-M2-04). */
   skills: `${API_BASE_PATH}/skills`,
+  /**
+   * Tool registry + duyet tool call (FR-TOOLS-01/04 — T-M2-07/09).
+   *
+   * - `GET /api/tools` — danh sach tool server dang co.
+   * - `POST /api/tools/:callId/approve` — duyet 1 tool call.
+   * - `POST /api/tools/:callId/deny` — tu choi 1 tool call.
+   */
+  tools: `${API_BASE_PATH}/tools`,
 } as const
 
 /**

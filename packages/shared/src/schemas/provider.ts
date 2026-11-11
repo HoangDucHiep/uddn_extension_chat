@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { PROVIDER_IDS } from '../constants.js'
 import { providerInfoSchema } from '../types/entities.js'
 import { providerImageSchema } from './vision.js'
+import { toolDefinitionSchema } from './tool.js'
 
 /** Do dai context cua provider. */
 export const providerModelSchema = z.object({
@@ -32,7 +33,7 @@ export const providerStreamRequestSchema = z.object({
     model: z.string().min(1),
   messages: z.array(
     z.object({
-      role: z.enum(['system', 'user', 'assistant']),
+      role: z.enum(['system', 'user', 'assistant', 'tool']),
       content: z.string(),
       /**
        * Anh cua turn (FR-VISION-01 — T-M1-24).
@@ -41,6 +42,28 @@ export const providerStreamRequestSchema = z.object({
        * khong phai base64 client gui.
        */
       attachments: z.array(providerImageSchema).optional(),
+      /**
+       * Id tool call ma turn nay tra loi (FR-TOOLS-02 — T-M2-07).
+       *
+       * Chi co khi `role === 'tool'` → provider dung id nay de ghep ket qua
+       * tool voi yeu cau goi tool truoc do.
+       */
+      toolCallId: z.string().min(1).optional(),
+      /**
+       * Danh sach tool model da goi trong turn nay (FR-TOOLS-02 — T-M2-07).
+       *
+       * Chi co khi `role === 'assistant'` → provider biet can tra loi bang
+       * ket qua tool.
+       */
+      toolCalls: z
+        .array(
+          z.object({
+            id: z.string().min(1),
+            name: z.string().min(1),
+            args: z.unknown(),
+          }),
+        )
+        .optional(),
     }),
   ),
   temperature: z.number().min(0).max(2).optional(),
@@ -55,12 +78,20 @@ export const providerStreamRequestSchema = z.object({
    */
   requestId: z.string().min(1).max(200).optional(),
   signal: z.instanceof(AbortSignal).optional(),
+  /**
+   * Danh sach tool model duoc phep goi (FR-TOOLS-01 — T-M2-07).
+   *
+   * Server chi gan field nay khi provider **ho tro** function calling
+   * (xem `ProviderAdapter.supportsTools`). Provider khong ho tro →
+   * `undefined` → adapter khong gui `tools` → model chat binh thuong.
+   */
+  tools: z.array(toolDefinitionSchema).optional(),
 })
 export type ProviderStreamRequest = z.infer<typeof providerStreamRequestSchema>
 
 /** Chunk duoc provider tra ve (trước khi chuan hoa thanh SSE event). */
 export const providerChunkSchema = z.object({
-  kind: z.enum(['token', 'usage', 'error', 'done']),
+  kind: z.enum(['token', 'usage', 'error', 'done', 'tool_call']),
   text: z.string().optional(),
   tokensIn: z.number().int().nonnegative().optional(),
   tokensOut: z.number().int().nonnegative().optional(),
@@ -77,6 +108,17 @@ export const providerChunkSchema = z.object({
    * So giay cho thu lai (tu header `Retry-After` cua provider, HTTP 429).
    */
   retryAfterSeconds: z.number().int().nonnegative().optional(),
+  /**
+   * Id tool call (FR-TOOLS-02 — T-M2-07).
+   *
+   * Do **provider** sinh ra — dung de ghep `tool_call` voi `tool_result`
+   * va de model biet tool nao duoc tra loi.
+   */
+  toolCallId: z.string().min(1).optional(),
+  /** Ten tool model goi. */
+  name: z.string().min(1).optional(),
+  /** Tham so model truyen (da parse JSON). */
+  args: z.unknown().optional(),
 })
 export type ProviderChunk = z.infer<typeof providerChunkSchema>
 
