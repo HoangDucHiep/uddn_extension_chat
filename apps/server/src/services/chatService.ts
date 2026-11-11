@@ -53,10 +53,12 @@ import { clearCitations, extractCitations, persistCitations } from './citationSe
 import { buildAutoTitle } from './conversationService.js'
 import { buildBudgetStatus } from './budgetService.js'
 import { resolveSkillForChat, type ResolvedSkill } from './skillService.js'
+import { listMcpServerConfigs } from './mcpService.js'
 import { insertRequestLog, type RequestLogData } from './requestLogService.js'
 import { persistToolCalls, type ToolCallRecordInput } from './toolCallService.js'
 import { executeTool, type ToolExecutionOutcome } from '../tools/executor.js'
 import { createDefaultToolRegistry, type ToolRegistry } from '../tools/registry.js'
+import type { McpManager } from '../tools/mcp/manager.js'
 import {
   derivePath,
   loadMessage,
@@ -134,6 +136,14 @@ export interface ChatServiceDeps {
    * Inject de test voi tool gia lap.
    */
   toolRegistry?: ToolRegistry
+  /**
+   * Manager MCP (FR-TOOLS-01 — T-M2-08).
+   *
+   * **Optional** → khong co MCP server nao trong luot chat.
+   * Manager refresh (doc cau hinh tu DB → spawn → dong bo tool) truoc khi
+   * resolve tool definitions → tool MCP san sang cho model.
+   */
+  mcpManager?: McpManager
 }
 
 export interface ChatStreamResult {
@@ -522,6 +532,22 @@ export function createChatStream(
 
       // Tool definitions cho provider nay (FR-TOOLS-01 — T-M2-07).
       // Provider khong ho tro function calling → khong gui `tools`.
+      //
+      // MCP (T-M2-08): refresh truoc → tool MCP san sang cho model.
+      // Refresh co TTL 30s nen khong spawn lai process o moi luot chat.
+      if (deps.mcpManager !== undefined) {
+        try {
+          const configs = await listMcpServerConfigs(deps.db)
+          await deps.mcpManager.refresh(configs)
+        } catch (error: unknown) {
+          // MCP loi khong duoc lam hong luot chat → log va bo qua.
+          console.error(
+            '[mcp] khong refresh duoc MCP server:',
+            error instanceof Error ? error.message : error,
+          )
+        }
+      }
+
       const candidateTools = resolveToolDefinitions(
         deps.toolRegistry ?? createDefaultToolRegistry(),
         deps.registry,

@@ -7,6 +7,8 @@ import { createApp } from './app.js'
 import { getAllowedOrigins, getGeminiFallbackModels, getProviderFallbacks, loadEnv } from './config/env.js'
 import { createDatabase } from './db/index.js'
 import { ProviderRegistry } from './providers/registry.js'
+import { createDefaultToolRegistry } from './tools/registry.js'
+import { McpManager } from './tools/mcp/manager.js'
 import { pruneRequestLogs } from './services/requestLogService.js'
 import type { ProviderId } from '@sidekick/shared'
 
@@ -28,10 +30,16 @@ async function main(): Promise<void> {
     ollamaBaseUrl: env.OLLAMA_BASE_URL,
   })
 
+  const toolRegistry = createDefaultToolRegistry()
+  // Manager MCP dung chung giua chat loop va API `/api/mcp/*` (T-M2-08).
+  const mcpManager = new McpManager(toolRegistry)
+
   const app = createApp({
     db,
     pool,
     registry,
+    toolRegistry,
+    mcpManager,
     envKeys: {
       groq: env.GROQ_API_KEY,
       openrouter: env.OPENROUTER_API_KEY,
@@ -84,6 +92,8 @@ async function main(): Promise<void> {
   const shutdown = (signal: string): void => {
     console.log(`\nNhan ${signal}, dang tat server...`)
     clearInterval(pruneTimer)
+    // Dong process MCP server truoc khi tat (T-M2-08) → khong de treo process con.
+    void mcpManager.disconnectAll().catch(() => undefined)
     server.close(() => {
       void pool.end().then(() => {
         console.log('Da dong ket noi DB.')

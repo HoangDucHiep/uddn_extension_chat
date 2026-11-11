@@ -78,7 +78,12 @@ export default tseslint.config(
     // `chrome` cung duoc them: code trong `page.evaluate()` chay **trong
     // trang extension** → co API `chrome.storage` thật (khong phai global
     // cua Node) → ESLint phai biet de khong bao `no-undef`.
-    files: ['scripts/**/*.mjs', 'scripts/**/*.js'],
+    files: [
+      'scripts/**/*.mjs',
+      'scripts/**/*.js',
+      'apps/*/scripts/**/*.mjs',
+      'apps/*/scripts/**/*.js',
+    ],
     languageOptions: {
       ecmaVersion: 2023,
       sourceType: 'module',

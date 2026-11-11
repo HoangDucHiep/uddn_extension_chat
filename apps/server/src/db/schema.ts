@@ -290,6 +290,48 @@ export const skills = pgTable(
 )
 
 /** ------------------------------------------------------------------
+ * mcp_servers — cau hinh MCP server cua nguoi dung (FR-TOOLS-01 — T-M2-08)
+ *
+ * Server luu cau hinh (lenh spawn) trong Postgres → dung chung cho nhieu
+ * luot chat va moi moi truong. Tien trinh MCP **khong** luu trong DB →
+ * `McpManager` spawn theo vong doi.
+ * ---------------------------------------------------------------- */
+export const mcpServers = pgTable(
+  'mcp_servers',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    /** Ten server — unique, dung de namespace tool (`mcp__<name>__<tool>`). */
+    name: text('name').notNull(),
+    /** Transport — lot nay chi `stdio`. */
+    transport: text('transport').notNull().default('stdio'),
+    /** Lenh spawn (vd `npx` · `node` · `uvx`). */
+    command: text('command').notNull(),
+    /** Tham so truyen cho lenh. */
+    args: text('args').array().notNull().default(sql`'{}'::text[]`),
+    /** Bien moi truong them cho process. */
+    env: jsonb('env').notNull().default(sql`'{}'::jsonb`),
+    /** Bat/tat — tat → khong connect, tool bi an khoi registry. */
+    enabled: boolean('enabled').notNull().default(true),
+    /**
+     * Cho phep chay tool cua server nay **khong** can user duyet.
+     *
+     * Mac dinh `false` → tool MCP luon can duyet (FR-TOOLS-04).
+     */
+    autoApprove: boolean('auto_approve').notNull().default(false),
+    /** Moc ket noi thanh cong gan nhat. */
+    lastConnectedAt: timestamp('last_connected_at', { withTimezone: true }),
+    /** Loi ket noi gan nhat (tieng Viet) — hien thi trong Settings. */
+    lastError: text('last_error'),
+    createdAt,
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('mcp_servers_name_idx').on(table.name),
+    index('mcp_servers_enabled_idx').on(table.enabled),
+  ],
+)
+
+/** ------------------------------------------------------------------
  * Relations
  * ---------------------------------------------------------------- */
 export const conversationsRelations = relations(conversations, ({ many }) => ({
@@ -341,3 +383,5 @@ export type BudgetSettingsRow = typeof budgetSettings.$inferSelect
 export type NewBudgetSettingsRow = typeof budgetSettings.$inferInsert
 export type SkillRow = typeof skills.$inferSelect
 export type NewSkillRow = typeof skills.$inferInsert
+export type McpServerRow = typeof mcpServers.$inferSelect
+export type NewMcpServerRow = typeof mcpServers.$inferInsert

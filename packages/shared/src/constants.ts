@@ -95,6 +95,36 @@ export const TOOL_CALL_STATUSES = ['pending', 'running', 'ok', 'error', 'denied'
 export type ToolCallStatus = (typeof TOOL_CALL_STATUSES)[number]
 
 /**
+ * Trang thai ket noi cua 1 MCP server (FR-TOOLS-01 — T-M2-08).
+ *
+ * `disconnected` · `connecting` → chua san sang · `connected` → dung duoc ·
+ * `error` → ket noi that bai (server khong chan server khac).
+ */
+export const MCP_SERVER_STATUSES = [
+  'disconnected',
+  'connecting',
+  'connected',
+  'error',
+] as const
+
+/**
+ * Gioi han cua MCP client (FR-TOOLS-01 — T-M2-08).
+ */
+export const MCP_LIMITS = {
+  /** So MCP server toi da chay dong thoi. */
+  MAX_SERVERS: 8,
+  /** Timeout 1 request JSON-RPC (ms) — khong de treo agent loop. */
+  REQUEST_TIMEOUT_MS: 10_000,
+  /**
+   * TTL cache danh sach tool (ms) — **gia tri tham khảo** cho client MCP tu
+   * cache. Server (T-M2-08) khong spawn lai process khi cau hinh khong doi.
+   */
+  TOOL_CACHE_TTL_MS: 30_000,
+  /** Do dai toi da cua output 1 tool MCP (ky tu). */
+  MAX_OUTPUT_CHARS: 8_000,
+} as const
+
+/**
  * Thoi gian cache context theo URL (ms) — T-M1-06.
  *
  * Cache dung de (a) khong trich xuat lai trang da doc va (b) fallback khi
@@ -188,6 +218,19 @@ export const API_ROUTES = {
    * - `POST /api/tools/:callId/deny` — tu choi 1 tool call.
    */
   tools: `${API_BASE_PATH}/tools`,
+  /**
+   * Quan ly MCP server (FR-TOOLS-01 — T-M2-08).
+   *
+   * - `GET /api/mcp/servers` — danh sach MCP server + trang thai ket noi.
+   * - `POST /api/mcp/servers` — them MCP server (server connect thu).
+   * - `PATCH /api/mcp/servers/:id` — sua cau hinh.
+   * - `DELETE /api/mcp/servers/:id` — xoa + disconnect.
+   * - `POST /api/mcp/servers/:id/reconnect` — ket noi lai.
+   * - `GET /api/mcp/tools` — danh sach tool MCP dang expose cho model.
+   */
+  mcpServers: `${API_BASE_PATH}/mcp/servers`,
+  /** Tool MCP dang expose cho model — template, thay `:id` neu can. */
+  mcpTools: `${API_BASE_PATH}/mcp/tools`,
 } as const
 
 /**

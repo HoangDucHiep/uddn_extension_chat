@@ -42,6 +42,39 @@ export class ToolRegistry {
     return this.tools.get(name)
   }
 
+  /**
+   * Go 1 tool khoi registry.
+   *
+   * Dung khi MCP server bi xoa/tat → tool cua server phai bien mat khoi
+   * danh sach gui cho provider (khong de model goi tool da chet).
+   *
+   * @param name - Ten tool can go.
+   * @returns `true` neu da go 1 tool.
+   */
+  unregister(name: string): boolean {
+    return this.tools.delete(name)
+  }
+
+  /**
+   * Go moi tool co tien to cho truoc.
+   *
+   * Dung cho namespace MCP (`mcp__<server>__`) → go tool cua 1 server ma
+   * khong go nham tool built-in.
+   *
+   * @param prefix - Tien to ten tool.
+   * @returns So tool da go.
+   */
+  unregisterByPrefix(prefix: string): number {
+    let removed = 0
+    for (const name of [...this.tools.keys()]) {
+      if (name.startsWith(prefix)) {
+        this.tools.delete(name)
+        removed += 1
+      }
+    }
+    return removed
+  }
+
   /** Danh sach tool dang co (theo thu tu dang ky). */
   list(): Tool[] {
     return [...this.tools.values()]

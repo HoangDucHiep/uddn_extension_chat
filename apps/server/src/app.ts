@@ -21,6 +21,9 @@ import { createLogsRouter } from './routes/logs.js'
 import { createBudgetRouter } from './routes/budget.js'
 import { createSkillsRouter } from './routes/skills.js'
 import { createToolsRouter } from './routes/tools.js'
+import { createMcpRouter } from './routes/mcp.js'
+import { createDefaultToolRegistry } from './tools/registry.js'
+import { McpManager } from './tools/mcp/manager.js'
 import type { ChatServiceDeps } from './services/chatService.js'
 import type { ProviderServiceDeps } from './services/providerService.js'
 
@@ -30,6 +33,12 @@ export interface AppDeps extends ChatServiceDeps, ProviderServiceDeps {
   allowedOrigins: string[]
   logLevel: LogLevel
   listProviders: () => string[]
+  /**
+   * Manager MCP (FR-TOOLS-01 — T-M2-08).
+   *
+   * **Optional** → mac dinh manager rong (khong co MCP server nao).
+   */
+  mcpManager?: McpManager
 }
 
 export function createApp(deps: AppDeps): Express {
@@ -58,6 +67,12 @@ export function createApp(deps: AppDeps): Express {
     db: deps.db,
     ...(deps.toolRegistry !== undefined ? { toolRegistry: deps.toolRegistry } : {}),
   })
+  const mcpRouter = createMcpRouter({
+    db: deps.db,
+    mcpManager:
+      deps.mcpManager ??
+      new McpManager(deps.toolRegistry ?? createDefaultToolRegistry()),
+  })
 
   // `/api/health` la endpoint chinh; `/health` la alias de smoke test nhanh.
   app.use(API_BASE_PATH, healthRouter)
@@ -71,6 +86,7 @@ export function createApp(deps: AppDeps): Express {
   app.use(API_BASE_PATH, budgetRouter)
   app.use(API_BASE_PATH, skillsRouter)
   app.use(API_BASE_PATH, toolsRouter)
+  app.use(API_BASE_PATH, mcpRouter)
 
   app.use(notFoundHandler)
   app.use(errorHandler)

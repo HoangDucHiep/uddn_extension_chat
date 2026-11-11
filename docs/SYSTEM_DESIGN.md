@@ -3864,6 +3864,136 @@ export interface ChatToolCall {
 
 ---
 
+### 7.27 MCP client (stdio transport) + server manager (FR-TOOLS-01 — T-M2-08)
+
+> Nguồn sự thật cho hành vi: [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.8 (FR-TOOLS-01).
+
+**MCP** (Model Context Protocol) là chuẩn mở của Anthropic: một **MCP server** là tiến trình riêng expose **tool** qua JSON-RPC 2.0. Sidekick làm **MCP client**: nối tới nhiều MCP server → tool của chúng được đăng ký vào `ToolRegistry` (§7.26.3) → model gọi được như tool built-in.
+
+#### 7.27.1 Framing JSON-RPC 2.0 (`apps/server/src/tools/mcp/protocol.ts`)
+
+MCP stdio dùng **newline-delimited JSON** (mỗi message = 1 dòng JSON + `\n`) — **không** có header `Content-Length` (khác LSP).
+
+| Hàm | Ý nghĩa |
+|---|---|
+| `JSON_RPC_VERSION` | `'2.0'` |
+| `MCP_PROTOCOL_VERSION` | `'2024-11-05'` — phiên bản client khai báo trong `initialize` |
+| `createRequest(id, method, params?)` | Tạo request có `id` |
+| `createResult(id, result)` / `createError(id, code, message, data?)` | Tạo response |
+| `encodeMessage(msg)` | `JSON.stringify` + `\n` |
+| `parseMessages(buffer)` | Tách buffer thành mảng response — **bỏ qua** dòng không phải JSON (MCP server hay in log rác ra stdout) |
+
+Module **thuần** — không import Zod, không biết gì về MCP semantics → test nhanh + tái sử dụng được cho HTTP/SSE transport (task sau).
+
+#### 7.27.2 MCP client stdio (`apps/server/src/tools/mcp/client.ts`)
+
+| Hàm / thuộc tính | Ý nghĩa |
+|---|---|
+| `McpClient` | Spawn 1 tiến trình MCP server → giao tiếp JSON-RPC qua stdin/stdout |
+| `connect()` | Spawn → `initialize` (protocolVersion + clientInfo) → `notifications/initialized` |
+| `listTools()` | `tools/list` → `McpToolInfo[]` (tên · mô tả · JSON Schema đã chuẩn hoá về `object`) |
+| `callTool(name, args)` | `tools/call` → `{ ok, output }` — lỗi tool trả `ok: false`, **không** ném exception |
+| `disconnect()` | Kill process + hủy mọi request đang chờ — **idempotent** |
+| `McpClientError` | `kind`: `spawn` · `timeout` · `protocol` · `remote` · `closed` — message luôn **tiếng Việt** để hiển thị cho user |
+
+**Quy tắc:**
+
+| Quy tắc | Chi tiết |
+|---|---|
+| Timeout | Mỗi request có timeout `MCP_LIMITS.REQUEST_TIMEOUT_MS` (**10 s**) → không treo agent loop |
+| `stderr` tách riêng | Chỉ `stdout` dùng cho framing; `stderr` giữ 500 ký tự cuối để báo lỗi rõ ràng |
+| `shell: true` | Chỉ khi `command` kết thúc `.cmd`/`.bat` (script Windows) → tránh shell injection từ `args` |
+| `env` | `process.env` + biến riêng của user → MCP server nhận được `API_KEY` … |
+
+#### 7.27.3 MCP manager (`apps/server/src/tools/mcp/manager.ts`)
+
+`McpManager` là cầu nối giữa **DB** → **tiến trình** → **ToolRegistry**.
+
+| Hàm | Ý nghĩa |
+|---|---|
+| `refresh(configs, { force? })` | Đọc cấu hình → connect server mới → disconnect server đã xoá → đồng bộ tool |
+| `listServers()` / `listTools()` | Trạng thái runtime / danh sách tool đã namespace |
+| `reconnect(id)` | Đóng + mở lại 1 server (nút "Kết nối lại") |
+| `disconnectAll()` | Đóng mọi server (khi BFF tắt) |
+
+**Namespace tool:** `mcp__<server>__<tool>` — ví dụ `mcp__sample__echo`.
+
+- Khớp chuẩn tên function của OpenAI (`[a-zA-Z0-9_-]{1,64}`) → provider nhận nguyên trạng.
+- Tránh đụng tên tool built-in (`calculator`).
+- Tên server ràng buộc `^[a-z0-9_-]+$` → namespace luôn hợp lệ.
+
+**Quy tắc:**
+
+| Quy tắc | Chi tiết |
+|---|---|
+| **1 server lỗi không chặn server khác** | Server lỗi → `status: 'error'` + `lastError`; tool của các server còn lại vẫn dùng được |
+| **Không spawn lại mỗi lượt chat** | Server đã connect + cấu hình không đổi → bỏ qua (chỉ đọc lại DB) |
+| **Cấu hình đổi → connect lại** | So `command` · `args` · `env` · `autoApprove` |
+| **Tool MCP mặc định cần duyệt** | `requiresApproval = !autoApprove` → `ToolRegistry.requiresApproval()` → agent loop dừng tool chờ user duyệt (FR-TOOLS-04) |
+| **Tool cũ bị gỡ** | `registry.unregisterByPrefix('mcp__<server>__')` khi server bị xoá / đổi danh sách tool → không để model gọi tool đã chết |
+| **Lỗi tool không làm hỏng lượt chat** | `execute` trả `ToolResult { ok: false, output }` |
+| **Output bị cắt** | Tối đa `MCP_LIMITS.MAX_OUTPUT_CHARS` (**8 000** ký tự) |
+
+#### 7.27.4 DB — bảng `mcp_servers`
+
+Migration: `apps/server/drizzle/0006_mcp_servers.sql`.
+
+| Cột | Kiểu | Ghi chú |
+|---|---|---|
+| `id` | `uuid` | PK |
+| `name` | `text` | **Unique** — dùng để namespace tool |
+| `transport` | `text` | `'stdio'` (lot này chỉ stdio) |
+| `command` | `text` | Lệnh spawn (vd `npx` · `node` · `uvx`) |
+| `args` | `text[]` | Tham số truyền cho lệnh |
+| `env` | `jsonb` | Biến môi trường thêm cho tiến trình |
+| `enabled` | `boolean` | Tắt → không connect, tool bị ẩn khỏi registry |
+| `auto_approve` | `boolean` | `true` → tool của server này **không** cần duyệt (mặc định `false`) |
+| `last_connected_at` | `timestamptz` | Mốc kết nói thành công gần nhất |
+| `last_error` | `text` | Lỗi kết nối gần nhất (tiếng Việt) |
+
+> Tiến trình MCP **không** lưu trong DB → `McpManager` spawn theo vòng đời BFF.
+
+#### 7.27.5 API (`apps/server/src/routes/mcp.ts`)
+
+| Method | Path | Ý nghĩa |
+|---|---|---|
+| `GET` | `/api/mcp/servers` | Danh sách MCP server + trạng thái runtime (`status` · `toolCount` · `lastError`) |
+| `POST` | `/api/mcp/servers` | Thêm MCP server (server **connect thử ngay**) |
+| `PATCH` | `/api/mcp/servers/:id` | Sửa cấu hình (`command` · `args` · `env` · `enabled` · `autoApprove`) |
+| `DELETE` | `/api/mcp/servers/:id` | Xoá + disconnect + gỡ tool |
+| `POST` | `/api/mcp/servers/:id/reconnect` | Kết nối lại 1 server |
+| `GET` | `/api/mcp/tools` | Danh sách tool MCP đang expose cho model |
+
+- Tên trùng → `409 CONFLICT` · vượt `MCP_LIMITS.MAX_SERVERS` (**8**) → `400 BAD_REQUEST` · body sai → `400 VALIDATION_ERROR` · không tồn tại → `404 NOT_FOUND`.
+
+#### 7.27.6 Nối vào agent loop
+
+Trong `chatService.ts`, **trước** khi `resolveToolDefinitions()`:
+
+```
+if (deps.mcpManager !== undefined) {
+  configs = listMcpServerConfigs(db)     // đọc DB
+  await deps.mcpManager.refresh(configs) // spawn + đồng bộ tool
+}
+```
+
+- Lỗi refresh MCP → **log + bỏ qua** → lượt chat vẫn chạy bình thường.
+- Gate `supportsTools` của provider **giữ nguyên** → Gemini (chưa hỗ trợ tool) không nhận `tools`.
+- `McpManager` được chia sẻ giữa agent loop và API `/api/mcp/*` (cùng 1 instance trong `index.ts`).
+
+#### 7.27.7 Kiểm thử
+
+| Tầng | File | Phủ |
+|---|---|---|
+| Server unit | `apps/server/tests/mcpProtocol.test.ts` | `createRequest` · `createResult`/`createError` · `encodeMessage` · `parseMessages` (bỏ qua dòng rác · nhiều message · message sai shape) |
+| Server unit | `apps/server/tests/mcpClient.test.ts` | handshake thật với `scripts/sample-mcp-server.mjs` · `tools/list` · `tools/call` ok/lỗi · lệnh không tồn tại → `McpClientError` · `disconnect` idempotent |
+| Server unit | `apps/server/tests/mcpManager.test.ts` | namespace tool · đăng ký vào registry · approval gate theo `autoApprove` · server lỗi không chặn server khác · không spawn lại · gỡ tool khi server bị xoá · execute tool qua MCP |
+| Server unit | `apps/server/tests/mcpRoute.test.ts` | `GET/POST/PATCH/DELETE /api/mcp/servers` · `reconnect` · `GET /api/mcp/tools` · 409 / 400 / 404 |
+| Server helper | `apps/server/tests/helpers/fakeMcpDb.ts` | Fake Drizzle cho bảng `mcp_servers` (không cần Docker) |
+| Server fixture | `apps/server/scripts/sample-mcp-server.mjs` | MCP server mẫu (tool `echo` + `add`) — dùng cho test **và** demo tay |
+
+---
+
 ## 8. Hiệu năng
 
 | Chỉ số | Mục tiêu | Cách đạt |
