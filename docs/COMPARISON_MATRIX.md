@@ -103,7 +103,7 @@ Cột ưu tiên: **M** = Must (M1) · **S** = Should (M2) · **C** = Could (M2/M
 | C1 | **Multi-provider + model picker** (OpenAI, Gemini, Anthropic, OpenRouter, Groq, Ollama) | FR-PROVIDER-01/03 | Đánh trực tiếp A22, B21 |
 | C2 | **BYOK** — tự mang API key, key mã hoá phía server | FR-PROVIDER-02 ⏸ | Đánh trực tiếp A23, B22 — **⏸ tạm dừng 2026-11-08** (BYOK bị gỡ khỏi sản phẩm; server giữ nguyên `provider_keys` để mở lại sau) |
 | C3 | **Self-host BFF** qua Docker Compose, chạy hoàn toàn local | §6, FR-PROVIDER-07 | Đánh trực tiếp B25 |
-| C4 | **MCP-native tool integration** | FR-TOOLS-01/02 | Đánh trực tiếp B13 (thay thế bằng chuẩn mở) — ⬜ **chưa implement** (T-M2-08) — **lưu ý:** tool registry + agent loop **đã** có (T-M2-07) nhưng **chưa** có MCP client; xem dòng **C16** |
+| C4 | **MCP-native tool integration** | FR-TOOLS-01/02 | Đánh trực tiếp B13 (thay thế bằng chuẩn mở) — ✅ **T-M2-08 (2026-11-11)** — **MCP client stdio** (`apps/server/src/tools/mcp/`): `protocol.ts` (JSON-RPC 2.0 newline-delimited) · `client.ts` (spawn tiến trình → `initialize` → `notifications/initialized` → `tools/list` → `tools/call`) · `manager.ts` (nhiều server · **namespace tool `mcp__<server>__<tool>`** → đăng ký vào `ToolRegistry` → model gọi được như tool built-in). Cấu hình lưu Postgres (bảng `mcp_servers`) · tool MCP **mặc định cần duyệt** · 1 server lỗi không chặn server khác · UI quản lý trong Settings. Chi tiết: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.27 |
 | C5 | **Log request đầy đủ có cấu trúc** (prompt, context hash, token, cost, latency, tool call) | NFR-MAINT-04, §7.2 | Đánh trực tiếp B24; **đây là nền tảng cho eval** — T-M1-06 đã sửa `context_hash` thành hash của **context thật đã gửi** (trước đó là hash toàn bộ prompt) + thêm `context_snapshot` theo setting |
 | C6 | **Token & cost visibility** theo lượt + budget cap | FR-PROVIDER-05/06 | Không có ở A/B — **T-M2-03 (FR-PROVIDER-05)** ✅: badge token/cost theo lượt + section "Chi phí & sử dụng" (tổng + theo ngày). **T-M2-03b (FR-PROVIDER-06)** ✅: budget cap **enforce phía server** (hạn mức USD theo kỳ `daily`/`monthly`, cảnh báo ở ngưỡng, **tùy chọn chặn** lượt chat mới khi vượt hạn mức — server **không gọi provider** → chi phí = 0). Cấu hình lưu trong Postgres (bảng `budget_settings`) → server là nguồn chặn sự thật. Chi tiết: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.23 · §7.24 |
 | C7 | **RAG local** trên lịch sử chat + tài liệu, có trích dẫn | FR-TOOLS-05 | Minh bạch hơn B15 (Personal Intelligence) — ⬜ **chưa implement** (T-M2-10/11) |
@@ -141,8 +141,8 @@ Cột ưu tiên: **M** = Must (M1) · **S** = Should (M2) · **C** = Could (M2/M
 | Connected apps | ✅ M365 | ✅ Google | ➖ (MCP) | C |
 | Multi-model / BYOK | ➖ | ➖ | 🟢 | — |
 | Self-host / offline | ➖ | ➖ | 🟢 | — |
-| MCP | ➖ | ➖ | ⬜ (T-M2-08 — chưa implement) | — |
-| Tool registry + agent loop | ➖ | ➖ | ✅ (T-M2-07/09 — registry in-memory + `calculator` + approval gate; **chưa** có MCP) | — |
+| MCP | ➖ | ➖ | ✅ (T-M2-08 — MCP client stdio: spawn server → `tools/list` → namespace `mcp__<server>__<tool>` → đăng ký vào tool registry; UI trong Settings) | — |
+| Tool registry + agent loop | ➖ | ➖ | ✅ (T-M2-07/09 — registry in-memory + `calculator` + approval gate; **T-M2-08** bổ sung tool từ MCP server) | — |
 | Log & eval | ➖ | ➖ | 🟢 | — |
 | Cost visibility | ➖ | ➖ | 🟢 | — |
 | Per-domain privacy | ⚠️ | ➖ | 🟢 | — |
@@ -323,6 +323,23 @@ Tool registry + agent loop + tool call UI + approval gate là tính năng **đ�
 | Ảnh hưởng §C/§D | **C16** (tool registry + tool call UI có approval gate) ⬜ → ✅ (dòng **mới**) · §C4 (MCP) **giữ ⬜** (T-M2-08 — mới có tool registry, **chưa** có MCP client) · §D dòng **"Tool registry + agent loop"** 🟢 → ✅ (dòng **mới**) · §D dòng **MCP** giữ **⬜** |
 
 > **Ghi chú công bằng:** approval gate hiện là **hạ tầng** — chưa có tool **ghi dữ liệu thật** để chứng minh luồng "plan + diff" đầy đủ của FR-TOOLS-04 (thuộc T-M2-18). Khi trình bày, **không** được nói "Sidekick có xác nhận trước khi hành động" như đã hoàn chỉnh — nói "đã có cơ chế duyệt tool, tool hiện chỉ là read-only".
+
+#### E.1.7 Cập nhật sau T-M2-08 — MCP client stdio + server manager (2026-11-11)
+
+MCP là tính năng **độc quyền** (§C4 + dòng §D "MCP") → **đóng** 2 dòng đó. Không thêm dòng §E mới (MCP **không** nằm trong checklist parity Edge/Gemini) → **tỉ lệ pass §E giữ nguyên 34/35 = 97.1%**.
+
+**Bằng chứng:**
+
+| Hạng mục | Bằng chứng |
+|---|---|
+| **MCP client stdio** (FR-TOOLS-01) | `apps/server/src/tools/mcp/protocol.ts` — framing **JSON-RPC 2.0** newline-delimited (thuần, không Zod): `createRequest` · `createResult`/`createError` · `encodeMessage` · `parseMessages` (bỏ qua dòng không phải JSON). `apps/server/src/tools/mcp/client.ts` — `McpClient`: spawn child process → `initialize` (`protocolVersion 2024-11-05` + `clientInfo`) → `notifications/initialized` → `tools/list` → `tools/call` · timeout **10 s**/request · `stderr` tách riêng khỏi framing stdout · `disconnect()` idempotent · `McpClientError` (message tiếng Việt) |
+| **MCP server manager** | `apps/server/src/tools/mcp/manager.ts` — `McpManager`: nhiều server · **namespace tool `mcp__<server>__<tool>`** → đăng ký vào `ToolRegistry` → model gọi được như tool built-in · `requiresApproval = !autoApprove` (tool MCP **mặc định cần duyệt**) · **1 server lỗi không chặn server khác** · gỡ tool cũ khi server bị xoá (`registry.unregisterByPrefix`) · không spawn lại mỗi lượt chat · `reconnect` · `disconnectAll` (khi BFF tắt) |
+| **Lưu trữ + API** | Bảng `mcp_servers` (migration `0006_mcp_servers.sql`: `name` unique · `command` · `args` · `env` jsonb · `enabled` · `auto_approve` · `last_connected_at` · `last_error`). API `GET/POST/PATCH/DELETE /api/mcp/servers` · `POST /api/mcp/servers/:id/reconnect` · `GET /api/mcp/tools` (`apps/server/src/routes/mcp.ts` + `services/mcpService.ts`). Nối agent loop: `chatService.ts` refresh manager **trước** `resolveToolDefinitions()` — lỗi MCP → log + bỏ qua (lượt chat không hỏng) |
+| **UI quản lý** | `apps/extension/src/sidepanel/components/settings/McpSettings.tsx` — section "MCP server" trong drawer Settings (sau "Ngân sách chi phí"): danh sách server (tên · lệnh · **badge trạng thái** `disconnected`/`connecting`/`connected`/`error` · số tool · lỗi kết nối) · form thêm (tên · lệnh · tham số mỗi dòng 1 · env `KEY=VALUE` mỗi dòng 1 · toggle "cho chạy tool không cần duyệt") · nút "Kết nối lại" · nút "Xoá" (**có** `ConfirmDialog`) · client `apps/extension/src/lib/mcpClient.ts` |
+| Kiểm thử | Server `apps/server/tests/mcpProtocol.test.ts` · `mcpClient.test.ts` (handshake thật) · `mcpManager.test.ts` · `mcpRoute.test.ts` · helper `apps/server/tests/helpers/fakeMcpDb.ts` · fixture `apps/server/scripts/sample-mcp-server.mjs` · Extension `apps/extension/tests/mcpClient.test.ts` · `mcpSettings.test.tsx` · E2E `apps/extension/e2e/mcp.spec.ts` (**4/4** — section hiện · danh sách rỗng · thêm server gọi API đúng body · server đã kết nối hiện tên + số tool) |
+| Ảnh hưởng §C/§D | **C4** (MCP-native tool integration) ⬜ → ✅ · §D dòng **MCP** ⬜ → ✅ · §D dòng **"Tool registry + agent loop"** ✅ (bổ sung nguồn tool từ MCP server) |
+
+> **Ghi chú công bằng:** lot T-M2-08 chỉ hỗ trợ transport **stdio**. HTTP/SSE transport (MCP server chạy từ xa) **chưa** có → khi trình bày nói rõ "MCP client qua stdio (tiến trình cục bộ)", **không** nói "hỗ trợ MCP đầy đủ". Provider `gemini` vẫn **chưa** hỗ trợ function calling → tool MCP chỉ dùng được với `groq` · `openrouter` · `ollama` · `mock`.
 
 ### E.2 Checklist M4 — Workflow (ngoài đường găng, chỉ làm sau khi M0–M3 xong)
 

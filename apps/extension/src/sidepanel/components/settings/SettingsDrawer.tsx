@@ -14,6 +14,7 @@ import { BudgetSettings } from './BudgetSettings'
 import { DataSettings } from './DataSettings'
 import { EndpointSettings } from './EndpointSettings'
 import { LanguageSettings } from './LanguageSettings'
+import { McpSettings } from './McpSettings'
 import { PrivacySettings } from './PrivacySettings'
 import { ShortcutsSettings } from './ShortcutsSettings'
 import { ThemeSettings } from './ThemeSettings'
@@ -123,6 +124,9 @@ export function SettingsDrawer({
 
           {/* Ngan sach chi phi (T-M2-03b — FR-PROVIDER-06). */}
           <BudgetSettings />
+
+          {/* MCP server (T-M2-08 — FR-TOOLS-01). */}
+          <McpSettings />
 
           <DataSettings {...(onHistoryDeleted !== undefined ? { onHistoryDeleted } : {})} />
 

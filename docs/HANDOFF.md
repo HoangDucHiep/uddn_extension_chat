@@ -24,23 +24,23 @@
 | Hạng mục | Trạng thái |
 |---|---|
 | Docs | ✅ Đầy đủ 11 file (`docs/`) + `AGENTS.md` ở root |
-| Code | ✅ **M1 (Parity) ĐÓNG** — 23/25 task (T-M1-15 + T-M1-16 ⏸ tạm dừng) — 4 workspace, **1775 unit test + 104 E2E** · **M2 đang làm** (T-M2-02 ✅ · T-M2-03 ✅ · T-M2-03b ✅ · T-M2-04 ✅ · T-M2-05 ✅ · T-M2-06 ✅ · T-M2-21 ✅ · **T-M2-07 ✅** · **T-M2-09 ✅** · kiểm chứng live Chrome **15/15** mục §11b) |
+| Code | ✅ **M1 (Parity) ĐÓNG** — 23/25 task (T-M1-15 + T-M1-16 ⏸ tạm dừng) — 4 workspace, **1848 unit test + 108 E2E** · **M2 đang làm** (T-M2-02 ✅ · T-M2-03 ✅ · T-M2-03b ✅ · T-M2-04 ✅ · T-M2-05 ✅ · T-M2-06 ✅ · T-M2-21 ✅ · **T-M2-07 ✅** · **T-M2-09 ✅** · **T-M2-08 ✅** · kiểm chứng live Chrome **15/15** mục §11b) |
 | Git | ✅ Đã init (`main`) · tag `v0.1` (M0) · tag **`v0.2`** (M1 đóng 2026-11-09) |
 | Milestone hiện tại | **M2 — Advanced & Eval** (M0 ✅ · M1 ✅) |
-| Task tiếp theo | **T-M2-08 · T-M2-10 · T-M2-11** (MCP client · web fetch · RAG) → **T-M2-12 → 17** (eval — deliverable bắt buộc `docs/EVAL_REPORT.md`) |
+| Task tiếp theo | **T-M2-10 · T-M2-11** (web fetch · RAG) → **T-M2-12 → 17** (eval — deliverable bắt buộc `docs/EVAL_REPORT.md`) |
 
 ### Đang làm dở
 
 _(Không có — M1 đóng xong 2026-11-09, tag `v0.2`)_
 
-### M2 — tiến độ (2026-11-11) — **9/23 task ✅**
+### M2 — tiến độ (2026-11-11) — **10/23 task ✅**
 
 | Nhóm / Task | Trạng thái | Ghi chú |
 |---|---|---|
 | **Nhóm Provider** — T-M2-02 · T-M2-03 · T-M2-03b | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.22 (model picker + fallback chain) · §7.23 (token/cost UI) · §7.24 (budget cap — enforce **phía server**, bảng `budget_settings`) |
 | **Nhóm Skills** — T-M2-04 · T-M2-05 · T-M2-06 · T-M2-21 | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.25 (menu `/` + CRUD) · §7.25.8 (import/export JSON) · §7.25.9 (library browser lọc theo tag) · §7.25.10 (**9** skill built-in + điều kiện tab, migration `0005_skill_tab_condition.sql`) |
 | T-M2-01 Multi-provider (OpenAI/Anthropic) | ⏸ **đẩy lại** | Quyết định user 2026-11-10: **không thêm provider mới** → giữ nguyên `PROVIDER_IDS` (`mock · groq · openrouter · gemini · ollama`). Phần "model list động" đã xong trong T-M2-02 |
-| **Nhóm Tools/MCP/RAG** — T-M2-07 → T-M2-11 | 🟡 **2/5 xong** | **T-M2-07 ✅** tool registry + builtin calculator + agent loop · **T-M2-09 ✅** tool call UI + approval gate · còn lại T-M2-08 (MCP client) · T-M2-10 (web fetch) · T-M2-11 (RAG) — xem §4.1.5 |
+| **Nhóm Tools/MCP/RAG** — T-M2-07 → T-M2-11 | 🟡 **3/5 xong** | **T-M2-07 ✅** tool registry + builtin calculator + agent loop · **T-M2-09 ✅** tool call UI + approval gate · **T-M2-08 ✅** MCP client (stdio) + server manager + UI Settings · còn lại T-M2-10 (web fetch) · T-M2-11 (RAG) — xem §4.1.5 |
 | **Nhóm Eval** — T-M2-12 → T-M2-17 | ⬜ **chưa bắt đầu** | Nền có sẵn: contract `evalTaskSchema` + `EVAL_GROUPS` + CLI `apps/eval`. Dataset `apps/eval/dataset/tasks.json` đang **rỗng `[]`** · `docs/EVAL_REPORT.md` **chưa tồn tại** (deliverable bắt buộc) · **để sau** (quyết định user 2026-11-10) |
 | **Nhóm Could** — T-M2-18 · T-M2-19 · T-M2-20 · T-M2-22 | ⬜ **chưa bắt đầu** | Agentic action · context policy theo domain · web search tool · vision mở rộng — **cắt được** nếu thiếu thời gian (xem §10) |
 
@@ -131,6 +131,20 @@ _(Không có — M1 đóng xong 2026-11-09, tag `v0.2`)_
 - **Adapters**: `openaiCompatible.ts` gom partial JSON theo `index` · `finish_reason: 'tool_calls'` → `finishReason: 'tool'` · `mock.ts` trả tool call ở vòng 1 rồi text ở vòng 2.
 - **Provider scope:** `groq` · `openrouter` · `ollama` (OpenAI-compatible) + `mock` — **Gemini tạm chưa** (tool-calling format khác).
 - **DB:** bảng `tool_calls` đã có sẵn từ M0 → **không** migration mới.
+
+**Tóm tắt T-M2-08 (FR-TOOLS-01/02 — MCP client stdio + server manager):**
+
+- **Protocol** (`apps/server/src/tools/mcp/protocol.ts`): JSON-RPC 2.0 thuần trên stdio (newline-delimited JSON) · `encodeMessage` / `parseMessages` / `createRequest` / `createResult` / `createError` — **không** import Zod (giữ nhẹ, test được ngoài DB).
+- **Client** (`apps/server/src/tools/mcp/client.ts`): spawn child process → `initialize` (`protocolVersion: '2024-11-05'` + `clientInfo`) → `notifications/initialized` → `tools/list` · `tools/call` · timeout **10 s** (`MCP_LIMITS.REQUEST_TIMEOUT_MS`) · stderr giữ làm chẩn đoán · `disconnect` **idempotent**.
+- **Manager** (`apps/server/src/tools/mcp/manager.ts`): đối chiếu config trong DB với process đang chạy · namespace tool `mcp__<serverName>__<toolName>` (hợp lệ với tên function call OpenAI `[a-zA-Z0-9_-]{1,64}`) · mặc định `requiresApproval = !autoApprove` · tool cũ bị **gỡ theo prefix** khi server bị sửa/xoá · **1 server lỗi không chặn** server khác.
+- **DB:** bảng `mcp_servers` (`apps/server/src/db/schema.ts` + migration `apps/server/drizzle/0006_mcp_servers.sql`) — lưu `command`/`args`/`env`/`enabled`/`auto_approve`/`last_connected_at`/`last_error`.
+- **API:** `GET/POST/PATCH/DELETE /api/mcp/servers` · `POST /api/mcp/servers/:id/reconnect` · `GET /api/mcp/tools`.
+- **Agent loop:** `chatService.ts` **refresh** manager từ DB trước khi `resolveToolDefinitions()` → lỗi MCP chỉ được log, **không** làm hỏng luồng chat.
+- **UI (T-M2-08 phần extension):** `McpSettings.tsx` — section "Máy chủ MCP" trong Settings · badge trạng thái · số tool · lỗi · form thêm server (args mỗi dòng 1 arg · env `KEY=VALUE`) · nút kết nối lại · xoá (confirm) · client `lib/mcpClient.ts` · i18n đủ key VI/EN.
+- **Script mẫu:** `apps/server/scripts/sample-mcp-server.mjs` (tool `echo` + `add`) để demo tay và test offline.
+- **Giới hạn:** chỉ transport **stdio** (HTTP/SSE → task sau) · `gemini` chưa hỗ trợ tool.
+
+**Số liệu test sau T-M2-08 (2026-11-11):** shared 329 · server 632 · extension 876 · eval 11 = **1848 unit** + **108 E2E** (28 file). `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm build:ext` ✅. E2E mcp **4/4** ✅ (mock provider offline).
 
 **Tóm tắt T-M2-09 (FR-TOOLS-02/04 — tool call UI + approval gate):**
 

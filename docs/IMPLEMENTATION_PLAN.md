@@ -1034,7 +1034,7 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 | T-M2-05 | Skill import/export JSON | FR-SKILL-05 | `packages/shared/src/skillIO.ts`, `packages/shared/src/schemas/skillIO.ts`, `apps/extension/src/lib/skillIO.ts` | Export/import round-trip không mất dữ liệu | S | ✅ *(2026-11-10)* |
 | T-M2-06 | Skill library browser nội bộ | FR-SKILL-07 | `sidepanel/components/skills/SkillLibrary.tsx` | Xem/lọc skill theo tag | M | ✅ *(2026-11-10)* |
 | T-M2-07 | Tool registry (builtin: web search, calculator) | FR-TOOLS-01/02, NFR-MAINT-03 | `apps/server/src/tools/{registry.ts,builtin/*}` | Tool được liệt kê; invoke trả kết quả | L | ✅ *(2026-11-11)* · registry in-memory + `calculator` + agent loop 5 vòng; **web search → T-M2-20** |
-| T-M2-08 | MCP client (stdio transport) + server manager | FR-TOOLS-01/02 | `apps/server/src/tools/mcp/{client.ts,manager.ts}` | Kết nối MCP server, liệt kê tool, gọi tool | L | ⬜ — nền: `apps/server/src/tools/` (**đã có** từ T-M2-07) |
+| T-M2-08 | MCP client (stdio transport) + server manager | FR-TOOLS-01/02 | `apps/server/src/tools/mcp/{protocol.ts,client.ts,manager.ts}`, `apps/server/src/services/mcpService.ts`, `apps/server/src/routes/mcp.ts`, `sidepanel/components/settings/McpSettings.tsx` | Kết nối MCP server, liệt kê tool, gọi tool | L | ✅ *(2026-11-11)* · JSON-RPC 2.0 stdio · namespace `mcp__<server>__<tool>` · bảng `mcp_servers` · UI trong Settings · transport HTTP/SSE → task sau |
 | T-M2-09 | Tool call UI (collapsible block + approval) | FR-TOOLS-02/06, FR-TOOLS-04 | `sidepanel/components/tools/ToolCallBlock.tsx` | Hiện args/result/kết quả lỗi; approval gate chặn hành động | M | ✅ *(2026-11-11)* · block collapsible + badge "Cần bạn duyệt" + nút Duyệt/Từ chối |
 | T-M2-10 | RAG: embedding + `rag_documents` + search | FR-TOOLS-05 | `apps/server/src/rag/{embedder.ts,retriever.ts,indexer.ts}` | Index lịch sử chat; search trả đoạn liên quan kèm score | L | ⬜ — nền: Postgres `pgvector` + extension `vector` |
 | T-M2-11 | RAG UI: toggle + hiện nguồn trong câu trả lời | FR-TOOLS-05 | `settings/ToolsSettings.tsx`, `CitationChip` (mở rộng) | Bật RAG → câu trả lời có citation tới đoạn đã index | M | ⬜ — nền: `CitationChip` (T-M1-08) |
@@ -1071,8 +1071,8 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 
 ### 4.1 Kết quả M2 (tổng hợp — 2026-11-10 → 2026-11-11)
 
-> **Trạng thái tổng:** **7/23 task ✅** · **1 task ⏸** (T-M2-01) · **15 task ⬜** chưa bắt đầu.
-> Nhóm **Provider** (T-M2-02 · T-M2-03 · T-M2-03b) và nhóm **Skills** (T-M2-04 · T-M2-05 · T-M2-06 · T-M2-21) đã xong. Nhóm **Tools** (T-M2-07 · T-M2-09) cũng đã xong (2026-11-11). Nhóm **MCP/RAG** và **Eval** chưa bắt đầu.
+> **Trạng thái tổng:** **10/23 task ✅** · **1 task ⏸** (T-M2-01) · **12 task ⬜** chưa bắt đầu.
+> Nhóm **Provider** (T-M2-02 · T-M2-03 · T-M2-03b) và nhóm **Skills** (T-M2-04 · T-M2-05 · T-M2-06 · T-M2-21) đã xong. Nhóm **Tools/MCP** (T-M2-07 · T-M2-09 · T-M2-08) cũng đã xong (2026-11-11). Nhóm **RAG** và **Eval** chưa bắt đầu.
 
 #### 4.1.1 Bảng trạng thái + commit + bằng chứng
 
@@ -1087,6 +1087,7 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 | **T-M2-21** — Thư viện 9 built-in skill + skill gắn điều kiện tab (FR-SKILL-04/06) | ✅ **xong** | `36383cd` | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.25.10 · [`DESIGN_SYSTEM_BRIEF.md`](DESIGN_SYSTEM_BRIEF.md) §3.13.6 |
 | **T-M2-07** — Tool registry + builtin calculator + agent loop (FR-TOOLS-01/02/06) | ✅ **xong** | `ecb9d37` | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.26 |
 | **T-M2-09** — Tool call UI + approval gate (FR-TOOLS-02/04) | ✅ **xong** | `cbf31c4` | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.26.9 · [`DESIGN_SYSTEM_BRIEF.md`](DESIGN_SYSTEM_BRIEF.md) §3.14 |
+| **T-M2-08** — MCP client (stdio) + server manager (FR-TOOLS-01/02) | ✅ **xong** | `5ab8d1c` · (commit UI) | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.27 · [`DESIGN_SYSTEM_BRIEF.md`](DESIGN_SYSTEM_BRIEF.md) §3.7.4 |
 | **T-M2-01** — Multi-provider (OpenAI/Anthropic) | ⏸ **đẩy lại** | — | quyết định user 2026-11-10 — không thêm provider mới |
 
 #### 4.1.2 Verify
@@ -1148,7 +1149,7 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 | Hạng mục | Chốt |
 |---|---|
 | Provider hỗ trợ tool | **OpenAI-compatible** (`groq` · `openrouter` · `ollama`) + `mock` — **`gemini` chưa** (shape function-calling riêng) → cờ `ProviderAdapter.supportsTools` chặn → Gemini chat bình thường, không lỗi |
-| Tool registry | **in-memory** (`apps/server/src/tools/registry.ts`) — không bảng DB trong T-M2-07 (bảng `tool_registry` / `mcp_servers` là cho T-M2-08) |
+| Tool registry | **in-memory** (`apps/server/src/tools/registry.ts`) — không bảng DB trong T-M2-07 · **tool built-in** phải đăng ký lại khi restart BFF · **tool MCP** tự nạp lại từ bảng `mcp_servers` (T-M2-08) |
 | Tool built-in | `calculator` — **không** dùng `eval` → tokenizer → shunting-yard → RPN → interpreter · `+ - * / % ^` · ngoặc · `pi`/`e` · `sqrt`/`abs`/`round`/`floor`/`ceil`/`min`/`max`/`pow` · phủ âm · giới hạn 200 ký tự · chia 0 → lỗi |
 | Số vòng agent loop | **5** (`TOOL_LIMITS.MAX_TOOL_ROUNDS`) — vượt → dừng + trả câu trả lời hiện có + 1 dòng cảnh báo (không crash) |
 | Lỗi tool | `ok: false` → model tự quyết định bước tiếp — **lượt chat không hỏng** |
@@ -1156,7 +1157,32 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 | Ghi log (FR-TOOLS-06) | Bảng `tool_calls` (mỗi tool call 1 dòng) + `request_logs.tool_calls` (jsonb) → **nguồn dữ liệu cho eval** |
 | Lưu vào lịch sử chat | Server join `tool_calls` khi load conversation → `conversationMessageSchema.toolCalls` → extension `toChatMessage` → block tool hiện lại khi mở lại conversation |
 
-> **Giới hạn đã biết:** (1) `gemini` chưa hỗ trợ tool → chat vẫn bình thường; (2) **chưa** có MCP client (T-M2-08) → claim §C4 vẫn ⬜; (3) **chưa** có web search tool (T-M2-20) → FR-TOOLS-03 chưa đóng; (4) approval gate là **hạ tầng** — chưa có tool **ghi dữ liệu thật** để chứng minh luồng "plan + diff" đầy đủ của FR-TOOLS-04 (thuộc T-M2-18); (5) registry in-memory → mỗi lần restart BFF phải đăng ký lại tool (T-M2-08 sẽ gắn MCP server từ DB).
+> **Giới hạn đã biết:** (1) `gemini` chưa hỗ trợ tool → chat vẫn bình thường; (2) MCP client **đã có** (T-M2-08) nhưng chỉ hỗ trợ transport **stdio** → claim §C4 đã đóng ở mức stdio; (3) **chưa** có web search tool (T-M2-20) → FR-TOOLS-03 chưa đóng; (4) approval gate là **hạ tầng** — chưa có tool **ghi dữ liệu thật** để chứng minh luồng "plan + diff" đầy đủ của FR-TOOLS-04 (thuộc T-M2-18); (5) registry in-memory → **tool built-in** phải đăng ký lại khi restart BFF (tool **MCP** thì tự nạp lại từ bảng `mcp_servers` — T-M2-08).
+
+**Nhóm MCP — T-M2-08 (2026-11-11)**
+
+| Hạng mục | Kết quả |
+|---|---|
+| `pnpm typecheck` | ✅ pass (4 workspace) |
+| `pnpm lint` | ✅ pass (0 error) |
+| `pnpm test` | ✅ **1848 unit** (shared 329 · server 632 · extension 876 · eval 11) — thêm `mcpProtocol.test.ts` · `mcpClient.test.ts` · `mcpManager.test.ts` · `mcpRoute.test.ts` (server) · `mcpClient.test.ts` · `mcpSettings.test.tsx` (extension) |
+| `pnpm build:ext` | ✅ pass — `dist/content.js` không phình (MCP code **không** lọt vào content script) |
+| `pnpm db:migrate` | ✅ **migration mới** — `apps/server/drizzle/0006_mcp_servers.sql` (bảng `mcp_servers`) |
+| `pnpm test:e2e` | ✅ `e2e/mcp.spec.ts` — **4/4** (section rỗng · thêm server · danh sách + số tool · xoá — stub `/api/mcp/**`, không cần BFF thật) |
+
+**Phạm vi đã chốt (nhóm MCP)**
+
+| Hạng mục | Chốt |
+|---|---|
+| Transport | Chỉ **stdio** (spawn child process) — HTTP/SSE là task sau |
+| Framing | JSON-RPC 2.0 thuần, newline-delimited JSON · module `protocol.ts` **không** import Zod (giữ nhẹ, test được ngoài DB) |
+| Bắt tay | `initialize` (`protocolVersion: '2024-11-05'` + `clientInfo`) → `notifications/initialized` → `tools/list` |
+| Timeout | **10 s** cho mỗi request (`MCP_LIMITS.REQUEST_TIMEOUT_MS`) |
+| Tên tool | Namespace `mcp__<serverName>__<toolName>` — hợp lệ với tên function call OpenAI `[a-zA-Z0-9_-]{1,64}` |
+| Approval | Mặc định `requiresApproval = !autoApprove` → tool MCP **luôn** cần duyệt trừ khi server bật "tự động duyệt" |
+| Nguồn sự thật | Cấu hình lưu ở Postgres (bảng `mcp_servers`) → BFF tự nạp lại khi restart (khác tool built-in in-memory) |
+| Lỗi | 1 server lỗi **không** chặn server khác · lỗi MCP chỉ log, **không** hỏng luồng chat |
+| Script mẫu | `apps/server/scripts/sample-mcp-server.mjs` (tool `echo` + `add`) để demo tay/test offline |
 
 #### 4.1.3 Ảnh hưởng lên gate parity
 
@@ -1164,15 +1190,16 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 - **T-M2-21** đóng dòng §E **"Skills `/` + tạo/sửa/xoá skill + library có sẵn + trang duyệt skill library"** → **33/35 = 94.3%** → **34/35 = 97.1%** (xem `COMPARISON_MATRIX.md` §E.1.5). §B8 🟡 → ✅ · §C10 ⬜ → ✅ (T-M2-05) · §C14 ⬜ → ✅ (T-M2-06).
 - **T-M2-03b** (budget cap) là tính năng **độc quyền** → ghi ở dòng **C6** §C, **không** thêm dòng §E → giữ nguyên **34/35 = 97.1%**.
 - **T-M2-07 + T-M2-09** (tool registry + agent loop + tool call UI + approval gate) là tính năng **độc quyền** → ghi ở dòng **C16** §C + dòng §D "Tool registry + agent loop", **không** thêm dòng §E → giữ nguyên **34/35 = 97.1%**.
+- **T-M2-08** (MCP client stdio + server manager) là tính năng **độc quyền** → dòng **C4** §C ⬜ → ✅ · dòng §D "MCP" ⬜ → ✅ + dòng §E.1.7 → giữ nguyên **34/35 = 97.1%**.
 - **Không** phá parity: không thêm permission, không đổi manifest, không đổi hành vi chat M1 (skill và budget là **tuỳ chọn**).
 
-#### 4.1.4 Nhóm còn lại — trạng thái nền (13 task ⬜)
+#### 4.1.4 Nhóm còn lại — trạng thái nền (12 task ⬜)
 
 > Bảng này ghi rõ **đã có gì** và **còn thiếu gì** — không tick sai dòng §E nào chưa đạt.
 
 | Nhóm | Task | Nền đã có sẵn | Còn thiếu |
 |---|---|---|---|
-| **MCP** | T-M2-08 | `apps/server/src/tools/` (registry + executor + `calculator`) (**đã có** từ T-M2-07) · contract `ToolDefinition` (`packages/shared`) · SSE `tool_call`/`tool_result`/`tool_approval` | MCP client (stdio transport) · server manager · kết nối MCP server thật |
+| **MCP** | T-M2-08 ✅ *(2026-11-11)* | `apps/server/src/tools/` (registry + executor + `calculator`) (từ T-M2-07) · contract `ToolDefinition` (`packages/shared`) · SSE `tool_call`/`tool_result`/`tool_approval` | ~~MCP client (stdio transport) · server manager · kết nối MCP server thật~~ → **đã xong**: `apps/server/src/tools/mcp/{protocol,client,manager}.ts` · bảng `mcp_servers` · API `/api/mcp/*` · UI `McpSettings.tsx` |
 | **RAG** | T-M2-10 · T-M2-11 | Postgres `pgvector/pgvector:pg16` + extension `vector` · `CitationChip` (T-M1-08) | `apps/server/src/rag/` (**chưa** tồn tại) · bảng `rag_documents` · embedder/retriever/indexer · `ToolsSettings` toggle |
 | **Eval** | T-M2-12 · T-M2-13 · T-M2-14 | Contract `evalTaskSchema` + `EVAL_GROUPS` 8 nhóm (T-M1-14, commit `03a1d69`) · CLI `apps/eval` (dataset loader + subcommand `logs`) · `request_logs` đủ metric đo (T-M1-14) · **`tool_calls` jsonb đã có dữ liệu thật** (T-M2-07) | `apps/eval/dataset/tasks.json` đang **rỗng `[]`** · `dataset/snapshots/*` · `runners/` · `judge/` |
 | **Eval — cần người thật** | T-M2-15 · T-M2-16 · T-M2-17 | Template rubric trong [`EVAL_PLAN.md`](EVAL_PLAN.md) | Transcript Edge/Gemini · 2 người chấm tay · **`docs/EVAL_REPORT.md` chưa tồn tại** (deliverable bắt buộc) |
@@ -1180,14 +1207,14 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 
 #### 4.1.5 Việc tiếp theo trong M2
 
-> **Thứ tự đã chốt (2026-11-10, sau T-M2-04):** làm **hết nhóm Skills** (T-M2-05 → 06 → 21) **trước**, rồi mới sang Tools/MCP/RAG. Nhóm Skills đã xong ✅ · nhóm Tools/MCP/RAG: **T-M2-07 + T-M2-09 xong ✅ (2026-11-11)** → giờ còn **T-M2-08 (MCP)** → **T-M2-10/11 (RAG)**. Lý do:
+> **Thứ tự đã chốt (2026-11-10, sau T-M2-04):** làm **hết nhóm Skills** (T-M2-05 → 06 → 21) **trước**, rồi mới sang Tools/MCP/RAG. Nhóm Skills đã xong ✅ · nhóm Tools/MCP/RAG: **T-M2-07 + T-M2-09 + T-M2-08 xong ✅ (2026-11-11)** → giờ còn **T-M2-10/11 (RAG)**. Lý do:
 > - Nhóm Skills là **mở rộng trên code đã có** (CRUD + `tags` + `scope` sẵn trong schema) → khối lượng nhỏ hơn hẳn nhóm Tools/MCP/RAG (greenfield).
 > - Đóng được dòng §E "Skills" + các hàng B8/C10/C14 → claim trong báo cáo khớp thực tế.
 > - **Eval (T-M2-12 → 17) để sau** (quyết định user 2026-11-10): eval đo chất lượng sản phẩm → chạy trên feature chưa ổn định thì phải chạy lại; T-M2-15/16 cần người thật → nên chạy **song song** khi feature đã ổn định.
 
 | Ưu tiên | Task | Lý do |
 |---|---|---|
-| 1 | **T-M2-08** — MCP client (stdio) | Đóng claim độc quyền **§C4** · tool registry (T-M2-07) đã làm nền để gắn tool từ MCP server |
+| 1 | ~~**T-M2-08** — MCP client (stdio)~~ | ✅ **xong 2026-11-11** — đã đóng claim độc quyền **§C4** |
 | 2 | **T-M2-10 → 11** — RAG | Đóng claim độc quyền **§C7** · cần bảng `rag_documents` + `pgvector` đã có sẵn |
 | 3 | **T-M2-12 → 17** — eval | Deliverable bắt buộc (`docs/EVAL_REPORT.md`) — làm **sau** khi feature ổn định · `tool_calls` đã có dữ liệu để đo |
 | 4 | **T-M2-18 → 20** · **T-M2-22** — agentic · web search · context policy · vision mở rộng | Could — cắt được nếu thiếu thời gian (theo §10) |
@@ -1283,7 +1310,7 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 
 > **Trạng thái thực tế (2026-11-11):** timeline gốc lên kế hoạch. Thực tế **W6 đã xong** nhóm **Provider** (T-M2-02 · T-M2-03 · T-M2-03b) + nhóm **Skills** (T-M2-04 · T-M2-05 · T-M2-06 · T-M2-21) → **7/23 task ✅**; T-M2-01 ⏸ đẩy lại. **W7 (Tools/MCP/RAG)** là khối tiếp theo — xem §4.1.5.
 >
-> **Cập nhật sau T-M2-07 + T-M2-09 (2026-11-11):** nhóm **Tools** đã xong **2/5** → tổng **9/23 task ✅**. Còn lại trong W7: **T-M2-08** (MCP) · **T-M2-10** (web fetch) · **T-M2-11** (RAG).
+> **Cập nhật sau T-M2-07 + T-M2-09 + T-M2-08 (2026-11-11):** nhóm **Tools/MCP** đã xong **3/5** → tổng **10/23 task ✅**. Còn lại trong W7: **T-M2-10** (web fetch) · **T-M2-11** (RAG).
 
 ---
 
@@ -1313,9 +1340,9 @@ Tuần theo [`REQUIREMENTS.md`](REQUIREMENTS.md) §9.3 — thứ tự cắt an t
 | 6 | Chính sách context theo domain | T-M2-19 | Chỉ ảnh hưởng nhóm tính năng riêng tư — đánh dấu N/A trong eval |
 | 7 | Voice | (chưa có task riêng) | Đánh dấu N/A trong eval |
 | 8 | Tool registry + tool call UI | T-M2-07, T-M2-09 | Mất claim độc quyền §C (tool call có approval gate) — chấp nhận được |
-| 9 | MCP client (stdio) | T-M2-08 | Mất claim độc quyền **C4** — cắt sau T-M2-07/09 để giữ chất lượng tool registry |
+| 9 | ~~MCP client (stdio)~~ | ~~T-M2-08~~ | ~~Mất claim độc quyền **C4**~~ — **đã xong 2026-11-11** → không còn là phương án cắt |
 
-> **Đã bỏ khỏi danh sách cắt (2026-11-11)** — các task sau **đã xong** nên không còn là phương án cắt: **T-M2-21** (thư viện 9 skill + điều kiện tab) · **T-M2-06** (skill library browser) · **T-M2-03** (token/cost UI) · **T-M2-03b** (budget cap). Chi tiết: §4.1.1.
+> **Đã bỏ khỏi danh sách cắt (2026-11-11)** — các task sau **đã xong** nên không còn là phương án cắt: **T-M2-21** (thư viện 9 skill + điều kiện tab) · **T-M2-06** (skill library browser) · **T-M2-03** (token/cost UI) · **T-M2-03b** (budget cap) · **T-M2-08** (MCP client stdio). Chi tiết: §4.1.1.
 
 **Không được cắt:** streaming chat · đọc nội dung trang (HTML) · **trích xuất PDF** (T-M1-21) · **transcript YouTube** (T-M1-22) · **ngân sách context** (T-M1-23) · **upload ảnh** (T-M1-24) · **onboarding** (T-M1-25) · multi-tab `@` · selection context · citations · lịch sử conversation · settings · logging đầy đủ · toàn bộ phần eval.
 

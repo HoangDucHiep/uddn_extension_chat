@@ -438,7 +438,8 @@ Cache context chạy **hoàn toàn ngầm** ở tầng `lib/` (`contextCache.ts`
 | `ModelPicker` | FR-PROVIDER-03 | ✅ **T-M2-02** — Radix `Popover` ở header panel · danh sách provider (`GET /api/providers`) + model **động** (`GET /api/providers/:id/models`) · search khi > 12 model · lưu `chrome.storage.local` key `sidekick.modelSelection` · chi tiết §3.7.2 |
 | `UsageSettings` | FR-PROVIDER-05 | ✅ **T-M2-03** — section "Chi phí & sử dụng" trong Settings · `GET /api/usage` → tổng token + tổng chi phí + bảng theo ngày · khoảng `today/7d/30d/all` + nút làm mới |
 | `BudgetSettings` | FR-PROVIDER-06 | ✅ **T-M2-03b** — section "Ngân sách chi phí" trong Settings · bật · hạn mức USD · kỳ (`daily`/`monthly`) · ngưỡng cảnh báo % · toggle chặn · `PUT /api/budget` — chi tiết §3.7.3 |
-| `ToolsSettings` | FR-TOOLS-01 | ⬜ T-M2-07 |
+| `ToolsSettings` | FR-TOOLS-01 | ⬜ T-M2-07 — registry tool **phía server** (`apps/server/src/tools/registry.ts`) → **không** tách thành section trong Settings · tool **MCP** → `McpSettings` (bên dưới) |
+| `McpSettings` | FR-TOOLS-01/02 | ✅ **T-M2-08** — section "Máy chủ MCP" trong Settings · danh sách server (badge trạng thái · số tool · lỗi) · form thêm server (command/args/env) · nút kết nối lại · xoá (confirm) — chi tiết §3.7.4 |
 | ~~`SkillsSettings`~~ | FR-SKILL-03, FR-SKILL-07 | 🟡 **T-M2-04 ✅** — FR-SKILL-03 (sửa/xoá/nhân bản) làm bằng drawer `SkillManager` (trượt trái, mở từ nút `Sparkles` ở header) — **không** tách thành section trong Settings · FR-SKILL-07 (library browser) → **T-M2-06** |
 | `WorkflowSettings` | FR-WORKFLOW-08 (M4) | ⬜ M4 |
 
@@ -557,6 +558,25 @@ Cache context chạy **hoàn toàn ngầm** ở tầng `lib/` (`contextCache.ts`
 > **Token dùng:** `--surface-raised` · `--warning` · `--danger` · `--success` · `--text-primary` · `--text-secondary` · `--text-tertiary` · `--border-default` · `--color-accent` · `--color-accent-contrast` · `--radius-md` · `--radius-sm` · `--font-size-xs` · `--font-size-sm` · `--border-focus`.
 >
 > Chi tiết kỹ thuật: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.24.
+
+#### 3.7.4 Section "Máy chủ MCP" (đã implement T-M2-08)
+
+**`McpSettings`** — section trong `SettingsDrawer` (FR-TOOLS-01/02), đặt ngay **sau** `BudgetSettings`:
+
+| Hạng mục | Nội dung |
+|---|---|
+| Danh sách server | mỗi server là 1 khối: tên · command · badge trạng thái (`disconnected` · `connecting` · `connected` · `error`) · số tool đang nạp · lỗi gần nhất (màu `--danger`) |
+| Rỗng | "Chưa cấu hình máy chủ MCP nào." (`data-testid="mcp-settings-empty"`) — **không** render `<ul>` rỗng |
+| Form thêm server | tên · command · args (textarea, **mỗi dòng 1 arg**) · env (`KEY=VALUE`, mỗi dòng 1 cặp) · toggle "Tự động duyệt" (`autoApprove`) · transport `stdio` (cố định ở bản này) |
+| Nút "Kết nối lại" | `POST /api/mcp/servers/:id/reconnect` → làm mới trạng thái runtime |
+| Nút "Xoá" | `ConfirmDialog` (destructive) → `DELETE /api/mcp/servers/:id` |
+| Lỗi | `<p>` màu `--danger` **inline** — **không** crash drawer |
+
+- **A11y:** mọi input có `<label htmlFor>` · icon-button có `aria-label` tiếng Việt · badge trạng thái có **chữ** (không chỉ màu — DP-6) · focus ring rõ (`--border-focus`).
+- **Token dùng:** `--surface-raised` · `--surface-sunken` · `--text-primary` · `--text-secondary` · `--text-tertiary` · `--border-subtle` · `--border-default` · `--color-accent` · `--color-accent-subtle` · `--success` · `--warning` · `--danger` · `--radius-sm` · `--radius-md` · `--font-size-xs` · `--font-size-sm`. **Không hardcode màu.**
+- `data-testid`: `mcp-settings-loading` · `mcp-settings-list` · `mcp-settings-empty` · `mcp-settings-form` · `mcp-form-name` · `mcp-form-command` · `mcp-form-args` · `mcp-form-env` · `mcp-form-auto-approve` · `mcp-form-submit` · `mcp-form-cancel` · `mcp-settings-add` · `mcp-settings-error` · `mcp-server-item` · `mcp-server-name` · `mcp-server-meta` · `mcp-server-status` · `mcp-server-error` · `mcp-server-reconnect` · `mcp-server-remove`.
+
+> Chi tiết kỹ thuật: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.27.
 
 ### 3.8 Onboarding (đã implement T-M1-25)
 

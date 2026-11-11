@@ -20,7 +20,12 @@
   - **Nối agent loop:** `chatService.ts` refresh `McpManager` (đọc DB → spawn → đồng bộ tool) **trước** khi `resolveToolDefinitions()`; lỗi MCP → log + bỏ qua (lượt chat không hỏng); gate `supportsTools` của provider giữ nguyên (Gemini chưa hỗ trợ tool).
   - **Mở rộng `ToolRegistry`:** thêm `unregister(name)` + `unregisterByPrefix(prefix)` → gỡ tool MCP khi server bị xoá / đổi danh sách tool.
   - **Test:** `apps/server/tests/mcpProtocol.test.ts` (mới) · `mcpClient.test.ts` (mới — handshake thật) · `mcpManager.test.ts` (mới) · `mcpRoute.test.ts` (mới) · `apps/server/tests/helpers/fakeMcpDb.ts` (mới — fake Drizzle, không cần Docker) · `apps/server/scripts/sample-mcp-server.mjs` (mới — MCP server mẫu với tool `echo` + `add`, dùng cho test **và** demo tay).
-  - **Docs:** `SYSTEM_DESIGN.md` §7.27 (mới — 7 sub-section) · `REQUIREMENTS.md` §4.4 FR-TOOLS-01 cập nhật.
+  - **Extension — client + UI:**
+    - `apps/extension/src/lib/mcpClient.ts` (mới) — client gọi BFF qua `fetchJson`: `listMcpServers` · `createMcpServer` · `updateMcpServer` · `deleteMcpServer` · `reconnectMcpServer` · `listMcpTools` — validate response bằng schema shared.
+    - `apps/extension/src/sidepanel/components/settings/McpSettings.tsx` (mới) — section **"Máy chủ MCP"** trong `SettingsDrawer` (đặt ngay **sau** `BudgetSettings`) — danh sách server (badge trạng thái `disconnected`/`connecting`/`connected`/`error` · số tool · lỗi gần nhất) · form thêm server (tên · command · args **mỗi dòng 1 arg** · env `KEY=VALUE` · toggle "tự động duyệt") · nút **kết nối lại** (`POST /api/mcp/servers/:id/reconnect`) · **xoá** qua `ConfirmDialog` · lỗi hiển thị **inline** (không crash drawer) · mọi màu dùng **design token** (`--success` · `--warning` · `--danger` · `--surface-raised` · `--border-*` · `--border-focus`).
+    - `apps/extension/src/i18n/vi.ts` · `en.ts` — bộ khoá `mcp.settings.*` + `toast.mcp*` đầy đủ (thiếu key = lỗi `pnpm typecheck`).
+    - **Test:** `apps/extension/tests/mcpClient.test.ts` (mới) · `apps/extension/tests/mcpSettings.test.tsx` (mới) · `apps/extension/e2e/mcp.spec.ts` (mới — **4/4**, stub `/api/mcp/**`).
+  - **Docs:** `SYSTEM_DESIGN.md` §7.27 (mới — 7 sub-section) · `REQUIREMENTS.md` §4.4 FR-TOOLS-01 cập nhật · `COMPARISON_MATRIX.md` §C4 + §D "MCP" + §E.1.7 · `IMPLEMENTATION_PLAN.md` §4.1 · `DESIGN_SYSTEM_BRIEF.md` §3.7.4 · `HANDOFF.md` §2 · `AGENTS.md` §6.
 
 ### Added
 - **T-M2-09 — Tool call UI + approval gate trong side panel (FR-TOOLS-02/04)**
