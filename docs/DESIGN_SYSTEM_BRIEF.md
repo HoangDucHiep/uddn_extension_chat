@@ -760,6 +760,51 @@ Component `SkillMenu` (popover `/`) + `SkillManager` (drawer) + `SkillFormDialog
 
 ---
 
+### 3.14 Tool call block + approval gate (đã implement T-M2-09)
+
+Component `ToolCallBlock` — block collapsible hiển thị 1 tool call trong thread (FR-TOOLS-02/04).
+
+**3.14.1 Cấu trúc block**
+
+- **Vị trí:** trong bubble **assistant**, **sau** `MessageContent`, **trước** `MessageActions` → nhiều tool call xếp dọc, mỗi cái 1 block (`data-testid="tool-call-block"`).
+- **Header (button):** icon `Wrench` · tên tool trong `t('tool.call.title', { name })` ("Đang dùng tool: {name}") · chevron `ChevronRight`/`ChevronDown` (đổi theo trạng thái mở) · **badge trạng thái** bên phải.
+  - Header là `<button type="button">` có `aria-expanded` + `aria-label` = `t('tool.call.expand')` / `t('tool.call.collapse')` → `data-testid="tool-call-toggle"`.
+- **Body (mở rộng):** 2 khối `<pre>` — **Tham số** (`t('tool.call.args')` · JSON pretty · `data-testid="tool-call-args"`) và **Kết quả** (`t('tool.call.output')` · `data-testid="tool-call-output"`). Cả hai `max-h-40` + `overflow-auto` → không phá layout khi output dài (giới hạn server `MAX_TOOL_OUTPUT_CHARS = 8_000`).
+- **Thời gian:** dòng nhỏ `t('tool.call.duration', { duration })` khi có `durationMs`.
+- **Mặc định:** **thu gọn** → args/output **không** render (tiết kiệm DOM khi có nhiều tool call).
+
+**3.14.2 Badge trạng thái**
+
+| Trạng thái | Nhãn | Màu (token) |
+|---|---|---|
+| `ok` | "Xong" | `--success-subtle` / `--success` |
+| `error` | "Lỗi" | `--danger-subtle` / `--danger` |
+| `denied` | "Đã từ chối" | `--surface-sunken` / `--text-secondary` |
+| `running` | "Đang chạy…" | `--warning-subtle` / `--warning` |
+| `pending` | "Chờ duyệt" | `--warning-subtle` / `--warning` |
+
+→ `data-testid="tool-call-status"`; block có `data-tool-status` + `data-tool-name` để test/đo lường.
+
+**3.14.3 Approval gate (FR-TOOLS-04)**
+
+- Tool có `requiresApproval: true` → hiện badge **"Cần bạn duyệt"** (`data-testid="tool-call-approval-badge"`) + 2 nút:
+  - **Duyệt** (`variant="default"` · icon `Check` · `data-testid="tool-call-approve"`)
+  - **Từ chối** (`variant="outline"` · icon `X` · `data-testid="tool-call-deny"`)
+- Cả 2 nút có `aria-label` tiếng Việt (`t('tool.call.approve')` / `t('tool.call.deny')`) + `disabled` khi đang gọi API (chống double-submit).
+- Hành vi: bấm → `POST /api/tools/:callId/approve` (hoặc `/deny`) → cập nhật state → toast (`toast.toolApproved` / `toast.toolDenied` / `toast.toolApprovalFailed` khi lỗi).
+- Sau khi duyệt → badge "Cần bạn duyệt" **biến mất** (điều kiện: `approvalRequired && !approvedByUser && !deniedByUser`).
+
+**3.14.4 Token & a11y**
+
+- **Không hardcode màu** — mọi màu dùng token (`--success-subtle` · `--danger-subtle` · `--warning-subtle` · `--surface-raised` · `--surface-sunken` · `--border-default`).
+- **Focus ring:** chuẩn `focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]` (header + 2 nút).
+- Icon trang trí có `aria-hidden="true"`; trạng thái **không** chỉ dựa vào màu (có nhãn chữ trong badge).
+- `MessageBubble` chỉ render block cho **assistant** (user message không có tool call).
+
+> **Chi tiết hợp đồng file:** [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.26.5 · [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.7 (FR-TOOLS-02/04)
+
+---
+
 ## 4. State & hành vi UI chuẩn hoá
 
 | Trạng thái | Yêu cầu UI | FR |

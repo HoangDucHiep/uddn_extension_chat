@@ -85,6 +85,16 @@ export const TOOL_LIMITS = {
 } as const
 
 /**
+ * Trang thai cua 1 tool call (FR-TOOLS-02 — T-M2-09).
+ *
+ * `pending` · `running` → chua xong · `ok` · `error` · `denied` → da xong.
+ *
+ * Dung chung cho server (ghi DB) · extension (hien thi) · contract.
+ */
+export const TOOL_CALL_STATUSES = ['pending', 'running', 'ok', 'error', 'denied'] as const
+export type ToolCallStatus = (typeof TOOL_CALL_STATUSES)[number]
+
+/**
  * Thoi gian cache context theo URL (ms) — T-M1-06.
  *
  * Cache dung de (a) khong trich xuat lai trang da doc va (b) fallback khi

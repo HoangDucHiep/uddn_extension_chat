@@ -4,7 +4,7 @@
  */
 
 import { z } from 'zod'
-import { PROVIDER_IDS } from '../constants.js'
+import { PROVIDER_IDS, TOOL_CALL_STATUSES } from '../constants.js'
 import { conversationCitationSchema } from '../schemas/conversation.js'
 
 /** Vai tro cua mot message trong hoi thoai. */
@@ -77,8 +77,7 @@ export const citationSchema = z.object({
 export type Citation = z.infer<typeof citationSchema>
 
 /** Trang thai mot tool call. */
-export const TOOL_CALL_STATUSES = ['pending', 'running', 'ok', 'error', 'denied'] as const
-export type ToolCallStatus = (typeof TOOL_CALL_STATUSES)[number]
+export { TOOL_CALL_STATUSES, type ToolCallStatus } from '../constants.js'
 
 export const toolCallSchema = z.object({
   id: z.string().uuid(),

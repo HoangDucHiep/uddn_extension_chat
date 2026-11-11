@@ -71,6 +71,8 @@ export function useChat() {
   const appendToMessage = useChatStore((state) => state.appendToMessage)
   const updateMessage = useChatStore((state) => state.updateMessage)
   const addCitation = useChatStore((state) => state.addCitation)
+  const addToolCall = useChatStore((state) => state.addToolCall)
+  const updateToolCall = useChatStore((state) => state.updateToolCall)
   const setConversationId = useChatStore((state) => state.setConversationId)
   const setStreaming = useChatStore((state) => state.setStreaming)
   const setActive = useChatStore((state) => state.setActive)
@@ -362,8 +364,40 @@ export function useChat() {
             })
             break
 
-          case 'usage':
-            updateMessage(assistantId, {
+          case 'tool_call':
+            // Model goi tool (FR-TOOLS-02 — T-M2-09) → them block vao thread.
+            addToolCall(assistantId, {
+              id: event.id,
+              name: event.name,
+              args: event.args,
+              approvalRequired: event.approvalRequired,
+              status: event.approvalRequired ? 'pending' : 'running',
+            })
+            break
+
+          case 'tool_result':
+            // Ket qua tool (FR-TOOLS-02 — T-M2-09) → cap nhat block da tao.
+            updateToolCall(assistantId, event.id, {
+              ok: event.ok,
+              output: event.output,
+              durationMs: event.durationMs,
+              status: event.ok ? 'ok' : 'error',
+            })
+            break
+
+          case 'tool_approval':
+            // Tool can user duyet (FR-TOOLS-04 — T-M2-09) → badge + nut duyet.
+            // Server **khong** chay tool cho toi khi user duyet.
+            addToolCall(assistantId, {
+              id: event.id,
+              name: event.name,
+              args: event.args,
+              approvalRequired: true,
+              status: 'pending',
+            })
+            break
+
+          case 'usage':            updateMessage(assistantId, {
               tokensIn: event.tokensIn,
               tokensOut: event.tokensOut,
               // Chi phi USD cua luot nay (T-M2-03 — FR-PROVIDER-05).
@@ -561,6 +595,8 @@ export function useChat() {
       addMessage,
       appendToMessage,
       addCitation,
+      addToolCall,
+      updateToolCall,
       setActive,
       setConversationId,
       setStreaming,

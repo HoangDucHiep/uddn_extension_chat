@@ -14,6 +14,15 @@
 import { z } from 'zod'
 
 /**
+ * Trang thai cua 1 tool call.
+ *
+ * `pending` · `running` → chua xong · `ok` · `error` · `denied` → da xong.
+ *
+ * Dung chung cho server (ghi DB) · extension (hien thi) · contract.
+ */
+export { TOOL_CALL_STATUSES, type ToolCallStatus } from '../constants.js'
+
+/**
  * JSON Schema cua tham so cua 1 tool.
  *
  * Chi cho phep shape **object** — provider (OpenAI-compatible) chi ho tro

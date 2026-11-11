@@ -11,9 +11,10 @@
 
 import { and, asc, count, desc, eq, ilike, inArray } from 'drizzle-orm'
 import { AppError, ERROR_CODES } from '@sidekick/shared'
-import type { ConversationTurn } from '@sidekick/shared'
+import { TOOL_CALL_STATUSES } from '@sidekick/shared'
+import type { ConversationTurn, ToolCallStatus } from '@sidekick/shared'
 import type { Database } from '../db/index.js'
-import { citations, conversations, messages } from '../db/schema.js'
+import { citations, conversations, messages, toolCalls } from '../db/schema.js'
 import {
   buildTurns,
   derivePath,
@@ -34,9 +35,9 @@ function readMeta(meta: unknown): Record<string, unknown> {
   return meta as Record<string, unknown>
 }
 
-/** Do dai toi da cua tieu de conversation (ky tu) — khop voi `packages/shared`. */
+/**
+ * Do dai toi da cua tieu de conversation (ky tu) — khop voi `packages/shared`. */
 export const MAX_CONVERSATION_TITLE_CHARS = 200
-
 /**
  * Do dai tieu de mac dinh khi tao conversation tu cau hoi dau tien.
  *
@@ -58,7 +59,7 @@ export interface ConversationSummary {
   messageCount: number
 }
 
-/** Mot message + citations da luu. */
+  /** Mot message + citations da luu. */
 export interface ConversationMessage {
   id: string
   role: 'user' | 'assistant' | 'system'
@@ -74,6 +75,22 @@ export interface ConversationMessage {
     title: string
     snippet: string
     tabId?: number | undefined
+  }>
+  /**
+   * Tool call da luu cua message nay (FR-TOOLS-02 — T-M2-09).
+   *
+   * Join bang `tool_calls` khi load lich su → khoi phuc block
+   * "Dung tool: X" trong thread.
+   */
+  toolCalls: Array<{
+    id: string
+    name: string
+    args: unknown
+    output?: string | undefined
+    status: ToolCallStatus
+    approvalRequired: boolean
+    approvedByUser: boolean
+    durationMs?: number | undefined
   }>
 }
 
@@ -478,6 +495,37 @@ export async function getConversationMessages(
     citationsByMessage.set(row.messageId, list)
   }
 
+  // Gom tool call theo message (FR-TOOLS-02 — T-M2-09).
+  // Bang `tool_calls` da co san tu M0 → khong migration.
+  const toolCallRows =
+    messageIds.length > 0
+      ? await db
+          .select()
+          .from(toolCalls)
+          .where(inArray(toolCalls.messageId, messageIds))
+          .orderBy(asc(toolCalls.startedAt))
+      : []
+
+  const toolCallsByMessage = new Map<string, ConversationMessage['toolCalls']>()
+  for (const row of toolCallRows) {
+    const list = toolCallsByMessage.get(row.messageId) ?? []
+    const startedAt = row.startedAt.getTime()
+    const finishedAt = row.finishedAt?.getTime()
+    list.push({
+      id: row.id,
+      name: row.name,
+      args: row.args,
+      ...(row.output !== null ? { output: row.output } : {}),
+      status: toToolCallStatus(row.status),
+      approvalRequired: row.approvalRequired,
+      approvedByUser: row.approvedByUser,
+      ...(finishedAt !== undefined
+        ? { durationMs: Math.max(0, finishedAt - startedAt) }
+        : {}),
+    })
+    toolCallsByMessage.set(row.messageId, list)
+  }
+
   // Chuan hoa message → moi message co `turnId` / `variantIndex` / `active`.
   const rawMessages: RawMessage[] = messageRows.map((row) => {
     const meta = readMeta(row.meta)
@@ -488,6 +536,7 @@ export async function getConversationMessages(
       createdAt: row.createdAt.toISOString(),
       meta: row.meta,
       citations: citationsByMessage.get(row.id) ?? [],
+      toolCalls: toolCallsByMessage.get(row.id) ?? [],
       ...(typeof meta['provider'] === 'string' ? { provider: meta['provider'] } : {}),
       ...(typeof meta['model'] === 'string' ? { model: meta['model'] } : {}),
       ...(typeof meta['tokensIn'] === 'number' ? { tokensIn: meta['tokensIn'] } : {}),
@@ -509,6 +558,7 @@ export async function getConversationMessages(
     content: message.content,
     createdAt: message.createdAt,
     citations: message.citations ?? [],
+    toolCalls: message.toolCalls ?? [],
     turnId: message.turnId,
     variantIndex: message.variantIndex,
     active: message.active,
@@ -589,6 +639,19 @@ export function readPathFromMeta(meta: unknown): string[] | undefined {
   const path = (meta as { path?: unknown }).path
   if (!Array.isArray(path)) return undefined
   return path.filter((item): item is string => typeof item === 'string')
+}
+
+/**
+ * Chuan hoa trang thai tool call tu DB (text) → enum dung chung.
+ *
+ * DB luu `status` dang text → du lieu cu / ghi sai → fallback `pending`.
+ *
+ * @param status - Gia tri text trong DB.
+ */
+function toToolCallStatus(status: string): ToolCallStatus {
+  return TOOL_CALL_STATUSES.includes(status as ToolCallStatus)
+    ? (status as ToolCallStatus)
+    : 'pending'
 }
 
 /**

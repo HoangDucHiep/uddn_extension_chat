@@ -211,6 +211,7 @@ export function ChatWorkspace({
 
   // Tieu de conversation hien tai → hien thi trong header.
   const hydrateConversation = useChatStore((state) => state.hydrateConversation)
+  const updateToolCall = useChatStore((state) => state.updateToolCall)
   const conversationTitle = useConversationStore((state) => state.activeTitle)
   const setActiveConversationId = useConversationStore(
     (state) => state.setActiveConversationId,
@@ -812,6 +813,10 @@ export function ChatWorkspace({
                   setSkillPrefillPrompt(content)
                   setIsSkillFormOpen(true)
                 }}
+                onUpdateToolCall={(messageId, toolCallId, patch) => {
+                  // FR-TOOLS-04: cap nhat trang thai duyet cua tool call.
+                  updateToolCall(messageId, toolCallId, patch)
+                }}
               />
             ))
           )}
@@ -1053,5 +1058,20 @@ function toChatMessage(message: ConversationMessage): ChatMessage {
           })),
         }
       : {}),
-  }
+    // Tool call da luu (FR-TOOLS-02 — T-M2-09) → khoi phuc block tool.
+    ...(message.toolCalls.length > 0
+      ? {
+          toolCalls: message.toolCalls.map((toolCall) => ({
+            id: toolCall.id,
+            name: toolCall.name,
+            args: toolCall.args,
+            ...(toolCall.output !== undefined ? { output: toolCall.output } : {}),
+            status: toolCall.status,
+            approvalRequired: toolCall.approvalRequired,
+            approvedByUser: toolCall.approvedByUser,
+            ...(toolCall.durationMs !== undefined ? { durationMs: toolCall.durationMs } : {}),
+            ...(toolCall.status === 'denied' ? { deniedByUser: true } : {}),
+          })),
+        }
+      : {}),  }
 }

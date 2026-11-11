@@ -103,7 +103,7 @@ Cột ưu tiên: **M** = Must (M1) · **S** = Should (M2) · **C** = Could (M2/M
 | C1 | **Multi-provider + model picker** (OpenAI, Gemini, Anthropic, OpenRouter, Groq, Ollama) | FR-PROVIDER-01/03 | Đánh trực tiếp A22, B21 |
 | C2 | **BYOK** — tự mang API key, key mã hoá phía server | FR-PROVIDER-02 ⏸ | Đánh trực tiếp A23, B22 — **⏸ tạm dừng 2026-11-08** (BYOK bị gỡ khỏi sản phẩm; server giữ nguyên `provider_keys` để mở lại sau) |
 | C3 | **Self-host BFF** qua Docker Compose, chạy hoàn toàn local | §6, FR-PROVIDER-07 | Đánh trực tiếp B25 |
-| C4 | **MCP-native tool integration** | FR-TOOLS-01/02 | Đánh trực tiếp B13 (thay thế bằng chuẩn mở) — ⬜ **chưa implement** (T-M2-08) |
+| C4 | **MCP-native tool integration** | FR-TOOLS-01/02 | Đánh trực tiếp B13 (thay thế bằng chuẩn mở) — ⬜ **chưa implement** (T-M2-08) — **lưu ý:** tool registry + agent loop **đã** có (T-M2-07) nhưng **chưa** có MCP client; xem dòng **C16** |
 | C5 | **Log request đầy đủ có cấu trúc** (prompt, context hash, token, cost, latency, tool call) | NFR-MAINT-04, §7.2 | Đánh trực tiếp B24; **đây là nền tảng cho eval** — T-M1-06 đã sửa `context_hash` thành hash của **context thật đã gửi** (trước đó là hash toàn bộ prompt) + thêm `context_snapshot` theo setting |
 | C6 | **Token & cost visibility** theo lượt + budget cap | FR-PROVIDER-05/06 | Không có ở A/B — **T-M2-03 (FR-PROVIDER-05)** ✅: badge token/cost theo lượt + section "Chi phí & sử dụng" (tổng + theo ngày). **T-M2-03b (FR-PROVIDER-06)** ✅: budget cap **enforce phía server** (hạn mức USD theo kỳ `daily`/`monthly`, cảnh báo ở ngưỡng, **tùy chọn chặn** lượt chat mới khi vượt hạn mức — server **không gọi provider** → chi phí = 0). Cấu hình lưu trong Postgres (bảng `budget_settings`) → server là nguồn chặn sự thật. Chi tiết: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.23 · §7.24 |
 | C7 | **RAG local** trên lịch sử chat + tài liệu, có trích dẫn | FR-TOOLS-05 | Minh bạch hơn B15 (Personal Intelligence) — ⬜ **chưa implement** (T-M2-10/11) |
@@ -116,6 +116,7 @@ Cột ưu tiên: **M** = Must (M1) · **S** = Should (M2) · **C** = Could (M2/M
 | C13 | **Không cần tài khoản hãng** (không Microsoft / không Google), chạy được trên managed/Enterprise browser | FR-PROVIDER-02, FR-PROVIDER-07 | Đánh trực tiếp A26, B27 |
 | C14 | **Skill library browser nội bộ** (xem/lọc skill) | FR-SKILL-07 | Tương đương `chrome://skills/browse` nhưng không phụ thuộc Google — ✅ **T-M2-06 (2026-11-10)** — tab "Thư viện" trong drawer Kỹ năng · lọc server theo `?q=` (tên/mô tả) + `?tags=` (mode `any`) · chip tag · click card → chạy ngay |
 | C15 | **Scheduler chạy nền trong sidebar, self-hosted, không cần license** | FR-WORKFLOW-03, §4.7 | Đánh trực tiếp A28, B28 — cả hai đều đẩy tính năng này ra khỏi sidebar sang sản phẩm khác (M365 Copilot Tasks / Gemini Apps) |
+| C16 | **Tool registry + agent loop + tool call UI có approval gate** | FR-TOOLS-01/02/04/06 | — (không có ở A/B) — ✅ **T-M2-07 + T-M2-09 (2026-11-11)**: tool registry in-memory + tool built-in `calculator` (shunting-yard, **không** `eval`) · agent loop **tối đa 5 vòng** (`TOOL_LIMITS.MAX_TOOL_ROUNDS`) · server khai báo tool cho provider OpenAI-compatible (`groq`/`openrouter`/`ollama`) + `mock` → model gọi tool → server thực thi → kết quả quay lại model · UI: block collapsible "Đang dùng tool: X" (args + kết quả + trạng thái) trong thread · **approval gate**: tool `requiresApproval` → badge "Cần bạn duyệt" + nút Duyệt/Từ chối → `POST /api/tools/:callId/approve` · tool call ghi vào bảng `tool_calls` + `request_logs.tool_calls` (nguồn dữ liệu cho eval). **Giới hạn:** `gemini` **chưa** hỗ trợ tool (shape function-calling riêng) · **chưa** có MCP (T-M2-08) · **chưa** có tool ghi dữ liệu thật nên luồng "plan + diff" của FR-TOOLS-04 là **hạ tầng**, chưa phải hành vi end-to-end |
 
 ---
 
@@ -141,6 +142,7 @@ Cột ưu tiên: **M** = Must (M1) · **S** = Should (M2) · **C** = Could (M2/M
 | Multi-model / BYOK | ➖ | ➖ | 🟢 | — |
 | Self-host / offline | ➖ | ➖ | 🟢 | — |
 | MCP | ➖ | ➖ | ⬜ (T-M2-08 — chưa implement) | — |
+| Tool registry + agent loop | ➖ | ➖ | ✅ (T-M2-07/09 — registry in-memory + `calculator` + approval gate; **chưa** có MCP) | — |
 | Log & eval | ➖ | ➖ | 🟢 | — |
 | Cost visibility | ➖ | ➖ | 🟢 | — |
 | Per-domain privacy | ⚠️ | ➖ | 🟢 | — |
@@ -305,6 +307,22 @@ Dòng **"Skills `/` + tạo/sửa/xoá skill + library có sẵn + trang duyệt
 | Ảnh hưởng §B/§C | **B8** (Library Skill có sẵn) 🟡 → ✅ · **B26** (skill library browser) ⬜ → ✅ (T-M2-06) · **C10** (import/export JSON) ⬜ → ✅ (T-M2-05) · **C14** (skill library browser nội bộ) ⬜ → ✅ (T-M2-06) |
 
 > **Sửa claim sai (2026-11-10):** §C4 (**MCP-native tool integration**) và §C7 (**RAG local**) là 2 tính năng **độc quyền** chưa có thật (T-M2-08 · T-M2-10/11 chưa implement) → trước đây bảng §C ghi **không có trạng thái** (đọc như đã có) → giờ đánh dấu **⬜ chưa implement**. §D dòng **MCP** 🟢 → **⬜ (T-M2-08 — chưa implement)**. §B15 (Personal Intelligence → "S (RAG local)") để nguyên vì RAG chưa có.
+
+#### E.1.6 Cập nhật sau T-M2-07 + T-M2-09 — Tool registry + agent loop + tool call UI (2026-11-11)
+
+Tool registry + agent loop + tool call UI + approval gate là tính năng **độc quyền** → ghi ở dòng **C16** §C + dòng **"Tool registry + agent loop"** §D → **không** thêm dòng §E → tỉ lệ pass §E giữ nguyên **34/35 = 97.1%**.
+
+**Bằng chứng:**
+
+| Hạng mục | Bằng chứng |
+|---|---|
+| **Tool registry + agent loop** (FR-TOOLS-01/02) | `apps/server/src/tools/` — `types.ts` (`Tool` + `ToolContext`) · `registry.ts` (`ToolRegistry` + `createDefaultToolRegistry()`) · `executor.ts` (`executeTool` — lỗi tool → `ok: false`, **không** làm hỏng lượt chat; output cắt ở `MAX_TOOL_OUTPUT_CHARS`) · `builtin/calculator.ts` (**không** dùng `eval` → tokenizer → shunting-yard → RPN → interpreter). Agent loop trong `apps/server/src/services/chatService.ts` — tối đa **5 vòng** (`TOOL_LIMITS.MAX_TOOL_ROUNDS`) · text đã stream **cộng dồn** giữa các vòng · vượt 5 vòng → dừng + trả câu trả lời hiện có + 1 dòng cảnh báo. Provider: `openaiCompatible` (gom `delta.tool_calls` partial JSON theo `index`) + `mock` (tool call giả lập → kênh offline cho E2E); `gemini` **chưa** hỗ trợ (cờ `ProviderAdapter.supportsTools`) |
+| **Tool call UI + approval gate** (FR-TOOLS-02/04) | `apps/extension/src/sidepanel/components/tools/ToolCallBlock.tsx` — block collapsible (header: icon `Wrench` + tên tool + badge trạng thái · mở rộng: args JSON pretty + kết quả + thời gian) · badge "Cần bạn duyệt" + nút Duyệt/Từ chối → `POST /api/tools/:callId/approve` (hoặc `/deny`) → toast. `useChat` xử lý SSE `tool_call` / `tool_result` / `tool_approval` → `chatStore.addToolCall` / `updateToolCall`. Lịch sử chat: server join bảng `tool_calls` → `conversationMessageSchema.toolCalls` → `toChatMessage` → block hiện lại khi mở lại conversation |
+| **Audit log** (FR-TOOLS-06) | Bảng `tool_calls` (mỗi tool call 1 dòng: `name` · `args` jsonb · `output` · `status` · `approval_required` · `approved_by_user` · `started_at` · `finished_at`) + `request_logs.tool_calls` (jsonb) → **nguồn dữ liệu cho eval**. Bảng `tool_calls` **đã có sẵn từ M0** → **không migration** |
+| Kiểm thử | Server `apps/server/tests/calculatorTool.test.ts` · `toolRegistry.test.ts` · `toolExecutor.test.ts` · `openaiToolCall.test.ts` · `mockToolCall.test.ts` · `toolAgentLoop.test.ts` · `toolsRoute.test.ts` · Shared `packages/shared/tests/tool.test.ts` · Extension `apps/extension/tests/toolCallBlock.test.tsx` · `useChatTools.test.ts` · `toolClient.test.ts` · E2E `apps/extension/e2e/tools.spec.ts` (**4/4** — block tool call · collapsible args+output · approval gate gọi API duyệt · trạng thái lỗi) |
+| Ảnh hưởng §C/§D | **C16** (tool registry + tool call UI có approval gate) ⬜ → ✅ (dòng **mới**) · §C4 (MCP) **giữ ⬜** (T-M2-08 — mới có tool registry, **chưa** có MCP client) · §D dòng **"Tool registry + agent loop"** 🟢 → ✅ (dòng **mới**) · §D dòng **MCP** giữ **⬜** |
+
+> **Ghi chú công bằng:** approval gate hiện là **hạ tầng** — chưa có tool **ghi dữ liệu thật** để chứng minh luồng "plan + diff" đầy đủ của FR-TOOLS-04 (thuộc T-M2-18). Khi trình bày, **không** được nói "Sidekick có xác nhận trước khi hành động" như đã hoàn chỉnh — nói "đã có cơ chế duyệt tool, tool hiện chỉ là read-only".
 
 ### E.2 Checklist M4 — Workflow (ngoài đường găng, chỉ làm sau khi M0–M3 xong)
 

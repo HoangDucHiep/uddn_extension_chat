@@ -8,6 +8,7 @@
  */
 
 import { z } from 'zod'
+import { TOOL_CALL_STATUSES } from '../constants.js'
 
 /** Do dai toi da cua tieu de conversation (ky tu). */
 export const MAX_CONVERSATION_TITLE_CHARS = 200
@@ -78,6 +79,31 @@ export const conversationCitationSchema = z.object({
 export type ConversationCitation = z.infer<typeof conversationCitationSchema>
 
 /**
+ * Mot tool call da luu cua mot message (FR-TOOLS-02 — T-M2-09).
+ *
+ * Khoi phuc block "Dung tool: X" khi tai lai lich su hoi thoai.
+ */
+export const conversationToolCallSchema = z.object({
+  /** Id tool call (uuid) — khop voi `tool_calls.id`. */
+  id: z.string().min(1),
+  /** Ten tool da goi. */
+  name: z.string().min(1),
+  /** Tham so model truyen. */
+  args: z.unknown(),
+  /** Ket qua tool (string). */
+  output: z.string().optional(),
+  /** Trang thai: `ok` · `error` · `denied`. */
+  status: z.enum(TOOL_CALL_STATUSES),
+  /** Tool co can user duyet khong. */
+  approvalRequired: z.boolean(),
+  /** User da duyet hay chua. */
+  approvedByUser: z.boolean(),
+  /** Thoi gian thuc thi (ms). */
+  durationMs: z.number().int().nonnegative().optional(),
+})
+export type ConversationToolCall = z.infer<typeof conversationToolCallSchema>
+
+/**
  * Mot message trong lich su hoi thoai (khoi phuc tu DB).
  *
  * `meta` luu provider/model/token (DP-6) → chip thong tin hien lai khi
@@ -93,6 +119,13 @@ export const conversationMessageSchema = z.object({
   tokensIn: z.number().int().nonnegative().optional(),
   tokensOut: z.number().int().nonnegative().optional(),
   citations: z.array(conversationCitationSchema).default([]),
+  /**
+   * Cac tool call da luu cua message nay (FR-TOOLS-02 — T-M2-09).
+   *
+   * Server join bang `tool_calls` khi load lich su → khoi phuc block
+   * "Dung tool: X" trong thread.
+   */
+  toolCalls: z.array(conversationToolCallSchema).default([]),
   /**
    * Id cua turn chua message nay (T-M1-10).
    *

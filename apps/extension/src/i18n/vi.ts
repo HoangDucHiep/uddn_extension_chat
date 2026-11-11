@@ -446,6 +446,26 @@ export const viDictionary = {
   'toast.skillImported': 'Đã nhập {count} kỹ năng',
   'toast.skillImportedPartial': 'Đã nhập {count} kỹ năng, bỏ qua {skipped} trùng tên',
   'toast.skillImportFailed': 'Không nhập được kỹ năng',
+
+  // --- tool call (T-M2-09 — FR-TOOLS-02/04) ---
+  'tool.call.title': 'Đang dùng tool: {name}',
+  'tool.call.running': 'Đang chạy…',
+  'tool.call.ok': 'Xong',
+  'tool.call.error': 'Lỗi',
+  'tool.call.args': 'Tham số',
+  'tool.call.output': 'Kết quả',
+  'tool.call.approvalRequired': 'Cần bạn duyệt',
+  'tool.call.approve': 'Duyệt',
+  'tool.call.deny': 'Từ chối',
+  'tool.call.approved': 'Đã duyệt',
+  'tool.call.denied': 'Đã từ chối',
+  'tool.call.duration': 'Thời gian: {duration} ms',
+  'tool.call.pending': 'Chờ duyệt',
+  'tool.call.expand': 'Mở chi tiết tool',
+  'tool.call.collapse': 'Thu gọn tool',
+  'toast.toolApproved': 'Đã duyệt tool {name}',
+  'toast.toolDenied': 'Đã từ chối tool {name}',
+  'toast.toolApprovalFailed': 'Không cập nhật được trạng thái duyệt tool',
 } as const
 
 /** Union cua tat ca khoa dich hop le. */

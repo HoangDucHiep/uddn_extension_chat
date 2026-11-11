@@ -6,6 +6,7 @@ import {
   type ContextItem,
   type ImageAttachment,
   type ProviderId,
+  type ToolCallStatus,
 } from '@sidekick/shared'
 import { writeContextEnabled } from '@/lib/storage'
 
@@ -52,6 +53,35 @@ export interface ChatCitation {
   tabId?: number
 }
 
+/**
+ * Mot tool call trong luong chat (FR-TOOLS-02 — T-M2-09).
+ *
+ * `id` khop voi `tool_calls.id` tren server → nut "Duyệt" / "Từ chối"
+ * goi `POST /api/tools/:callId/approve` (hoac `/deny`).
+ */
+export interface ChatToolCall {
+  /** Id tool call — khop voi `tool_calls.id`. */
+  id: string
+  /** Ten tool da goi. */
+  name: string
+  /** Tham so model truyen. */
+  args: unknown
+  /** Ket qua tool (string) — `undefined` neu chua xong. */
+  output?: string
+  /** Tool co chay thanh cong khong. */
+  ok?: boolean
+  /** Thoi gian thuc thi (ms). */
+  durationMs?: number
+  /** Tool co can user duyet khong (FR-TOOLS-04). */
+  approvalRequired?: boolean
+  /** User da duyet hay chua. */
+  approvedByUser?: boolean
+  /** User da tu choi hay chua. */
+  deniedByUser?: boolean
+  /** Trang thai hien thi — suy ra tu cac field tren neu khong chi dinh. */
+  status?: ToolCallStatus
+}
+
 export interface ChatMessage {
   id: string
   role: 'user' | 'assistant' | 'system'
@@ -76,6 +106,12 @@ export interface ChatMessage {
   images?: ChatImage[]
   /** Nguon trich dan cua message (FR-CONTEXT-10 — T-M1-08). */
   citations?: ChatCitation[]
+  /**
+   * Tool call da goi trong luot nay (FR-TOOLS-02 — T-M2-09).
+   *
+   * Hien thi bang block collapsible "Dung tool: X" duoi noi dung.
+   */
+  toolCalls?: ChatToolCall[]
   /**
    * Id cua turn chua message nay (T-M1-10).
    *
@@ -166,6 +202,18 @@ export interface ChatState {
    * Trung `index` → ghi de (SSE co the lap marker o cac doan khac nhau).
    */
   addCitation: (id: string, citation: ChatCitation) => void
+  /**
+   * Them 1 tool call vao message (FR-TOOLS-02 — T-M2-09).
+   *
+   * Trung `id` → ghi de (SSE `tool_call` co the den lai cung 1 tool call).
+   */
+  addToolCall: (id: string, toolCall: ChatToolCall) => void
+  /**
+   * Cap nhat 1 tool call da co (FR-TOOLS-02 — T-M2-09).
+   *
+   * Dung khi SSE `tool_result` ve hoac user duyet / tu choi.
+   */
+  updateToolCall: (id: string, toolCallId: string, patch: Partial<ChatToolCall>) => void
   setConversationId: (conversationId: string | undefined) => void
   /**
    * Nap lai lich su hoi thoai cua 1 conversation (FR-CHAT-09 — T-M1-09).
@@ -302,8 +350,34 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }),
     })),
 
-  setConversationId: (conversationId) => set({ conversationId }),
+  addToolCall: (id, toolCall) =>
+    set((state) => ({
+      messages: state.messages.map((message) => {
+        if (message.id !== id) return message
+        const existing = message.toolCalls ?? []
+        // Trung `id` → ghi de (SSE `tool_call` co the den lai cung 1 tool call).
+        const merged = existing.filter((item) => item.id !== toolCall.id)
+        merged.push(toolCall)
+        return { ...message, toolCalls: merged }
+      }),
+    })),
 
+  updateToolCall: (id, toolCallId, patch) =>
+    set((state) => ({
+      messages: state.messages.map((message) => {
+        if (message.id !== id) return message
+        const existing = message.toolCalls ?? []
+        if (!existing.some((item) => item.id === toolCallId)) return message
+        return {
+          ...message,
+          toolCalls: existing.map((item) =>
+            item.id === toolCallId ? { ...item, ...patch } : item,
+          ),
+        }
+      }),
+    })),
+
+  setConversationId: (conversationId) => set({ conversationId }),
   hydrateConversation: (conversationId, messages) =>
     set({
       conversationId,

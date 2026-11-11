@@ -24,23 +24,23 @@
 | Hạng mục | Trạng thái |
 |---|---|
 | Docs | ✅ Đầy đủ 11 file (`docs/`) + `AGENTS.md` ở root |
-| Code | ✅ **M1 (Parity) ĐÓNG** — 23/25 task (T-M1-15 + T-M1-16 ⏸ tạm dừng) — 4 workspace, **1565 unit test + 100 E2E** · **M2 đang làm** (T-M2-02 ✅ · T-M2-03 ✅ · T-M2-03b ✅ · T-M2-04 ✅ · T-M2-05 ✅ · T-M2-06 ✅ · T-M2-21 ✅ · kiểm chứng live Chrome **15/15** mục §11b) |
+| Code | ✅ **M1 (Parity) ĐÓNG** — 23/25 task (T-M1-15 + T-M1-16 ⏸ tạm dừng) — 4 workspace, **1775 unit test + 104 E2E** · **M2 đang làm** (T-M2-02 ✅ · T-M2-03 ✅ · T-M2-03b ✅ · T-M2-04 ✅ · T-M2-05 ✅ · T-M2-06 ✅ · T-M2-21 ✅ · **T-M2-07 ✅** · **T-M2-09 ✅** · kiểm chứng live Chrome **15/15** mục §11b) |
 | Git | ✅ Đã init (`main`) · tag `v0.1` (M0) · tag **`v0.2`** (M1 đóng 2026-11-09) |
 | Milestone hiện tại | **M2 — Advanced & Eval** (M0 ✅ · M1 ✅) |
-| Task tiếp theo | **T-M2-07 → 11** (Tools/MCP/RAG — greenfield) → **T-M2-12 → 17** (eval — deliverable bắt buộc `docs/EVAL_REPORT.md`) |
+| Task tiếp theo | **T-M2-08 · T-M2-10 · T-M2-11** (MCP client · web fetch · RAG) → **T-M2-12 → 17** (eval — deliverable bắt buộc `docs/EVAL_REPORT.md`) |
 
 ### Đang làm dở
 
 _(Không có — M1 đóng xong 2026-11-09, tag `v0.2`)_
 
-### M2 — tiến độ (2026-11-11) — **7/23 task ✅**
+### M2 — tiến độ (2026-11-11) — **9/23 task ✅**
 
 | Nhóm / Task | Trạng thái | Ghi chú |
 |---|---|---|
 | **Nhóm Provider** — T-M2-02 · T-M2-03 · T-M2-03b | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.22 (model picker + fallback chain) · §7.23 (token/cost UI) · §7.24 (budget cap — enforce **phía server**, bảng `budget_settings`) |
 | **Nhóm Skills** — T-M2-04 · T-M2-05 · T-M2-06 · T-M2-21 | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.25 (menu `/` + CRUD) · §7.25.8 (import/export JSON) · §7.25.9 (library browser lọc theo tag) · §7.25.10 (**9** skill built-in + điều kiện tab, migration `0005_skill_tab_condition.sql`) |
 | T-M2-01 Multi-provider (OpenAI/Anthropic) | ⏸ **đẩy lại** | Quyết định user 2026-11-10: **không thêm provider mới** → giữ nguyên `PROVIDER_IDS` (`mock · groq · openrouter · gemini · ollama`). Phần "model list động" đã xong trong T-M2-02 |
-| **Nhóm Tools/MCP/RAG** — T-M2-07 → T-M2-11 | ⬜ **chưa bắt đầu** | Nền có sẵn: SSE `tool_call`/`tool_result` + bảng `tool_calls` (M0) · Postgres `pgvector`. **Chưa** có `apps/server/src/tools/` hay `apps/server/src/rag/` → khối tiếp theo (xem §4.1.5) |
+| **Nhóm Tools/MCP/RAG** — T-M2-07 → T-M2-11 | 🟡 **2/5 xong** | **T-M2-07 ✅** tool registry + builtin calculator + agent loop · **T-M2-09 ✅** tool call UI + approval gate · còn lại T-M2-08 (MCP client) · T-M2-10 (web fetch) · T-M2-11 (RAG) — xem §4.1.5 |
 | **Nhóm Eval** — T-M2-12 → T-M2-17 | ⬜ **chưa bắt đầu** | Nền có sẵn: contract `evalTaskSchema` + `EVAL_GROUPS` + CLI `apps/eval`. Dataset `apps/eval/dataset/tasks.json` đang **rỗng `[]`** · `docs/EVAL_REPORT.md` **chưa tồn tại** (deliverable bắt buộc) · **để sau** (quyết định user 2026-11-10) |
 | **Nhóm Could** — T-M2-18 · T-M2-19 · T-M2-20 · T-M2-22 | ⬜ **chưa bắt đầu** | Agentic action · context policy theo domain · web search tool · vision mở rộng — **cắt được** nếu thiếu thời gian (xem §10) |
 
@@ -121,6 +121,26 @@ _(Không có — M1 đóng xong 2026-11-09, tag `v0.2`)_
 - UI: 2 checkbox trong `SkillFormDialog` ("Chạy trên tab hiện tại" · "Chạy trên tab được chọn") · badge `SkillConditionBadge` ở menu `/` + thư viện · popover chọn tab `SkillTabPicker` (dùng lại `useTabs`).
 - **Hành vi:** chọn skill có điều kiện → `useCurrentTab` tự đính kèm trang hiện tại · `useSelectedTabs` mở popover chọn tab → tab được chọn được đính kèm. Skill **không** có điều kiện → **không** tự đính kèm (giữ nguyên FR-CONTEXT-13).
 - **Đóng dòng §E "Skills"** → **34/35 = 97.1%** (§E.1.5) · **B8** ✅ · **B26** ✅ · **C10** ✅ · **C14** ✅.
+
+**Tóm tắt T-M2-07 (FR-TOOLS-01/02/06 — tool registry + calculator + agent loop):**
+
+- **Tool registry** (`apps/server/src/tools/registry.ts`): đăng ký tool theo tên · `requiresApproval` · `toDefinitions()` map sang OpenAI-compatible `tools` payload · ghi đè khi trùng tên.
+- **Builtin calculator** (`apps/server/src/tools/calculatorTool.ts`): tokenizer + shunting-yard → RPN → đánh giá biểu thức · hỗ trợ `+ - * / ^ ( )` và hàm cơ bản · chặn chia 0 · giới hạn độ dài biểu thức · chặn ký tự lạ · **read-only → không cần duyệt**.
+- **Tool executor** (`apps/server/src/tools/executor.ts`): chạy tool → `ToolResult` · tool throw → `ok: false` + message · tool không tồn tại → lỗi chuẩn · cắt output quá dài.
+- **Agent loop** (`apps/server/src/services/toolAgentLoop.ts`): vòng lặp `tool_call` → `tool_result` → token · ghi bảng `tool_calls` · **giới hạn `MAX_TOOL_ROUNDS`** → dừng + cảnh báo · **approval gate**: tool `requiresApproval: true` → **không** chạy tool, emit SSE `tool_approval` chờ user duyệt.
+- **Adapters**: `openaiCompatible.ts` gom partial JSON theo `index` · `finish_reason: 'tool_calls'` → `finishReason: 'tool'` · `mock.ts` trả tool call ở vòng 1 rồi text ở vòng 2.
+- **Provider scope:** `groq` · `openrouter` · `ollama` (OpenAI-compatible) + `mock` — **Gemini tạm chưa** (tool-calling format khác).
+- **DB:** bảng `tool_calls` đã có sẵn từ M0 → **không** migration mới.
+
+**Tóm tắt T-M2-09 (FR-TOOLS-02/04 — tool call UI + approval gate):**
+
+- **UI:** `ToolCallBlock` trong bubble assistant (sau nội dung, trước nút hành động) · collapsible (mặc định thu gọn) · badge trạng thái (`ok`/`error`/`denied`/`running`/`pending`) · args + output trong `<pre>`.
+- **Approval gate:** badge "Cần bạn duyệt" + nút **Duyệt** / **Từ chối** → `POST /api/tools/:callId/approve` (`/deny`) → toast.
+- **State:** `ChatToolCall` + `addToolCall` / `updateToolCall` trong `chatStore` · SSE `tool_call` · `tool_result` · `tool_approval` xử lý trong `useChat`.
+- **Lịch sử:** server join bảng `tool_calls` → `ConversationMessage.toolCalls` → extension map sang `ChatMessage.toolCalls` → block hiện lại khi mở lại conversation.
+- **API mới:** `GET /api/tools` · `POST /api/tools/:callId/approve` · `POST /api/tools/:callId/deny`.
+
+**Số liệu test sau T-M2-07 + T-M2-09 (2026-11-11):** shared 329 · server 575 · extension 860 · eval 11 = **1775 unit** + **104 E2E** (27 file). `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm build:ext` ✅ (`dist/content.js` **17.27 kB** — code tool **không** lọt vào content script). E2E tools **4/4** ✅ (mock provider offline).
 
 **Số liệu test sau T-M2-04 (2026-11-10):** shared 284 · server 458 · extension 812 · eval 11 = **1565 unit** + **100 E2E** (26 file). `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm build` ✅ (`dist/content.js` **17.27 kB** — code skill **không** lọt vào content script) · E2E skills **6/6** ✅.
 

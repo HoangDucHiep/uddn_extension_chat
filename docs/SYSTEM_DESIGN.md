@@ -3793,7 +3793,58 @@ model goi tool can duyet
 
 > Đây là **hạ tầng** — chưa có tool nguy hiểm thật trong lot này (`calculator` là read-only). Task T-M2-18 (agentic) sẽ dùng chính đường đi này.
 
-#### 7.26.9 Kiểm thử
+#### 7.26.9 Extension — tool call UI (T-M2-09)
+
+**`apps/extension/src/sidepanel/components/tools/ToolCallBlock.tsx`**
+
+| Phần | Nội dung |
+|---|---|
+| Header | `<button type="button">` · `aria-expanded` + `aria-label` (`tool.call.expand` / `tool.call.collapse`) · icon `Wrench` · tên tool · badge trạng thái · `data-testid="tool-call-toggle"` |
+| Body | `<pre>` args (JSON pretty) + `<pre>` output + thời gian thực thi · `data-testid="tool-call-args"` / `tool-call-output` |
+| Approval | Badge "Cần bạn duyệt" + nút **Duyệt** / **Từ chối** → `approveToolCall` / `denyToolCall` → toast |
+| Mặc định | **Thu gọn** → args/output không render |
+
+**State (`apps/extension/src/sidepanel/store/chatStore.ts`)**
+
+```typescript
+export interface ChatToolCall {
+  id: string
+  name: string
+  args: unknown
+  output?: string
+  ok?: boolean
+  durationMs?: number
+  approvalRequired?: boolean
+  approvedByUser?: boolean
+  deniedByUser?: boolean
+  status?: ToolCallStatus   // 'pending' | 'running' | 'ok' | 'error' | 'denied'
+}
+```
+
+- `ChatMessage.toolCalls?: ChatToolCall[]`
+- Action `addToolCall(messageId, toolCall)` (trùng `id` → ghi đè) + `updateToolCall(messageId, toolCallId, patch)`.
+
+**SSE (`apps/extension/src/sidepanel/hooks/useChat.ts`)**
+
+| Event | Hành vi |
+|---|---|
+| `tool_call` | `addToolCall(assistantId, { id, name, args, approvalRequired, status: approvalRequired ? 'pending' : 'running' })` |
+| `tool_result` | `updateToolCall(assistantId, event.id, { ok, output, durationMs, status: ok ? 'ok' : 'error' })` |
+| `tool_approval` | `addToolCall(assistantId, { id, name, args, approvalRequired: true, status: 'pending' })` |
+
+**Client (`apps/extension/src/lib/toolClient.ts`)** — `listTools()` · `approveToolCall(id)` · `denyToolCall(id)` → dùng `fetchJson` của `lib/apiClient.ts`.
+
+**Render** — `MessageBubble` render block tool **sau** `MessageContent`, **trước** `MessageActions` · chỉ với `role === 'assistant'`.
+
+**Lịch sử chat**
+
+- Server: `getConversationMessages` **join** bảng `tool_calls` → `ConversationMessage.toolCalls`.
+- Shared: `conversationToolCallSchema` + `conversationMessageSchema.toolCalls` (mặc định `[]`).
+- Extension: `toChatMessage` map `toolCalls` → `ChatMessage.toolCalls` → block hiện lại khi mở lại conversation.
+
+> Chi tiết UI: [`DESIGN_SYSTEM_BRIEF.md`](DESIGN_SYSTEM_BRIEF.md) §3.14
+
+#### 7.26.10 Kiểm thử
 
 | Tầng | File | Phủ |
 |---|---|---|

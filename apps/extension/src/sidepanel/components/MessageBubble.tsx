@@ -6,10 +6,11 @@ import { MessageActions } from './chat/MessageActions'
 import { MessageContent } from './chat/MessageContent'
 import { MessageEditBox } from './chat/MessageEditBox'
 import { UsageBadge } from './chat/UsageBadge'
+import { ToolCallBlock } from './tools/ToolCallBlock'
 import { ErrorState } from './states/ErrorState'
 import { useI18n } from '@/sidepanel/hooks/useI18n'
 import type { TurnMessage } from '@/lib/chatTurns'
-import type { ChatMessage } from '../store/chatStore'
+import type { ChatMessage, ChatToolCall } from '../store/chatStore'
 
 export interface MessageBubbleProps {
   message: ChatMessage
@@ -37,6 +38,10 @@ export interface MessageBubbleProps {
    * @param content - Noi dung tin nhan user.
    */
   onSaveAsSkill?: (content: string) => void
+  /**
+   * Handler cap nhat tool call (duyet / tu choi) (FR-TOOLS-04 — T-M2-09).
+   */
+  onUpdateToolCall?: (messageId: string, toolCallId: string, patch: Partial<ChatToolCall>) => void
   /** Dang stream → an thao tac phu thuoc trang thai. */
   isStreaming?: boolean
 }
@@ -59,6 +64,7 @@ export function MessageBubble({
   onOpenSettings,
   onSelectVariant,
   onSaveAsSkill,
+  onUpdateToolCall,
   isStreaming = false,
 }: MessageBubbleProps) {
   const { t } = useI18n()
@@ -210,6 +216,25 @@ export function MessageBubble({
                 · {message.requestId.slice(0, 6)}
               </span>
             ) : null}
+          </div>
+        ) : null}
+
+        {/* Block tool call (FR-TOOLS-02 — T-M2-09) — chi hien voi assistant. */}
+        {!isUser && message.toolCalls !== undefined && message.toolCalls.length > 0 ? (
+          <div data-testid="message-tool-calls">
+            {message.toolCalls.map((toolCall) => (
+              <ToolCallBlock
+                key={toolCall.id}
+                toolCall={toolCall}
+                {...(onUpdateToolCall !== undefined
+                  ? {
+                      onUpdate: (toolCallId: string, patch: Partial<ChatToolCall>) => {
+                        onUpdateToolCall(message.id, toolCallId, patch)
+                      },
+                    }
+                  : {})}
+              />
+            ))}
           </div>
         ) : null}
 

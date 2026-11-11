@@ -18,6 +18,7 @@ import { asc, eq } from 'drizzle-orm'
 import {
   type ConversationCitation,
   type ConversationMessage,
+  type ConversationToolCall,
   type ConversationTurn,
   type ConversationVariant,
 } from '@sidekick/shared'
@@ -42,6 +43,12 @@ export interface RawMessage {
   tokensIn?: number | undefined
   tokensOut?: number | undefined
   citations?: readonly ConversationCitation[] | undefined
+  /**
+   * Tool call da luu cua message (FR-TOOLS-02 — T-M2-09).
+   *
+   * Join tu bang `tool_calls` khi load lich su.
+   */
+  toolCalls?: readonly ConversationToolCall[] | undefined
 }
 
 /**
@@ -143,6 +150,7 @@ export function normalizeMessages(rawMessages: readonly RawMessage[]): Normalize
       content: raw.content,
       createdAt: raw.createdAt,
       citations: [...(raw.citations ?? [])],
+      toolCalls: [...(raw.toolCalls ?? [])],
       turnId,
       variantIndex,
       active,
