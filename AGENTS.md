@@ -123,6 +123,7 @@ pnpm manual:checklist        # chạy checklist test tay trên Chrome thật (lo
 > - **Lịch sử chat:** server join bảng `tool_calls` → `ConversationMessage.toolCalls` (shared `conversationToolCallSchema`, mặc định `[]`) → extension map sang `ChatMessage.toolCalls` → block hiện lại khi mở lại conversation.
 > - **API mới:** `GET /api/tools` · `POST /api/tools/:callId/approve` · `POST /api/tools/:callId/deny`.
 > - **Test:** shared `tool.test.ts` + `events.test.ts` · server `calculatorTool` · `toolRegistry` · `toolExecutor` · `toolAgentLoop` · `openaiToolCall` · `mockToolCall` · `toolsRoute` · extension `toolCallBlock.test.tsx` · `useChatTools.test.ts` · `toolClient.test.ts` · E2E `tools.spec.ts` (**4/4**, mock provider offline).
+> - **Commit:** `ecb9d37` (server) · `cbf31c4` (UI).
 > - **Số liệu test sau T-M2-07 + T-M2-09 (2026-11-11):** shared 329 · server 575 · extension 860 · eval 11 = **1775 unit** + **104 E2E** (27 file). `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm build:ext` ✅ (`dist/content.js` **17.27 kB** — code tool **không** lọt vào content script).
 > Chi tiết: [`SYSTEM_DESIGN.md`](docs/SYSTEM_DESIGN.md) §7.26 · [`REQUIREMENTS.md`](docs/REQUIREMENTS.md) §4.6.3 · [`COMPARISON_MATRIX.md`](docs/COMPARISON_MATRIX.md) §E.1.6 · [`IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) §4.1.
 
