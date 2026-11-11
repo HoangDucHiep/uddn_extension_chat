@@ -77,7 +77,7 @@ Cột ưu tiên: **M** = Must (M1) · **S** = Should (M2) · **C** = Could (M2/M
 | B12 | Auto Browse | Agentic: tự duyệt web, làm việc hộ. **Preview, chỉ AI Pro/Ultra** | C |
 | B13 | Connected apps | Tích hợp Gmail, YouTube, Flights, Google apps | C (qua MCP) |
 | B14 | Gemini Live (voice) | Voice chat, share tab trong Live | C |
-| B15 | Personal Intelligence | Hiểu lịch sử Gemini app để cá nhân hoá. **Chỉ một số vùng** | S (RAG local) |
+| B15 | Personal Intelligence | Hiểu lịch sử Gemini app để cá nhân hoá. **Chỉ một số vùng** | S (RAG local) — **N/A** *(Sidekick **không** có RAG local — T-M2-10/11 ⏸ hoãn 2026-11-11; không tính điểm 0)* |
 | B16 | History recall | Nhớ tab đã mở tuần trước | S |
 | B17 | Upload ảnh | Gửi ảnh kèm câu hỏi | M |
 | B18 | Multi-conversation | Nhiều cuộc trò chuyện cùng lúc | M |
@@ -106,7 +106,7 @@ Cột ưu tiên: **M** = Must (M1) · **S** = Should (M2) · **C** = Could (M2/M
 | C4 | **MCP-native tool integration** | FR-TOOLS-01/02 | Đánh trực tiếp B13 (thay thế bằng chuẩn mở) — ✅ **T-M2-08 (2026-11-11)** — **MCP client stdio** (`apps/server/src/tools/mcp/`): `protocol.ts` (JSON-RPC 2.0 newline-delimited) · `client.ts` (spawn tiến trình → `initialize` → `notifications/initialized` → `tools/list` → `tools/call`) · `manager.ts` (nhiều server · **namespace tool `mcp__<server>__<tool>`** → đăng ký vào `ToolRegistry` → model gọi được như tool built-in). Cấu hình lưu Postgres (bảng `mcp_servers`) · tool MCP **mặc định cần duyệt** · 1 server lỗi không chặn server khác · UI quản lý trong Settings. Chi tiết: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.27 |
 | C5 | **Log request đầy đủ có cấu trúc** (prompt, context hash, token, cost, latency, tool call) | NFR-MAINT-04, §7.2 | Đánh trực tiếp B24; **đây là nền tảng cho eval** — T-M1-06 đã sửa `context_hash` thành hash của **context thật đã gửi** (trước đó là hash toàn bộ prompt) + thêm `context_snapshot` theo setting |
 | C6 | **Token & cost visibility** theo lượt + budget cap | FR-PROVIDER-05/06 | Không có ở A/B — **T-M2-03 (FR-PROVIDER-05)** ✅: badge token/cost theo lượt + section "Chi phí & sử dụng" (tổng + theo ngày). **T-M2-03b (FR-PROVIDER-06)** ✅: budget cap **enforce phía server** (hạn mức USD theo kỳ `daily`/`monthly`, cảnh báo ở ngưỡng, **tùy chọn chặn** lượt chat mới khi vượt hạn mức — server **không gọi provider** → chi phí = 0). Cấu hình lưu trong Postgres (bảng `budget_settings`) → server là nguồn chặn sự thật. Chi tiết: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.23 · §7.24 |
-| C7 | **RAG local** trên lịch sử chat + tài liệu, có trích dẫn | FR-TOOLS-05 | Minh bạch hơn B15 (Personal Intelligence) — ⬜ **chưa implement** (T-M2-10/11) |
+| C7 | **RAG local** trên lịch sử chat + tài liệu, có trích dẫn | FR-TOOLS-05 | Minh bạch hơn B15 (Personal Intelligence) — ⏸ **hoãn (2026-11-11 — quyết định user)**. T-M2-10/11 **không** implement trong M2: (1) RAG **không** đóng dòng §E nào của parity Edge/Gemini; (2) `EVAL_GROUPS` (8 nhóm) **không** có nhóm nào đo RAG → **không** ảnh hưởng `EVAL_REPORT.md`; (3) điều kiện M2 *"≥ 4 tính năng 🟢"* đã đạt (multi-provider · self-host · MCP · log/cost). Trong `EVAL_REPORT.md` ghi **N/A** kèm lý do (không tính điểm 0). Nền đã có sẵn nếu mở lại: `pgvector` chạy sẵn trong `docker-compose.yml` + cột `citations.score` đã có |
 | C8 | **Allowlist/denylist context theo domain** | FR-CONTEXT-08 | Mạnh hơn A2 (chỉ bật/tắt toàn cục) |
 | C9 | **Công cụ eval tích hợp** (dataset, judge, dashboard) | `EVAL_PLAN.md` | Không có ở A/B |
 | C10 | **Skill import/export JSON** | FR-SKILL-05 | Mở hơn B6 (phụ thuộc tài khoản Google) — ✅ **T-M2-05 (2026-11-10)** — nút "Xuất JSON" / "Nhập JSON" trong drawer Kỹ năng · file `version: 1` + `exportedAt` + `skills[]` · export chỉ scope `user` · import bỏ `id`/`scope`/timestamp (server tự sinh id mới) · trùng tên → bỏ qua |
@@ -142,6 +142,7 @@ Cột ưu tiên: **M** = Must (M1) · **S** = Should (M2) · **C** = Could (M2/M
 | Multi-model / BYOK | ➖ | ➖ | 🟢 | — |
 | Self-host / offline | ➖ | ➖ | 🟢 | — |
 | MCP | ➖ | ➖ | ✅ (T-M2-08 — MCP client stdio: spawn server → `tools/list` → namespace `mcp__<server>__<tool>` → đăng ký vào tool registry; UI trong Settings) | — |
+| RAG local | ⚠️ (Personal Intelligence) | ⚠️ (Personal Intelligence) | ➖ **N/A** *(T-M2-10/11 ⏸ hoãn 2026-11-11 — không tính điểm 0, xem §C7)* | — |
 | Tool registry + agent loop | ➖ | ➖ | ✅ (T-M2-07/09 — registry in-memory + `calculator` + approval gate; **T-M2-08** bổ sung tool từ MCP server) | — |
 | Log & eval | ➖ | ➖ | 🟢 | — |
 | Cost visibility | ➖ | ➖ | 🟢 | — |
@@ -340,6 +341,22 @@ MCP là tính năng **độc quyền** (§C4 + dòng §D "MCP") → **đóng** 2
 | Ảnh hưởng §C/§D | **C4** (MCP-native tool integration) ⬜ → ✅ · §D dòng **MCP** ⬜ → ✅ · §D dòng **"Tool registry + agent loop"** ✅ (bổ sung nguồn tool từ MCP server) |
 
 > **Ghi chú công bằng:** lot T-M2-08 chỉ hỗ trợ transport **stdio**. HTTP/SSE transport (MCP server chạy từ xa) **chưa** có → khi trình bày nói rõ "MCP client qua stdio (tiến trình cục bộ)", **không** nói "hỗ trợ MCP đầy đủ". Provider `gemini` vẫn **chưa** hỗ trợ function calling → tool MCP chỉ dùng được với `groq` · `openrouter` · `ollama` · `mock`.
+
+#### E.1.8 Cập nhật sau quyết định hoãn RAG — T-M2-10/11 (2026-11-11)
+
+RAG (**FR-TOOLS-05**) bị **hoãn** theo quyết định user → **không** đóng thêm dòng §E nào → **tỉ lệ pass §E giữ nguyên 34/35 = 97.1%**.
+
+| Hạng mục | Ghi chú |
+|---|---|
+| **§C7** (RAG local) | ⬜ **chưa implement** → **⏸ hoãn** (T-M2-10/11). Trong `EVAL_REPORT.md` ghi **N/A** kèm lý do — **không** tính là điểm 0 của hệ thống |
+| **§B15** (Personal Intelligence) | Sidekick **không** có RAG local → đánh dấu **N/A** ở cột "Ưu tiên ta" |
+| **§D dòng "RAG local"** | Thêm dòng ➖ **N/A** để bảng §D phản ánh đúng thực tế |
+| **Không ảnh hưởng §E** | RAG **không** nằm trong checklist parity Edge/Gemini → **không** thêm dòng §E |
+| **Không ảnh hưởng eval** | `EVAL_GROUPS` (8 nhóm: `page_qa` · `summarize` · `cross_tab` · `writing` · `vision` · `doc_extract` · `video_transcript` · `general_qa`) — **không** có nhóm nào đo RAG → `EVAL_REPORT.md` **không** đổi |
+| **Điều kiện M2 §9.2** | *"≥ 4 tính năng 🟢"* — **đã đạt**: multi-provider (T-M2-02) · self-host (Docker/Postgres) · MCP (T-M2-08) · log/cost (T-M1-14 + T-M2-03) → **không** cần RAG để đạt |
+| **Nền đã có sẵn nếu mở lại** | `pgvector/pgvector:pg16` đã chạy trong `docker-compose.yml` (extension `vector`) · cột `citations.score` đã có · pipeline citation (`CitationChip` · `parseCitationMarkers`) đã hoàn chỉnh |
+
+> **Ghi chú công bằng:** khi trình bày **không** nói Sidekick "có RAG" — nói *"RAG là hạng mục đã đánh giá và hoãn vì lợi ích chưa vượt công sức trong phạm vi đồ án; đã đánh giá theo §9.3"*. Ưu tiên M2 chuyển sang **Eval (T-M2-12 → 17)** — deliverable bắt buộc (`docs/EVAL_REPORT.md`).
 
 ### E.2 Checklist M4 — Workflow (ngoài đường găng, chỉ làm sau khi M0–M3 xong)
 

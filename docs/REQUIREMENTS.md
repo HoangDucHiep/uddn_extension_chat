@@ -297,7 +297,7 @@ Quy ước ưu tiên: **M** = Must (bắt buộc cho M1) · **S** = Should (bắ
 | FR-TOOLS-02 | Gọi tool theo vòng lặp (agent loop) có giới hạn số vòng | S | Tool call hiển thị trong chat dạng collapsible "Đang dùng tool: X"; max 5 vòng — **✅ ĐÃ IMPLEMENT (T-M2-07):** agent loop trong `chatService` tối đa **5 vòng** (`TOOL_LIMITS.MAX_TOOL_ROUNDS`). Mỗi vòng: stream provider → nếu có tool call → emit SSE `tool_call` → thực thi tool → emit SSE `tool_result` → thêm turn `assistant`(toolCalls) + turn `tool`(toolCallId) → stream tiếp. Text đã stream **cộng dồn** (không mất giữa các vòng). Vượt 5 vòng → dừng + trả câu trả lời hiện có + 1 dòng cảnh báo (không crash). Lỗi tool → `ok: false` → model tự quyết định bước tiếp (lượt chat **không** hỏng). Tool call hiển thị dạng collapsible → xem FR-TOOLS-02 (UI) ở T-M2-09 |
 | FR-TOOLS-03 | Web search tool (tùy chọn, bật/tắt) | S | Kết quả có nguồn + ngày; nếu tắt thì model không được gọi |
 | FR-TOOLS-04 | Agentic action trên trang: click, nhập liệu, submit | C | Luôn có bước **xác nhận** hiển thị plan + diff; có thể dừng — **⚠️ HẠ TẦNG ĐÃ SẴN SÀNG (T-M2-09):** approval gate hoạt động end-to-end ở tầng contract + UI: tool khai báo `requiresApproval: true` → server emit SSE `tool_call` (`approvalRequired: true`) + `tool_approval` (kèm `reason`) → **KHÔNG** chạy tool → emit `tool_result` (`ok: false`) để lượt chat tiếp tục → user bấm "Duyệt" / "Từ chối" trong UI → `POST /api/tools/:callId/approve` (hoặc `/deny`) → ghi `approved_by_user`. **Giới hạn:** lot T-M2-07/09 chỉ có tool **read-only** (`calculator`) → **chưa** có tool ghi dữ liệu thật để chứng minh luồng xác nhận đầy đủ (plan + diff + dừng) → thuộc **T-M2-18** (agentic) |
-| FR-TOOLS-05 | RAG: index lịch sử chat + tài liệu local (PDF/MD/TXT) | S | Vector store local (sqlite-vec/pgvector); trả kèm trích dẫn nguồn |
+| FR-TOOLS-05 | RAG: index lịch sử chat + tài liệu local (PDF/MD/TXT) | S | Vector store local (sqlite-vec/pgvector); trả kèm trích dẫn nguồn — ⏸ **HOÃN (2026-11-11 — quyết định user)**: T-M2-10/11 không implement trong M2. Lý do: (1) RAG không đóng dòng §E nào của parity Edge/Gemini; (2) `EVAL_GROUPS` (8 nhóm) không có nhóm nào đo RAG → không ảnh hưởng `EVAL_REPORT.md`; (3) điều kiện §9.2 đã đạt 4/5 tính năng 🟢 mà không cần RAG; (4) công sức (bảng `rag_documents` + embedder + chunking + retriever + indexer + UI toggle) lớn hơn lợi ích trong phạm vi đồ án. **Nền đã có sẵn nếu mở lại:** `pgvector/pgvector:pg16` chạy sẵn trong `docker-compose.yml` (extension `vector`) · cột `citations.score` đã có · pipeline citation (`CitationChip` · `parseCitationMarkers`) đã hoàn chỉnh |
 | FR-TOOLS-06 | Tool call audit log (đầu vào cho eval) | S | Log: tên tool, args, kết quả, thời gian, status — **✅ ĐÃ IMPLEMENT (T-M2-07):** mỗi tool call ghi 1 dòng vào bảng `tool_calls` (Postgres): `name` · `args` (jsonb) · `output` · `status` ( `ok` / `error` ) · `approval_required` · `approved_by_user` · `started_at` · `finished_at` . Đồng thời ghi vào `request_logs.tool_calls` (jsonb) → **nguồn dữ liệu cho eval** (đọc qua `GET /api/logs` → `toolCallCount` ). Bảng `tool_calls` **đã có sẵn từ M0** → **không migration**. Ghi DB lỗi **không** làm hỏng lượt chat |
 
 ### 4.5 FR-SKILL — Skills / Prompt library
@@ -1056,6 +1056,7 @@ Một FR được coi là **Done** khi:
 Nhóm cần đạt tối thiểu:
 - Full parity các dòng Must ở M1.
 - ≥ 4 tính năng cột 🟢 (BYOK/multi-provider, self-host, MCP, RAG local, log/cost) hoạt động thật ở M2.
+  - **Trạng thái 2026-11-11 — đã đạt 4/5:** multi-provider (T-M2-02) · self-host (Docker Compose + Postgres) · MCP (T-M2-08) · log/cost (T-M1-14 + T-M2-03). RAG local **không** tính vào 4 tính năng này (đã **hoãn** — xem §9.3).
 - Eval hoàn chỉnh 3 hệ thống có số liệu + phân tích.
 
 ### 9.3 Thứ tự ưu tiên khi thiếu thời gian (quyết định cắt)
@@ -1066,7 +1067,7 @@ Nếu deadline siết, cắt theo thứ tự sau — mỗi bước cắt đều 
 |---|---|---|
 | 1 | **M4 Workflow** (toàn bộ) | Đây là module "wow" nhưng **không** nằm trong yêu cầu của thầy. Không ảnh hưởng parity, không ảnh hưởng eval |
 | 2 | Agentic action (FR-TOOLS-04) | Rủi ro bảo mật cao, thời gian lớn, demo khó |
-| 3 | RAG (FR-TOOLS-05) | Đã có log + export transcript để thay thế một phần |
+| 3 | ~~RAG (FR-TOOLS-05)~~ | ✅ **Đã chốt cắt (2026-11-11 — quyết định user)** — T-M2-10/11 chuyển sang ⏸ hoãn. Lý do an toàn: đã có log + export transcript để thay thế một phần · RAG **không** đóng dòng §E nào của parity · `EVAL_GROUPS` không có nhóm nào đo RAG → **không** ảnh hưởng `EVAL_REPORT.md` · điều kiện §9.2 đã đạt 4/5 tính năng 🟢 mà không cần RAG |
 | 4 | Voice / Vision (FR-VISION-02/03) | Edge/Gemini cũng phải trả phí (M365 / AI Pro) → đánh dấu N/A trong eval |
 | 5 | Skill import/export (FR-SKILL-05) | Chỉ tiện, không cốt lõi |
 | 6 | Bảng Markdown (FR-CHAT-04) | Chrome Gemini cũng chưa làm tốt ở panel hẹp |
@@ -1170,7 +1171,7 @@ Chỉ bắt đầu M4 khi **đồng thời** thỏa:
 | FR-TOOLS-02 | M | T-M2-07 ✅ · T-M2-09 ✅ | M2 |
 | FR-TOOLS-03 | S | **T-M2-20** | M2 |
 | FR-TOOLS-04 | C | T-M2-09 ⚠️ (hạ tầng) · T-M2-18 | M2 |
-| FR-TOOLS-05 | S | T-M2-10 · T-M2-11 | M2 |
+| FR-TOOLS-05 | S | T-M2-10 ⏸ · T-M2-11 ⏸ *(hoãn 2026-11-11 — §9.3)* | M2 |
 | FR-TOOLS-06 | M | T-M2-07 ✅ | M2 |
 
 #### FR-SKILL — Skills / Prompt library

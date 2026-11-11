@@ -1,7 +1,7 @@
 ﻿# Documentation Index — Sidekick AI (Chrome Extension Chat Sidebar)
 
 **Dự án:** Extension chat-bot sidebar cho trình duyệt, cạnh tranh với Edge Copilot Sidebar và Chrome Gemini Sidebar.
-**Giai đoạn hiện tại:** **M0 (Foundation) ✅** (tag `v0.1`) · **M1 (Parity) ✅ ĐÓNG** (tag `v0.2`) — **23/25 task** (T-M1-13 export ✅ 2026-11-09) · **M2 đang làm — 4/23 task** (T-M2-02 model picker + fallback ✅ · T-M2-03 token/cost UI ✅ · T-M2-03b budget cap ✅ enforce phía server · T-M2-04 Skills menu `/` + CRUD ✅ — 2026-11-10) — **1565 unit test + 100 E2E** · kiểm chứng live trên Chrome thật **15/15** mục (`pnpm manual:checklist`) · tiếp theo: **T-M2-12 (dataset eval)** → `docs/EVAL_REPORT.md` (deliverable bắt buộc).
+**Giai đoạn hiện tại:** **M0 (Foundation) ✅** (tag `v0.1`) · **M1 (Parity) ✅ ĐÓNG** (tag `v0.2`) — **23/25 task** (T-M1-13 export ✅ 2026-11-09) · **M2 đang làm — 10/23 task ✅** (T-M2-02 · T-M2-03 · T-M2-03b · T-M2-04 · T-M2-05 · T-M2-06 · T-M2-21 · T-M2-07 · T-M2-09 · T-M2-08) · **3 task ⏸** (T-M2-01 đẩy · **T-M2-10 + T-M2-11 RAG hoãn 2026-11-11**) · **10 task ⬜** — **1848 unit test + 108 E2E** · kiểm chứng live trên Chrome thật **15/15** mục (`pnpm manual:checklist`) · **tiếp theo: T-M2-12 → 17 (eval)** → `docs/EVAL_REPORT.md` (deliverable bắt buộc).
 **Entry point cho agent:** [`../AGENTS.md`](../AGENTS.md) · [`HANDOFF.md`](HANDOFF.md)
 
 ---
@@ -57,7 +57,7 @@ flowchart LR
 | Repo | **Monorepo pnpm workspace**: `apps/extension` · `apps/server` · `apps/eval` · `packages/shared` |
 | LLM | Multi-provider adapter (Gemini, OpenAI, Anthropic, OpenRouter, Groq, Ollama); free tier trước |
 | Chế độ dự phòng | 3 nguồn key: **K1** team key (`.env`) · **K2** BYOK qua BFF (mã hoá trong Postgres) · **K3** BYOK direct (`chrome.storage.local`, khi BFF tắt) — xem `REQUIREMENTS.md` §4.6.1 — **⏸ K2/K3 tạm dừng 2026-11-08**, M1 chỉ dùng **K1** + Ollama local |
-| Phạm vi | Full parity 2 hệ thống + tính năng nâng cao (MCP, RAG, Skills, multi-provider, log). **Workflow automation = M4, implement cuối cùng** |
+| Phạm vi | Full parity 2 hệ thống + tính năng nâng cao (MCP, Skills, multi-provider, log/cost). **RAG local = ⏸ hoãn 2026-11-11** (xem `REQUIREMENTS.md` §9.3). **Workflow automation = M4, implement cuối cùng** |
 | Đánh giá | Offline benchmark (LLM-as-judge) **+** live manual test (rubric con người) |
 | Streaming | Trực tiếp Side Panel → BFF (không qua service worker — MV3 SW bị kill ~30s) |
 
@@ -101,14 +101,14 @@ Chi tiết lý do & hệ quả: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §2 (12 A
 
 | Tài liệu | Phiên bản | Ngày | Trạng thái |
 |---|---|---|---|
-| REQUIREMENTS.md | v2.6 | 2026-11-10 | ✅ Đã cập nhật — §4.5 AC **FR-SKILL-01 → 07** (T-M2-04 · T-M2-05 · T-M2-06 · **T-M2-21**) + §9 traceability |
-| COMPARISON_MATRIX.md | v2.6 | 2026-11-10 | ✅ Đã cập nhật — §E đóng dòng **"Skills `/` + CRUD + library + trang duyệt skill library"** → **34/35 = 97.1%** + **§E.1.5** (T-M2-21) · §B8/B26/C10/C14 ✅ · **sửa claim sai** (§C4 MCP / §C7 RAG → ⬜ chưa implement) |
+| REQUIREMENTS.md | v2.7 | 2026-11-11 | ✅ Đã cập nhật — §4.4 **FR-TOOLS-05 → ⏸ HOÃN** (RAG) · bảng coverage FR · §9.2 đạt **4/5** tính năng 🟢 · §9.3 dòng 3 → "đã chốt cắt" |
+| COMPARISON_MATRIX.md | v2.7 | 2026-11-11 | ✅ Đã cập nhật — **§C7 RAG → ⏸ hoãn** · **§B15 → N/A** · §D thêm dòng "RAG local" ➖ N/A · **§E.1.8** mới (gate §E **giữ nguyên 34/35 = 97.1%**) |
 | EVAL_PLAN.md | v1.4 | 2026-11-09 | ✅ Đã cập nhật — §3.1 bảng field bắt buộc + ghi chú contract `evalTaskSchema` |
 | DESIGN_SYSTEM_BRIEF.md | v2.3 | 2026-11-10 | ✅ Đã cập nhật — §5 + §5.1 checklist a11y — T-M1-20 · **§3.7.3** section "Ngân sách chi phí" + `BudgetBanner` (T-M2-03b) + **§3.13** Skills (`SkillMenu` · `SkillManager` · `SkillFormDialog` · `SkillLibrary` · `SkillConditionBadge` · `SkillTabPicker`) (T-M2-04 · T-M2-05 · T-M2-06 · **T-M2-21**) |
-| SYSTEM_DESIGN.md | v2.7 | 2026-11-10 | ✅ Đã cập nhật — **§7.22** model picker + fallback chain + **§7.23** token & chi phí + **§7.24** budget cap + **§7.25** Skills (mới · **§7.25.8** import/export · **§7.25.9** library browser · **§7.25.10** built-in 9 skill + điều kiện tab) |
-| IMPLEMENTATION_PLAN.md | v2.7 | 2026-11-11 | ✅ Đã cập nhật — bảng task M2 có **cột `Status`** (7 ✅ / 1 ⏸ / 15 ⬜) · **§4.1 Kết quả M2 (tổng hợp)** gộp §4.1–§4.4 cũ (verify · commit · bằng chứng · ảnh hưởng gate · trạng thái nền nhóm còn lại · việc tiếp theo) · §8 ghi chú trạng thái W6 · §10 bỏ 3 dòng cắt đã xong |
-| HANDOFF.md | v2.8 | 2026-11-11 | ✅ Đã cập nhật — tiến độ M2 gom theo nhóm (**7/23 ✅**) + ghi rõ **nền có sẵn / còn thiếu** cho Tools/MCP/RAG · Eval · Could |
-| CHANGELOG.md | v2.6 | 2026-11-10 | ✅ Đang theo dõi |
+| SYSTEM_DESIGN.md | v2.8 | 2026-11-11 | ✅ Đã cập nhật — **§7.22** model picker + fallback chain + **§7.23** token & chi phí + **§7.24** budget cap + **§7.25** Skills (mới · **§7.25.8** import/export · **§7.25.9** library browser · **§7.25.10** built-in 9 skill + điều kiện tab) · **ADR-10** ghi trạng thái RAG ⏸ hoãn · sơ đồ kiến trúc + bảng schema `rag_documents` đánh dấu *chưa tạo* |
+| IMPLEMENTATION_PLAN.md | v2.8 | 2026-11-11 | ✅ Đã cập nhật — bảng task M2 có **cột `Status`** (**10 ✅ / 3 ⏸ / 10 ⬜**) · **T-M2-10 + T-M2-11 (RAG) → ⏸ hoãn** · **§4.1** header đồng bộ · **§4.1.4** dòng RAG → nhóm ⏸ · **§4.1.5** ưu tiên 1 = **T-M2-12 → 17 (eval)** · §8 timeline · §10 dòng 3 → đã chốt cắt |
+| HANDOFF.md | v2.9 | 2026-11-11 | ✅ Đã cập nhật — tiến độ M2 gom theo nhóm (**10/23 ✅**) + ghi rõ **nền có sẵn / còn thiếu** cho Tools/MCP/RAG · Eval · Could · **mục "Quyết định mới (2026-11-11) — hoãn RAG"** · **mục "Chuẩn bị cho Eval (T-M2-12 → 17)"** |
+| CHANGELOG.md | v2.7 | 2026-11-11 | ✅ Đang theo dõi — entry "Changed": quyết định hoãn RAG + đồng bộ docs |
 | MANUAL_TEST_GUIDE.md | v1.1 | 2026-11-10 | ✅ Đã cập nhật — **§11b** test model picker + fallback + chi phí (mới) |
 
 ## Trạng thái milestone
@@ -117,7 +117,7 @@ Chi tiết lý do & hệ quả: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §2 (12 A
 |---|---|---|
 | **M0 — Foundation** (2 tuần) | Monorepo, shared types, Docker/Postgres, Drizzle, BFF skeleton, provider Gemini, SSE, side panel shell | ✅ Xong (tag `v0.1`) |
 | **M1 — Parity** (3 tuần) | Content extraction (HTML + PDF + YouTube transcript), context đính kèm chủ động + ngân sách token, `@` multi-tab, selection, citations, markdown/code, conversation CRUD, chat actions (regenerate/edit-resend/stop/continue), gợi ý theo trang + tóm tắt 1-click, toggle panel + context menu + phím tắt, settings, upload ảnh, onboarding, **error/loading/empty states + retry + connection status**, **request logging đầy đủ vào `request_logs`** (request-id xuyên suốt · cost thật · retention 90 ngày · API đọc metadata cho eval), **i18n VI/EN** (dictionary có kiểu · đổi ngôn ngữ áp dụng ngay), **phím tắt cấu hình được** (2 lớp: native Chrome + nhanh Sidekick), **responsive 320–640px + a11y pass cơ bản** (focus ring chuẩn hoá · live region streaming · skip-link · tap target 24px), **export conversation Markdown/JSON**, K2/K3 | ✅ **Xong (tag `v0.2`)** — 23/25 task (T-M1-15 + T-M1-16 ⏸ tạm dừng) · gate đạt: checklist §E **32/35 = 91.4%** · dòng "Must" §A/§B **21/23 = 91.3%** |
-| **M2 — Advanced & Eval** (3 tuần) | Multi-provider, skills, tool registry + MCP, RAG, token/cost UI, **EVAL_REPORT** | 🟡 **Đang làm — 4/23 task** · T-M2-02 ✅ (model picker động + fallback chain runtime + event `provider_switch` + log `fallback_from`) · T-M2-03 ✅ (badge token/chi phí + section "Chi phí & sử dụng" theo ngày, có bộ chọn khoảng thời gian `today/7d/30d/all`) · **T-M2-03b ✅** (budget cap enforce **phía server** — bảng `budget_settings`, kỳ `daily`/`monthly`, tuỳ chọn chặn lượt chat mới khi vượt hạn mức) · **T-M2-04 ✅** (Skills: menu `/` lọc prefix + CRUD skill (tạo/sửa/nhân bản/xoá) + seed 3 skill built-in + server resolve `prompt_template` & `model` override) · T-M2-01 ⏸ đẩy (không thêm provider mới) · **tiếp theo: T-M2-12** |
+| **M2 — Advanced & Eval** (3 tuần) | Multi-provider, skills, tool registry + MCP, token/cost UI, **EVAL_REPORT** | 🟡 **Đang làm — 10/23 task ✅** · T-M2-02 ✅ (model picker động + fallback chain runtime + event `provider_switch` + log `fallback_from`) · T-M2-03 ✅ (badge token/chi phí + section "Chi phí & sử dụng" theo ngày, có bộ chọn khoảng thời gian `today/7d/30d/all`) · **T-M2-03b ✅** (budget cap enforce **phía server** — bảng `budget_settings`, kỳ `daily`/`monthly`, tuỳ chọn chặn lượt chat mới khi vượt hạn mức) · **T-M2-04 ✅** (Skills: menu `/` lọc prefix + CRUD skill (tạo/sửa/nhân bản/xoá) + seed 3 skill built-in + server resolve `prompt_template` & `model` override) · T-M2-05 ✅ (import/export JSON) · T-M2-06 ✅ (library browser lọc theo tag) · T-M2-21 ✅ (9 skill built-in + điều kiện tab) · T-M2-07 ✅ (tool registry + builtin calculator + agent loop) · T-M2-09 ✅ (tool call UI + approval gate) · T-M2-08 ✅ (MCP client stdio + server manager + UI Settings) · T-M2-01 ⏸ đẩy (không thêm provider mới) · **T-M2-10 + T-M2-11 (RAG) ⏸ hoãn 2026-11-11** · **tiếp theo: T-M2-12 → 17 (eval)** |
 | **M3 — Polish & Deliverable** (1 tuần) | Design system, states, a11y audit, i18n, demo video, slide, README, backup DB, ADR | ⬜ Chưa bắt đầu |
 | **M4 — Workflow** (tuỳ chọn, 2 tuần) | Scheduler, workflow CRUD, run log, import/export, notification | ⬜ Ngoài đường găng |
 

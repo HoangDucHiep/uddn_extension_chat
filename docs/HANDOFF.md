@@ -27,7 +27,7 @@
 | Code | ✅ **M1 (Parity) ĐÓNG** — 23/25 task (T-M1-15 + T-M1-16 ⏸ tạm dừng) — 4 workspace, **1848 unit test + 108 E2E** · **M2 đang làm** (T-M2-02 ✅ · T-M2-03 ✅ · T-M2-03b ✅ · T-M2-04 ✅ · T-M2-05 ✅ · T-M2-06 ✅ · T-M2-21 ✅ · **T-M2-07 ✅** · **T-M2-09 ✅** · **T-M2-08 ✅** · kiểm chứng live Chrome **15/15** mục §11b) |
 | Git | ✅ Đã init (`main`) · tag `v0.1` (M0) · tag **`v0.2`** (M1 đóng 2026-11-09) |
 | Milestone hiện tại | **M2 — Advanced & Eval** (M0 ✅ · M1 ✅) |
-| Task tiếp theo | **T-M2-10 · T-M2-11** (web fetch · RAG) → **T-M2-12 → 17** (eval — deliverable bắt buộc `docs/EVAL_REPORT.md`) |
+| Task tiếp theo | **T-M2-12 → 17** (eval — deliverable bắt buộc `docs/EVAL_REPORT.md`) — RAG (T-M2-10/11) đã **hoãn** 2026-11-11 |
 
 ### Đang làm dở
 
@@ -40,18 +40,55 @@ _(Không có — M1 đóng xong 2026-11-09, tag `v0.2`)_
 | **Nhóm Provider** — T-M2-02 · T-M2-03 · T-M2-03b | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.22 (model picker + fallback chain) · §7.23 (token/cost UI) · §7.24 (budget cap — enforce **phía server**, bảng `budget_settings`) |
 | **Nhóm Skills** — T-M2-04 · T-M2-05 · T-M2-06 · T-M2-21 | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.25 (menu `/` + CRUD) · §7.25.8 (import/export JSON) · §7.25.9 (library browser lọc theo tag) · §7.25.10 (**9** skill built-in + điều kiện tab, migration `0005_skill_tab_condition.sql`) |
 | T-M2-01 Multi-provider (OpenAI/Anthropic) | ⏸ **đẩy lại** | Quyết định user 2026-11-10: **không thêm provider mới** → giữ nguyên `PROVIDER_IDS` (`mock · groq · openrouter · gemini · ollama`). Phần "model list động" đã xong trong T-M2-02 |
-| **Nhóm Tools/MCP/RAG** — T-M2-07 → T-M2-11 | 🟡 **3/5 xong** | **T-M2-07 ✅** tool registry + builtin calculator + agent loop · **T-M2-09 ✅** tool call UI + approval gate · **T-M2-08 ✅** MCP client (stdio) + server manager + UI Settings · còn lại T-M2-10 (web fetch) · T-M2-11 (RAG) — xem §4.1.5 |
-| **Nhóm Eval** — T-M2-12 → T-M2-17 | ⬜ **chưa bắt đầu** | Nền có sẵn: contract `evalTaskSchema` + `EVAL_GROUPS` + CLI `apps/eval`. Dataset `apps/eval/dataset/tasks.json` đang **rỗng `[]`** · `docs/EVAL_REPORT.md` **chưa tồn tại** (deliverable bắt buộc) · **để sau** (quyết định user 2026-11-10) |
+| **Nhóm Tools/MCP/RAG** — T-M2-07 → T-M2-11 | 🟡 **3/5 xong + RAG ⏸** | **T-M2-07 ✅** tool registry + builtin calculator + agent loop · **T-M2-09 ✅** tool call UI + approval gate · **T-M2-08 ✅** MCP client (stdio) + server manager + UI Settings · **T-M2-10 + T-M2-11 (RAG) ⏸ hoãn 2026-11-11** (quyết định user) — xem "Quyết định mới" bên dưới |
+| **Nhóm Eval** — T-M2-12 → T-M2-17 | ⬜ **chưa bắt đầu — khối TIẾP THEO (ưu tiên 1)** | Nền có sẵn: contract `evalTaskSchema` + `EVAL_GROUPS` 8 nhóm + CLI `apps/eval` · `request_logs` đủ metric đo (T-M1-14) · `tool_calls` jsonb đã có dữ liệu thật (T-M2-07) · `citations.snippet` hỗ trợ đo `citation_precision`. Dataset `apps/eval/dataset/tasks.json` đang **rỗng `[]`** · `docs/EVAL_REPORT.md` **chưa tồn tại** (deliverable bắt buộc) |
 | **Nhóm Could** — T-M2-18 · T-M2-19 · T-M2-20 · T-M2-22 | ⬜ **chưa bắt đầu** | Agentic action · context policy theo domain · web search tool · vision mở rộng — **cắt được** nếu thiếu thời gian (xem §10) |
 
 > **Bảng kết quả chi tiết của M2** (trạng thái task · verify · commit · ảnh hưởng gate parity · trạng thái nền nhóm còn lại) nằm ở [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) **§4.1** — đọc ở đó thay vì tra lại từng file.
+
+### Quyết định mới (2026-11-11) — **hoãn RAG** + chuyển ưu tiên sang Eval
+
+> **Quyết định của user (2026-11-11):** RAG (T-M2-10/11) **không bị xoá** khỏi M2 mà chuyển sang **⏸ hoãn** (cùng cách T-M2-01 đã bị đẩy) → ưu tiên M2 chuyển sang **Eval (T-M2-12 → 17)**.
+
+**Lý do hoãn RAG:**
+
+| # | Lý do |
+|---|---|
+| 1 | RAG **không** đóng dòng §E nào của checklist parity Edge/Gemini → gate vẫn **34/35 = 97.1%** |
+| 2 | `EVAL_GROUPS` (8 nhóm) **không** có nhóm nào đo RAG → `EVAL_REPORT.md` **không** đổi |
+| 3 | Điều kiện M2 *"≥ 4 tính năng 🟢"* ([`REQUIREMENTS.md`](REQUIREMENTS.md) §9.2) **đã đạt**: multi-provider (T-M2-02) · self-host (Docker + Postgres) · MCP (T-M2-08) · log/cost (T-M1-14 + T-M2-03) → **không cần** RAG để đạt |
+| 4 | Công sức (bảng `rag_documents` + embedder + chunking + retriever + indexer + UI toggle) lớn hơn lợi ích trong phạm vi đồ án |
+| 5 | [`REQUIREMENTS.md`](REQUIREMENTS.md) §9.3 vốn đã cho phép cắt RAG với lý do *"Đã có log + export transcript thay thế một phần"* → quyết định này **chốt** luôn phương án đó |
+
+**Nền đã có sẵn nếu mở lại:** `pgvector/pgvector:pg16` chạy sẵn trong `docker-compose.yml` (extension `vector`) · cột `citations.score` đã có · pipeline citation (`CitationChip` · `parseCitationMarkers`) đã hoàn chỉnh.
+
+**Cách trình bày (không overclaim):** **không** nói Sidekick "có RAG" — nói *"RAG là hạng mục đã đánh giá và hoãn vì lợi ích chưa vượt công sức trong phạm vi đồ án; đã đánh giá theo §9.3"*. Trong `EVAL_REPORT.md` ghi **N/A** kèm lý do (không tính điểm 0).
+
+**Docs đã đồng bộ (2026-11-11):** `docs/COMPARISON_MATRIX.md` (§C7 ⏸ · §B15 N/A · §D dòng "RAG local" · §E.1.8 mới) · `docs/REQUIREMENTS.md` (FR-TOOLS-05 ⏸ · bảng coverage FR · §9.2 · §9.3) · `docs/IMPLEMENTATION_PLAN.md` (bảng task M2 · §4.1 · §4.1.4 · §4.1.5 · §8 · §10) · `AGENTS.md` (§6) · `docs/CHANGELOG.md` · `docs/README.md`.
+
+### Chuẩn bị cho Eval (T-M2-12 → 17) — bảng làm việc cho session sau
+
+| Task | Nội dung | File đích |
+|---|---|---|
+| T-M2-12 | Dataset ≥ 48 task × 8 nhóm + snapshot trang + `must_include_facts` | `apps/eval/dataset/tasks.json` (đang rỗng `[]`) + `apps/eval/dataset/snapshots/*` |
+| T-M2-13 | Harness runner gọi `POST /api/chat` của BFF, đo TTFT/latency/token/cost | `apps/eval/runners/ours.ts` + `apps/eval/metrics/aggregate.ts` |
+| T-M2-14 | Judge prompt + runner (temperature 0) + `blind_map.json` | `apps/eval/judge/{prompt.ts,run_judge.ts}` |
+| T-M2-15 | Transcript thủ công Edge + Gemini (n=3) | `apps/eval/results/manual/**` — **cần người thật** |
+| T-M2-16 | Chấm tay Tầng B (2 người) → ρ (human vs judge) + κ (human vs human) | `apps/eval/results/human_rubric.csv` — **cần người thật** |
+| T-M2-17 | Báo cáo `EVAL_REPORT.md` + radar chart | `docs/EVAL_REPORT.md` — **deliverable bắt buộc** |
+
+**Nền đã có sẵn (không phải làm lại):** contract dataset `packages/shared/src/schemas/eval.ts` (`evalTaskSchema` + `EVAL_GROUPS` 8 nhóm) → `apps/eval` validate bằng đúng schema đó · loader + filter `apps/eval/src/dataset.ts` (`loadDataset` + `filterTasks`) · CLI `apps/eval/src/cli.ts` (hiện có subcommand `logs`) · metric server đã ghi: `request_logs` (`ttft_ms` · `latency_ms` · `tokens_in/out` · `cost_usd` · `tool_calls` jsonb) + bảng `tool_calls` (T-M2-07) + `citations.snippet` (T-M1-08 → hỗ trợ đo `citation_precision`).
+
+**Rủi ro cần xử lý:**
+- [`EVAL_PLAN.md`](EVAL_PLAN.md) §10 yêu cầu `must_include_facts` cho ≥ 80% task và ≥ 40% tiếng Việt → dataset **không** được sinh hàng loạt bằng script, phải có đáp án tham chiếu thật.
+- T-M2-15/16 **cần người thật** → phát **song song** với T-M2-12 → 14 (phần tự động) để không bị nghẽn lead-time.
 
 ### Quyết định mới (2026-11-10) — thứ tự ưu tiên M2
 
 | Quyết định | Lý do |
 |---|---|
 | **Hoàn tất nhóm Skills (T-M2-05 → 06 → 21) trước**, rồi mới sang Tools/MCP/RAG | 3 task Skills là **mở rộng trên code đã có** (CRUD + `tags` + `scope` sẵn trong schema) → nhỏ hơn hẳn nhóm greenfield · đóng được dòng §E "Skills" + B8/C10/C14 → claim trong báo cáo khớp thực tế |
-| **Eval (T-M2-12 → 17) để sau** | Eval đo chất lượng sản phẩm → chạy trên feature chưa ổn định thì phải chạy lại · T-M2-15/16 cần người thật → nên chạy **song song** khi feature đã ổn định |
+| ~~**Eval (T-M2-12 → 17) để sau**~~ → **đã đảo lại 2026-11-11** | Eval đo chất lượng sản phẩm → chạy trên feature chưa ổn định thì phải chạy lại · T-M2-15/16 cần người thật → nên chạy **song song** khi feature đã ổn định. **→ 2026-11-11:** RAG đã hoãn → feature đã ổn định → Eval lên **ưu tiên 1** (deliverable bắt buộc) |
 | FR-SKILL-06 → làm **đầy đủ** (skill khai báo điều kiện tab → khi chạy tự đính kèm tab hiện tại / tab được chọn) | Đối chiếu trực tiếp B6 của Chrome Gemini ("chạy trên tab hiện tại + tab được chọn") |
 | Vị trí import/export skill → **trong drawer Kỹ năng** | Gần chỗ user đang quản lý skill · không nhân bản UI pattern mới |
 | Import skill trùng tên → **bỏ qua** + toast tổng kết | Đơn giản, không hỏi lại user · giữ nguyên skill cũ |

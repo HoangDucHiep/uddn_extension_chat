@@ -6,6 +6,8 @@
 > Cập nhật: **2026-11-10** (giờ VN) · HEAD = `000ddcc`
 >
 > ⚠️ **Đã refresh 2026-11-10** — tên file giữ nguyên theo lần tạo 2026-11-09, nhưng nội dung đã đồng bộ với trạng thái M2 mới nhất (3/23 task M2 xong). Đọc `docs/HANDOFF.md` §2 nếu cần số liệu mới hơn.
+>
+> ⚠️ **Cập nhật 2026-11-11:** **RAG (T-M2-10/11) đã ⏸ hoãn** (quyết định user) → ưu tiên M2 chuyển sang **Eval (T-M2-12 → 17)**. File này là **snapshot lịch sử** → các mục nhắc RAG ở dưới là trạng thái **tại thời điểm 2026-11-10**. Nguồn sự thật hiện tại: `docs/HANDOFF.md` §2 + `docs/IMPLEMENTATION_PLAN.md` §4.1.
 
 ---
 

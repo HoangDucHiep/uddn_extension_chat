@@ -20,7 +20,7 @@ flowchart TB
         RT["Routes<br/>/chat /providers /skills /tools /logs /eval /workflows"]
         AD["Provider Adapter Layer"]
         TL["Tool Registry + MCP Client"]
-        RG["RAG Service (pgvector)"]
+        RG["RAG Service (pgvector)<br/>⏸ hoãn 2026-11-11"]
         SCH["Scheduler (node-cron)"]
     end
     subgraph data ["PostgreSQL 16"]
@@ -49,7 +49,7 @@ flowchart TB
 | **Side Panel** | Render, thu thập input, điều khiển trạng thái UI, gọi BFF, đọc `chrome.storage.local` | Không giữ API key dạng rõ khi đang ở chế độ K2; không tự gọi provider API (trừ K3 fallback) |
 | **Service Worker** | Điều phối tab, mở/đóng panel, context menu, shortcut, lưu draft | **Không** proxy streaming; **không** giữ state phiên |
 | **Content Script** | Trích xuất nội dung trang, đọc selection, gửi về panel | Không tự gọi BFF (tránh leak token); không ghi log |
-| **BFF** | Chọn provider, quản lý key, build prompt, gọi provider, stream lại, log, RAG, scheduler | Không chứa logic UI; không tự quyết định UX |
+| **BFF** | Chọn provider, quản lý key, build prompt, gọi provider, stream lại, log, MCP, scheduler | Không chứa logic UI; không tự quyết định UX · *RAG ⏸ hoãn 2026-11-11* |
 | **packages/shared** | Type, Zod schema, event union, constants, error codes | Không chứa logic runtime |
 
 ---
@@ -132,6 +132,7 @@ flowchart TB
 - **Quyết định:** Extension `vector` + index `ivfflat` (hoặc `hnsw`), embed 384 chiều (`all-MiniLM-L6-v2` chạy local qua Ollama hoặc ONNX).
 - **Lý do:** Cùng DB, cùng backup, cùng retention policy; không thêm hệ thống file.
 - **Hệ quả:** Embedding model phải cố định theo `embedding_model` trong bảng `rag_documents`; đổi model → re-embed toàn bộ.
+- **Trạng thái (2026-11-11 — quyết định user):** ADR này **vẫn hiệu lực về mặt thiết kế** nhưng **RAG (T-M2-10/11) đã ⏸ hoãn** → chưa có bảng `rag_documents`, chưa có `apps/server/src/rag/`, chưa có embedder/retriever/indexer. Nền đã có sẵn nếu mở lại: `pgvector/pgvector:pg16` chạy trong `docker-compose.yml` (extension `vector`) · cột `citations.score` đã có. Lý do hoãn: xem [`REQUIREMENTS.md`](REQUIREMENTS.md) §9.3 + [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) §4.1.5.
 
 ### ADR-11 — Eval harness chạy trong `apps/eval`, dùng chung type với BFF
 - **Bối cảnh:** Harness phải gọi đúng endpoint chat như extension thật.
@@ -688,7 +689,7 @@ export const evalTaskListSchema = z.array(evalTaskSchema)
 | `skills` | id uuid pk, name text unique, description text, prompt_template text, scope text, enabled bool, tags text[], **model text nullable**, created_at, updated_at | `(scope, enabled)`, unique `(name)` |
 | `tool_registry` | id uuid pk, name text unique, kind text (builtin\|mcp), server_id uuid nullable, schema jsonb, enabled bool | `(kind)` |
 | `mcp_servers` | id uuid pk, name text unique, transport text (stdio\|http), command text, args jsonb, env jsonb, enabled bool, last_connected_at | — |
-| `rag_documents` | id uuid pk, source_type text (message\|file\|url), ref_id text, title text, content text, embedding vector(384), embedding_model text, metadata jsonb, created_at | HNSW/IVFFlat trên `embedding` |
+| `rag_documents` *(chưa tạo — ⏸ hoãn 2026-11-11)* | id uuid pk, source_type text (message\|file\|url), ref_id text, title text, content text, embedding vector(384), embedding_model text, metadata jsonb, created_at | HNSW/IVFFlat trên `embedding` |
 | `workflows` | id uuid pk, name text, description text, steps jsonb, schedule text nullable, enabled bool, created_at, updated_at | `(enabled)` |
 | `workflow_runs` | id uuid pk, workflow_id fk, status text, started_at, finished_at, error text, output text | `(workflow_id, started_at desc)` |
 | `workflow_step_runs` | id uuid pk, workflow_run_id fk, step_index int, status text, input jsonb, output text, tokens int, cost_usd numeric, error text | `(workflow_run_id, step_index)` |
@@ -707,7 +708,7 @@ export const evalTaskListSchema = z.array(evalTaskSchema)
 | `messages`, `citations`, `tool_calls` | Giữ vô hạn (lịch sử chat của user) | Xoá theo conversation |
 | `request_logs` | 90 ngày | 30 / 365 / vô hạn — **đã enforce** (T-M1-14): `pruneRequestLogs()` chạy lúc khởi động + mỗi 24 h, đọc `LOG_RETENTION_DAYS` |
 | `context_snapshot` | **Tắt mặc định** (chỉ lưu `context_hash`) | Bật để debug — qua setting `LOG_CONTEXT_SNAPSHOT` (T-M1-06) |
-| `rag_documents` | Giữ cùng với nguồn | Xoá thủ công |
+| `rag_documents` *(chưa tạo — ⏸ hoãn)* | Giữ cùng với nguồn | Xoá thủ công |
 | `eval_runs` / `eval_results` | Vô hạn (bằng chứng đồ án) | — |
 | `provider_keys` | Giữ đến khi user xoá | — |
 
@@ -789,7 +790,7 @@ BFF chỉ nhận request từ extension. Kiểm tra header `Origin` / `X-Sidekic
 
 | Tầng | Công cụ | Phạm vi | Ngưỡng |
 |---|---|---|---|
-| **Unit** | Vitest | Context builder, provider adapter, skill engine, RAG retriever, key resolver, cost calculator | Coverage ≥ 70% cho `packages/shared` và `apps/server/src/{providers,tools,rag}` |
+| **Unit** | Vitest | Context builder, provider adapter, skill engine, key resolver, cost calculator | Coverage ≥ 70% cho `packages/shared` và `apps/server/src/{providers,tools}` *(thư mục `rag` chưa tồn tại — RAG ⏸ hoãn 2026-11-11)* |
 | **Integration** | Vitest + supertest | Từng route BFF: request → response, validation, error mapping, SSE format | Mọi endpoint trong §4.1 có ≥ 1 test; SSE có test đầy đủ 9 event type |
 | **Contract** | Vitest | Response shape khớp `packages/shared` schemas (validate bằng Zod ở test) | 100% endpoint có schema |
 | **E2E** | Playwright + Chrome for Testing | Load unpacked extension → mở side panel → gửi prompt → nhận stream → kiểm tra citations | ≥ 6 kịch bản lõi (happy path, offline, BFF down, stop, edit-resend, context toggle) |
@@ -3640,7 +3641,7 @@ user chọn skill (menu `/` hoặc thư viện)
 | Provider hỗ trợ tool | `groq` · `openrouter` · `ollama` (OpenAI-compatible) + `mock` | **`gemini`** — shape function-calling riêng (`functionDeclarations` + `functionCall`/`functionResponse` parts) |
 | Tool built-in | `calculator` (read-only) | `web_search` (T-M2-20) · tool từ **MCP server** (T-M2-08) |
 | Approval gate | Hạ tầng + UI (badge "Cần duyệt" + nút Duyệt/Từ chối) | Tool **ghi dữ liệu thật** (T-M2-18 agentic) |
-| RAG / vector | Không | T-M2-10/11 |
+| RAG / vector | Không | T-M2-10/11 — **⏸ hoãn 2026-11-11 (quyết định user)**, xem ADR-10 |
 
 > **Giới hạn cần ghi rõ:** `calculator` là tool **chỉ đọc** → không có tool nguy hiểm thật trong lot này. Approval gate là **hạ tầng sẵn sàng**, chưa phải hành vi end-to-end có tool ghi dữ liệu.
 

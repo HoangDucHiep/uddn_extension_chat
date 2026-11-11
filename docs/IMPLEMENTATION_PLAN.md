@@ -1036,8 +1036,8 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 | T-M2-07 | Tool registry (builtin: web search, calculator) | FR-TOOLS-01/02, NFR-MAINT-03 | `apps/server/src/tools/{registry.ts,builtin/*}` | Tool được liệt kê; invoke trả kết quả | L | ✅ *(2026-11-11)* · registry in-memory + `calculator` + agent loop 5 vòng; **web search → T-M2-20** |
 | T-M2-08 | MCP client (stdio transport) + server manager | FR-TOOLS-01/02 | `apps/server/src/tools/mcp/{protocol.ts,client.ts,manager.ts}`, `apps/server/src/services/mcpService.ts`, `apps/server/src/routes/mcp.ts`, `sidepanel/components/settings/McpSettings.tsx` | Kết nối MCP server, liệt kê tool, gọi tool | L | ✅ *(2026-11-11)* · JSON-RPC 2.0 stdio · namespace `mcp__<server>__<tool>` · bảng `mcp_servers` · UI trong Settings · transport HTTP/SSE → task sau |
 | T-M2-09 | Tool call UI (collapsible block + approval) | FR-TOOLS-02/06, FR-TOOLS-04 | `sidepanel/components/tools/ToolCallBlock.tsx` | Hiện args/result/kết quả lỗi; approval gate chặn hành động | M | ✅ *(2026-11-11)* · block collapsible + badge "Cần bạn duyệt" + nút Duyệt/Từ chối |
-| T-M2-10 | RAG: embedding + `rag_documents` + search | FR-TOOLS-05 | `apps/server/src/rag/{embedder.ts,retriever.ts,indexer.ts}` | Index lịch sử chat; search trả đoạn liên quan kèm score | L | ⬜ — nền: Postgres `pgvector` + extension `vector` |
-| T-M2-11 | RAG UI: toggle + hiện nguồn trong câu trả lời | FR-TOOLS-05 | `settings/ToolsSettings.tsx`, `CitationChip` (mở rộng) | Bật RAG → câu trả lời có citation tới đoạn đã index | M | ⬜ — nền: `CitationChip` (T-M1-08) |
+| T-M2-10 | RAG: embedding + `rag_documents` + search | FR-TOOLS-05 | `apps/server/src/rag/{embedder.ts,retriever.ts,indexer.ts}` | Index lịch sử chat; search trả đoạn liên quan kèm score | L | ⏸ **hoãn** *(quyết định user 2026-11-11 — chưa đủ lợi ích so với công sức; theo §9.3 `REQUIREMENTS.md`)* · nền: Postgres `pgvector` + extension `vector` |
+| T-M2-11 | RAG UI: toggle + hiện nguồn trong câu trả lời | FR-TOOLS-05 | `settings/ToolsSettings.tsx`, `CitationChip` (mở rộng) | Bật RAG → câu trả lời có citation tới đoạn đã index | M | ⏸ **hoãn** *(quyết định user 2026-11-11 — chưa đủ lợi ích so với công sức; theo §9.3 `REQUIREMENTS.md`)* · nền: `CitationChip` (T-M1-08) |
 | T-M2-12 | Eval: dataset 48 task + snapshot trang | NFR-MAINT-04 | `apps/eval/dataset/tasks.json`, `dataset/snapshots/*` | ≥ 44 task, ≥ 80% có `must_include_facts`, ≥ 40% tiếng Việt; có nhóm `doc_extract` (PDF) + `video_transcript` (YouTube) | L | ⬜ — nền: contract `evalTaskSchema` + `EVAL_GROUPS`; dataset **đang rỗng `[]`** |
 | T-M2-13 | Eval: harness runner cho hệ thống ta | NFR-MAINT-04, NFR-MAINT-02 | `apps/eval/runners/{ours.ts,aggregate.ts}` | 1 lệnh chạy được; log TTFT/latency/token/cost; coverage ≥ 70% core logic | L | ⬜ — nền: CLI `apps/eval` (dataset loader + `logs`) |
 | T-M2-14 | Eval: judge prompt + runner + blind mapping | NFR-MAINT-04 | `apps/eval/judge/{prompt.ts,run_judge.ts}` | Judge temperature 0; nhãn ngẫu nhiên; `blind_map.json` | M | ⬜ — chưa bắt đầu |
@@ -1051,9 +1051,9 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 | T-M2-22 | Vision mở rộng: chụp vùng, OCR, image-capable provider, alt text | FR-VISION-02/03/04/05 | `sidepanel/components/composer/RegionCapture.tsx`, `apps/server/src/lib/ocr.ts` | Chọn vùng bằng overlay; OCR trả text; provider không hỗ trợ image → ẩn tính năng không lỗi; alt text lưu lại để tiết kiệm token | L | ⬜ — Could · cắt được theo §10 |
 
 **Định mức M2:** 3 tuần · 23 task · ~40 ngày công
-> **Tiến độ (2026-11-11): 7/23 task ✅** (T-M2-02 · T-M2-03 · T-M2-03b · T-M2-04 · T-M2-05 · T-M2-06 · T-M2-21) · **1 task ⏸** (T-M2-01) · **15 task ⬜** chưa bắt đầu — chi tiết & bằng chứng ở **§4.1**.
+> **Tiến độ (2026-11-11): 10/23 task ✅** (T-M2-02 · T-M2-03 · T-M2-03b · T-M2-04 · T-M2-05 · T-M2-06 · T-M2-21 · T-M2-07 · T-M2-09 · T-M2-08) · **3 task ⏸** (T-M2-01 · T-M2-10 · T-M2-11) · **10 task ⬜** chưa bắt đầu — chi tiết & bằng chứng ở **§4.1**.
 
-> Nếu trễ: **cắt T-M2-18 (agentic)** → không ảnh hưởng tiêu chí bắt buộc. Cắt T-M2-10/11 (RAG) nếu cần — theo §10. Cắt T-M2-22 (vision mở rộng) trước — chỉ ảnh hưởng tính năng Could.
+> Nếu trễ: **cắt T-M2-18 (agentic)** → không ảnh hưởng tiêu chí bắt buộc. **T-M2-10/11 (RAG) đã chốt hoãn (2026-11-11 — quyết định user)** → không cần cắt thêm. Cắt T-M2-22 (vision mở rộng) trước — chỉ ảnh hưởng tính năng Could.
 
 > **Ghi chú T-M2-12 (2026-11-09):** **contract dataset đã hiện thực** ở [`packages/shared/src/schemas/eval.ts`](../packages/shared/src/schemas/eval.ts) (`evalTaskSchema` + `EVAL_GROUPS` 8 nhóm theo [`EVAL_PLAN.md`](EVAL_PLAN.md) §3.2) → `apps/eval` validate dataset bằng đúng schema đó. Khi điền `apps/eval/dataset/tasks.json` + `dataset/snapshots/*` phải tuân thủ shape §3.1 (`page.snapshot_path` · `page.content_hash` · `reference.key_points` / `must_include_facts` / `must_not_contain` — **snake_case**). Dataset hiện **rỗng `[]`** là **đúng chuẩn M1** (chưa có nội dung trang thật để chụp snapshot) — **không phải bug**.
 
@@ -1071,8 +1071,8 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 
 ### 4.1 Kết quả M2 (tổng hợp — 2026-11-10 → 2026-11-11)
 
-> **Trạng thái tổng:** **10/23 task ✅** · **1 task ⏸** (T-M2-01) · **12 task ⬜** chưa bắt đầu.
-> Nhóm **Provider** (T-M2-02 · T-M2-03 · T-M2-03b) và nhóm **Skills** (T-M2-04 · T-M2-05 · T-M2-06 · T-M2-21) đã xong. Nhóm **Tools/MCP** (T-M2-07 · T-M2-09 · T-M2-08) cũng đã xong (2026-11-11). Nhóm **RAG** và **Eval** chưa bắt đầu.
+> **Trạng thái tổng:** **10/23 task ✅** · **3 task ⏸** (T-M2-01 · T-M2-10 · T-M2-11) · **10 task ⬜** chưa bắt đầu.
+> Nhóm **Provider** (T-M2-02 · T-M2-03 · T-M2-03b) và nhóm **Skills** (T-M2-04 · T-M2-05 · T-M2-06 · T-M2-21) đã xong. Nhóm **Tools/MCP** (T-M2-07 · T-M2-09 · T-M2-08) cũng đã xong (2026-11-11). Nhóm **RAG** đã **hoãn** (2026-11-11 — quyết định user). Nhóm **Eval** (T-M2-12 → 17) là khối **tiếp theo** — deliverable bắt buộc `docs/EVAL_REPORT.md`.
 
 #### 4.1.1 Bảng trạng thái + commit + bằng chứng
 
@@ -1193,31 +1193,31 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 - **T-M2-08** (MCP client stdio + server manager) là tính năng **độc quyền** → dòng **C4** §C ⬜ → ✅ · dòng §D "MCP" ⬜ → ✅ + dòng §E.1.7 → giữ nguyên **34/35 = 97.1%**.
 - **Không** phá parity: không thêm permission, không đổi manifest, không đổi hành vi chat M1 (skill và budget là **tuỳ chọn**).
 
-#### 4.1.4 Nhóm còn lại — trạng thái nền (12 task ⬜)
+#### 4.1.4 Nhóm còn lại — trạng thái nền (10 task ⬜ · 3 task ⏸)
 
 > Bảng này ghi rõ **đã có gì** và **còn thiếu gì** — không tick sai dòng §E nào chưa đạt.
 
 | Nhóm | Task | Nền đã có sẵn | Còn thiếu |
 |---|---|---|---|
 | **MCP** | T-M2-08 ✅ *(2026-11-11)* | `apps/server/src/tools/` (registry + executor + `calculator`) (từ T-M2-07) · contract `ToolDefinition` (`packages/shared`) · SSE `tool_call`/`tool_result`/`tool_approval` | ~~MCP client (stdio transport) · server manager · kết nối MCP server thật~~ → **đã xong**: `apps/server/src/tools/mcp/{protocol,client,manager}.ts` · bảng `mcp_servers` · API `/api/mcp/*` · UI `McpSettings.tsx` |
-| **RAG** | T-M2-10 · T-M2-11 | Postgres `pgvector/pgvector:pg16` + extension `vector` · `CitationChip` (T-M1-08) | `apps/server/src/rag/` (**chưa** tồn tại) · bảng `rag_documents` · embedder/retriever/indexer · `ToolsSettings` toggle |
+| **RAG** ⏸ | T-M2-10 · T-M2-11 | Postgres `pgvector/pgvector:pg16` + extension `vector` (đã cài trong `docker-compose.yml`) · `CitationChip` + `parseCitationMarkers` (T-M1-08) · cột `citations.score` đã có | `apps/server/src/rag/` (**chưa** tồn tại) · bảng `rag_documents` · embedder/retriever/indexer · `ToolsSettings` toggle — **⏸ hoãn 2026-11-11 (quyết định user)**: không đóng dòng §E nào · `EVAL_GROUPS` không có nhóm nào đo RAG → không ảnh hưởng `EVAL_REPORT.md` · §9.2 đã đạt 4/5 tính năng 🟢 |
 | **Eval** | T-M2-12 · T-M2-13 · T-M2-14 | Contract `evalTaskSchema` + `EVAL_GROUPS` 8 nhóm (T-M1-14, commit `03a1d69`) · CLI `apps/eval` (dataset loader + subcommand `logs`) · `request_logs` đủ metric đo (T-M1-14) · **`tool_calls` jsonb đã có dữ liệu thật** (T-M2-07) | `apps/eval/dataset/tasks.json` đang **rỗng `[]`** · `dataset/snapshots/*` · `runners/` · `judge/` |
 | **Eval — cần người thật** | T-M2-15 · T-M2-16 · T-M2-17 | Template rubric trong [`EVAL_PLAN.md`](EVAL_PLAN.md) | Transcript Edge/Gemini · 2 người chấm tay · **`docs/EVAL_REPORT.md` chưa tồn tại** (deliverable bắt buộc) |
 | **Could — cắt được** | T-M2-18 · T-M2-19 · T-M2-20 · T-M2-22 | Tool registry + agent loop + approval gate (T-M2-07/09) | Agentic action (tool ghi dữ liệu thật → plan + diff) · context policy theo domain · web search tool · chụp vùng/OCR/alt text |
 
 #### 4.1.5 Việc tiếp theo trong M2
 
-> **Thứ tự đã chốt (2026-11-10, sau T-M2-04):** làm **hết nhóm Skills** (T-M2-05 → 06 → 21) **trước**, rồi mới sang Tools/MCP/RAG. Nhóm Skills đã xong ✅ · nhóm Tools/MCP/RAG: **T-M2-07 + T-M2-09 + T-M2-08 xong ✅ (2026-11-11)** → giờ còn **T-M2-10/11 (RAG)**. Lý do:
+> **Thứ tự đã chốt (2026-11-10, sau T-M2-04):** làm **hết nhóm Skills** (T-M2-05 → 06 → 21) **trước**, rồi mới sang Tools/MCP/RAG. Nhóm Skills đã xong ✅ · nhóm Tools/MCP/RAG: **T-M2-07 + T-M2-09 + T-M2-08 xong ✅ (2026-11-11)** → **T-M2-10/11 (RAG) đã hoãn (2026-11-11 — quyết định user)**. Lý do:
 > - Nhóm Skills là **mở rộng trên code đã có** (CRUD + `tags` + `scope` sẵn trong schema) → khối lượng nhỏ hơn hẳn nhóm Tools/MCP/RAG (greenfield).
 > - Đóng được dòng §E "Skills" + các hàng B8/C10/C14 → claim trong báo cáo khớp thực tế.
-> - **Eval (T-M2-12 → 17) để sau** (quyết định user 2026-11-10): eval đo chất lượng sản phẩm → chạy trên feature chưa ổn định thì phải chạy lại; T-M2-15/16 cần người thật → nên chạy **song song** khi feature đã ổn định.
+> - **Eval (T-M2-12 → 17) giờ là ưu tiên 1** (quyết định user 2026-11-11): RAG đã hoãn → không còn blocker feature trước eval; `docs/EVAL_REPORT.md` là **deliverable bắt buộc** nộp bài (`AGENTS.md` §1); T-M2-15/16 cần người thật → nên phát **song song** với T-M2-12 → 14.
 
 | Ưu tiên | Task | Lý do |
 |---|---|---|
 | 1 | ~~**T-M2-08** — MCP client (stdio)~~ | ✅ **xong 2026-11-11** — đã đóng claim độc quyền **§C4** |
-| 2 | **T-M2-10 → 11** — RAG | Đóng claim độc quyền **§C7** · cần bảng `rag_documents` + `pgvector` đã có sẵn |
-| 3 | **T-M2-12 → 17** — eval | Deliverable bắt buộc (`docs/EVAL_REPORT.md`) — làm **sau** khi feature ổn định · `tool_calls` đã có dữ liệu để đo |
-| 4 | **T-M2-18 → 20** · **T-M2-22** — agentic · web search · context policy · vision mở rộng | Could — cắt được nếu thiếu thời gian (theo §10) |
+| 2 | **T-M2-12 → 17** — eval | **Ưu tiên 1 (2026-11-11)** — deliverable bắt buộc (`docs/EVAL_REPORT.md`) · RAG đã hoãn nên không còn blocker feature · T-M2-15/16 **cần người thật** → phát **song song** với T-M2-12 → 14 để không bị nghẽn lead-time · `tool_calls` đã có dữ liệu để đo |
+| 3 | **T-M2-18 → 20** · **T-M2-22** — agentic · web search · context policy · vision mở rộng | Could — cắt được nếu thiếu thời gian (theo §10) |
+| — | ~~**T-M2-10 → 11** — RAG~~ | ⏸ **đã hoãn 2026-11-11** — chưa đủ lợi ích so với công sức · không đóng dòng §E · không có nhóm eval đo RAG · theo §9.3 `REQUIREMENTS.md` |
 
 ---
 
@@ -1308,9 +1308,9 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 | W11 | buffer | Sửa lỗi, nộp bài | Cả 3 |
 | W12–13 | M4 (tuỳ chọn) | T-M4-01 → T-M4-09 | Nếu đủ điều kiện §6 |
 
-> **Trạng thái thực tế (2026-11-11):** timeline gốc lên kế hoạch. Thực tế **W6 đã xong** nhóm **Provider** (T-M2-02 · T-M2-03 · T-M2-03b) + nhóm **Skills** (T-M2-04 · T-M2-05 · T-M2-06 · T-M2-21) → **7/23 task ✅**; T-M2-01 ⏸ đẩy lại. **W7 (Tools/MCP/RAG)** là khối tiếp theo — xem §4.1.5.
+> **Trạng thái thực tế (2026-11-11):** timeline gốc lên kế hoạch. Thực tế **W6 đã xong** nhóm **Provider** (T-M2-02 · T-M2-03 · T-M2-03b) + nhóm **Skills** (T-M2-04 · T-M2-05 · T-M2-06 · T-M2-21) → **10/23 task ✅** (thêm T-M2-07 · T-M2-09 · T-M2-08); T-M2-01 ⏸ đẩy lại. **W7 (Tools/MCP/RAG)** → Tools/MCP xong ✅, **RAG ⏸ hoãn**. **W8 (Eval)** là khối tiếp theo — xem §4.1.5.
 >
-> **Cập nhật sau T-M2-07 + T-M2-09 + T-M2-08 (2026-11-11):** nhóm **Tools/MCP** đã xong **3/5** → tổng **10/23 task ✅**. Còn lại trong W7: **T-M2-10** (web fetch) · **T-M2-11** (RAG).
+> **Cập nhật sau quyết định hoãn RAG (2026-11-11):** **W8 (eval)** được ưu tiên trước W7-RAG. Lý do: `docs/EVAL_REPORT.md` là deliverable bắt buộc nộp bài · T-M2-15/16 **cần người thật** (lead-time dài nhất) → phát **song song** với phần tự động T-M2-12 → 14 để không bị nghẽn.
 
 ---
 
@@ -1334,7 +1334,7 @@ Tuần theo [`REQUIREMENTS.md`](REQUIREMENTS.md) §9.3 — thứ tự cắt an t
 |---|---|---|---|
 | 1 | **M4 toàn bộ** | T-M4-* | Không ảnh hưởng tiêu chí bắt buộc |
 | 2 | Agentic action | T-M2-18 | Không ảnh hưởng eval bắt buộc |
-| 3 | RAG | T-M2-10, T-M2-11 | Đã có log + export transcript thay thế một phần |
+| 3 | ~~RAG~~ | ~~T-M2-10, T-M2-11~~ | ✅ **Đã chốt cắt 2026-11-11 (quyết định user)** → không còn là phương án cắt *tương lai* · lý do: đã có log + export transcript thay thế một phần · không đóng dòng §E nào · `EVAL_GROUPS` không đo RAG → không ảnh hưởng `EVAL_REPORT.md` |
 | 4 | Vision mở rộng (chụp vùng, OCR, alt text) | T-M2-22 | Chỉ ảnh hưởng tính năng Could |
 | 5 | Web search tool | T-M2-20 | Model vẫn trả lời được, chỉ thiếu tool search |
 | 6 | Chính sách context theo domain | T-M2-19 | Chỉ ảnh hưởng nhóm tính năng riêng tư — đánh dấu N/A trong eval |
