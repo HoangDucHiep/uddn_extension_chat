@@ -801,7 +801,7 @@ Component `ToolCallBlock` — block collapsible hiển thị 1 tool call trong t
 - Icon trang trí có `aria-hidden="true"`; trạng thái **không** chỉ dựa vào màu (có nhãn chữ trong badge).
 - `MessageBubble` chỉ render block cho **assistant** (user message không có tool call).
 
-> **Chi tiết hợp đồng file:** [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.26.5 · [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.7 (FR-TOOLS-02/04)
+> **Chi tiết hợp đồng file:** [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.26.9 · [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.4 (FR-TOOLS-02/04)
 
 ---
 

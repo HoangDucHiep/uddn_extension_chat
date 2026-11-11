@@ -6,7 +6,7 @@ import { approveToolCall, denyToolCall, listTools } from '../src/lib/toolClient.
  *
  * Kiem chung: dung URL + method cho list / approve / deny.
  *
- * Docs: docs/SYSTEM_DESIGN.md §7.26.5
+ * Docs: docs/SYSTEM_DESIGN.md §7.26.9
  */
 
 /** Mock fetch tra payload given. */

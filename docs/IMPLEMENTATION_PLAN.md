@@ -1086,7 +1086,7 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 | **T-M2-06** — Skill library browser lọc theo tag (FR-SKILL-07) | ✅ **xong** | `ac63ff1` | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.25.9 · [`DESIGN_SYSTEM_BRIEF.md`](DESIGN_SYSTEM_BRIEF.md) §3.13.5 |
 | **T-M2-21** — Thư viện 9 built-in skill + skill gắn điều kiện tab (FR-SKILL-04/06) | ✅ **xong** | `36383cd` | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.25.10 · [`DESIGN_SYSTEM_BRIEF.md`](DESIGN_SYSTEM_BRIEF.md) §3.13.6 |
 | **T-M2-07** — Tool registry + builtin calculator + agent loop (FR-TOOLS-01/02/06) | ✅ **xong** | `ecb9d37` | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.26 |
-| **T-M2-09** — Tool call UI + approval gate (FR-TOOLS-02/04) | ✅ **xong** | `cbf31c4` | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.26.5 · [`DESIGN_SYSTEM_BRIEF.md`](DESIGN_SYSTEM_BRIEF.md) §3.14 |
+| **T-M2-09** — Tool call UI + approval gate (FR-TOOLS-02/04) | ✅ **xong** | `cbf31c4` | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.26.9 · [`DESIGN_SYSTEM_BRIEF.md`](DESIGN_SYSTEM_BRIEF.md) §3.14 |
 | **T-M2-01** — Multi-provider (OpenAI/Anthropic) | ⏸ **đẩy lại** | — | quyết định user 2026-11-10 — không thêm provider mới |
 
 #### 4.1.2 Verify

@@ -14,7 +14,7 @@ import type { ChatToolCall } from '../../store/chatStore'
  * - Tool can duyet → badge "Can ban duyet" + nut "Duyet" / "Tu choi"
  *   (FR-TOOLS-04).
  *
- * Docs: docs/SYSTEM_DESIGN.md §7.26.5
+ * Docs: docs/SYSTEM_DESIGN.md §7.26.9
  */
 export interface ToolCallBlockProps {
   /** Tool call can hien thi. */

@@ -10,7 +10,7 @@ const { ToolCallBlock } = await import('../src/sidepanel/components/tools/ToolCa
  * Kiem chung: hien ten/args/output · trang thai loi · badge "can duyet" +
  * nut duyet / tu choi.
  *
- * Docs: docs/SYSTEM_DESIGN.md §7.26.5
+ * Docs: docs/SYSTEM_DESIGN.md §7.26.9
  */
 
 const approveToolCall = vi.fn()

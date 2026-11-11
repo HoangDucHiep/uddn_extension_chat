@@ -11,7 +11,7 @@ import { test } from './fixtures.js'
  *  - (4) Tool loi → trang thai loi, thread khong hong.
  *
  * BFF duoc stub bang `page.route` → test chay doc lap, khong can server that.
- * Docs: docs/SYSTEM_DESIGN.md §7.26.5
+ * Docs: docs/SYSTEM_DESIGN.md §7.26.9
  */
 
 /** Id tool call gia lap. */

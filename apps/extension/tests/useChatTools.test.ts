@@ -35,7 +35,7 @@ const { useChatStore } = await import('../src/sidepanel/store/chatStore')
 /**
  * Unit test cho xu ly SSE tool trong `useChat` (FR-TOOLS-02/04 — T-M2-09).
  *
- * Docs: docs/SYSTEM_DESIGN.md §7.26.5
+ * Docs: docs/SYSTEM_DESIGN.md §7.26.9
  */
 
 /**
