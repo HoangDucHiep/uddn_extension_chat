@@ -82,11 +82,19 @@ export function applyContextBudget(
   items: readonly ContextItem[],
   options: ContextBudgetOptions,
 ): ContextBudgetResult {
+  // Token danh rieng cho output **khong** duoc vuot qua context window
+  // (T-M2-24) — provider nho (vd `mock` 32k) + output lon → ngan sach
+  // context se am → phai clamp de con it nhat margin an toan.
+  const reservedOutputTokens = Math.min(
+    options.reservedOutputTokens,
+    Math.max(0, options.contextWindow - CONTEXT_SAFETY_MARGIN_TOKENS),
+  )
+
   const maxTokens = Math.max(
     0,
     options.maxTokens ??
       options.contextWindow -
-        options.reservedOutputTokens -
+        reservedOutputTokens -
         CONTEXT_SAFETY_MARGIN_TOKENS,
   )
 

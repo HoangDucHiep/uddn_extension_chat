@@ -6,6 +6,7 @@ import {
   classifyChatError,
   CONTEXT_WINDOWS,
   DEFAULT_BUDGET_WARN_PERCENT,
+  resolveMaxOutputTokens,
   shouldAutoRetry,
   type ChatEvent,
   type ChatOperation,
@@ -48,8 +49,13 @@ import { useI18n } from './useI18n'
  */
 const FALLBACK_PROVIDER: ProviderId = 'groq'
 
-/** Token danh rieng cho output (khop voi `DEFAULT_MAX_OUTPUT_TOKENS` cua server). */
-const RESERVED_OUTPUT_TOKENS = 2_048
+/**
+ * Token danh rieng cho output.
+ *
+ * Dung `resolveMaxOutputTokens` tu `packages/shared` de **1 nguon su that**
+ * voi server (FR-CHAT-15 — T-M2-24) — server cung clamp theo provider.
+ */
+const RESERVED_OUTPUT_TOKENS = resolveMaxOutputTokens(FALLBACK_PROVIDER)
 
 export function useChat() {
   const { t } = useI18n()
@@ -477,7 +483,12 @@ export function useChat() {
             sawDone = true
             updateMessage(assistantId, {
               status: event.finishReason === 'error' ? 'error' : 'done',
-              ...(event.finishReason === 'aborted' ? { aborted: true } : {}),
+              // `length` = model bi cat do gioi han token va server da het so
+              // vong auto-continue → danh dau de UI hien thi nut "Tiep tuc"
+              // (FR-CHAT-07 + FR-CHAT-15 — T-M2-24).
+              ...(event.finishReason === 'aborted' || event.finishReason === 'length'
+                ? { aborted: true }
+                : {}),
             })
             break
 

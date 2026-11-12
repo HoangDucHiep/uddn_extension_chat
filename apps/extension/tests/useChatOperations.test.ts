@@ -307,6 +307,55 @@ describe('useChat — chat actions (T-M1-10)', () => {
     expect(assistant?.aborted).toBe(false)
   })
 
+  it('done finishReason=length → message aborted=true (hien nut "Tiep tuc")', async () => {
+    // FR-CHAT-15 — T-M2-24: model bi cat do gioi han token → server da het so
+    // vong auto-continue → client phai danh dau `aborted` de UI hien thi
+    // nut "Tiep tuc" (fallback).
+    streamChatMock.mockImplementation(
+      (_request: unknown, options: { onEvent?: (event: ChatEvent) => void }) =>
+        makeStream(
+          [
+            metaEvent('t1'),
+            tokenEvent('phan bi cat'),
+            { type: 'done', finishReason: 'length', messageId: 'msg-1' },
+          ],
+          options.onEvent,
+        ),
+    )
+
+    const { result } = renderHook(() => useChat())
+    await act(async () => {
+      await result.current.send('test')
+    })
+
+    const assistant = useChatStore.getState().messages[1]
+    expect(assistant?.content).toBe('phan bi cat')
+    expect(assistant?.aborted).toBe(true)
+    expect(assistant?.status).toBe('done')
+  })
+
+  it('done finishReason=stop → message khong aborted', async () => {
+    streamChatMock.mockImplementation(
+      (_request: unknown, options: { onEvent?: (event: ChatEvent) => void }) =>
+        makeStream(
+          [
+            metaEvent('t1'),
+            tokenEvent('cau tra loi day du'),
+            { type: 'done', finishReason: 'stop', messageId: 'msg-1' },
+          ],
+          options.onEvent,
+        ),
+    )
+
+    const { result } = renderHook(() => useChat())
+    await act(async () => {
+      await result.current.send('test')
+    })
+
+    const assistant = useChatStore.getState().messages[1]
+    expect(assistant?.aborted).toBeUndefined()
+  })
+
   it('stop → message giu nguyen noi dung do + aborted=true', async () => {
     let capturedSignal: AbortSignal | undefined
     streamChatMock.mockImplementation(

@@ -19,7 +19,7 @@ export const LIMITS = {
   MAX_MESSAGE_CHARS: 32_000,
   MAX_CONTEXT_CHARS: 100_000,
   MAX_HISTORY_MESSAGES: 40,
-  MAX_OUTPUT_TOKENS: 4096,
+  MAX_OUTPUT_TOKENS: 32_768,
   REQUEST_TIMEOUT_MS: 120_000,
   MAX_SSE_BUFFER_BYTES: 1_000_000,
   /** Do dai toi da cua noi dung trang da trich xuat (ky tu). */
@@ -39,6 +39,20 @@ export const LIMITS = {
 } as const
 
 /**
+ * Gioi han output token (FR-CHAT-15 — T-M2-24).
+ *
+ * Trc day server ep `max_tokens = 2048` → nhieu cau tra loi bi cat giua
+ * chung. Nay nang mac dinh len 8192 va cho phep server **tu noi tiep**
+ * khi model van bi cat (xem `outputTokens.ts` + `autoContinue.ts`).
+ */
+export const OUTPUT_LIMITS = {
+  /** Max output tokens mac dinh khi client khong chi dinh. */
+  DEFAULT_MAX_OUTPUT_TOKENS: 8_192,
+  /** So vong auto-continue toi da khi model bi cat do gioi han token. */
+  MAX_AUTO_CONTINUE_ROUNDS: 3,
+} as const
+
+/**
  * Context window (token) cua tung provider.
  *
  * Dung de tinh ngan sach context (FR-CONTEXT-07) — server cat theo context
@@ -46,7 +60,7 @@ export const LIMITS = {
  * dung. Docs: docs/SYSTEM_DESIGN.md §8
  */
 export const CONTEXT_WINDOWS: Record<ProviderId, number> = {
-  mock: 8_000,
+  mock: 32_000,
   groq: 128_000,
   openrouter: 128_000,
   gemini: 1_000_000,

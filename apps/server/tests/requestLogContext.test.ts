@@ -231,14 +231,14 @@ describe('request_logs.context_hash (T-M1-06)', () => {
   })
 
   it('context_hash phai la hash cua ban DA CAT (server la nguon chan su that)', async () => {
-    // Client gui 40k ky tu; provider `mock` chi co context window 8k →
+    // Client gui 200k ky tu; provider `mock` chi co context window 32k →
     // server cat phan dau → context_hash phai bam phan DA CAT.
     const big = {
       id: 'big',
       kind: 'tab' as const,
       tier: 'attachment' as const,
       title: 'Trang lon',
-      text: 'x'.repeat(40_000),
+      text: 'x'.repeat(200_000),
     }
 
     const row = await runWithContext(

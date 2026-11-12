@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import {
   applyContextBudget,
   CONTEXT_WINDOWS,
+  resolveMaxOutputTokens,
   type ContextBudgetResult,
   type ContextItem,
   type ImageAttachment,
@@ -452,7 +453,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set({
       budget: applyContextBudget(state.attachedItems, {
         contextWindow,
-        reservedOutputTokens: 2_048,
+        // Token danh rieng cho output — dung chung nguon su that voi server
+        // (FR-CHAT-15 — T-M2-24).
+        reservedOutputTokens: resolveMaxOutputTokens(provider),
       }),
     })
   },

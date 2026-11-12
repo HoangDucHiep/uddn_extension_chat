@@ -4393,6 +4393,151 @@ excerpt: z
 
 ---
 
+### 7.30 Giới hạn độ dài output & auto-continue — FR-CHAT-15 (T-M2-24)
+
+#### Vấn đề
+
+Câu trả lời hay bị **cắt ngang** giữa chừng. Có **2 nguyên nhân độc lập**:
+
+| # | Nguyên nhân | Hệ quả |
+|---|---|---|
+| 1 | Server ép `max_tokens = 2048` (hardcode) | Câu dài bị cắt ở ~2k token |
+| 2 | Client (`useChat`) chỉ xét `finishReason === 'aborted'` → bỏ qua `'length'` | `aborted` không set → nút **"Tiếp tục"** không bao giờ hiện → user **không có gì để bấm** |
+
+Server cũng persist `wasAborted = finishReason === 'aborted'` → reload panel cũng không có nút "Tiếp tục".
+
+#### Kiến trúc sau khi sửa
+
+```mermaid
+flowchart TD
+  client["Side Panel<br/>POST /api/chat"] --> svc["chatService.createChatStream"]
+  svc --> budget["effectiveMaxOutputTokens<br/>min(requested, provider cap, default)"]
+  budget --> ctx["resolveContextItems<br/>reservedOutputTokens = budget"]
+  ctx --> stream["provider.stream<br/>maxOutputTokens = budget"]
+  stream --> check{"finishReason = length ?"}
+  check -->|no| done["done event"]
+  check -->|yes + rounds < 3 + budget ok| cont["auto-continue<br/>assistant(partial) + user(CONTINUE_INSTRUCTION)"]
+  cont --> stream
+  check -->|yes + het vong| done
+  done --> db["persist message<br/>aborted = (length | aborted)"]
+  db --> client
+  client --> ui["useChat: length → aborted=true<br/>→ nút 'Tiếp tục' hiện"]
+```
+
+#### 1 nguồn sự thật cho giới hạn output — `packages/shared`
+
+**`packages/shared/src/constants.ts`**
+
+```ts
+export const OUTPUT_LIMITS = {
+  /** Max output tokens mac dinh khi client khong chi dinh. */
+  DEFAULT_MAX_OUTPUT_TOKENS: 8_192,
+  /** So vong auto-continue toi da khi model bi cat do gioi han token. */
+  MAX_AUTO_CONTINUE_ROUNDS: 3,
+} as const
+```
+
+- `LIMITS.MAX_OUTPUT_TOKENS`: 4096 → **32_768** (trần schema `chatRequestSchema.maxOutputTokens`).
+- `CONTEXT_WINDOWS.mock`: 8_000 → **32_000** (mock phải chứa được output 8192 + context).
+
+**`packages/shared/src/outputTokens.ts`** (mới) — dùng chung extension + server:
+
+```ts
+export const PROVIDER_OUTPUT_CAPS: Record<ProviderId, number> = {
+  mock: 4_096,
+  groq: 16_384,
+  openrouter: 16_384,
+  gemini: 32_768,
+  ollama: 4_096, // mac dinh `num_ctx = 4096` → tran 4096 cho an toan
+}
+
+export function resolveMaxOutputTokens(providerId: ProviderId, requested?: number): number {
+  const cap = PROVIDER_OUTPUT_CAPS[providerId] ?? OUTPUT_LIMITS.DEFAULT_MAX_OUTPUT_TOKENS
+  const wanted = requested ?? OUTPUT_LIMITS.DEFAULT_MAX_OUTPUT_TOKENS
+  return Math.max(1, Math.min(wanted, cap, LIMITS.MAX_OUTPUT_TOKENS))
+}
+```
+
+#### Tác động lên ngân sách context — `packages/shared/src/contextBudget.ts`
+
+`reservedOutputTokens` **không** được vượt context window (nếu không ngân sách context sẽ âm → context bị cắt sạch):
+
+```ts
+const reservedOutputTokens = Math.min(
+  options.reservedOutputTokens,
+  Math.max(0, options.contextWindow - CONTEXT_SAFETY_MARGIN_TOKENS),
+)
+const maxTokens = Math.max(
+  0,
+  options.maxTokens ??
+    options.contextWindow - reservedOutputTokens - CONTEXT_SAFETY_MARGIN_TOKENS,
+)
+```
+
+#### Auto-continue phía server
+
+**`apps/server/src/services/outputTokens.ts`** (mới) — helper mỏng:
+
+| Hàm | Việc |
+|---|---|
+| `effectiveMaxOutputTokens(providerId, requested)` | Trả về giá trị đã clamp → dùng **chung** cho `provider.stream()` **và** `reservedOutputTokens` (tránh lệch 2 nơi) |
+| `hasBudgetRoom(enabled, limitUsd, spentUsd)` | Chặn auto-continue khi đã vượt budget cap (FR-PROVIDER-06) |
+
+**`apps/server/src/services/autoContinue.ts`** (mới, thuần — không Zod/DB):
+
+| Hàm | Việc |
+|---|---|
+| `shouldAutoContinue({ finishReason, autoContinueRounds, budgetOk, maxRounds })` | `true` khi **cả 3**: `finishReason === 'length'` · chưa hết vòng · còn budget |
+| `buildContinuationMessages(roundText)` | Trả 2 message: `assistant(partial)` + `user(CONTINUE_INSTRUCTION)` |
+
+**`apps/server/src/services/chatService.ts`**:
+
+1. `DEFAULT_MAX_OUTPUT_TOKENS` → **re-export** từ `OUTPUT_LIMITS.DEFAULT_MAX_OUTPUT_TOKENS` (giữ tên export cũ).
+2. Thay `request.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS` → `effectiveMaxOutputTokens(candidate.providerId, request.maxOutputTokens)` — budget & provider luôn dùng **cùng 1 con số** (kể cả sau khi fallback sang provider khác → tính lại).
+3. Vòng lặp `for` → `while`:
+   - Bộ đếm `toolRound` **chỉ** tăng khi thực sự có tool call → auto-continue **không** tiêu 1 vòng tool.
+   - Bộ đếm `autoContinueRounds` (giới hạn `OUTPUT_LIMITS.MAX_AUTO_CONTINUE_ROUNDS = 3`).
+   - Ngay sau khi stream kết thúc, **không có tool call** và `finishReason === 'length'` → nếu còn budget: push `assistant(roundText)` + `user(CONTINUE_INSTRUCTION)` → stream lại.
+   - `roundText` = phần text sinh ra **trong vòng hiện tại** (`text.slice(roundStartLength)`), **không** phải tổng tích luỹ → model không tưởng đã viết lại toàn bộ.
+4. Token mỗi vòng được **cộng dồn** (`tokensIn += roundTokensIn`) → `usage` / `costUsd` chính xác (trước đây ghi đè).
+5. `wasAborted = finishReason === 'aborted' || finishReason === 'length'` → message lưu DB có cờ → **reload panel vẫn hiện nút "Tiếp tục"**.
+6. `finishReason` cuối cùng: `'stop'` nếu các vòng auto-continue đã hoàn tất, `'length'` nếu vẫn còn bị cắt → client báo "bị cắt, bấm Tiếp tục".
+
+#### Client — `apps/extension`
+
+**`useChat.ts`**:
+
+- Xoá hằng cứng `RESERVED_OUTPUT_TOKENS = 2_048` → dùng `resolveMaxOutputTokens(FALLBACK_PROVIDER)` (1 nguồn sự thật).
+- `case 'done'`: thêm `finishReason === 'length'` vào điều kiện set `aborted`:
+
+```ts
+...(event.finishReason === 'aborted' || event.finishReason === 'length'
+  ? { aborted: true }
+  : {}),
+```
+
+**`chatStore.ts`**: `reservedOutputTokens: 2_048` → `resolveMaxOutputTokens(provider)`.
+
+> Không thêm UI mới · không thêm dependency · không đổi manifest.
+
+#### Giới hạn đã biết (không overclaim)
+
+- Auto-continue **không** bảo đảm mọi câu trả lời dài hơn — nếu model vẫn cần > 3 vòng × 8192 token thì vẫn cắt → hiện nút "Tiếp tục" tay.
+- **Chi phí tăng**: 1 lượt chat có thể gọi provider **tối đa 4 lần** → `cost/task` của eval có thể tăng (xem `docs/EVAL_PLAN.md` §5.3.1).
+- `ollama` bị giới hạn 4096 do `num_ctx` mặc định → user tự set `num_ctx` (xem `docs/README.md`).
+- Trần thực tế của provider có thể **thấp hơn** `PROVIDER_OUTPUT_CAPS` → provider tự báo `MAX_TOKENS` → vẫn vào auto-continue.
+
+#### Kiểm thử
+
+| Tầng | File | Phủ |
+|---|---|---|
+| Shared unit | `packages/shared/tests/outputTokens.test.ts` | Thứ tự ưu tiên `requested > provider cap > default > trần schema` · `mock`/`ollama` bị chặn ở 4096 · `applyContextBudget` không bao giờ âm khi `reserved > contextWindow` |
+| Server unit | `apps/server/tests/autoContinue.test.ts` | `length` → server tự stream lại → **chỉ 1 event `done`** · text = nối 2 phần · `finishReason` cuối = `'stop'` · hết vòng → `'length'` + `meta.aborted = true` · `maxOutputTokens` clamp theo provider · `tokensOut` cộng dồn |
+| Server unit (cập nhật) | `apps/server/tests/chatService.test.ts` · `contextPrompt.test.ts` · `requestLogContext.test.ts` | Dùng hằng mới (`PROVIDER_OUTPUT_CAPS.mock`, `CONTEXT_WINDOWS.mock = 32k`) thay số cứng |
+| Extension unit | `apps/extension/tests/useChatOperations.test.ts` | `done { finishReason: 'length' }` → `message.aborted === true` · `finishReason: 'stop'` → không aborted |
+
+---
+
 ## 8. Hiệu năng
 
 | Chỉ số | Mục tiêu | Cách đạt |

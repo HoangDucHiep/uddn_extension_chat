@@ -222,10 +222,10 @@ describe('vision — buildProviderMessages (FR-VISION-01)', () => {
   })
 
   it('token anh bi truoc khoi ngan sach lich su', () => {
-    // mock context window = 8000, margin 2000, reserved output 2048
-    // → historyBudget ≈ 3952 token. Moi turn 400 ky tu ≈ 100 token.
-    // 50 turn ≈ 5000 token > budget → co cat; anh ton 258 token → cat them.
-    const manyTurns = Array.from({ length: 50 }, () => ({
+    // mock context window = 32k, margin 2000, reserved output 4096
+    // → historyBudget ≈ 25904 token. Moi turn 400 ky tu ≈ 100 token.
+    // 300 turn ≈ 30000 token > budget → co cat; anh ton 258 token → cat them.
+    const manyTurns = Array.from({ length: 300 }, () => ({
       role: 'user' as const,
       content: 'x'.repeat(400),
     }))

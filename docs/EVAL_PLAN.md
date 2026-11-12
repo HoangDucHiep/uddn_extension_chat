@@ -366,6 +366,8 @@ curl -s "$BFF/api/usage?from=2026-11-01&to=2026-11-07"
 
 > **API đọc log chỉ trả metadata** (`GET /api/logs`, `GET /api/usage`) — không có `prompt_text` / `response_text` / `context_snapshot`. Transcript đầy đủ vẫn do harness ghi vào `apps/eval/results/ours/<run_id>/<task_id>.json`.
 
+> **Ảnh hưởng T-M2-24 (auto-continue — FR-CHAT-15):** từ 2026-11-12, 1 lượt chat có thể gọi provider **tối đa 4 lần** (vòng đầu + 3 vòng auto-continue) → `cost_usd` / `cost_per_correct_task` có thể **tăng** so với run trước. Token **đã cộng dồn** qua các vòng → metric không bị ghi đè. Khi so sánh với run cũ (`run-m2-eval-2026-11-11`) phải ghi rõ **điều kiện provider/model** khác nhau. **Không** sửa kết quả eval đã chạy.
+>
 > **Cảnh báo về chi phí (bắt buộc ghi trong `EVAL_REPORT.md`):**
 > `cost_usd` được tính từ **bảng giá snapshot** trong `packages/shared/src/pricing.ts` (`PROVIDER_PRICING`), **không** phải hoá đơn thực tế từ provider. Vì vậy:
 > 1. Báo cáo **phải** nêu rõ giá đã dùng (provider + model + USD/1M token input/output) tại thời điểm đo.

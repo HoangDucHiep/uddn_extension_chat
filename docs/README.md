@@ -75,6 +75,9 @@ Chi tiết lý do & hệ quả: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §2 (12 A
 6. **Privacy theo domain** — không chỉ bật/tắt toàn cục.
 7. **Công cụ eval tích hợp** — đo được, so sánh được, tái lập được.
 8. **Workflow automation** — scheduler chạy nền trong sidebar, self-hosted, không cần license (M4, ngoài đường găng). Ở Edge/Gemini, tính năng này bị đẩy ra khỏi sidebar sang M365 Copilot Tasks / Gemini Apps.
+9. **Câu trả lời dài không bị đứt** — server **tự nối tiếp** khi model bị cắt do giới hạn token (tối đa 3 vòng) + nút "Tiếp tục" làm fallback (T-M2-24 — xem `SYSTEM_DESIGN.md` §7.30).
+
+> **Lưu ý về Ollama (T-M2-24):** trần output token của Ollama được đặt ở **4096** vì `num_ctx` mặc định của Ollama là 4096. Muốn câu trả lời dài hơn với Ollama local → tự set `num_ctx` lớp hơn (ví dụ `OLLAMA_CONTEXT_LENGTH=8192`) trong `docker-compose.yml` hoặc biến môi trường của Ollama.
 
 ---
 

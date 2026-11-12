@@ -29,6 +29,8 @@ import {
   evaluateBudgetState,
   hashString,
   isRetryableKind,
+  OUTPUT_LIMITS,
+  resolveMaxOutputTokens,
   stripSkillToken,
   TOOL_LIMITS,
   trimHistory,
@@ -52,6 +54,8 @@ import { loadRecentAttachments, persistAttachments } from './attachmentService.j
 import { clearCitations, extractCitations, persistCitations } from './citationService.js'
 import { buildAutoTitle } from './conversationService.js'
 import { buildBudgetStatus } from './budgetService.js'
+import { buildContinuationMessages, shouldAutoContinue } from './autoContinue.js'
+import { effectiveMaxOutputTokens, hasBudgetRoom } from './outputTokens.js'
 import { resolveSkillForChat, type ResolvedSkill } from './skillService.js'
 import { listMcpServerConfigs } from './mcpService.js'
 import { insertRequestLog, type RequestLogData } from './requestLogService.js'
@@ -72,10 +76,13 @@ import {
 } from './turnService.js'
 
 /**
- * Max output tokens mac dinh.
- * Provider dua `max_tokens` vao billings check — dat qua lon se bi 402 (khong du credit).
+ * Max output tokens mac dinh (FR-CHAT-15 — T-M2-24).
+ *
+ * Provider dua `max_tokens` vao billings/credit check — **phai** set (khong
+ * set thi OpenRouter bao 402 vi mac dinh 65535). Gia tri nay da duoc nang
+ * tu 2048 → 8192; con tran rieng theo provider (xem `resolveMaxOutputTokens`).
  */
-export const DEFAULT_MAX_OUTPUT_TOKENS = 2048
+export const DEFAULT_MAX_OUTPUT_TOKENS = OUTPUT_LIMITS.DEFAULT_MAX_OUTPUT_TOKENS
 
 /**
  * Chuyen danh sach tool thanh `ToolDefinition` de gui cho provider.
@@ -458,16 +465,26 @@ export function createChatStream(
     }
 
     // --- 4. Stream provider ---
+    // Gioi han max tokens — provider dua `max_tokens` vao billings/credit check.
+    // Khong dat thi OpenRouter bao 402 (credit khong du cho 65535 tokens).
+    //
+    // Gia tri **da clamp theo provider** → dung chung cho ca yeu cau
+    // provider va ngan sach context (FR-CHAT-15 — T-M2-24).
+    const maxOutputTokens = effectiveMaxOutputTokens(
+      activeCandidate.providerId,
+      request.maxOutputTokens,
+    )
+
     // Tinh ngan sach context **mot lan** (server la nguon chan su that) →
     // dung lai cho ca prompt builder va `context_hash` trong log.
     let contextBudget = resolveContextItems(request, {
       provider: activeCandidate.providerId,
-      reservedOutputTokens: request.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
+      reservedOutputTokens: maxOutputTokens,
     })
 
     let messagesForProvider = buildProviderMessages(request, {
       provider: activeCandidate.providerId,
-      reservedOutputTokens: request.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
+      reservedOutputTokens: maxOutputTokens,
       images: imagesForProvider,
       contextBudget,
       // Tiep tuc → them chi dan "viet phan tiep theo" (FR-CHAT-07).
@@ -491,9 +508,13 @@ export function createChatStream(
      */
     const toolCallRecords: ToolCallRecordInput[] = []
 
-    // Gioi han max tokens — provider dua `max_tokens` vao billings/credit check.
-    // Khong dat thi OpenRouter bao 402 (credit khong du cho 65535 tokens).
-    const maxOutputTokens = request.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS
+    /**
+     * So vong auto-continue da chay (FR-CHAT-15 — T-M2-24).
+     *
+     * Khi model bi cat do gioi han token → server tu noi tiep toi da
+     * `OUTPUT_LIMITS.MAX_AUTO_CONTINUE_ROUNDS` vong.
+     */
+    let autoContinueRounds = 0
 
     // Vong lap tren **candidates** — provider dau tien that bai tam thoi thi thu
     // provider tiep theo (FR-PROVIDER-04 — T-M2-02).
@@ -514,13 +535,19 @@ export function createChatStream(
         activeCandidate = candidate
         fallbackFrom = switchReasonProviderId
 
+        // Provider moi → tran output token khac → tinh lai ngan sach context.
+        const fallbackMaxOutputTokens = effectiveMaxOutputTokens(
+          candidate.providerId,
+          request.maxOutputTokens,
+        )
+
         contextBudget = resolveContextItems(request, {
           provider: candidate.providerId,
-          reservedOutputTokens: request.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
+          reservedOutputTokens: fallbackMaxOutputTokens,
         })
         messagesForProvider = buildProviderMessages(request, {
           provider: candidate.providerId,
-          reservedOutputTokens: request.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
+          reservedOutputTokens: fallbackMaxOutputTokens,
           images: imagesForProvider,
           contextBudget,
           ...(operation === 'continue' ? { extraUserInstruction: CONTINUE_INSTRUCTION } : {}),
@@ -544,6 +571,13 @@ export function createChatStream(
         | undefined
       /** Provider da stream token → khong duoc chuyen (tranh noi dung trung). */
       let streamedToken = false
+      /**
+       * So vong tool da chay trong provider nay (FR-TOOLS-02 — T-M2-07).
+       *
+       * Chi tăng khi **thuc su** co tool call → auto-continue (T-M2-24) khong
+       * tieu mot vong tool.
+       */
+      let toolRound = 0
 
       // Tool definitions cho provider nay (FR-TOOLS-01 — T-M2-07).
       // Provider khong ho tro function calling → khong gui `tools`.
@@ -571,19 +605,34 @@ export function createChatStream(
       )
 
       /**
-       * Agent loop (FR-TOOLS-02 — T-M2-07).
+       * Agent loop (FR-TOOLS-02 — T-M2-07) + auto-continue (FR-CHAT-15 — T-M2-24).
        *
        * Vong 0 = stream provider. Neu model goi tool → chay tool → them
        * assistant(tool_calls) + tool(result) vao messages → stream lai (vong 1).
        * toi da `TOOL_LIMITS.MAX_TOOL_ROUNDS` vong.
+       *
+       * Neu model bi cat do gioi han token (`finish_reason = 'length'`) →
+       * server **tu noi tiep** (khong ton 1 vong tool) toi da
+       * `OUTPUT_LIMITS.MAX_AUTO_CONTINUE_ROUNDS` vong.
        */
-      for (let round = 0; round < TOOL_LIMITS.MAX_TOOL_ROUNDS; round += 1) {
+      while (true) {
         /** Tool call model yeu cau trong vong nay. */
         const pendingToolCalls: Array<{
           toolCallId: string
           name: string
           args: unknown
         }> = []
+
+        /** Do dai `text` tai dau vong nay → phan text sinh ra trong vong nay. */
+        const roundStartLength = text.length
+
+        // Token su dung trong vong nay → cong don vao tong (T-M2-24).
+        let roundTokensIn = 0
+        let roundTokensOut = 0
+
+        // Reset `finishReason` de vong sau khong ghi de nham trang thai
+        // cua vong truoc.
+        finishReason = 'stop'
 
         for await (const chunk of provider.stream({
           model: candidate.model,
@@ -613,15 +662,15 @@ export function createChatStream(
           }
 
           if (chunk.kind === 'usage') {
-            tokensIn = chunk.tokensIn ?? tokensIn
-            tokensOut = chunk.tokensOut ?? tokensOut
+            roundTokensIn = chunk.tokensIn ?? roundTokensIn
+            roundTokensOut = chunk.tokensOut ?? roundTokensOut
             continue
           }
 
           if (chunk.kind === 'tool_call') {
             // Gom tool call de chay sau khi stream ket thuc (args da parse day du).
             pendingToolCalls.push({
-              toolCallId: chunk.toolCallId ?? `tool-${round}-${pendingToolCalls.length}`,
+              toolCallId: chunk.toolCallId ?? `tool-${toolRound}-${pendingToolCalls.length}`,
               name: chunk.name ?? '',
               args: chunk.args ?? {},
             })
@@ -653,16 +702,55 @@ export function createChatStream(
           }
         }
 
+        // Cong token cua vong nay vao tong (T-M2-24 — nhieu vong auto-continue
+        // thi chi phi phai cong don, khong ghi de).
+        tokensIn += roundTokensIn
+        tokensOut += roundTokensOut
+
         if (providerError !== undefined) break
         if (abortSignal.aborted) break
 
         // Khong co tool call → vong nay la vong ket thuc.
         if (pendingToolCalls.length === 0) {
           finishReason = finishReason === 'tool' ? 'stop' : finishReason
+
+          // --- Auto-continue (FR-CHAT-15 — T-M2-24) ---
+          // Model bi cat do gioi han token → tu noi tiep thay vi bo user
+          // phai bam "Tiep tuc".
+          const roundText = text.slice(roundStartLength)
+          const spentSoFar = calculateCostUsd({
+            provider: candidate.providerId,
+            model: candidate.model,
+            tokensIn,
+            tokensOut,
+          })
+          const budgetOk = hasBudgetRoom(
+            budgetBefore.settings.enabled,
+            budgetBefore.limitUsd,
+            budgetBefore.spentUsd + spentSoFar,
+          )
+
+          if (
+            shouldAutoContinue({
+              finishReason,
+              autoContinueRounds,
+              budgetOk,
+              maxRounds: OUTPUT_LIMITS.MAX_AUTO_CONTINUE_ROUNDS,
+            })
+          ) {
+            autoContinueRounds += 1
+            // Chi dan cho model biet no vua viet gi va phai viet tiep phan con lai.
+            for (const message of buildContinuationMessages(roundText)) {
+              messagesForProvider.push(message)
+            }
+            continue
+          }
+
           break
         }
 
         // --- Chay tool (FR-TOOLS-02 — T-M2-07) ---
+        toolRound += 1
         const toolRegistry = deps.toolRegistry ?? createDefaultToolRegistry()
         const assistantToolCalls: Array<{ id: string; name: string; args: unknown }> = []
 
@@ -750,7 +838,7 @@ export function createChatStream(
         })
 
         // Het vong → dung vong lap, tra loi hien co + canh bao.
-        if (round === TOOL_LIMITS.MAX_TOOL_ROUNDS - 1) {
+        if (toolRound >= TOOL_LIMITS.MAX_TOOL_ROUNDS) {
           finishReason = 'stop'
           const warning =
             '\n\n_[Da dung het so vong goi tool toi da. Cau tra loi co the chua day du.]_'
@@ -842,7 +930,10 @@ export function createChatStream(
     }
 
     // --- 6. Luu assistant message + request_logs ---
-    const wasAborted = finishReason === 'aborted'
+    // `length` = model bi cat do gioi han token va **da het so vong auto-continue**
+    // → van giu nội dung dở + danh dau de UI hien thi nut "Tiep tuc"
+    // (FR-CHAT-07 + FR-CHAT-15 — T-M2-24).
+    const wasAborted = finishReason === 'aborted' || finishReason === 'length'
 
     if (plan.continueMessageId !== undefined) {
       // Tiep tuc → ghi de noi dung cua message da bi stop (khong tao message moi).
@@ -1200,7 +1291,10 @@ export function resolveContextItems(
 ): ContextBudgetResult {
   const providerId = options.provider ?? 'mock'
   const contextWindow = CONTEXT_WINDOWS[providerId] ?? CONTEXT_WINDOWS.mock
-  const reservedOutputTokens = options.reservedOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS
+  // Mac dinh: token output cua **provider thuc te** (FR-CHAT-15 — T-M2-24) →
+  // ngan sach context khong bi thu nho qua muc can thiet.
+  const reservedOutputTokens =
+    options.reservedOutputTokens ?? resolveMaxOutputTokens(providerId)
 
   return applyContextBudget(request.context?.items ?? [], {
     contextWindow,
@@ -1231,7 +1325,9 @@ export function buildProviderMessages(
       : baseSystemPrompt
 
   const providerId = options.provider ?? 'mock'
-  const reservedOutputTokens = options.reservedOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS
+  // Mac dinh: token output cua **provider thuc te** (FR-CHAT-15 — T-M2-24).
+  const reservedOutputTokens =
+    options.reservedOutputTokens ?? resolveMaxOutputTokens(providerId)
   const images = options.images ?? []
 
   const budget =

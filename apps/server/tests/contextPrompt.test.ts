@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { CONTEXT_WINDOWS, CITATION_INSTRUCTION } from '@sidekick/shared'
+import {
+  CONTEXT_WINDOWS,
+  CITATION_INSTRUCTION,
+  PROVIDER_OUTPUT_CAPS,
+} from '@sidekick/shared'
 import {
   buildContextPrompt,
   buildProviderMessages,
@@ -235,14 +239,14 @@ describe('buildProviderMessages', () => {
           ],
         },
       },
-      { provider: 'mock', reservedOutputTokens: 2_048 },
+      { provider: 'mock', reservedOutputTokens: PROVIDER_OUTPUT_CAPS.mock },
     )
 
     const last = messages[messages.length - 1]
     const rendered = last?.content ?? ''
 
-    // Context window mock = 8k → truoc safety margin + reserved output.
-    const maxTokens = CONTEXT_WINDOWS.mock - 2_048 - 2_000
+    // Context window mock = 32k → truoc safety margin + reserved output.
+    const maxTokens = CONTEXT_WINDOWS.mock - PROVIDER_OUTPUT_CAPS.mock - 2_000
     expect(rendered.length).toBeLessThanOrEqual(maxTokens * 4 + 500)
   })
 
@@ -250,8 +254,10 @@ describe('buildProviderMessages', () => {
     const messages = buildProviderMessages(
       {
         messages: [
-          { role: 'user', content: 'a'.repeat(20_000) },
-          { role: 'assistant', content: 'b'.repeat(20_000) },
+          // 120k ky tu ≈ 30k token > ngan sach lich su (mock 32k - 4096
+          // reserved - 2000 margin - 1000 token context) → turn cu bi cat.
+          { role: 'user', content: 'a'.repeat(120_000) },
+          { role: 'assistant', content: 'b'.repeat(120_000) },
           { role: 'user', content: 'cau hoi moi' },
         ],
         context: {
@@ -266,7 +272,7 @@ describe('buildProviderMessages', () => {
           ],
         },
       },
-      { provider: 'mock', reservedOutputTokens: 2_048 },
+      { provider: 'mock', reservedOutputTokens: PROVIDER_OUTPUT_CAPS.mock },
     )
 
     // Luot moi nhat (cau hoi hien tai) luon duoc giu.

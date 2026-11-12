@@ -24,7 +24,7 @@
 | Hạng mục | Trạng thái |
 |---|---|
 | Docs | ✅ Đầy đủ 11 file (`docs/`) + `AGENTS.md` ở root |
-| Code | ✅ **M1 (Parity) ĐÓNG** — 23/25 task (T-M1-15 + T-M1-16 ⏸ tạm dừng) — 4 workspace, **2072 unit test + 108 E2E** · **M2 đang làm** (T-M2-02 ✅ · T-M2-03 ✅ · T-M2-03b ✅ · T-M2-04 ✅ · T-M2-05 ✅ · T-M2-06 ✅ · T-M2-21 ✅ · **T-M2-07 ✅** · **T-M2-09 ✅** · **T-M2-08 ✅** · **T-M2-12 ✅** · **T-M2-13 ✅** · **T-M2-14 ✅** · **T-M2-23 ✅** · kiểm chứng live Chrome **15/15** mục §11b) |
+| Code | ✅ **M1 (Parity) ĐÓNG** — 23/25 task (T-M1-15 + T-M1-16 ⏸ tạm dừng) — 4 workspace, **2100 unit test + 108 E2E** · **M2 đang làm** (T-M2-02 ✅ · T-M2-03 ✅ · T-M2-03b ✅ · T-M2-04 ✅ · T-M2-05 ✅ · T-M2-06 ✅ · T-M2-21 ✅ · **T-M2-07 ✅** · **T-M2-09 ✅** · **T-M2-08 ✅** · **T-M2-12 ✅** · **T-M2-13 ✅** · **T-M2-14 ✅** · **T-M2-23 ✅** · **T-M2-24 ✅** · kiểm chứng live Chrome **15/15** mục §11b) |
 | Git | ✅ Đã init (`main`) · tag `v0.1` (M0) · tag **`v0.2`** (M1 đóng 2026-11-09) |
 | Milestone hiện tại | **M2 — Advanced & Eval** (M0 ✅ · M1 ✅) |
 | Task tiếp theo | **T-M2-15 → 17** (eval — **cần người thật**: thu thập transcript Edge/Gemini · chấm tay 2 người · `docs/EVAL_REPORT.md`) — RAG (T-M2-10/11) đã **hoãn** 2026-11-11 |
@@ -33,7 +33,7 @@
 
 _(Không có — M1 đóng xong 2026-11-09, tag `v0.2`)_
 
-### M2 — tiến độ (2026-11-12) — **14/24 task ✅**
+### M2 — tiến độ (2026-11-12) — **15/25 task ✅**
 
 | Nhóm / Task | Trạng thái | Ghi chú |
 |---|---|---|
@@ -45,6 +45,7 @@ _(Không có — M1 đóng xong 2026-11-09, tag `v0.2`)_
 | **Nhóm Eval (cần người thật)** — T-M2-15 → T-M2-17 | ⬜ **chưa bắt đầu — khối TIẾP THEO (ưu tiên 1)** | **Harness + judge đã sẵn sàng** (T-M2-13/14) → chỉ còn dữ liệu người thật: transcript Edge/Gemini (n=3) · chấm tay Tầng B (2 người) · **`docs/EVAL_REPORT.md` chưa tồn tại** (deliverable bắt buộc) |
 | **Nhóm Could** — T-M2-18 · T-M2-19 · T-M2-20 · T-M2-22 | ⬜ **chưa bắt đầu** | Agentic action · context policy theo domain · web search tool · vision mở rộng — **cắt được** nếu thiếu thời gian (xem §10) |
 | **Nhóm Context** — T-M2-23 | ✅ **xong 2026-11-12** | Upload tài liệu PDF/DOCX/TXT/MD/CSV (FR-CONTEXT-14) — `POST /api/extract/document` + `documentExtractor.ts` (sniff magic byte) + `useDocumentAttachments` → `ContextItem kind:'file'` · **no-persist** → [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) **§7.29** |
+| **Nhóm Chat/Output** — T-M2-24 | ✅ **xong 2026-11-12** | Auto-continue + nâng max output tokens (FR-CHAT-15) — mặc định output **2048 → 8192** (clamp theo provider) · server tự nối tiếp tối đa **3 vòng** khi model bị cắt (`finish_reason='length'`) · client set `aborted` → nút "Tiếp tục" hiện → [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) **§7.30** |
 
 > **Bảng kết quả chi tiết của M2** (trạng thái task · verify · commit · ảnh hưởng gate parity · trạng thái nền nhóm còn lại) nằm ở [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) **§4.1** — đọc ở đó thay vì tra lại từng file.
 
