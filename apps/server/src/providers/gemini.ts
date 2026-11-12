@@ -60,7 +60,7 @@ export interface GeminiProviderOptions {
  * Google tra `400 INVALID_ARGUMENT` neu gui `thinkingConfig` → ca luot chat
  * that bai. Chi gui `thinkingConfig` cho model biet la ho tro thinking.
  *
- * Docs: docs/SYSTEM_DESIGN.md §7.29
+ * Docs: docs/SYSTEM_DESIGN.md §7.28.9.1
  */
 const GEMINI_NON_THINKING_MODEL_PATTERN = /lite/i
 

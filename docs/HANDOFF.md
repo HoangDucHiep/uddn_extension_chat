@@ -94,7 +94,7 @@ _(Không có — M1 đóng xong 2026-11-09, tag `v0.2`)_
 | Theo nhóm | `doc_extract` 94.0 · `general_qa` 98.5 · `page_qa` 90.8 · `video_transcript` 84.1 · `writing` 83.5 · `summarize` 80.3 · `cross_tab` 79.8 · `vision` 77.6 |
 | Bản tổng hợp | `apps/eval/reports/summary-run-m2-eval-2026-11-11.json` (**đã commit**) |
 
-> **4 bug đã sửa** trong lúc chạy thật (chi tiết: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.28.9): `thinkingConfig` **flatten** sai trong payload Gemini · provider dự phóng dùng nhầm model của provider trước · điểm judge ngoài thang 1–5 bị reject · **ảnh** task `vision` không được đính kèm (đường dẫn asset trỏ ra ngoài monorepo) → điểm nhóm `vision` **14.4 → 77.6**, `general_qa` **52.3 → 98.5**.
+> **5 bug đã sửa** trong lúc chạy thật (chi tiết: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.28.9): `thinkingConfig` **flatten** sai trong payload Gemini · provider dự phóng dùng nhầm model của provider trước · điểm judge ngoài thang 1–5 bị reject · **ảnh** task `vision` không được đính kèm (đường dẫn asset trỏ ra ngoài monorepo) → điểm nhóm `vision` **14.4 → 77.6** · judge chấm hallucination cho task không có tài liệu → `general_qa` **52.3 → 98.5**.
 
 **Cách chạy lại phần tự động (đã viết sẵn):**
 

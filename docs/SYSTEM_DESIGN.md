@@ -4150,9 +4150,9 @@ Mỗi task × run:
 | Server unit | `apps/server/tests/geminiThinkingConfig.test.ts` | `thinkingConfig` **nested** trong `generationConfig` (không flatten) · model `*-lite` → không gửi field |
 | Server unit | `apps/server/tests/fallbackChain.test.ts` | Provider dự phóng dùng **model mặc định của chính nó** (không dùng model của provider trước) |
 
-#### 7.28.9 Bug server phát hiện khi chạy eval thật (T-M2-14)
+#### 7.28.9 Bug phát hiện khi chạy eval thật (T-M2-12 → 14)
 
-Hai lỗi dưới đây **không** lộ ra ở unit test (mock provider không gọi network) → chỉ phát hiện khi chạy eval thật với provider thật. Cả hai đều làm **mất ~60% lượt judge**.
+Năm lỗi dưới đây **không** lộ ra ở unit test (mock provider không gọi network, mock asset không tồn tại) → chỉ phát hiện khi chạy eval **thật** với provider thật. Lỗi 1 + 2 làm **mất ~60% lượt judge**; lỗi 4 + 5 làm **sai số điểm** (không phải mất lượt).
 
 ##### 7.28.9.1 `thinkingConfig` bị flatten sai trong payload Gemini
 
@@ -4179,6 +4179,26 @@ Hai lỗi dưới đây **không** lộ ra ở unit test (mock provider không g
 | **Triệu chứng** | Judge trả `R5: 0` (cho "không áp dụng") → `evalJudgeResultSchema` **reject** → cả lượt thành `judge_error` → mất 1 điểm dữ liệu |
 | **Sửa** | `packages/shared/src/schemas/eval.ts` → `z.preprocess(normalizeJudgeScores, …)` — điểm **có mặt** ngoài `[1, 5]` được **clamp** (`0 → 1`, `6 → 5`) · điểm **thiếu** vẫn bị reject (R6/R8 không do judge → bắt buộc đủ 6 tiêu chí) |
 | **Test** | `packages/shared/tests/evalSchema.test.ts` — clamp trên/dưới · giá trị không phải số → `1` · thiếu tiêu chí → reject |
+
+##### 7.28.9.4 Ảnh của task `vision` không được đính kèm (lỗi harness)
+
+| Mặt | Chi tiết |
+|---|---|
+| **Triệu chứng** | Model trả lời *"tôi không thể xem được hình ảnh"* → điểm nhóm `vision` chỉ **14.4/100** (mức sàn, gần như 0 giá trị) |
+| **Nguyên nhân** | `apps/eval/src/runners/ours.ts` → `buildTaskAttachments()` resolve đường dẫn asset theo `resolve(APP_ROOT, '..', '..', asset.path)` → trỏ ra **ngoài monorepo** (`D:\apps\eval\…`) → file không tồn tại → đính kèm rỗng |
+| **Sửa** | Resolve asset theo **repo root** (`resolve(REPO_ROOT, asset.path)`, `REPO_ROOT` = 4 cấp lên từ `src/runners`) → điểm nhóm `vision` **77.6/100** |
+| **Test** | `apps/eval/tests/visionAttachments.test.ts` — asset của task `vision` phải đọc được từ repo root (không rỗng) |
+
+##### 7.28.9.5 Judge chấm "hallucination" cho task không có tài liệu
+
+| Mặt | Chi tiết |
+|---|---|
+| **Triệu chứng** | Nhóm `general_qa` bị chấm **100% hallucination** → điểm nhóm chỉ **52.3/100** (đúng thực tế: 4 câu hỏi đều trả lời đúng) |
+| **Nguyên nhân** | Task `general_qa` có `context_mode: 'none'` → **không** có tài liệu nguồn → judge vẫn đối chiếu "grounded" với **placeholder rỗng** → mọi claim đều thành hallucination |
+| **Sửa** | 2 lớp: (1) `apps/eval/src/judge/prompt.ts` → `buildJudgeUserMessage()` ghi rõ *"không có tài liệu nguồn → đánh giá theo kiến thức của mô hình, **không** chấm hallucination"*; (2) `apps/eval/src/metrics/aggregate.ts` → task `context_mode: 'none'` bị **loại khỏi** công thức `groundedness`/`hallucination`/`citation precision` → báo `n/a` thay vì `0%` → điểm nhóm `general_qa` **98.5/100** |
+| **Test** | `apps/eval/tests/aggregate.test.ts` — task `context_mode: 'none'` không được tính vào hallucination |
+
+> **Bài học (đưa vào quy trình):** chạy eval **thật** là bắt buộc — 5 lỗi trên **không** lộ ra ở unit test (mock provider không gọi network, mock asset không tồn tại). Cờ `--force` (T-M2-13) cho phép chạy lại **toàn bộ** lượt khi chính harness bị lỗi — khác `--merge` (chỉ chạy lại lượt **lỗi**).
 
 ---
 
