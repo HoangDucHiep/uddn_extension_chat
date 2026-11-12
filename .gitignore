@@ -79,3 +79,6 @@ desktop.ini
 .tmp-*.err
 .server-dev.out
 eval-judge.err
+
+# Log server local
+apps/server/server*.log
