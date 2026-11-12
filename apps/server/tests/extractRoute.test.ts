@@ -40,6 +40,89 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
+/**
+ * Tao mot file PDF hop le voi text layer tu danh sach dong text.
+ *
+ * Dung khi test duong upload tai lieu that (base64 → server decode) — PDF
+ * "mini" co text layer that, khong can file ngoai.
+ *
+ * @param lines - Cac dong text se ve len trang.
+ */
+function buildPdf(lines: string[]): Buffer {
+  const content = lines
+    .map(
+      (line, index) =>
+        `BT /F1 24 Tf 72 ${720 - index * 30} Td (${line.replace(/[()\\]/g, '')}) Tj ET`,
+    )
+    .join('\n')
+
+  const objects = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>',
+    `<< /Length ${content.length} >>\nstream\n${content}\nendstream`,
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+  ]
+
+  let pdf = '%PDF-1.4\n'
+  const offsets: number[] = []
+
+  objects.forEach((body, index) => {
+    offsets.push(pdf.length)
+    pdf += `${index + 1} 0 obj\n${body}\nendobj\n`
+  })
+
+  const xrefOffset = pdf.length
+  pdf += `xref\n0 ${objects.length + 1}\n`
+  pdf += '0000000000 65535 f \n'
+  for (const offset of offsets) {
+    pdf += `${String(offset).padStart(10, '0')} 00000 n \n`
+  }
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`
+
+  return Buffer.from(pdf, 'utf-8')
+}
+
+/**
+ * Tao mot file DOCX hop le (zip giong cau truc OOXML toi gian) → base64.
+ *
+ * Dung `jszip` (dependency cua mammoth) de tranh them dependency moi.
+ *
+ * @param paragraphs - Cac doan van ban trong document.
+ * @returns Noi dung file DOCX dang base64 thuan.
+ */
+async function buildDocxBase64(paragraphs: string[]): Promise<string> {
+  const { default: JSZip } = (await import('jszip')) as unknown as {
+    default: new () => {
+      file: (path: string, content: string) => unknown
+      generateAsync: (options: { type: 'uint8array' }) => Promise<Uint8Array>
+    }
+  }
+
+  const zip = new JSZip()
+  zip.file(
+    '[Content_Types].xml',
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="xml" ContentType="application/xml"/><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>',
+  )
+  zip.file(
+    '_rels/.rels',
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>',
+  )
+
+  const body = paragraphs
+    .map((text) => `<w:p><w:r><w:t>${text}</w:t></w:r></w:p>`)
+    .join('')
+  zip.file(
+    'word/document.xml',
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${body}</w:body></w:document>`,
+  )
+
+  const bytes = await zip.generateAsync({ type: 'uint8array' })
+  return Buffer.from(bytes.buffer as ArrayBuffer, bytes.byteOffset, bytes.byteLength).toString(
+    'base64',
+  )
+}
+
 describe('POST /api/extract/pdf', () => {
   it('tra 400 khi body sai schema', async () => {
     const response = await fetch(`${baseUrl}/api/extract/pdf`, {
@@ -190,5 +273,57 @@ describe('POST /api/extract/document', () => {
     expect(response.status).toBe(413)
     const body = (await response.json()) as { error: { code: string } }
     expect(body.error.code).toBe(ERROR_CODES.DOCUMENT_TOO_LARGE)
+  })
+
+  // Regression (T-M2-23): duong upload that se giai ma base64 ra `Buffer`.
+  // `pdfjs-dist` (node build) tu choi `Buffer` → PDF bi loi "Please provide
+  // binary data as `Uint8Array`, rather than `Buffer`." Kiem tra ca endpoint
+  // (khong chi unit test) de chan regression o bien HTTP.
+  it('tra 200 + text khi file PDF hop le (duong upload that)', async () => {
+    const data = buildPdf(['Xin chao tu file PDF']).toString('base64')
+
+    const response = await fetch(`${baseUrl}/api/extract/document`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fileName: 'sach.pdf', mimeType: 'application/pdf', data }),
+    })
+
+    expect(response.status).toBe(200)
+    const body = (await response.json()) as {
+      kind: string
+      text: string
+      truncated: boolean
+      error?: string
+      errorMessage?: string
+    }
+    expect(body.error).toBeUndefined()
+    expect(body.kind).toBe('pdf')
+    expect(body.text).toContain('Xin chao tu file PDF')
+    expect(body.truncated).toBe(false)
+  })
+
+  it('tra 200 + text khi file DOCX hop le (duong upload that)', async () => {
+    const data = await buildDocxBase64(['Doan van ban thu nhat', 'Doan van ban thu hai'])
+
+    const response = await fetch(`${baseUrl}/api/extract/document`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fileName: 'tai-lieu.docx',
+        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        data,
+      }),
+    })
+
+    expect(response.status).toBe(200)
+    const body = (await response.json()) as {
+      kind: string
+      text: string
+      error?: string
+    }
+    expect(body.error).toBeUndefined()
+    expect(body.kind).toBe('docx')
+    expect(body.text).toContain('Doan van ban thu nhat')
+    expect(body.text).toContain('Doan van ban thu hai')
   })
 })

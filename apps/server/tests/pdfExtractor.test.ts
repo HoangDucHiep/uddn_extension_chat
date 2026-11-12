@@ -100,4 +100,25 @@ describe('extractPdfText', () => {
     expect(result.truncated).toBe(true)
     expect(result.text.length).toBeLessThanOrEqual(50)
   })
+
+  // Regression (T-M2-23): `pdfjs-dist` (node build) **tu choi** `Buffer`
+  // bang loi "Please provide binary data as `Uint8Array`, rather than `Buffer`."
+  // Route upload tai lieu giai ma base64 ra `Buffer` → PDF bi loi khi gui
+  // file `.pdf` tu side panel. Phai chuan hoa ve `Uint8Array` thuan truoc.
+  it('chap nhan Node Buffer (duong dan upload tai lieu)', async () => {
+    const bytes = Buffer.from(buildPdf(['Xin chao tu Buffer']).buffer as ArrayBuffer)
+    const result = await extractPdfText(bytes)
+
+    expect(result.pageCount).toBe(1)
+    expect(result.text).toContain('Xin chao tu Buffer')
+  })
+
+  it('khong mutate buffer goc khi trich xuat', async () => {
+    const bytes = Buffer.from(buildPdf(['Ban goc']).buffer as ArrayBuffer)
+    const before = Buffer.from(bytes)
+
+    await extractPdfText(bytes)
+
+    expect(bytes.equals(before)).toBe(true)
+  })
 })

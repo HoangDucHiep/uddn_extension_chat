@@ -31,6 +31,25 @@ interface PdfTextItem {
 }
 
 /**
+ * Chuyen input thanh `Uint8Array` **thuan** (khong phai `Buffer`).
+ *
+ * `pdfjs-dist` (node build) tu choi `Buffer` bang loi:
+ * `"Please provide binary data as \`Uint8Array\`, rather than \`Buffer\`."`
+ * — vi `Buffer` la subclass cua `Uint8Array` nhung `Buffer.prototype.slice()`
+ * van tra ve `Buffer`, nen `bytes.slice()` **khong** phai la cach chuyen doi
+ * an toan o day.
+ *
+ * `new Uint8Array(bytes)` tao mot ban copy co `ArrayBuffer` rieng → pdfjs
+ * nhan dung va khong con rui ro buffer goc bi detach.
+ *
+ * @param bytes - Du lieu vao (co the la `Buffer` hoac `Uint8Array`).
+ * @returns `Uint8Array` thuan.
+ */
+function toPlainUint8Array(bytes: Uint8Array): Uint8Array {
+  return new Uint8Array(bytes)
+}
+
+/**
  * Parse PDF tu bytes → text.
  *
  * @param bytes - Noi dung file PDF.
@@ -46,9 +65,11 @@ export async function extractPdfText(
   const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
 
   const loadingTask = pdfjs.getDocument({
-    // `Uint8Array` bi pdfjs chuyen thanh `ArrayBuffer` — phai truyền bản sao
-    // riêng vì buffer goc co the bi detach sau khi doc stream.
-    data: bytes.slice(),
+    // `Uint8Array` bi pdfjs chuyen thanh `ArrayBuffer` — phai truyen ban sao
+    // rieng vi buffer goc co the bi detach sau khi doc stream.
+    // `Buffer` (tu `Buffer.from(base64)` o route upload tai lieu) bi pdfjs
+    // **tu choi** → phai chuan hoa thanh `Uint8Array` thuan truoc.
+    data: toPlainUint8Array(bytes),
     // Khong can render: chi lay text layer.
     disableFontFace: true,
     isEvalSupported: false,

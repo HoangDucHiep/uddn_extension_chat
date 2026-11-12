@@ -24,6 +24,13 @@
 - `POST /api/extract/document` trả `413` với code `PAYLOAD_TOO_LARGE` khi body vượt `express.json({ limit })` — trước đó là `500` (`apps/server/src/middleware/error.ts`).
 - `Composer` nhận **mọi** file (ảnh + tài liệu) qua 1 input — `apps/extension/src/i18n/vi.ts` + `en.ts`: `composer.pickImage`/`composer.attachImage` → `composer.pickFile`/`composer.attachFile`.
 
+### Fixed
+- **T-M2-23 — Upload file PDF báo lỗi *"Please provide binary data as `Uint8Array`, rather than `Buffer`"*.**
+  - **Root cause:** `pdfjs-dist` (node build) **từ chối** `Buffer` (`getDataProp()` → `throw`). Route upload tài liệu giai ma base64 bằng `Buffer.from(data, 'base64')` → truyền `Buffer` xuống `extractPdfText()`. `Buffer.prototype.slice()` **vẫn trả `Buffer`** → `bytes.slice()` không chuyển đổi được. Đường PDF theo **URL** (T-M1-21) không bị vì `readBuffer()` trả `Uint8Array` thuần → **chỉ** đường upload file từ side panel lộ lỗi.
+  - **Fix:** `apps/server/src/lib/pdfExtractor.ts` — chuẩn hoá **mọi** input về `Uint8Array` thuần (`new Uint8Array(bytes)` — copy mới, có `ArrayBuffer` riêng → không mutate input) trước khi gọi `pdfjs.getDocument()`.
+  - **Test regression:** `apps/server/tests/pdfExtractor.test.ts` (chấp nhận Node `Buffer` · không mutate buffer gốc) + `apps/server/tests/extractRoute.test.ts` (**tầng HTTP** — 200 + text cho PDF **và** DOCX qua đúng đường thật: base64 → `Buffer` → server). Đã verify: revert fix → 3 test fail đúng lỗi gốc; có fix → pass.
+  - Docs: `SYSTEM_DESIGN.md` §7.29.4.1 (ràng buộc `Uint8Array` của `pdfjs-dist` + bài học "test ở tầng HTTP").
+
 ### Docs
 - `REQUIREMENTS.md` — thêm **FR-CONTEXT-14** (M) + cập nhật bảng mapping FR → task.
 - `SYSTEM_DESIGN.md` — thêm **§7.29** (endpoint · contract · parser · extension · quyết định no-persist · giới hạn) + cập nhật **§4.1** (bảng endpoint).

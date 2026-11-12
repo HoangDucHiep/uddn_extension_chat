@@ -4256,11 +4256,36 @@ Tài liệu **không** đi qua `message_attachments` → nó là **context item 
 
 | Kind | Cách parse | Ghi chú |
 |---|---|---|
-| `pdf` | `extractPdfText()` (`pdfjs-dist`, tái dùng T-M1-21) | PDF scan → `CONTEXT_PDF_NOT_READABLE` → map sang `DOCUMENT_NOT_READABLE` |
+| `pdf` | `extractPdfText()` (`pdfjs-dist`, tái dùng T-M1-21) | PDF scan → `CONTEXT_PDF_NOT_READABLE` → map sang `DOCUMENT_NOT_READABLE` · **buffer phải là `Uint8Array` thuần** — xem §7.29.4.1 |
 | `docx` | `mammoth.extractRawText({ buffer })` (`mammoth@^1.13.0`) | `.doc` binary **không** hỗ trợ; `mammoth` không chạy macro (chỉ đọc XML) |
 | `text` | `TextDecoder('utf-8', { fatal: false })` | Bỏ BOM `\uFEFF`; byte NUL → coi là **binary** → `DOCUMENT_NOT_READABLE` |
 
 Chuẩn hoá: `normalizeText()` (bỏ BOM · `CRLF → LF` · gom khoang trang thua · gom ≥3 newline → 2) · cắt `LIMITS.MAX_EXTRACT_TEXT_CHARS` (40 000) → `truncated: true` · `excerpt` = `LIMITS.MAX_EXCERPT_CHARS` (500) ký tự đầu · text rỗng sau trim → `DOCUMENT_EMPTY`.
+
+##### 7.29.4.1 Ràng buộc `Uint8Array` của `pdfjs-dist` (bug T-M2-23)
+
+`pdfjs-dist` (node build) **từ chối** `Buffer`:
+
+```js
+// node_modules/pdfjs-dist/legacy/build/pdf.mjs — getDataProp()
+if (isNodeJS && typeof Buffer !== "undefined" && val instanceof Buffer) {
+  throw new Error("Please provide binary data as `Uint8Array`, rather than `Buffer`.")
+}
+```
+
+- Route upload tài liệu giai ma base64 bằng `Buffer.from(data, 'base64')` → **`Buffer`**.
+- `Buffer` là subclass của `Uint8Array`, nhưng `Buffer.prototype.slice()` **vẫn trả về `Buffer`** → `bytes.slice()` **không** phải cách chuyển đổi an toàn.
+- Đường PDF theo **URL** (T-M1-21) không gặp lỗi này vì `readBuffer()` trả `Uint8Array` thuần → **chỉ** đường upload file từ side panel bị lộ.
+
+**Fix** (`apps/server/src/lib/pdfExtractor.ts`): chuẩn hoá **mọi** input về `Uint8Array` thuần trước khi gọi `pdfjs.getDocument()`:
+
+```ts
+function toPlainUint8Array(bytes: Uint8Array): Uint8Array {
+  return new Uint8Array(bytes) // copy mới, có ArrayBuffer riêng → không mutate input
+}
+```
+
+> **Bài học:** test unit chỉ truyền `Uint8Array` thuần nên **không** bắt được lỗi này → bắt buộc có **test ở tầng HTTP** (`extractRoute.test.ts`) đi đúng đường thật: base64 → `Buffer` → server. Đã thêm 2 test regression (unit `pdfExtractor` + integration `extractRoute` cho cả PDF và DOCX).
 
 #### 7.29.5 Extension
 
@@ -4289,7 +4314,8 @@ Chuẩn hoá: `normalizeText()` (bỏ BOM · `CRLF → LF` · gom khoang trang t
 |---|---|---|
 | Shared unit | `packages/shared/tests/documentSchema.test.ts` | Request/response schema · reject thiếu `fileName` · reject `kind`/`error` lạ |
 | Server unit | `apps/server/tests/documentExtractor.test.ts` | PDF mini (text layer) · DOCX mini (zip tạo tay) · TXT có BOM · byte NUL → `DOCUMENT_NOT_READABLE` · rỗng → `DOCUMENT_EMPTY` · cắt ở `maxChars` → `truncated` |
-| Server integration | `apps/server/tests/extractRoute.test.ts` | 400 body sai · 200 + text · 200 + `error` sai định dạng/rỗng · 413 file > 8 MB |
+| Server unit | `apps/server/tests/pdfExtractor.test.ts` | **Regression `Buffer`**: chấp nhận Node `Buffer` (đường upload tài liệu) · không mutate buffer gốc |
+| Server integration | `apps/server/tests/extractRoute.test.ts` | 400 body sai · 200 + text · 200 + `error` sai định dạng/rỗng · 413 file > 8 MB · **Regression `Buffer`**: 200 + text cho **PDF** và **DOCX** qua đúng đường thật (base64 → `Buffer` → server) |
 | Extension unit | `apps/extension/tests/documentUpload.test.ts` | Validate đuôi + kích thước · đọc base64 bỏ prefix · `requestDocumentExtract` trả lỗi thay vì throw |
 | Extension unit | `apps/extension/tests/useDocumentAttachments.test.ts` | Thành công → `attachItem` `kind:'file'` · lỗi → `setContextError` · vượt `MAX_PER_MESSAGE` |
 | Extension unit | `apps/extension/tests/AttachmentTray.test.tsx` | Danh sách tài liệu · nút xoá · Composer nhận `onFilesSelected` · drop/paste tài liệu |
