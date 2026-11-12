@@ -32,9 +32,9 @@ export interface OpenTab {
 /**
  * Lấy danh sách tab đang mở, sẵn sàng hiển thị trong popover `@`.
  *
- * @param limit - Số tab tối đa trả về (mặc định 20) để UX không ngợp.
+ * @param limit - Số tab tối đa trả về (mặc định 50) để UX không ngợp.
  */
-export async function listOpenTabs(limit = 20): Promise<OpenTab[]> {
+export async function listOpenTabs(limit = 50): Promise<OpenTab[]> {
   try {
     const tabs = await chrome.tabs.query({ currentWindow: true })
 
@@ -64,6 +64,31 @@ export async function listOpenTabs(limit = 20): Promise<OpenTab[]> {
   } catch {
     // Khong truy cap duoc danh sach tab → popover hien thi rong.
     return []
+  }
+}
+
+/**
+ * Đếm tổng số tab đọc được trong cửa sổ hiện tại.
+ *
+ * Dùng để hiển thị chỉ báo "còn N tab khác" khi danh sách bị cắt bởi
+ * `limit` (T-M3-POLISH — không âm thầm bỏ tab).
+ *
+ * @returns Số tab đọc được, hoặc 0 nếu không truy cập được.
+ */
+export async function countOpenTabs(): Promise<number> {
+  try {
+    const tabs = await chrome.tabs.query({ currentWindow: true })
+    let count = 0
+    for (const tab of tabs) {
+      if (tab.id === undefined) continue
+      const url = tab.url ?? ''
+      if (url.length === 0) continue
+      if (detectPageKind(url) === 'unknown') continue
+      count += 1
+    }
+    return count
+  } catch {
+    return 0
   }
 }
 

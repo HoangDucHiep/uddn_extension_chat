@@ -6,6 +6,8 @@ import {
   type ChatErrorKind,
 } from '@sidekick/shared'
 import { Button } from '@/components/ui/button'
+import { IconButton } from '@/components/ui/icon-button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useI18n } from '@/sidepanel/hooks/useI18n'
 
 /**
@@ -113,15 +115,19 @@ export function ErrorState({
           {message}
         </p>
         {onDismiss !== undefined ? (
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={onDismiss}
-            aria-label={t('state.error.dismiss')}
-            data-testid="error-state-dismiss"
-          >
-            <X className="h-3.5 w-3.5" aria-hidden="true" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <IconButton
+                size="sm"
+                onClick={onDismiss}
+                aria-label={t('state.error.dismiss')}
+                data-testid="error-state-dismiss"
+              >
+                <X className="h-3.5 w-3.5" aria-hidden="true" />
+              </IconButton>
+            </TooltipTrigger>
+            <TooltipContent>{t('state.error.dismiss')}</TooltipContent>
+          </Tooltip>
         ) : null}
       </div>
 

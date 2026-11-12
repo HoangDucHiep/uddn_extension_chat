@@ -1293,7 +1293,31 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 | T-M3-09 | Đóng gói extension & chuẩn bị nộp | NFR-PERF-06 | `dist/`, `docs/SUBMISSION.md` | Load unpacked từ zip OK; manifest hợp lệ; bundle unpacked ≤ 3MB | S |
 | T-M3-10 | Backup DB tự động (`pg_dump` cron) | NFR-REL-05 | `apps/server/scripts/backup.sh`, `docker-compose.yml` | Cron trong container chạy hằng ngày; file backup có trong volume; restore được | S |
 | T-M3-11 | ADR — quyết định kiến trúc lớn | NFR-MAINT-05 | `docs/adr/{0001-streaming-via-bff.md,0002-postgres-pgvector.md,0003-rag-strategy.md,0004-mv3-constraints.md}` | ≥ 4 ADR có context · quyết định · hệ quả · trạng thái (accepted) | S |
+| **T-M3-POLISH** | **UI/UX redesign — neutral flat + tab picker đa chọn + one-shot + tooltip + KaTeX** | FR-UX-11, FR-CHAT-16, FR-CONTEXT-03 | `design/tokens.{json,css}` · `apps/extension/src/components/ui/{tooltip,icon-button,chip,toggle}.tsx` · `apps/extension/src/sidepanel/components/context/TabPicker.tsx` · `apps/extension/src/sidepanel/{components/Composer,components/PanelHeader,components/MessageBubble,components/chat/PromptGallery}.tsx` · `apps/extension/src/sidepanel/components/chat/{MessageContent,markdownSchema}.ts` | ✅ **Xong (2026-11-12)** — bảng màu neutral (`--color-accent` `#1f2937`) · zero shadow + hairline border · radius 6/10/14 · 4 primitive mới · tab picker tick nhiều tab · attachment one-shot (context 1 lần / lượt, lịch sử vẫn giữ) · tooltip mọi nút icon-only · KaTeX + code block + table hardening · 4 file test mới | **L** |
 **Định mức M3:** 1 tuần · 11 task · ~14 ngày công
+
+#### 5.1 T-M3-POLISH — UI/UX redesign (2026-11-12) — chi tiết
+
+> Yêu cầu user (2026-11-12): *"thiết kế lại toàn bộ UI, UX… nút mở danh sách tab đang có → ấn thêm cái nào tùy ý… tabs chỉ chọn 1 lần, sau tin nhắn đó không còn nhận tabs đó nữa… các nút bấm vị trí nên có tooltip giải thích ở mọi chỗ… tránh lỗi các thứ như công thức toán học, code block"*.
+> Quyết định: **adopt-neutral** palette · **one-shot** attachment (không gửi lại, không hiện trên UI — nhưng lịch sử vẫn giữ) · **add-katex**.
+
+| # | Workstream | Nội dung chính | File chính |
+|---|---|---|---|
+| u1 | Design tokens + shape language | Bảng màu neutral · zero shadow · hairline · radius 6/10/14 · `--surface-user-bubble` · `--chip-tint-*` · `--font-size-md` 13→14 | `design/tokens.json` · `design/tokens.css` · `sidepanel/index.css` · `ui/{button,popover,dialog}.tsx` |
+| u2 | Primitive mới | `tooltip.tsx` (Radix, tự bọc provider) · `icon-button.tsx` (tròn, prop `tooltip`) · `chip.tsx` · `toggle.tsx` + `button.tsx` variants | `apps/extension/src/components/ui/*` |
+| u3 | Tab picker đa chọn | `TabPicker.tsx` (popover, search, checkbox multi-select, badge, overflow "và N tab khác") · `listOpenTabs` 20→50 + `countOpenTabs()` | `sidepanel/components/context/TabPicker.tsx` · `lib/tabList.ts` |
+| u4 | One-shot attachment | `chatStore.consumeAttachments()` + `turnContexts` snapshot theo `turnId` · `useChat.streamTurn` tiêu thụ sau khi dựng request (chỉ `send`/`branch`) + toast | `sidepanel/store/chatStore.ts` · `sidepanel/hooks/useChat.ts` |
+| u5 | Header + Composer re-layout | Logo mark · nút tròn + tooltip · composer **card** + toolbar pill + nút gửi pill | `sidepanel/components/{PanelHeader,Composer}.tsx` |
+| u6 | Bubble + empty state | user = filled chip · assistant = bare text · meta row dưới câu trả lời · hero + bordered suggestion row + icon tile pastel | `sidepanel/components/MessageBubble.tsx` · `components/chat/PromptGallery.tsx` |
+| u7 | Tooltips toàn diện | Header · composer · context chips · message actions · code block · citation · tool call · settings · conversation list · skill manager · tab picker | (xem `SYSTEM_DESIGN.md` §7.31.6) |
+| u8 | Markdown hardening | `remark-math` + `rehype-katex` · `markdownSchema` mở MathML + `span.katex` + `style` · `rehype-highlight` `detect: false` · `max-w-full` cho `pre`/table | `components/chat/{MessageContent,markdownSchema,CodeBlock,MarkdownTable}.tsx` |
+| u9 | Test | 4 file unit mới (`messageContentMath` · `tabPicker` · `attachmentsOneShot` · `tooltip`) + cập nhật `markdownSchema` + E2E `sidepanel.spec.ts` (font 13→14px) | `apps/extension/tests/*` |
+| u10 | Docs | 8 file docs đồng bộ | `docs/*` |
+
+**Verify (2026-11-12):** `pnpm typecheck` ✅ · `pnpm lint` ✅ (0 error) · `pnpm test` ✅ **2133 unit / 173 file** · `pnpm build:ext` ✅ (`dist` 1.57 MB · `content.js` 17.77 kB ≤ 40 kB) · `pnpm test:e2e` ✅ **111/111** (28 spec).
+
+> **Không đổi:** API · schema DB · manifest · parity checklist §E (giữ **34/35 = 97.1%**).
+> **Giới hạn (không overclaim):** tooltip chưa phủ nút có text (không cần) · công thức `$$…$$` rất dài có thể tràn ngang ở 320px (giới hạn KaTeX) · one-shot → muốn dùng lại tab đã đính kèm phải **đính kèm lại** (hành vi cố ý).
 
 ---
 

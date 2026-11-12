@@ -70,11 +70,66 @@ describe('markdownSchema', () => {
     expect(markdownSchema.protocols?.['href']).toEqual(['http', 'https', 'mailto'])
   })
 
-  it('giu nguyen tagNames cua default schema (khong bo table/thead/td)', () => {
-    // `defaultSchema` khong export `tagNames` qua `rehype-sanitize` →
-    // schema cua ta khong override → van dung mac dinh cua hast-util-sanitize.
-    expect(markdownSchema.tagNames).toBeUndefined()
-    expect(markdownSchema.strip).toBeUndefined()
+  it('mo rong tagNames cho MathML cua KaTeX (T-M3-POLISH)', () => {
+    // `rehype-katex` sinh MathML → `rehype-sanitize` phai cho phep.
+    const tagNames = markdownSchema.tagNames
+    expect(tagNames).toBeDefined()
+    if (tagNames === undefined) return
+
+    for (const tag of [
+      'math',
+      'semantics',
+      'annotation',
+      'mrow',
+      'mi',
+      'mo',
+      'mn',
+      'msup',
+      'msub',
+      'mfrac',
+      'mtable',
+      'mtr',
+      'mtd',
+      'mstyle',
+    ]) {
+      expect(tagNames).toContain(tag)
+    }
+
+    // Van phai giu het tag mac dinh (table / thead / td ...).
+    expect(tagNames).toContain('table')
+    expect(tagNames).toContain('thead')
+    expect(tagNames).toContain('td')
+  })
+
+  it('cho phep span co class katex-* va style inline', () => {
+    const spanRule = markdownSchema.attributes?.['span']
+    expect(spanRule).toBeDefined()
+    if (spanRule === undefined) return
+
+    expect(spanRule).toContain('style')
+
+    const classRule = spanRule.find(
+      (entry) => Array.isArray(entry) && entry[0] === 'className',
+    )
+    expect(classRule).toBeDefined()
+    if (!Array.isArray(classRule)) return
+
+    // `className` co the la `string | RegExp` → chi lay phan la RegExp.
+    const matchers = classRule.filter(
+      (entry): entry is RegExp => entry instanceof RegExp,
+    )
+    expect(matchers.some((matcher) => matcher.test('katex'))).toBe(true)
+  })
+
+  it('cho phep math co xmlns/display/encoding + style', () => {
+    const mathRule = markdownSchema.attributes?.['math']
+    expect(mathRule).toBeDefined()
+    if (mathRule === undefined) return
+
+    expect(mathRule).toContain('xmlns')
+    expect(mathRule).toContain('display')
+    expect(mathRule).toContain('encoding')
+    expect(mathRule).toContain('style')
   })
 
   it('khong mutate defaultSchema cua hast-util-sanitize', async () => {

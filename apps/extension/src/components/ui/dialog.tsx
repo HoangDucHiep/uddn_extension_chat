@@ -3,6 +3,7 @@ import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useI18n } from '@/i18n/useI18n'
+import { Tooltip, TooltipContent, TooltipTrigger } from './tooltip'
 
 /**
  * Dialog — shadcn/ui (copy vao repo).
@@ -27,7 +28,7 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      'fixed inset-0 z-50 bg-[var(--surface-sunken)]/70 backdrop-blur-[1px]',
+      'fixed inset-0 z-50 bg-[var(--surface-sunken)]/80',
       'data-[state=open]:animate-fade-in',
       className,
     )}
@@ -58,17 +59,22 @@ const DialogContent = React.forwardRef<
         {...props}
       >
         {children}
-        <DialogPrimitive.Close
-          className={cn(
-            'absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-[var(--radius-sm)]',
-            'text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-sunken)]',
-            'hover:text-[var(--text-primary)] focus-visible:outline-2',
-            'focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]',
-          )}
-          aria-label={t('common.close')}
-        >
-          <X className="h-4 w-4" aria-hidden="true" />
-        </DialogPrimitive.Close>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DialogPrimitive.Close
+              className={cn(
+                'absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-[var(--radius-full)]',
+                'text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-sunken)]',
+                'hover:text-[var(--text-primary)] focus-visible:outline-2',
+                'focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]',
+              )}
+              aria-label={t('common.close')}
+            >
+              <X className="h-4 w-4" aria-hidden="true" />
+            </DialogPrimitive.Close>
+          </TooltipTrigger>
+          <TooltipContent>{t('common.close')}</TooltipContent>
+        </Tooltip>
       </DialogPrimitive.Content>
     </DialogPortal>
   )

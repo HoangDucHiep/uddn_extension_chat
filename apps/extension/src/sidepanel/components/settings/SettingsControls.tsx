@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Toggle } from '@/components/ui/toggle'
 
 /**
  * Nhom radio de dung chung cho cac section Settings (FR-SETTINGS-01/02/06).
@@ -100,11 +101,14 @@ export interface ToggleRowProps {
 /**
  * 1 dong toggle.
  *
+ * T-M3-POLISH: dung **pill switch** (`Toggle`) thay cho checkbox mac dinh
+ * cua trinh duyet → dong nhat voi ngon ngu hinh "pill" cua panel.
+ *
  * @param props - Props cua dong toggle.
  */
 export function ToggleRow({ label, description, checked, onChange, testId }: ToggleRowProps) {
   return (
-    <label className="flex cursor-pointer items-start justify-between gap-3 rounded-[var(--radius-md)] px-2 py-1.5 hover:bg-[var(--surface-sunken)]">
+    <div className="flex items-center justify-between gap-3 rounded-[var(--radius-md)] px-2 py-1.5 hover:bg-[var(--surface-sunken)]">
       <span className="min-w-0">
         <span className="block text-[length:var(--font-size-sm)] text-[var(--text-primary)]">
           {label}
@@ -115,16 +119,13 @@ export function ToggleRow({ label, description, checked, onChange, testId }: Tog
           </span>
         ) : null}
       </span>
-      <input
-        type="checkbox"
+      <Toggle
         checked={checked}
-        onChange={(event) => {
-          onChange(event.target.checked)
-        }}
-        className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--color-accent)]"
+        onCheckedChange={onChange}
+        aria-label={label}
         data-testid={testId}
       />
-    </label>
+    </div>
   )
 }
 

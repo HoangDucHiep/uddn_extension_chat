@@ -15,7 +15,7 @@ export interface MarkdownTableProps {
 export function MarkdownTable({ children }: MarkdownTableProps) {
   return (
     <div
-      className="my-[var(--space-2)] overflow-x-auto rounded-[var(--radius-md)] border border-[var(--border-default)]"
+      className="my-[var(--space-2)] max-w-full overflow-x-auto rounded-[var(--radius-md)] border border-[var(--border-default)]"
       data-testid="markdown-table-wrapper"
     >
       {children}

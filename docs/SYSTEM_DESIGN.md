@@ -4540,6 +4540,166 @@ const maxTokens = Math.max(
 
 ---
 
+### 7.31 UI/UX redesign — T-M3-POLISH
+
+> Phạm vi: **polish** — không đổi hợp đồng API, không đổi schema DB, không đổi manifest.
+> Ưu tiên `parity (M1) > advanced (M2) > polish (M3) > workflow (M4)` → M3 chỉ làm sau khi M2 ổn.
+
+#### 7.31.1 Design token + shape language
+
+`design/tokens.json` → `design/tokens.css` là **nguồn sự thật duy nhất** (không hardcode hex trong component).
+
+**Bảng màu (neutral flat):**
+
+| Token | Light | Dark | Ghi chú |
+|---|---|---|---|
+| `--color-accent` | `#1f2937` | `#1f2937` | **near-black** (trước là indigo `#4f46e5`) |
+| `--color-accent-hover` | `#111827` | `#111827` | |
+| `--color-accent-subtle` | `#f3f4f6` | `#f3f4f6` | |
+| `--surface-panel` | `#ffffff` | `#111112` | |
+| `--surface-raised` | `#f9fafb` | `#1a1a1b` | |
+| `--surface-sunken` | `#f3f4f6` | `#1c1c1e` | |
+| `--surface-overlay` | `#ffffff` | `#1c1c1e` | popover / dialog |
+| `--surface-user-bubble` | `#e9edf6` | `#1e2230` | **mới** — bubble user |
+| `--border-default` | `#e5e7eb` | `#2e2e30` | **hairline** |
+| `--border-strong` | `#d1d5db` | `#3f3f46` | viền card composer |
+| `--text-primary` | `#111827` | `#f9fafb` | |
+| `--text-secondary` | `#4b5563` | `#a1a1aa` | |
+| `--text-tertiary` | `#9ca3af` | `#71717a` | |
+
+- Giữ `success` / `warning` / `danger` / `info` — đây là **các màu bão hoà duy nhất** được phép.
+- Thêm `--chip-tint-mint` / `--chip-tint-amber` / `--chip-tint-lavender` / `--chip-tint-sky` (light + dark) → icon tile pastel ở empty state.
+- `--border-hairline` alias → các đường viền 1px đọc như **một hệ thống**.
+
+**Elevation:** `--shadow-1/2/3` → no-op (`0 0 0 / 0`). Mọi bề mặt dùng **hairline border**, không shadow.
+`popover.tsx` / `dialog.tsx` chuyển từ `shadow-[var(--shadow-2)]` → **hairline + `--surface-overlay`**.
+
+**Radius:** `--radius-sm` 4 → **6** · `--radius-md` 6 → **10** · `--radius-lg` 10 → **14** (card composer + bubble user).
+
+**Typography:** `--font-sans` giữ Inter · `--font-size-md` 13 → **14** · line-height body **1.6**.
+
+#### 7.31.2 Ngôn ngữ hình dạng (3 họ)
+
+| Họ | Dùng cho | Token |
+|---|---|---|
+| **Circle** | nút icon-only (header, message actions, inline) | `--radius-full` |
+| **Pill** | chip, toggle, nút gửi, badge | `--radius-full` |
+| **Small rounded-rect** | card, list row, code block | `--radius-md` / `--radius-lg` |
+
+**Quy tắc quan trọng:** **user message = filled chip** · **assistant message = bare text** nằm thẳng trên nền panel (trước đây cả 2 đều là bubble, assistant nền xám → sai với reference).
+
+#### 7.31.3 Primitive mới (`apps/extension/src/components/ui/`)
+
+| File | Vai trò |
+|---|---|
+| `tooltip.tsx` | Wrapper Radix `@radix-ui/react-tooltip`. **Tự bọc `TooltipProvider`** → dùng độc lập được (test / drawer / onboarding). Tooltip **không** thay thế `aria-label`. |
+| `icon-button.tsx` | Nút **tròn** chỉ chứa icon. `size` = `sm` (28px) / `md` (32px) / `lg` (36px) · `variant` = `ghost` / `outline` / `solid` · `active` · prop `tooltip` (**tự bọc tooltip**). `aria-label` là **bắt buộc** (type-level). |
+| `chip.tsx` | Pill chip + icon đầu + nút xoá cuối (tuỳ chọn). |
+| `toggle.tsx` | Pill switch thật (track + thumb) — thay checkbox native trong `SettingsControls.tsx`. |
+| `button.tsx` (cập nhật) | `variant: 'pill'` · `size: 'pill-sm'` / `'pill-md'` · `size: 'icon'` → **tròn**. |
+
+#### 7.31.4 Tab picker đa chọn — FR-CONTEXT-03
+
+**Component mới:** `apps/extension/src/sidepanel/components/context/TabPicker.tsx`.
+
+- **Popover** (không modal — panel hẹp, modal chặn composer).
+- Liệt kê tab đang mở (`listOpenTabs`, `currentWindow: true`) — favicon + tiêu đề + domain + **checkbox**.
+- **Đa chọn**: click 1 dòng → toggle. Footer hiện *"Đã chọn N"* + nút **"Đính kèm"**.
+- **Search** lọc theo tiêu đề / domain / URL.
+- Tab đang active → **chấm nhỏ** accent; tab đã đính kèm → **check** + tick sẵn khi mở popover.
+- **Badge** số tab đã chọn trên trigger.
+- **Overflow:** `listOpenTabs` nâng `limit` 20 → **50** + `countOpenTabs()` → hiện *"và N tab khác"* thay vì **âm thầm bỏ tab**.
+
+**Wiring** (`ChatWorkspace.tsx`): state `isTabPickerOpen` ở parent → `useTabs(true)` **chỉ** khi picker mở (lazy) · `onAttachTabs(ids)` → loop `attachTab(id)` · `attachTab` đã dedupe (tab đã đính kèm → trả item cũ).
+
+**Vị trí:** trigger pill trong **toolbar composer** (chính) + nút "Chọn tab" trong **hàng chip context** (phụ) — cùng **1 popover** (controlled qua prop `open` / `onOpenChange`).
+
+#### 7.31.5 Vòng đời đính kèm **one-shot** — FR-CONTEXT-03
+
+> Yêu cầu user (2026-11-12): sau khi gửi 1 tin nhắn, tab / tài liệu / ảnh đính kèm **không được gửi lại** ở lượt sau và **không còn hiện** trên UI — nhưng lịch sử hội thoại vẫn giữ nội dung lượt đó → vẫn nói chuyện tiếp về nó được.
+> **Không** phải "xoá context" — chỉ ngừng **gửi lại** + ngừng **hiện pending**.
+
+**Store (`chatStore.ts`):**
+
+| Action | Viết |
+|---|---|
+| `consumeAttachments()` | Xoá `attachedItems` + `recomputeBudget()` → trả **số item đã tiêu thụ** (dùng cho toast). **Không** đụng `contextEnabled` (đó là lựa chọn của user). |
+| `rememberTurnContext(turnId, items)` | Snapshot context **theo lượt** → `turnContexts[turnId]`. |
+| `getTurnContext(turnId)` | Đọc lại context của 1 lượt. |
+
+**Client (`useChat.ts` — `streamTurn`):**
+
+1. `context = buildContextFromItems(options.contextItems) ?? buildRequestContext()` → `contextItemsForTurn = context?.items ?? []`.
+2. **Sau khi** đọc context, **nếu** `operation === 'send' \| 'branch'` → `consumeAttachments()` → nếu > 0 → `toast.success(t('context.consumed', { count }))`.
+3. Khi nhận SSE `meta` có `turnId` → `rememberTurnContext(turnId, contextItemsForTurn)`.
+
+**Vì sao snapshot theo turn?** `regenerate` / `continue` / `retry` phải dùng **lại đúng** context của lượt đó — nếu không, "Tạo lại" sẽ mất nguồn tham chiếu (trước đây context đã bị xoá khỏi tray).
+
+**Thứ tự quan trọng:** `buildRequestContext()` **phải chạy trước** `consumeAttachments()` — nếu xoá trước thì request gửi lên **không có** context.
+
+#### 7.31.6 Tooltip toàn diện
+
+Mọi element tương tác có tooltip (tooltip **bổ sung**, `aria-label` vẫn là accessible name duy nhất):
+
+| Bề mặt | Element |
+|---|---|
+| Header | 5 nút icon + model picker + export menu |
+| Composer | attach tab / attach file / send / stop |
+| Context chips | xoá chip · toggle context · "Chọn tab" · "Thêm trang này" · "Dính đoạn đã chọn" |
+| Message actions | copy · regenerate · continue · edit · save-as-skill · switcher biến thể |
+| Code block | nút copy |
+| Citation | chip nguồn |
+| Tool call | expand/collapse |
+| Settings | nút reset phím tắt · nút đóng drawer (dialog) |
+| Conversation list | pin · archive · rename · delete |
+| Skill manager | use · edit · duplicate · delete |
+| Tab picker | trigger · nút xoá search |
+
+**Provider:** `TooltipProvider` mount 1 lần ở `App.tsx` (bọc cả onboarding) — Radix yêu cầu provider chung để quản lý delay toàn cục.
+
+#### 7.31.7 Markdown / toán học / code block
+
+**Pipeline mới:**
+
+```
+remark-parse → remark-gfm → remark-math → citationPlugin
+             → remark-rehype → rehype-highlight → rehype-katex → rehype-sanitize → React
+```
+
+| Vấn đề | Fix |
+|---|---|
+| Công thức toán hiển thị thô | Thêm `remark-math` + `rehype-katex` (`output: 'htmlAndMathml'`, `strict: false`) |
+| `rehype-sanitize` **xoá** MathML + `style` của KaTeX | Mở allowlist `markdownSchema`: `tagNames` += MathML (`math`, `semantics`, `annotation`, `mrow`, `mi`, `mo`, `mn`, `msup`, `msub`, `mfrac`, `msqrt`, `mtext`, `mspace`, `mtable`, `mtr`, `mtd`, `mstyle`, `munderover`, `munder`, `mover`, `menclose`, `mpadded`, `mphantom`, `merror`, `mfenced`) · `attributes`: `math: ['xmlns','display','encoding','style']` · `annotation: ['encoding']` · `span: [['className', /^hljs-/, /^katex/], 'dataCitationIndex', 'style']` · `style` cho các tag MathML con |
+| `rehype-highlight` throw với ngôn ngữ lạ | `detect: false` + `ignoreMissing: true` |
+| Code block / table tràn ngang | `pre` + wrapper table có `max-w-full` (kèm `overflow-x-auto`) |
+| KaTeX CSS kéo theo ~60 font | Vite plugin `generateBundle` chỉ giữ `.woff2` → `dist` **1.57 MB** (KaTeX font 0.24 MB) |
+| KaTeX lọt vào content script | `katex.min.css` import **chỉ** ở `sidepanel/index.css` (entry side panel) → guard `contentBundleGuard.test.ts` chặn (`dist/content.js` = **17.77 kB** ≤ 40 kB) |
+
+> **CSP:** `script-src 'self'; object-src 'self'` **không** chặn `style` inline → cho phép `style` trên `span`/`math` là an toàn.
+
+> **Chiến lược defer:** `rehype-highlight` **defer** khi streaming (O(n²)) — còn `rehype-katex` **luôn** chạy (chỉ duyệt node toán học → O(n)) → công thức hiện đúng ngay cả khi đang stream.
+
+#### 7.31.8 Kiểm thử
+
+| Tầng | File | Phủ |
+|---|---|---|
+| Extension unit | `apps/extension/tests/messageContentMath.test.tsx` (mới) | `$x^2$` → `.katex` · `$$…$$` → `.katex-display` · MathML không bị sanitize · **code block chứa `$` không bị mangle** · text giá tiền `100$` không đổi · render được khi streaming |
+| Extension unit | `apps/extension/tests/tabPicker.test.tsx` (mới) | Tick nhiều dòng → `onAttachTabs` nhận đúng id · bỏ tick → không gửi · tab đã đính kèm tick sẵn · search lọc · chỉ báo "và N tab khác" · nút confirm disabled khi chưa chọn · badge số lượng |
+| Extension unit | `apps/extension/tests/attachmentsOneShot.test.ts` (mới) | Sau `send()` → `attachedItems` rỗng · **lượt 2 không gửi lại context** · lịch sử vẫn còn · snapshot theo turn cho `regenerate` · `contextEnabled` **không** bị reset · `consumeAttachments()` trả số item · ảnh chờ bị xoá |
+| Extension unit | `apps/extension/tests/tooltip.test.tsx` (mới) | Tooltip render độc lập (tự bọc provider) · `IconButton` prop `tooltip` · `aria-label` **không** bị thay · kích thước ≥ 24px |
+| Extension unit | `apps/extension/tests/markdownSchema.test.ts` (cập nhật) | Allowlist MathML + `span.katex` + `style` · `defaultSchema` không bị mutate |
+| E2E | `apps/extension/e2e/sidepanel.spec.ts` (cập nhật) | `--font-size-md` 13px → **14px** (T-M3-POLISH) |
+
+#### 7.31.9 Giới hạn đã biết (không overclaim)
+
+- **Parity không đổi:** checklist §E của `COMPARISON_MATRIX.md` giữ nguyên **34/35 = 97.1%** — M3 là polish, không mở/đóng dòng parity nào.
+- **Tooltip chưa phủ 100%:** các nút **có text** (button thường) không cần tooltip → chỉ nút icon-only.
+- **KaTeX:** không hỗ trợ `\$` escape trong text thường; công thức **rất dài** (`$$…$$`) dùng `white-space: nowrap` → có thể tràn ngang ở panel 320px (giới hạn của KaTeX, không cắt).
+- **One-shot:** user muốn dùng lại tab đã đính kèm ở lượt sau → phải **đính kèm lại** (đây là hành vi **cố ý**, đã thống nhất).
+- `content.js` **17.77 kB** — KaTeX **không** lọt vào content script.
+
+---
+
 ## 8. Hiệu năng
 
 | Chỉ số | Mục tiêu | Cách đạt |

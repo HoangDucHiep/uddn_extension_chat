@@ -1,5 +1,6 @@
 import { ChevronDown } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { IconButton } from '@/components/ui/icon-button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useI18n } from '@/sidepanel/hooks/useI18n'
 
 export interface ScrollToBottomButtonProps {
@@ -18,16 +19,20 @@ export function ScrollToBottomButton({ onScrollToBottom }: ScrollToBottomButtonP
 
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-[var(--space-3)] flex justify-center">
-      <Button
-        variant="outline"
-        size="icon"
-        onClick={onScrollToBottom}
-        aria-label={t('chat.scrollToBottom')}
-        data-testid="scroll-to-bottom"
-        className="pointer-events-auto shadow-[var(--shadow-2)]"
-      >
-        <ChevronDown className="h-4 w-4" aria-hidden="true" />
-      </Button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <IconButton
+            variant="outline"
+            onClick={onScrollToBottom}
+            aria-label={t('chat.scrollToBottom')}
+            data-testid="scroll-to-bottom"
+            className="pointer-events-auto shadow-[var(--shadow-2)]"
+          >
+            <ChevronDown className="h-4 w-4" aria-hidden="true" />
+          </IconButton>
+        </TooltipTrigger>
+        <TooltipContent>{t('chat.scrollToBottom')}</TooltipContent>
+      </Tooltip>
     </div>
   )
 }

@@ -6,8 +6,10 @@ import {
 } from 'react'
 import ReactMarkdown, { type Components, type Options } from 'react-markdown'
 import rehypeHighlight from 'rehype-highlight'
+import rehypeKatex from 'rehype-katex'
 import rehypeSanitize from 'rehype-sanitize'
 import remarkGfm from 'remark-gfm'
+import remarkMath from 'remark-math'
 import { CodeBlock, CodeBlockContext } from './CodeBlock'
 import { CitationChip } from './CitationChip'
 import { citationPlugin } from './citationPlugin'
@@ -55,19 +57,25 @@ export interface MessageContentProps {
  * render.
  *
  * LUU Y: `rehype-sanitize` nhan **schema truc tiep** (khong phai `{ schema }`).
+ *
+ * `rehype-katex` **luon** chay (khong defer nhu highlight): no chi xu ly
+ * node toan hoc → chi phi O(n) tren cay, khong phai O(n^2) nhu highlight.
+ * Cong thuc toan hien thi dung ngay ca khi dang stream.
  */
 const REHYPE_PLUGINS_STREAMING: Options['rehypePlugins'] = [
+  [rehypeKatex, { output: 'htmlAndMathml', strict: false }],
   [rehypeSanitize, markdownSchema],
 ]
 
 /** Plugin list khi stream xong — highlight truoc sanitize. */
 const REHYPE_PLUGINS_DONE: Options['rehypePlugins'] = [
-  [rehypeHighlight, { aliases: LANGUAGE_ALIASES }],
+  [rehypeHighlight, { aliases: LANGUAGE_ALIASES, detect: false, ignoreMissing: true }],
+  [rehypeKatex, { output: 'htmlAndMathml', strict: false }],
   [rehypeSanitize, markdownSchema],
 ]
 
 /** Danh sach plugin `remark` (module-level hang). */
-const REMARK_PLUGINS: Options['remarkPlugins'] = [remarkGfm, citationPlugin]
+const REMARK_PLUGINS: Options['remarkPlugins'] = [remarkGfm, remarkMath, citationPlugin]
 
 /** Props cua override `pre` (react-markdown truyen them `node` hast). */
 type PreProps = ComponentPropsWithoutRef<'pre'> & { node?: unknown }

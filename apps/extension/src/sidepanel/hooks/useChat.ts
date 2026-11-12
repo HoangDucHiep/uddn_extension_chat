@@ -11,6 +11,7 @@ import {
   type ChatEvent,
   type ChatOperation,
   type ContextBundle,
+  type ContextItem,
   type ImageAttachment,
   type ProviderId,
 } from '@sidekick/shared'
@@ -89,6 +90,9 @@ export function useChat() {
   const setContextEnabled = useChatStore((state) => state.setContextEnabled)
   const hydrateContextEnabled = useChatStore((state) => state.hydrateContextEnabled)
   const clearPendingImages = useChatStore((state) => state.clearPendingImages)
+  const consumeAttachments = useChatStore((state) => state.consumeAttachments)
+  const rememberTurnContext = useChatStore((state) => state.rememberTurnContext)
+  const getTurnContext = useChatStore((state) => state.getTurnContext)
   const setPath = useChatStore((state) => state.setPath)
   const hydratePath = useChatStore((state) => state.hydratePath)
   const activateVariantLocal = useChatStore((state) => state.activateVariant)
@@ -224,6 +228,13 @@ export function useChat() {
          * Client **khong** gui `prompt_template` → server resolve.
          */
         skillId?: string
+        /**
+         * Context item cua lượt (dung cho `regenerate` / `continue` / `retry`).
+         *
+         * Snapshot theo `turnId` (FR-CONTEXT-03 — T-M3-POLISH) → thao tac
+         * cùng lượt dùng lại **đúng** nguồn đã gửi.
+         */
+        contextItems?: readonly ContextItem[] | undefined
       } = {},
     ) => {
       const state = useChatStore.getState()
@@ -312,7 +323,28 @@ export function useChat() {
       // Context chi duoc gui khi user dinh kem item (FR-CONTEXT-07).
       // KHONG tu capture tab active — panel hoat dong nhu LLM thuan neu
       // user khong dinh kem gi.
-      const context = buildRequestContext()
+      //
+      // `regenerate` / `continue` / `retry` thuoc **cung lượt** → dung lai
+      // snapshot context cua lượt do (FR-CONTEXT-03 — T-M3-POLISH), tranh
+      // mat nguon tham chieu khi user bam "Tao lai".
+      const context =
+        options.contextItems !== undefined
+          ? buildContextFromItems(options.contextItems)
+          : buildRequestContext()
+
+      /** Context da gui cua lượt nay — snapshot de `regenerate`/`continue`. */
+      const contextItemsForTurn = context?.items ?? []
+
+      // **One-shot** context (FR-CONTEXT-03 — T-M3-POLISH): attachment chi
+      // gui 1 lan cho lượt nay. Sau khi gui → xoa khoi tray (UI khong con
+      // hien chip) nhưng **van noi chuyen tiep** ve du lieu do (context da
+      // luu trong `messages` cua server + snapshot `turnContexts`).
+      if (operation === 'send' || operation === 'branch') {
+        const consumed = consumeAttachments()
+        if (consumed > 0) {
+          toast.success(t('context.consumed', { count: consumed }))
+        }
+      }
 
       // Provider user chon trong onboarding (FR-UX-02) → gui len server de
       // server DAT DAU provider do trong chuoi fallback (FR-PROVIDER-04).
@@ -350,6 +382,12 @@ export function useChat() {
               updateMessage(assistantId, { turnId: event.turnId })
               if (userMessageId !== undefined) {
                 updateMessage(userMessageId, { turnId: event.turnId })
+              }
+              // Snapshot context cua lượt (FR-CONTEXT-03 — T-M3-POLISH):
+              // `regenerate` / `continue` / `retry` cua lượt nay se dung
+              // lai **dung** context da gui o day.
+              if (contextItemsForTurn.length > 0) {
+                rememberTurnContext(event.turnId, contextItemsForTurn)
               }
             }
             break
@@ -613,6 +651,8 @@ export function useChat() {
       setStreaming,
       updateMessage,
       clearPendingImages,
+      consumeAttachments,
+      t,
     ],
   )
 
@@ -656,9 +696,13 @@ export function useChat() {
         assistantMessageId: serverId,
         // Lich su = den het turn cua message dang sinh lai.
         history: buildHistory(state.messages, state.path),
+        // Dung lai **dung** context da gui o lượt nay (FR-CONTEXT-03).
+        ...(target.turnId !== undefined
+          ? { contextItems: getTurnContext(target.turnId) }
+          : {}),
       })
     },
-    [streamTurn, updateMessage],
+    [streamTurn, updateMessage, getTurnContext],
   )
 
   /**
@@ -718,9 +762,13 @@ export function useChat() {
         targetMessageId: assistantMessageId,
         // Lich su = het turn hien tai (bao gom phan assistant da ngat).
         history: buildHistory(state.messages, state.path),
+        // Tiep tuc **cung lượt** → dung lai context da gui (FR-CONTEXT-03).
+        ...(target.turnId !== undefined
+          ? { contextItems: getTurnContext(target.turnId) }
+          : {}),
       })
     },
-    [streamTurn, setAborted],
+    [streamTurn, setAborted, getTurnContext],
   )
 
   /**
@@ -751,9 +799,13 @@ export function useChat() {
         assistantMessageId: target.serverId,
         targetMessageId: assistantMessageId,
         history: buildHistory(state.messages, state.path),
+        // Thu lai **cung lượt** → dung lai context da gui (FR-CONTEXT-03).
+        ...(target.turnId !== undefined
+          ? { contextItems: getTurnContext(target.turnId) }
+          : {}),
       })
     },
-    [streamTurn, setMessageError, updateMessage],
+    [streamTurn, setMessageError, updateMessage, getTurnContext],
   )
 
   const stop = useCallback(() => {
@@ -855,6 +907,32 @@ function toChatImage(attachment: ImageAttachment): ChatImage {
     ...(attachment.height !== undefined ? { height: attachment.height } : {}),
     ...(attachment.fileName !== undefined ? { fileName: attachment.fileName } : {}),
   }
+}
+
+/**
+ * Xay dung `context` tu 1 danh sach item da snapshot (FR-CONTEXT-03).
+ *
+ * Dung cho `regenerate` / `continue` / `retry` — thao tac thuoc **cung
+ * lượt** nen phai gui lai **dung** context da gui o lượt do.
+ *
+ * @param items - Danh sach context item da snapshot.
+ * @returns `context` cho request, hoac `undefined` neu rong.
+ */
+function buildContextFromItems(items: readonly ContextItem[]): ContextBundle | undefined {
+  if (items.length === 0) return undefined
+
+  const state = useChatStore.getState()
+  const provider = (state.activeProvider ?? FALLBACK_PROVIDER) as ProviderId
+  const contextWindow = CONTEXT_WINDOWS[provider] ?? CONTEXT_WINDOWS[FALLBACK_PROVIDER]
+
+  const budget = applyContextBudget(items, {
+    contextWindow,
+    reservedOutputTokens: RESERVED_OUTPUT_TOKENS,
+  })
+
+  if (budget.items.length === 0) return undefined
+
+  return { items: budget.items }
 }
 
 /**

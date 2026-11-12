@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ChevronsUpDown, Loader2, Search } from 'lucide-react'
 import type { ProviderId, ProviderInfo } from '@sidekick/shared'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { IconButton } from '@/components/ui/icon-button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { listProviderModels, listProviders } from '@/lib/providerClient'
 import {
   readModelSelection,
@@ -167,17 +168,21 @@ export function ModelPicker({ activeProvider, activeModel, onSelectionChange }: 
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          aria-label={t('modelPicker.open')}
-          title={triggerLabel}
-          data-testid="model-picker-button"
-        >
-          <ChevronsUpDown className="h-3.5 w-3.5" aria-hidden="true" />
-        </Button>
-      </PopoverTrigger>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <PopoverTrigger asChild>
+            <IconButton
+              size="sm"
+              aria-label={t('modelPicker.open')}
+              title={triggerLabel}
+              data-testid="model-picker-button"
+            >
+              <ChevronsUpDown className="h-3.5 w-3.5" aria-hidden="true" />
+            </IconButton>
+          </PopoverTrigger>
+        </TooltipTrigger>
+        <TooltipContent>{triggerLabel}</TooltipContent>
+      </Tooltip>
       <PopoverContent
         align="end"
         className="flex max-h-[420px] w-[280px] flex-col gap-2 p-[var(--space-2)]"

@@ -171,6 +171,22 @@ export interface ChatState {
   contextSourceKind: string | undefined
   /** Context item user da dinh kem (FR-CONTEXT-07). */
   attachedItems: ContextItem[]
+  /**
+   * Context **da gui** cua moi lượt, khoá theo `turnId`
+   * (FR-CONTEXT-03 — T-M3-POLISH).
+   *
+   * ## Vì sao cần giữ lại?
+   *
+   * Attachment là **one-shot** → sau khi gửi, `attachedItems` bị xoá để
+   * không gửi lại & không hiện trên UI. Nhưng thao tác **"Tạo lại"**
+   * (`regenerate`), **"Tiếp tục"** (`continue`) và **"Thử lại"** (`retry`)
+   * thuộc **cùng lượt** → phải dùng lại **đúng** context của lượt đó.
+   * Nếu không, câu trả lời sẽ mất hoàn toàn nguồn tham chiếu.
+   *
+   * Snapshot là **client-side**, chỉ tồn tại trong phiên panel (đóng panel
+   * là mất → user đính kèm lại nếu cần).
+   */
+  turnContexts: Record<string, ContextItem[]>
   /** Bat/tat viec gui context — mac dinh TAT (chi gui khi user dinh kem). */
   contextEnabled: boolean
   /** Ket qua tinh ngan sach context (hien thi meter). */
@@ -243,6 +259,37 @@ export interface ChatState {
   removeItem: (id: string) => void
   /** Xoa toan bo context item da dinh kem. */
   clearAttachedItems: () => void
+  /**
+   * **Tieu thu** dinh kem sau khi gui (FR-CONTEXT-03 — T-M3-POLISH).
+   *
+   * ## Vì sao?
+   *
+   * Attachment la **one-shot**: tab / file / doan text da dinh kem chi duoc
+   * gui **mot lan** trong lượt chat vừa rồi. Sau đó:
+   *  - **không** còn hiện trên UI (chip trống, không phải "đính kèm" nữa)
+   *  - **không** được gửi lại ở lượt tiếp theo (tránh tốn token + sai ngữ
+   *    nghĩa: user khong con y "trang do" cho lượt sau)
+   *
+   * Lịch sử hội thoại **van giu** du lieu cua lượt do (cau tra loi cua
+   * assistant + metadata) → van thao luan tiep duoc ve nguon do.
+   *
+   * @returns So item da bi tieu thu (de hien thi toast).
+   */
+  consumeAttachments: () => number
+  /**
+   * Luu context cua 1 lượt (dung khi tao luat / tiep tuc / thu lai).
+   *
+   * @param turnId - Id cua lượt.
+   * @param items - Danh sach context item cua lượt.
+   */
+  rememberTurnContext: (turnId: string, items: readonly ContextItem[]) => void
+  /**
+   * Doc context da luu cua 1 lượt (dung cho `regenerate` / `continue`).
+   *
+   * @param turnId - Id cua lượt.
+   * @returns Danh sach context item (hoac rong).
+   */
+  getTurnContext: (turnId: string) => readonly ContextItem[]
   /** Bat/tat gui context + luu vao `chrome.storage.local`. */
   setContextEnabled: (enabled: boolean) => void
   /** Nap trang thai bat/tat context da luu (goi 1 lan khi mo panel). */
@@ -311,6 +358,7 @@ const initialState = {
   contextErrorMessage: undefined,
   contextSourceKind: undefined,
   attachedItems: [] as ContextItem[],
+  turnContexts: {} as Record<string, ContextItem[]>,
   contextEnabled: false,
   budget: undefined as ContextBudgetResult | undefined,
   pendingImages: [] as ImageAttachment[],
@@ -387,6 +435,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
       // Duong di moi → path cu cua conversation truoc khong con dung.
       path: [],
       draft: '',
+      // Context theo lượt thuộc conversation cu → xoa (dang mo conversation
+      // khac) — snapshot chi phục vụ regenerate/continue trong cung phiên.
+      turnContexts: {},
     }),
 
   setStreaming: (isStreaming) => set({ isStreaming }),
@@ -428,6 +479,23 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set({ attachedItems: [] })
     get().recomputeBudget()
   },
+
+  consumeAttachments: () => {
+    const items = get().attachedItems
+    if (items.length === 0) return 0
+    set({ attachedItems: [] })
+    get().recomputeBudget()
+    return items.length
+  },
+
+  rememberTurnContext: (turnId, items) => {
+    if (items.length === 0) return
+    set((state) => ({
+      turnContexts: { ...state.turnContexts, [turnId]: [...items] },
+    }))
+  },
+
+  getTurnContext: (turnId) => get().turnContexts[turnId] ?? [],
 
   setContextEnabled: (enabled) => {
     set({ contextEnabled: enabled })

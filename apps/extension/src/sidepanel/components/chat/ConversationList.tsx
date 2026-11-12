@@ -3,6 +3,7 @@ import { Archive, ArchiveRestore, MessageSquarePlus, Pencil, Pin, PinOff, Search
 import { toast } from 'sonner'
 import type { ConversationSummary } from '@sidekick/shared'
 import { Button } from '@/components/ui/button'
+import { IconButton } from '@/components/ui/icon-button'
 import { Input } from '@/components/ui/input'
 import { useConversationStore } from '../../store/conversationStore'
 import { useI18n } from '@/sidepanel/hooks/useI18n'
@@ -419,11 +420,11 @@ function ConversationGroup({
                   {item.title}
                 </button>
 
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
+                <IconButton
+                  size="sm"
                   onClick={() => onTogglePin(item)}
                   aria-label={item.pinned ? t('conversation.unpinAction') : t('conversation.pinAction')}
+                  tooltip={item.pinned ? t('conversation.unpinAction') : t('conversation.pinAction')}
                   data-testid="conversation-pin"
                 >
                   {item.pinned ? (
@@ -431,13 +432,17 @@ function ConversationGroup({
                   ) : (
                     <Pin className="h-3.5 w-3.5" aria-hidden="true" />
                   )}
-                </Button>
+                </IconButton>
 
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
+                <IconButton
+                  size="sm"
                   onClick={() => onToggleArchive(item)}
                   aria-label={
+                    item.archived
+                      ? t('conversation.restoreAction')
+                      : t('conversation.archiveAction')
+                  }
+                  tooltip={
                     item.archived
                       ? t('conversation.restoreAction')
                       : t('conversation.archiveAction')
@@ -449,27 +454,27 @@ function ConversationGroup({
                   ) : (
                     <Archive className="h-3.5 w-3.5" aria-hidden="true" />
                   )}
-                </Button>
+                </IconButton>
 
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
+                <IconButton
+                  size="sm"
                   onClick={() => onStartRename(item)}
                   aria-label={t('conversation.renameLabel')}
+                  tooltip={t('conversation.renameLabel')}
                   data-testid="conversation-rename"
                 >
                   <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-                </Button>
+                </IconButton>
 
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
+                <IconButton
+                  size="sm"
                   onClick={() => onRequestDelete(item)}
                   aria-label={t('common.delete')}
+                  tooltip={t('common.delete')}
                   data-testid="conversation-delete"
                 >
                   <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                </Button>
+                </IconButton>
               </div>
             )}
           </li>

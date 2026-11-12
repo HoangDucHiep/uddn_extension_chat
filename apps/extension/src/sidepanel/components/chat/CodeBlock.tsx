@@ -1,6 +1,7 @@
 import { Check, Copy } from 'lucide-react'
 import { createContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useI18n } from '@/sidepanel/hooks/useI18n'
 
 /**
@@ -82,25 +83,30 @@ export function CodeBlock({ code, language, children }: CodeBlockProps) {
         >
           {language ?? 'text'}
         </span>
-        <button
-          type="button"
-          onClick={() => {
-            void handleCopy()
-          }}
-          aria-label={t('chat.copyCode')}
-          className="flex h-6 w-6 items-center justify-center rounded-[var(--radius-sm)] text-[var(--text-tertiary)] transition-colors duration-[var(--duration-fast)] hover:bg-[var(--surface-sunken)] hover:text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]"
-          data-testid="code-block-copy"
-        >
-          {copied ? (
-            <Check className="h-3.5 w-3.5" aria-hidden="true" />
-          ) : (
-            <Copy className="h-3.5 w-3.5" aria-hidden="true" />
-          )}
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={() => {
+                void handleCopy()
+              }}
+              aria-label={t('chat.copyCode')}
+              className="flex h-6 w-6 items-center justify-center rounded-[var(--radius-full)] text-[var(--text-tertiary)] transition-colors duration-[var(--duration-fast)] hover:bg-[var(--surface-sunken)] hover:text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]"
+              data-testid="code-block-copy"
+            >
+              {copied ? (
+                <Check className="h-3.5 w-3.5" aria-hidden="true" />
+              ) : (
+                <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+              )}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>{t('chat.copyCode')}</TooltipContent>
+        </Tooltip>
       </div>
 
       <pre
-        className="overflow-x-auto p-[var(--space-2)] font-mono text-[length:var(--font-size-sm)] leading-[var(--line-height-base)] text-[var(--code-fg)]"
+        className="max-w-full overflow-x-auto p-[var(--space-2)] font-mono text-[length:var(--font-size-sm)] leading-[var(--line-height-base)] text-[var(--code-fg)]"
         data-testid="code-block-pre"
       >
         {children}

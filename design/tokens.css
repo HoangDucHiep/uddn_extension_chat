@@ -1,6 +1,11 @@
 /**
  * Sidekick AI — design tokens (CSS variables).
  * Nguon su that: design/tokens.json. KHONG hardcode mau trong component.
+ *
+ * Phong cach T-M3-POLISH: flat / trung tinh / hairline.
+ *  - Khong gradient, khong glassmorphism.
+ *  - Chieu sau suy tu bang gia tri (surface) + duong 1px (hairline).
+ *  - Primary CTA = near-black (`--color-accent`).
  * Docs: docs/DESIGN_SYSTEM_BRIEF.md §2
  */
 
@@ -8,20 +13,23 @@
   color-scheme: light;
 
   /* --- Color (light) --- */
-  --color-accent: #4f46e5;
-  --color-accent-hover: #4338ca;
-  --color-accent-subtle: #eef2ff;
+  --color-accent: #1f2937;
+  --color-accent-hover: #111827;
+  --color-accent-subtle: #f3f4f6;
   --color-accent-fg: #ffffff;
+  --color-accent-contrast: #ffffff;
 
   --surface-panel: #ffffff;
   --surface-raised: #f9fafb;
   --surface-sunken: #f3f4f6;
   --surface-overlay: #ffffff;
+  /* Bong tin nhan user — filled chip nen, assistant de trong (bang mau). */
+  --surface-user-bubble: #e9edf6;
 
   --border-default: #e5e7eb;
   --border-strong: #d1d5db;
   --border-subtle: #f3f4f6;
-  --border-focus: #4f46e5;
+  --border-focus: #1f2937;
 
   --text-primary: #111827;
   --text-secondary: #4b5563;
@@ -37,20 +45,27 @@
   --info: #2563eb;
   --info-subtle: #eff6ff;
 
-  --citation-bg: #f5f3ff;
-  --citation-border: #c4b5fd;
-  --citation-link: #6d28d9;
-  --citation-hover: #ede9fe;
+  --citation-bg: #f3f4f6;
+  --citation-border: #d1d5db;
+  --citation-link: #374151;
+  --citation-hover: #e5e7eb;
 
-  --code-bg: #f9fafb;
-  --code-border: #e5e7eb;
-  --code-fg: #1f2937;
-  --code-token-keyword: #7c3aed;
-  --code-token-string: #059669;
-  --code-token-number: #d97706;
-  --code-token-comment: #9ca3af;
-  --code-token-function: #2563eb;
-  --code-token-punctuation: #6b7280;
+  /* Code block luon nen toi (ca 2 theme) — de doc code de chu khi nen trang. */
+  --code-bg: #171717;
+  --code-border: #2e2e30;
+  --code-fg: #e5e7eb;
+  --code-token-keyword: #22d3ee;
+  --code-token-string: #86efac;
+  --code-token-number: #fdba74;
+  --code-token-comment: #6b7280;
+  --code-token-function: #60a5fa;
+  --code-token-punctuation: #9ca3af;
+
+  /* Tint pastel cho icon tile (empty state + goi y). */
+  --chip-tint-mint: #ecfdf5;
+  --chip-tint-amber: #fffbeb;
+  --chip-tint-lavender: #eef2ff;
+  --chip-tint-sky: #eff6ff;
 
   /* --- Typography --- */
   --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
@@ -58,12 +73,12 @@
 
   --font-size-xs: 11px;
   --font-size-sm: 12px;
-  --font-size-md: 13px;
+  --font-size-md: 14px;
   --font-size-lg: 15px;
-  --font-size-xl: 18px;
+  --font-size-xl: 20px;
 
   --line-height-tight: 1.3;
-  --line-height-base: 1.5;
+  --line-height-base: 1.6;
   --line-height-relaxed: 1.7;
 
   --font-weight-regular: 400;
@@ -87,15 +102,17 @@
   --space-8: calc(40px * var(--density-scale));
 
   /* --- Radius --- */
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 10px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
   --radius-full: 9999px;
 
-  /* --- Elevation --- */
-  --shadow-1: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-2: 0 4px 12px -2px rgb(0 0 0 / 0.12);
-  --shadow-3: 0 12px 32px -8px rgb(0 0 0 / 0.24);
+  /* --- Elevation ---
+   * Phong cach "flat": bo qua moi bo doi (chi con vien 1px).
+   * `shadow-3` giu lai cho drawer (Radix Dialog) de tach khoi nen sau. */
+  --shadow-1: 0 0 0 0 rgb(0 0 0 / 0);
+  --shadow-2: 0 1px 2px 0 rgb(0 0 0 / 0.06);
+  --shadow-3: 0 8px 24px -8px rgb(0 0 0 / 0.18);
 
   --border-width-hairline: 1px;
   --border-width-normal: 1px;
@@ -116,8 +133,8 @@
   /* --- Layout --- */
   --panel-min-width: 320px;
   --panel-max-width: 640px;
-  --header-height: 48px;
-  --composer-min-height: 48px;
+  --header-height: 52px;
+  --composer-min-height: 44px;
   --composer-max-height: 240px;
   --gutter: 12px;
   --message-max-width: 100%;
@@ -126,25 +143,27 @@
 .dark {
   color-scheme: dark;
 
-  --color-accent: #818cf8;
-  --color-accent-hover: #a5b4fc;
-  --color-accent-subtle: #1e1b4b;
-  --color-accent-fg: #0b1020;
+  --color-accent: #e5e7eb;
+  --color-accent-hover: #ffffff;
+  --color-accent-subtle: #262626;
+  --color-accent-fg: #111112;
+  --color-accent-contrast: #111112;
 
-  --surface-panel: #0b1020;
-  --surface-raised: #141a2e;
-  --surface-sunken: #070b16;
-  --surface-overlay: #141a2e;
+  --surface-panel: #111112;
+  --surface-raised: #1a1a1b;
+  --surface-sunken: #1c1c1e;
+  --surface-overlay: #1c1c1e;
+  --surface-user-bubble: #1e2230;
 
-  --border-default: #1f2937;
-  --border-strong: #374151;
-  --border-subtle: #111827;
-  --border-focus: #818cf8;
+  --border-default: #2e2e30;
+  --border-strong: #3f3f46;
+  --border-subtle: #262626;
+  --border-focus: #e5e7eb;
 
-  --text-primary: #f3f4f6;
-  --text-secondary: #d1d5db;
-  --text-tertiary: #6b7280;
-  --text-inverse: #0b1020;
+  --text-primary: #f9fafb;
+  --text-secondary: #a1a1aa;
+  --text-tertiary: #71717a;
+  --text-inverse: #111112;
 
   --success: #34d399;
   --success-subtle: #052e26;
@@ -155,25 +174,29 @@
   --info: #60a5fa;
   --info-subtle: #0c2545;
 
-  --citation-bg: #1e1b4b;
-  --citation-border: #4338ca;
-  --citation-link: #c4b5fd;
-  --citation-hover: #2e2a63;
+  --citation-bg: #262626;
+  --citation-border: #3f3f46;
+  --citation-link: #d4d4d8;
+  --citation-hover: #2e2e30;
 
-  --code-bg: #070b16;
-  --code-border: #1f2937;
+  --code-bg: #0d0d0d;
+  --code-border: #262628;
   --code-fg: #e5e7eb;
-  --code-token-keyword: #c4b5fd;
-  --code-token-string: #6ee7b7;
-  --code-token-number: #fcd34d;
+  --code-token-keyword: #22d3ee;
+  --code-token-string: #86efac;
+  --code-token-number: #fdba74;
   --code-token-comment: #6b7280;
-  --code-token-function: #93c5fd;
+  --code-token-function: #60a5fa;
   --code-token-punctuation: #9ca3af;
 
-  /* Dark theme dung vien thay doi bong. */
-  --shadow-1: 0 0 0 1px var(--border-default);
-  --shadow-2: 0 0 0 1px var(--border-default), 0 4px 12px -2px rgb(0 0 0 / 0.4);
-  --shadow-3: 0 0 0 1px var(--border-strong), 0 12px 32px -8px rgb(0 0 0 / 0.6);
+  --chip-tint-mint: #052e26;
+  --chip-tint-amber: #3b2f0b;
+  --chip-tint-lavender: #1e1b4b;
+  --chip-tint-sky: #0c2545;
+
+  /* Shadow nhe hon de "flat" ma van tach duoc drawer tren nen toi. */
+  --shadow-2: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+  --shadow-3: 0 8px 24px -8px rgb(0 0 0 / 0.6);
 }
 
 /* FR-UX-10: ton trong prefers-reduced-motion. */

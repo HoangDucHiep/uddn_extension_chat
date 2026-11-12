@@ -209,6 +209,7 @@ Quy ước ưu tiên: **M** = Must (bắt buộc cho M1) · **S** = Should (bắ
 | FR-CHAT-13 | Tự lưu bản nháp (draft) khi đóng panel | S | Mở lại vẫn còn draft của conversation đang mở. **Đã implement (T-M1-10):** `chrome.storage.local` key `sidekick.draft.<conversationId>` · ghi **debounce 300 ms** · TTL 30 ngày · khoá xoá sau khi gửi thành công · khôi phục khi mở lại panel / đổi conversation |
 | FR-CHAT-14 | Hiển thị trạng thái lỗi với hành động khôi phục | M | 429 → "Đã đạt giới hạn, thử lại sau Ns"; 401 → "Kiểm tra API key"; 5xx → "Retry". **Đã implement (T-M1-19):** card lỗi trong thread (`ErrorState`) — icon + nguyên nhân cụ thể + **1 hành động đúng theo nhóm lỗi**: `network`/`server`/`provider` → **Thử lại** · `auth` → **Kiểm tra API key** (mở drawer Settings) · `rate-limit` → **Thử lại sau Ns** với đếm ngược trực tiếp (nút bị disable tới khi hết hạn) · nút **✕** để ẩn thông báo. `role="alert"` + `aria-live="polite"`. Nhóm lỗi phân loại tập trung ở `packages/shared/src/chatErrors.ts` (`classifyChatError`) |
 | FR-CHAT-15 | Câu trả lời **không bị cắt ngang** do giới hạn token; server tự nối tiếp | M | Model báo `finish_reason = 'length'` → server tự nối tiếp tối đa **3 vòng**, user **không phải** bấm gì; khi hết vòng thì hiện nút "Tiếp tục" (fallback). **Đã implement (T-M2-24):** mặc định output nâng **2048 → 8192** token (`OUTPUT_LIMITS.DEFAULT_MAX_OUTPUT_TOKENS`), clamp theo trần từng provider (`PROVIDER_OUTPUT_CAPS`) · server tự gọi lại provider khi bị cắt, nối text của các vòng, **cộng dồn** token để cost chính xác · chỉ dừng sớm nếu hết budget cap · client set `aborted = true` khi `finishReason = 'length'` → nút "Tiếp tục" hiện · message lưu DB cũng mang cờ `aborted` (reload panel vẫn thấy nút). **Giới hạn đã biết:** không đảm bảo mọi câu dài hơn (hết 3 vòng vẫn cắt) · 1 lượt chat có thể gọi provider tối đa 4 lần → **chi phí tăng** |
+| FR-CHAT-16 | Render Markdown **đúng**: công thức toán học, code block, bảng | M | **✅ ĐÃ IMPLEMENT (T-M3-POLISH, 2026-11-12):** pipeline `remark-gfm` → `remark-math` → `rehype-highlight` (`detect: false`, `ignoreMissing: true`) → `rehype-katex` → `rehype-sanitize` · `$x^2$` → render KaTeX (`.katex`) · `$$…$$` → `.katex-display` · `markdownSchema` mở allowlist MathML + `span.katex` + `style` (nếu không → KaTeX bị sanitize xoá → công thức ra thô) · **code block / inline code chứa `$` KHÔNG bị biến đổi** · text thường chứa `$` (giá tiền) không đổi · code block + bảng **không tràn ngang** panel (`max-w-full` + `overflow-x-auto`) · công thức render đúng ngay cả khi đang streaming (`rehype-katex` không defer như `rehype-highlight`) · KaTeX CSS **chỉ** import ở entry side panel → `content.js` giữ **17.77 kB** (≤ 40 kB) · `dist` tổng **1.57 MB** |
 
 ### 4.2 FR-CONTEXT — Ngữ cảnh trang & tab
 
@@ -216,7 +217,7 @@ Quy ước ưu tiên: **M** = Must (bắt buộc cho M1) · **S** = Should (bắ
 |---|---|---|---|
 | FR-CONTEXT-01 | Đọc nội dung trang hiện tại bằng content script + Readability-style extraction | M | Trả về title, URL, text chính, có fallback khi extraction rỗng (dùng toàn bộ body text). **Đã implement (T-M1-06):** cache context theo URL+hash trong `chrome.storage.local` — không trích xuất lại trang đã đọc, và **fallback** về bản cache khi trang đang lỗi (PDF scan, extractor rỗng, mất mạng) |
 | FR-CONTEXT-02 | Bật/tắt context bằng 1 toggle, có trạng thái nhìn thấy rõ | M | Chip ở composer đổi trạng thái; tắt → **không gửi payload `context`** lên server; trạng thái được lưu qua `chrome.storage.local` (key `sidekick.contextEnabled`) |
-| FR-CONTEXT-03 | `@`-mention tab để đính kèm tab khác (multi-tab) | M | Hiện danh sách tab + title + favicon; hỗ trợ nhiều tab; bỏ được từng tab. **Đã implement (T-M1-05):** gõ `@` trong composer → popover liệt kê tab đang mở trong cửa sổ hiện tại (lọc trang nội bộ `chrome://`/`file://`), lọc theo title/domain/URL, chọn tab → tự đính kèm vào context (`tier: attachment`) + chèn `@tên tab` vào ô nhập; `Escape` đóng popover |
+| FR-CONTEXT-03 | `@`-mention tab để đính kèm tab khác (multi-tab) | M | Hiện danh sách tab + title + favicon; hỗ trợ nhiều tab; bỏ được từng tab. **Đã implement (T-M1-05):** gõ `@` trong composer → popover liệt kê tab đang mở trong cửa sổ hiện tại (lọc trang nội bộ `chrome://`/`file://`), lọc theo title/domain/URL, chọn tab → tự đính kèm vào context (`tier: attachment`) + chèn `@tên tab` vào ô nhập; `Escape` đóng popover. **Mở rộng (T-M3-POLISH, 2026-11-12):** thêm **tab picker đa chọn** (`TabPicker`) — nút "Chọn tab" trong toolbar composer mở popover liệt kê tab đang mở, **tick nhiều tab** → bấm "Đính kèm" → tất cả cùng vào context (không phải chuyển tab qua lại từng cái như trước) · có ô **search** · badge số tab đã chọn · chỉ báo *"và N tab khác"* khi danh sách bị cắt bởi giới hạn 50 (không âm thầm bỏ tab). **Kèm vòng đời one-shot (T-M3-POLISH):** sau khi gửi tin nhắn, tab/tài liệu/ảnh đính kèm **không được gửi lại** ở lượt sau và **không còn hiện** trên UI — nhưng lịch sử hội thoại **vẫn giữ** nội dung lượt đó → vẫn nói chuyện tiếp về nó được; nút "Tạo lại"/"Tiếp tục"/"Thử lại" dùng **lại** đúng context của lượt đó (snapshot theo `turnId`) |
 | FR-CONTEXT-04 | Đính kèm vùng text được bôi đen (selection context) | M | Content script bắt sự kiện selection → hiện affordance → mở panel kèm đoạn text. **Đã implement (T-M1-02):** hai đường — (A) bôi đen trên trang → nút nổi "Hỏi Sidekick" (Shadow DOM) cạnh vùng chọn → click → đoạn text vào context với `kind: 'selection'`, `tier: 'selection'` (cao nhất); (B) nút "Dính đoạn đã chọn" trong panel → đọc selection của tab active qua `chrome.scripting.executeScript`. Panel đang đóng → đoạn chờ lưu `chrome.storage.local` (TTL 5 phút) → panel mở sau tự nhận |
 | FR-CONTEXT-05 | Trích xuất nội dung PDF (text-based) | M | Parse ở server (BFF fetch bytes + parser) vì content script không chạm được PDF viewer; PDF scan → báo "không đọc được, hãy upload ảnh"; PDF nội bộ/`file://` → báo rõ không truy cập được |
 | FR-CONTEXT-06 | Lấy transcript YouTube (nếu có caption) | M | Dùng timedtext API; không có caption / bị geo-block / consent → báo rõ; transcript vào `context.text` giống các loại context khác |
@@ -451,6 +452,7 @@ Settings nằm trong **drawer** (Radix `Dialog` trượt từ phải), mở bằ
 | FR-UX-08 | Toast / banner thông báo lỗi & trạng thái, không che nội dung | M | Auto-dismiss 5s, có dismiss thủ công. **Đã implement (T-M1-19):** lỗi trong thread → card inline `ErrorState` (không che nội dung, có ✕ dismiss thủ công) · lỗi **kết nối BFF** → **banner offline** ngay dưới header (`offline-banner`) kèm nút "Thử lại" (không tự ẩn — lỗi kết nối là trạng thái kéo dài, không phải toast 5 s) · trạng thái kết nối tức thời hiện ở **badge trong header** (`ConnectionBadge`). Toast 5 s (`sonner`) vẫn dùng cho thao tác one-shot (xoá lịch sử, đổi biến thể…) |
 | FR-UX-09 | Responsive: hỗ trợ zoom 200%, font nhỏ không vỡ | M | ✅ **T-M1-20** — xem AC chi tiết §4.9.5 |
 | FR-UX-10 | Hoạt ảnh tối giản, tôn trọng `prefers-reduced-motion` | M | ✅ **T-M1-20** (audit + xác nhận) — animation chỉ dùng `opacity`/`transform`, đã có rule `@media (prefers-reduced-motion: reduce)` tắt toàn bộ animation · **T-M3-04** còn lại (polish) |
+| FR-UX-11 | Giao diện **flat, neutral, border-driven**; nút bấm có tooltip; bố cục rõ ràng | M | **✅ ĐÃ IMPLEMENT (T-M3-POLISH, 2026-11-12):** bảng màu neutral (`--color-accent` = `#1f2937` near-black) · **zero shadow** — mọi bề mặt dùng **hairline border** 1px · 3 họ hình dạng thống nhất: **circle** (nút icon-only) · **pill** (chip / toggle / nút gửi) · **rounded-rect** (card / list row / code block) · radius 6/10/14 · **user message = filled chip** (`--surface-user-bubble`) · **assistant message = bare text** nằm thẳng trên nền panel · composer là **card** có viền với toolbar pill ở đáy · empty state có **hero** + các dòng gợi ý viền + **icon tile pastel** · **mọi nút icon-only có tooltip** (Tooltip Radix, `aria-label` vẫn là accessible name) · token là nguồn sự thật duy nhất, **không** hardcode màu. Chi tiết: `SYSTEM_DESIGN.md` §7.31 · `DESIGN_SYSTEM_BRIEF.md` §6 |
 
 #### 4.9.1 FR-UX-02 — Onboarding 3 bước (AC chi tiết — T-M1-25 ✅)
 
@@ -1143,6 +1145,7 @@ Chỉ bắt đầu M4 khi **đồng thời** thỏa:
 | FR-CHAT-13 | S | T-M1-10 | M1 |
 | FR-CHAT-14 | M | T-M1-19 ✅ | M1 |
 | FR-CHAT-15 | M | T-M2-24 ✅ | M2 |
+| FR-CHAT-16 | M | **T-M3-POLISH ✅** (KaTeX + code block + table hardening) | M3 |
 
 #### FR-CONTEXT — Ngữ cảnh trang & tab
 
@@ -1150,7 +1153,7 @@ Chỉ bắt đầu M4 khi **đồng thời** thỏa:
 |---|---|---|---|
 | FR-CONTEXT-01 | M | T-M1-01 ✅ · **T-M1-06 ✅ (cache URL+hash)** | M1 |
 | FR-CONTEXT-02 | M | **T-M1-04 ✅ (hấp thụ bởi T-M1-23)** · **T-M1-06 ✅** | M1 |
-| FR-CONTEXT-03 | M | **T-M1-05 ✅** · **T-M1-06 ✅** | M1 |
+| FR-CONTEXT-03 | M | **T-M1-05 ✅** · **T-M1-06 ✅** · **T-M3-POLISH ✅** (tab picker đa chọn + one-shot) | M1 |
 | FR-CONTEXT-04 | M | **T-M1-02 ✅** | M1 |
 | FR-CONTEXT-05 | M | **T-M1-21 ✅** | M1 |
 | FR-CONTEXT-06 | M | **T-M1-22 ✅** | M1 |
@@ -1254,6 +1257,7 @@ Chỉ bắt đầu M4 khi **đồng thời** thỏa:
 | FR-UX-08 | M | T-M1-19 ✅ | M1 |
 | FR-UX-09 | M | **T-M1-20 ✅** | M1 |
 | FR-UX-10 | M | **T-M1-20 ✅** · T-M3-04 | M1→M3 |
+| FR-UX-11 | M | **T-M3-POLISH ✅** (UI/UX redesign: neutral flat · hairline · tooltip · bubble) | M3 |
 
 #### NFR — Hiệu năng, an toàn, độ tin cậy, a11y, bảo trì
 

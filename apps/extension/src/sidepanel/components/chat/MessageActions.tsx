@@ -1,6 +1,7 @@
 import { BookmarkPlus, Pencil, RefreshCw, RotateCcw } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { IconButton } from '@/components/ui/icon-button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { variantLabel, type TurnMessage } from '@/lib/chatTurns'
 import { useI18n } from '@/sidepanel/hooks/useI18n'
 
@@ -36,6 +37,7 @@ export interface MessageActionsProps {
  * - Assistant message: "Tao lai" (FR-CHAT-05) · "Tiep tuc" khi bi stop
  *   (FR-CHAT-07) · switcher bien the "2/3".
  *
+ * Phong cach T-M3-POLISH: nut **tron (ghost)** + tooltip cho moi nut.
  * Docs: docs/DESIGN_SYSTEM_BRIEF.md §3.3
  */
 export function MessageActions({
@@ -62,31 +64,39 @@ export function MessageActions({
     return (
       <div className="mt-1 flex items-center gap-1" data-testid="message-actions">
         {onEdit !== undefined ? (
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => {
-              onEdit(message.id)
-            }}
-            aria-label={t('chat.editMessage')}
-            data-testid="message-edit-button"
-          >
-            <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <IconButton
+                size="sm"
+                onClick={() => {
+                  onEdit(message.id)
+                }}
+                aria-label={t('chat.editMessage')}
+                data-testid="message-edit-button"
+              >
+                <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+              </IconButton>
+            </TooltipTrigger>
+            <TooltipContent>{t('chat.editMessage')}</TooltipContent>
+          </Tooltip>
         ) : null}
 
         {canSaveAsSkill ? (
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => {
-              onSaveAsSkill?.(message.content)
-            }}
-            aria-label={t('skill.saveFromMessage')}
-            data-testid="message-save-skill-button"
-          >
-            <BookmarkPlus className="h-3.5 w-3.5" aria-hidden="true" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <IconButton
+                size="sm"
+                onClick={() => {
+                  onSaveAsSkill?.(message.content)
+                }}
+                aria-label={t('skill.saveFromMessage')}
+                data-testid="message-save-skill-button"
+              >
+                <BookmarkPlus className="h-3.5 w-3.5" aria-hidden="true" />
+              </IconButton>
+            </TooltipTrigger>
+            <TooltipContent>{t('skill.saveFromMessage')}</TooltipContent>
+          </Tooltip>
         ) : null}
       </div>
     )
@@ -103,48 +113,60 @@ export function MessageActions({
       data-role="assistant"
     >
       {onRegenerate !== undefined ? (
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          onClick={() => {
-            onRegenerate(message.id)
-          }}
-          disabled={isStreaming}
-          aria-label={t('chat.regenerate')}
-          data-testid="message-regenerate-button"
-        >
-          <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <IconButton
+              size="sm"
+              onClick={() => {
+                onRegenerate(message.id)
+              }}
+              disabled={isStreaming}
+              aria-label={t('chat.regenerate')}
+              data-testid="message-regenerate-button"
+            >
+              <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+            </IconButton>
+          </TooltipTrigger>
+          <TooltipContent>{t('chat.regenerate')}</TooltipContent>
+        </Tooltip>
       ) : null}
 
       {message.aborted === true && onContinue !== undefined ? (
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          onClick={() => {
-            onContinue(message.id)
-          }}
-          disabled={isStreaming}
-          aria-label={t('chat.continue')}
-          data-testid="message-continue-button"
-        >
-          <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <IconButton
+              size="sm"
+              onClick={() => {
+                onContinue(message.id)
+              }}
+              disabled={isStreaming}
+              aria-label={t('chat.continue')}
+              data-testid="message-continue-button"
+            >
+              <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+            </IconButton>
+          </TooltipTrigger>
+          <TooltipContent>{t('chat.continue')}</TooltipContent>
+        </Tooltip>
       ) : null}
 
       {canSwitch && label !== undefined && onSelectVariant !== undefined ? (
         <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-[length:var(--font-size-xs)]"
-              aria-label={t('chat.selectVariant', { label })}
-              data-testid="message-variant-trigger"
-            >
-              {label}
-            </Button>
-          </PopoverTrigger>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex h-7 items-center rounded-[var(--radius-full)] px-2 text-[length:var(--font-size-xs)] text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-sunken)] hover:text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]"
+                  aria-label={t('chat.selectVariant', { label })}
+                  data-testid="message-variant-trigger"
+                >
+                  {label}
+                </button>
+              </PopoverTrigger>
+            </TooltipTrigger>
+            <TooltipContent>{t('chat.selectVariant', { label })}</TooltipContent>
+          </Tooltip>
           <PopoverContent
             align="start"
             className="p-[var(--space-2)]"

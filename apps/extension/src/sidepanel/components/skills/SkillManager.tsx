@@ -3,6 +3,7 @@ import { Copy, Download, Pencil, Play, Plus, Trash2, Upload } from 'lucide-react
 import { toast } from 'sonner'
 import type { Skill } from '@sidekick/shared'
 import { Button } from '@/components/ui/button'
+import { IconButton } from '@/components/ui/icon-button'
 import { useSkillStore } from '@/sidepanel/store/skillStore'
 import { useI18n } from '@/sidepanel/hooks/useI18n'
 import { ConfirmDialog } from '@/sidepanel/components/chat/ConfirmDialog'
@@ -348,51 +349,51 @@ function SkillGroup({
                 ) : null}
               </button>
 
-              <Button
-                variant="ghost"
-                size="icon-sm"
+              <IconButton
+                size="sm"
                 onClick={() => onUse(skill)}
                 aria-label={t('skill.manager.use')}
+                tooltip={t('skill.manager.use')}
                 data-testid="skill-use-button"
               >
                 <Play className="h-3.5 w-3.5" aria-hidden="true" />
-              </Button>
+              </IconButton>
 
               {isBuiltin ? null : (
                 <>
                   {onEdit !== undefined ? (
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
+                    <IconButton
+                      size="sm"
                       onClick={() => onEdit(skill)}
                       aria-label={t('skill.manager.edit')}
+                      tooltip={t('skill.manager.edit')}
                       data-testid="skill-edit"
                     >
                       <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-                    </Button>
+                    </IconButton>
                   ) : null}
 
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
+                  <IconButton
+                    size="sm"
                     onClick={() => {
                       void onDuplicate(skill)
                     }}
                     aria-label={t('skill.manager.duplicate')}
+                    tooltip={t('skill.manager.duplicate')}
                     data-testid="skill-duplicate"
                   >
                     <Copy className="h-3.5 w-3.5" aria-hidden="true" />
-                  </Button>
+                  </IconButton>
 
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
+                  <IconButton
+                    size="sm"
                     onClick={() => onRequestDelete(skill)}
                     aria-label={t('skill.manager.delete')}
+                    tooltip={t('skill.manager.delete')}
                     data-testid="skill-delete"
                   >
                     <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                  </Button>
+                  </IconButton>
                 </>
               )}
             </li>

@@ -35,15 +35,19 @@ Nguồn sự thật: `design/tokens.json` → generate ra `design/tokens.css` (C
 
 ### 2.1 Color
 
+> **T-M3-POLISH (2026-11-12):** bảng màu chuyển sang **neutral flat** — accent gần đen (`#1f2937`), mọi bề mặt dùng **hairline border** thay vì shadow. Semantic color là **các màu bão hoà duy nhất** được phép.
+
 | Nhóm | Token | Ghi chú |
 |---|---|---|
-| Accent | `--color-accent`, `--color-accent-hover`, `--color-accent-subtle`, `--color-accent-fg` | Một màu nhấn duy nhất cho toàn sản phẩm |
+| Accent | `--color-accent`, `--color-accent-hover`, `--color-accent-subtle`, `--color-accent-fg` | **Near-black** `#1f2937` (light + dark) — CTA chính. Accent-colored chip **không** dùng (đọc như nút bấm) |
 | Surface | `--surface-panel`, `--surface-raised`, `--surface-sunken`, `--surface-overlay` | 4 cấp độ sâu, quy ước: panel < raised < overlay; sunken cho code block |
-| Border | `--border-default`, `--border-strong`, `--border-subtle`, `--border-focus` | `--border-focus` là token riêng (WCAG) |
+| Surface (mới) | `--surface-user-bubble` | `#e9edf6` (light) / `#1e2230` (dark) — bubble user (filled chip) |
+| Border | `--border-default`, `--border-strong`, `--border-subtle`, `--border-focus`, `--border-hairline` | `--border-focus` là token riêng (WCAG) · `--border-hairline` alias cho các đường viền 1px |
 | Text | `--text-primary`, `--text-secondary`, `--text-tertiary`, `--text-inverse` | Tương phản ≥ 4.5:1 (≥ 3:1 cho text lớn) |
 | Semantic | `--success`, `--success-subtle`, `--warning`, `--warning-subtle`, `--danger`, `--danger-subtle`, `--info`, `--info-subtle` | Mỗi màu có 2 biến thể: solid + subtle (nền) |
 | Citation | `--citation-bg`, `--citation-border`, `--citation-link`, `--citation-hover` | Màu riêng cho trích dẫn → nhận diện được ngay |
 | Code | `--code-bg`, `--code-border`, `--code-fg`, `--code-token-keyword/-string/-number/-comment/-function/-punctuation` | Token cho syntax highlight |
+| Chip tint (mới) | `--chip-tint-mint`, `--chip-tint-amber`, `--chip-tint-lavender`, `--chip-tint-sky` | Icon tile pastel ở empty state (light + dark) |
 | Focus | `--focus-ring`, `--focus-ring-offset` | ≥ 2px, offset ≥ 2px, luôn hiển thị |
 
 **Ba theme:** `light`, `dark`, `system`. Theme `system` theo dõi `prefers-color-scheme` và chuyển đổi tức thì qua CSS `color-scheme` + class trên `<html>`.
@@ -56,11 +60,11 @@ Nguồn sự thật: `design/tokens.json` → generate ra `design/tokens.css` (C
 | `--font-mono` | `JetBrains Mono, ui-monospace, SFMono-Regular, monospace` | Code block |
 | `--font-size-xs` | 11px | Badge, meta, timestamp |
 | `--font-size-sm` | 12px | Chip, phụ đề |
-| `--font-size-md` | 13px | **Mặc định** — body chat, composer |
+| `--font-size-md` | **14px** | **Mặc định** — body chat, composer (T-M3-POLISH: 13 → 14) |
 | `--font-size-lg` | 15px | Tin nhắn user, heading |
 | `--font-size-xl` | 18px | Heading h1/h2 trong nội dung markdown |
 | `--line-height-tight` | 1.3 | Headings, code |
-| `--line-height-base` | 1.5 | Body |
+| `--line-height-base` | **1.6** | Body (T-M3-POLISH) |
 | `--line-height-relaxed` | 1.7 | Nội dung dài, đọc dễ |
 | `--font-weight-regular/-medium/-semibold` | 400 / 500 / 600 | |
 
@@ -71,9 +75,19 @@ Nguồn sự thật: `design/tokens.json` → generate ra `design/tokens.css` (C
 | Nhóm | Token |
 |---|---|
 | Spacing | `--space-1` … `--space-8` theo base 4px (4, 8, 12, 16, 20, 24, 32, 40) |
-| Radius | `--radius-sm` 4px, `--radius-md` 6px, `--radius-lg` 10px, `--radius-full` 9999px |
-| Elevation | `--shadow-1` (card), `--shadow-2` (popover), `--shadow-3` (dialog). Dark theme dùng **viền** thay vì đổ bóng |
+| Radius | `--radius-sm` **6px**, `--radius-md` **10px**, `--radius-lg` **14px**, `--radius-full` 9999px (T-M3-POLISH: 4/6/10 → 6/10/14) |
+| Elevation | `--shadow-1` / `-2` / `-3` → **no-op** (`0 0 0 / 0`) — reference **không** có shadow. Bề mặt dùng **hairline border** 1px. `--shadow-2` giữ giá trị nhẹ cho overlay (`0 1px 2px rgb(0 0 0 / 0.06)`) |
 | Border width | `--border-width-hairline` 1px, `--border-width-normal` 1px, `--border-width-strong` 2px |
+
+**Ngôn ngữ hình dạng (3 họ — T-M3-POLISH):**
+
+| Họ | Dùng cho | Token |
+|---|---|---|
+| **Circle** | nút icon-only (header, message actions, inline) | `--radius-full` |
+| **Pill** | chip, toggle, nút gửi, badge | `--radius-full` |
+| **Small rounded-rect** | card, list row, code block | `--radius-md` / `--radius-lg` |
+
+**Quy tắc message:** **user = filled chip** (`--surface-user-bubble`, `--radius-lg`, phải) · **assistant = bare text** nằm thẳng trên nền panel (trái, full width) — không bubble, không nền.
 
 ### 2.4 Motion
 
@@ -922,6 +936,51 @@ Component `ToolCallBlock` — block collapsible hiển thị 1 tool call trong t
 | Request-id chip trong dòng meta của `MessageBubble` | NFR-MAINT-04, FR-CONTEXT-12 | Minh bạch kỹ thuật · hỗ trợ điều tra lỗi khi chấm eval |
 | **Không có component mới** — i18n chỉ thay chuỗi literal bằng `t('key')` | FR-SETTINGS-06 | Parity i18n (B14) — đổi ngôn ngữ **ngay**, không reload |
 | `SkipLink` + focus ring chuẩn hoá + live region streaming + tap target 24px | FR-UX-07/09, NFR-A11Y-03/04/05 | Rubric R6 (UX) · WCAG 2.2 AA |
+
+---
+
+## 6.1 T-M3-POLISH — UI/UX redesign (2026-11-12)
+
+> Chi tiết kỹ thuật: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.31 · yêu cầu: [`REQUIREMENTS.md`](REQUIREMENTS.md) FR-UX-11 / FR-CHAT-16 / FR-CONTEXT-03.
+
+### 6.1.1 Primitive mới
+
+| File | Dùng khi nào | A11y |
+|---|---|---|
+| `components/ui/tooltip.tsx` | Mọi nút **icon-only** cần giải thích | Tooltip **không** thay thế `aria-label`; component **tự bọc provider** → dùng độc lập được |
+| `components/ui/icon-button.tsx` | Nút tròn chỉ chứa icon (header, message actions, list row) | `aria-label` **bắt buộc** (type-level) · icon `aria-hidden` · focus ring token `--border-focus` · tap target ≥ 24px (`sm` = 28px) |
+| `components/ui/chip.tsx` | Chip pill: context item, tag, badge | Icon đầu `aria-hidden`; nút xoá có `aria-label` riêng |
+| `components/ui/toggle.tsx` | Pill switch (Settings) | `role="switch"` + `aria-checked` (Radix) · `aria-label` bắt buộc |
+
+`button.tsx` (cập nhật): `variant: 'pill'` · `size: 'pill-sm'` / `'pill-md'` · `size: 'icon'` → **tròn**.
+
+### 6.1.2 Bố cục sau redesign
+
+**Header:** logo mark (tile bo góc) + tiêu đề bên trái · cụm nút tròn bên phải (`ModelPicker` → `History` → `Sparkles` → `ExportMenu` → `CircleHelp` → `Settings` → `Trash2`) · chip provider là **pill neutral** (không accent — accent near-black sẽ đọc như nút).
+
+**Composer:** **card** `rounded-[--radius-lg] border border-[--border-strong] bg-[--surface-panel]` chứa textarea **không viền** (auto-grow) + **toolbar pill ở đáy**: trái = pill đính kèm (`TabPicker` · `@ Trang` · `Dính đoạn đã chọn` · `Tệp`) · phải = **nút gửi pill** near-black (tròn khi streaming → nút Stop). Hint "Enter để gửi" nằm trong card, muted.
+
+**Message bubble:** user = **filled chip** `--surface-user-bubble` phải · assistant = **bare text** trái, full width · dòng meta (provider · model · token · request-id) **dưới** câu trả lời, muted, kèm nút copy tròn.
+
+**Empty state:** pill badge ("Sidekick AI") · headline lớn · subtitle muted · các dòng gợi ý là **hàng viền** (bordered row) với **icon tile bo góc pastel** (`--chip-tint-*`) bên trái + chevron bên phải.
+
+### 6.1.3 Quy tắc tooltip (bắt buộc)
+
+1. Nút **icon-only** → **luôn** có tooltip.
+2. Tooltip **bổ sung** — `aria-label` vẫn là accessible name duy nhất.
+3. Nút **có text** → không cần tooltip (text đã tự giải thích).
+4. Vị trí chuẩn: `side="bottom"`, offset 6px, nền `--surface-overlay` + hairline border, `--font-size-xs`, radius `--radius-sm`.
+5. Delay 400ms (provider mount 1 lần ở `App.tsx`) → không lo tooltip khi user chỉ lướt chuột.
+
+### 6.1.4 Vòng đời đính kèm one-shot (UI)
+
+| Trạng thái | Hiển thị |
+|---|---|
+| Chưa gửi | Chip / ảnh / tài liệu hiện trong `AttachmentTray` |
+| **Vừa gửi** | Chip **biến mất** (đã tiêu thụ) · toast *"Đã gửi N đính kèm — thêm lại nếu cần dùng lần sau"* |
+| Lượt sau | **Không** gửi lại context đó · lịch sử hội thoại vẫn giữ → vẫn nói chuyện tiếp được |
+
+> Đây là hành vi **cố ý** (user chốt 2026-11-12) — không phải xoá context.
 
 ---
 

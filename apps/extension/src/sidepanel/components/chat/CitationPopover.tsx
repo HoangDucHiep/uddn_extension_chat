@@ -1,5 +1,6 @@
 import { ExternalLink } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useI18n } from '@/sidepanel/hooks/useI18n'
 import type { ChatCitation } from '../../store/chatStore'
 
@@ -105,16 +106,21 @@ export function CitationPopover({ index, citation }: CitationPopoverProps) {
 
   return (
     <Popover>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          className="citation-chip"
-          data-testid={`citation-chip-${index}`}
-          aria-label={t('chat.citationViewSource', { index, title: citation.title })}
-        >
-          {`[${index}]`}
-        </button>
-      </PopoverTrigger>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="citation-chip"
+              data-testid={`citation-chip-${index}`}
+              aria-label={t('chat.citationViewSource', { index, title: citation.title })}
+            >
+              {`[${index}]`}
+            </button>
+          </PopoverTrigger>
+        </TooltipTrigger>
+        <TooltipContent>{t('chat.citationViewSource', { index, title: citation.title })}</TooltipContent>
+      </Tooltip>
       <PopoverContent data-testid={`citation-popover-${index}`}>
         <CitationPopoverContent citation={citation} />
       </PopoverContent>

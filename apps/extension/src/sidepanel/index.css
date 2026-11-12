@@ -1,6 +1,11 @@
 @import 'tailwindcss' source(none);
 @source '../';
 
+/* KaTeX (T-M3-POLISH — §7.31): render cong thuc toan hoc trong Markdown.
+   CHI import o entry cua side panel — content script KHONG duoc import
+   (bundle content phinh nho, xem `tests/contentBundleGuard.test.ts`). */
+@import 'katex/dist/katex.min.css';
+
 /* Design token la nguon su that duy nhat cho mau sac / typography.
    Import tokens.css SAU tailwindcss de no ghi de cac bien mac dinh
    cua Tailwind (vd --font-sans) — cac bien trong tokens.css khong duoc
@@ -29,6 +34,7 @@ body,
   font-size: calc(var(--font-size-md) * var(--font-scale));
   line-height: var(--line-height-base);
   -webkit-font-smoothing: antialiased;
+  /* Flat: khong gradient, khong vignette — chi vien 1px + gia tri mau. */
 }
 
 /* Be rong panel (FR-SETTINGS-02 + FR-UX-06 — T-M1-12).
@@ -193,6 +199,60 @@ body {
 /* Task list (GFM) — an checkbox mac dinh, dung list-style goc. */
 .markdown-body li input[type='checkbox'] {
   margin-right: var(--space-1);
+}
+
+/* ------------------------------------------------------------------
+ * Cong thuc toan hoc (KaTeX — T-M3-POLISH §7.31)
+ *
+ * `rehype-katex` sinh markup MathML + `span.katex` → CSS cua KaTeX lo
+ * phan hinh. Chi can override mau de giong token cua panel.
+ * ------------------------------------------------------------------ */
+
+.markdown-body .katex {
+  font-size: 1.05em;
+}
+
+/* Cong thuc block (`$$...$$`) → can giua, co vien de tach khoi text. */
+.markdown-body .katex-display {
+  margin: var(--space-3) 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background-color: var(--surface-raised);
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* Khong duoc cat dong cong thuc block (ke ca khi panel 320px). */
+.markdown-body .katex-display > .katex {
+  white-space: nowrap;
+}
+
+/* Ma toan co mau rieng → dung token cua panel thay vi mau mac dinh cua KaTeX. */
+.markdown-body .katex .mord {
+  color: var(--text-primary);
+}
+
+.markdown-body .katex .katex-color {
+  color: var(--text-primary);
+}
+
+/* ------------------------------------------------------------------
+ * Code block (T-M3-POLISH) — nen toi luon, ke ca o theme sang.
+ * ------------------------------------------------------------------ */
+
+.markdown-body pre {
+  margin: 0;
+  /* Khong duoc tran ngang panel khi code dai. */
+  max-width: 100%;
+}
+
+.markdown-body pre code {
+  display: block;
+  white-space: pre;
+  background: transparent;
+  padding: 0;
+  font-size: inherit;
 }
 
 /* ------------------------------------------------------------------

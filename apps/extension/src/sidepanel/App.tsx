@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Toaster } from 'sonner'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { ChatWorkspace } from './ChatWorkspace'
 import { Onboarding } from './components/onboarding/Onboarding'
 import { I18nProvider } from './components/I18nProvider'
@@ -42,16 +43,18 @@ export function App() {
   if (showOnboarding) {
     return (
       <I18nProvider language={settings.uiLanguage}>
-        <Onboarding
-          preferredProvider={preferredProvider}
-          onSelectProvider={(provider) => {
-            void setPreferredProvider(provider)
-          }}
-          onComplete={(provider) => {
-            setIsOnboardingForced(false)
-            void complete(provider)
-          }}
-        />
+        <TooltipProvider>
+          <Onboarding
+            preferredProvider={preferredProvider}
+            onSelectProvider={(provider) => {
+              void setPreferredProvider(provider)
+            }}
+            onComplete={(provider) => {
+              setIsOnboardingForced(false)
+              void complete(provider)
+            }}
+          />
+        </TooltipProvider>
         <Toaster position="bottom-center" />
       </I18nProvider>
     )
@@ -59,19 +62,26 @@ export function App() {
 
   return (
     <I18nProvider language={settings.uiLanguage}>
-      {/* Skip-link (FR-UX-09 — T-M1-20).
-          An cho toi khi focus → nguoi dung ban phim di thang toi o nhap. */}
-      <SkipLink />
-      <ChatWorkspace
-        settings={settings}
-        onSettingsChange={(patch) => {
-          return update(patch)
-        }}
-        onOpenOnboarding={() => {
-          setIsOnboardingForced(true)
-          void reset()
-        }}
-      />
+      {/*
+        TooltipProvider (T-M3-POLISH) — Radix yeu cau **mot** provider cho
+        toan panel. Delay mac dinh cua Radix (700ms) → khong lo tooltip
+        khi user chi lướt chuột qua.
+      */}
+      <TooltipProvider>
+        {/* Skip-link (FR-UX-09 — T-M1-20).
+            An cho toi khi focus → nguoi dung ban phim di thang toi o nhap. */}
+        <SkipLink />
+        <ChatWorkspace
+          settings={settings}
+          onSettingsChange={(patch) => {
+            return update(patch)
+          }}
+          onOpenOnboarding={() => {
+            setIsOnboardingForced(true)
+            void reset()
+          }}
+        />
+      </TooltipProvider>
       <Toaster position="bottom-center" />
     </I18nProvider>
   )

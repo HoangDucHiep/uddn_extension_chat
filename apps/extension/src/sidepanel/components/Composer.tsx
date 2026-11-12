@@ -1,4 +1,4 @@
-import { Loader2, Paperclip, Send, Square } from 'lucide-react'
+import { Globe, Loader2, MousePointer2, Paperclip, Send, Square } from 'lucide-react'
 import {
   type ChangeEvent,
   type ClipboardEvent,
@@ -9,8 +9,8 @@ import {
   type SyntheticEvent,
   useRef,
 } from 'react'
-import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { isDocumentFile } from '@/lib/documentUpload'
 import { useI18n } from '@/sidepanel/hooks/useI18n'
 
@@ -77,6 +77,26 @@ export interface ComposerProps {
   onFilesSelected?: (files: readonly File[]) => void
   /** Dang doc file (anh hoac tai lieu) → hien spinner tren nut. */
   isReadingFiles?: boolean
+  /**
+   * Nut "Them trang nay" (dinh kem tab hien tai).
+   *
+   * `undefined` → khong render nut nay.
+   */
+  onAttachCurrentTab?: (() => void) | undefined
+  /**
+   * Popover chon **nhieu** tab (T-M3-POLISH — FR-CONTEXT-03).
+   *
+   * `undefined` → khong render trigger.
+   */
+  tabPicker?: ReactNode
+  /**
+   * Nut "Dinh doan da chon" (FR-CONTEXT-04 — T-M1-02).
+   *
+   * `undefined` → khong render nut nay.
+   */
+  onAttachSelection?: (() => void) | undefined
+  /** Dang trich xuat context → vo hieu hoa cac nut dinh kem. */
+  isAttaching?: boolean
 }
 
 export function Composer({
@@ -95,6 +115,10 @@ export function Composer({
   inputRef,
   onFilesSelected,
   isReadingFiles = false,
+  onAttachCurrentTab,
+  tabPicker,
+  onAttachSelection,
+  isAttaching = false,
 }: ComposerProps) {
   const { t } = useI18n()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -193,8 +217,15 @@ export function Composer({
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
-      <div className="flex items-end gap-2">
-        <div className="relative min-w-0 flex-1">
+      {/*
+        Card composer (T-M3-POLISH) — textarea bo trong 1 the bo vien,
+        toolbar ben trong the duoi → dung 1 khoi gon nhat.
+      */}
+      <div
+        className="rounded-[var(--radius-lg)] border border-[var(--border-strong)] bg-[var(--surface-panel)] p-[var(--space-2)] transition-colors focus-within:border-[var(--border-focus)]"
+        data-testid="composer-card"
+      >
+        <div className="relative min-w-0">
           {mentionPopover}
           {skillPopover}
           {skillTabPopover}
@@ -215,60 +246,125 @@ export function Composer({
           />
         </div>
 
-        {onFilesSelected !== undefined ? (
-          <>
-            <input
-              type="file"
-              ref={fileInputRef}
-              accept="image/png,image/jpeg,image/webp,image/gif,.pdf,.docx,.txt,.md,.csv"
-              multiple
-              className="hidden"
-              onChange={handleFileInput}
-              data-testid="composer-file-input"
-              aria-label={t('composer.pickFile')}
-            />
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={openFilePicker}
-              disabled={disabled || isReadingFiles}
-              aria-label={t('composer.attachFile')}
-              data-testid="composer-file-button"
-            >
-              {isReadingFiles ? (
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-              ) : (
-                <Paperclip className="h-4 w-4" aria-hidden="true" />
-              )}
-            </Button>
-          </>
-        ) : null}
+        <div className="mt-[var(--space-2)] flex items-center justify-between gap-2">
+          {/* Toolbar trai — cac nut dinh kem dang pill. */}
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+            {tabPicker}
 
-        {isStreaming ? (
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={onStop}
-            aria-label={t('composer.stop')}
-            data-testid="composer-stop"
-          >
-            <Square className="h-4 w-4" aria-hidden="true" />
-          </Button>
-        ) : (
-          <Button
-            size="icon"
-            onClick={onSend}
-            disabled={disabled || value.trim().length === 0}
-            aria-label={t('composer.send')}
-            data-testid="composer-send"
-          >
-            {disabled ? (
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-            ) : (
-              <Send className="h-4 w-4" aria-hidden="true" />
-            )}
-          </Button>
-        )}
+            {onAttachCurrentTab !== undefined ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={onAttachCurrentTab}
+                    disabled={disabled || isAttaching}
+                    aria-label={t('context.addCurrentTab')}
+                    data-testid="composer-add-tab"
+                    className="inline-flex min-h-[28px] items-center gap-1 rounded-[var(--radius-full)] border border-[var(--border-default)] bg-[var(--surface-raised)] px-2.5 text-[length:var(--font-size-xs)] text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-sunken)] hover:text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <Globe className="h-3.5 w-3.5" aria-hidden="true" />
+                    {t('context.addCurrentTabLabel')}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{t('context.addCurrentTab')}</TooltipContent>
+              </Tooltip>
+            ) : null}
+
+            {onAttachSelection !== undefined ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={onAttachSelection}
+                    disabled={disabled || isAttaching}
+                    aria-label={t('context.attachSelection')}
+                    data-testid="composer-add-selection"
+                    className="inline-flex min-h-[28px] items-center gap-1 rounded-[var(--radius-full)] border border-[var(--border-default)] bg-[var(--surface-raised)] px-2.5 text-[length:var(--font-size-xs)] text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-sunken)] hover:text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <MousePointer2 className="h-3.5 w-3.5" aria-hidden="true" />
+                    {t('context.attachSelectionLabel')}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{t('context.attachSelection')}</TooltipContent>
+              </Tooltip>
+            ) : null}
+
+            {onFilesSelected !== undefined ? (
+              <>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept="image/png,image/jpeg,image/webp,image/gif,.pdf,.docx,.txt,.md,.csv"
+                  multiple
+                  className="hidden"
+                  onChange={handleFileInput}
+                  data-testid="composer-file-input"
+                  aria-label={t('composer.pickFile')}
+                />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={openFilePicker}
+                      disabled={disabled || isReadingFiles}
+                      aria-label={t('composer.attachFile')}
+                      data-testid="composer-file-button"
+                      className="inline-flex min-h-[28px] items-center gap-1 rounded-[var(--radius-full)] border border-[var(--border-default)] bg-[var(--surface-raised)] px-2.5 text-[length:var(--font-size-xs)] text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-sunken)] hover:text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {isReadingFiles ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                      ) : (
+                        <Paperclip className="h-3.5 w-3.5" aria-hidden="true" />
+                      )}
+                      {t('composer.attachFileLabel')}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t('composer.attachFile')}</TooltipContent>
+                </Tooltip>
+              </>
+            ) : null}
+          </div>
+
+          {/* Nut gui / dung — pill, dat trong card. */}
+          {isStreaming ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={onStop}
+                  aria-label={t('composer.stop')}
+                  data-testid="composer-stop"
+                  className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[var(--radius-full)] border border-[var(--border-strong)] bg-[var(--surface-raised)] px-3 text-[length:var(--font-size-xs)] font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--surface-sunken)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]"
+                >
+                  <Square className="h-3 w-3" aria-hidden="true" />
+                  {t('composer.stopLabel')}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{t('composer.stop')}</TooltipContent>
+            </Tooltip>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={onSend}
+                  disabled={disabled || value.trim().length === 0}
+                  aria-label={t('composer.send')}
+                  data-testid="composer-send"
+                  className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[var(--radius-full)] bg-[var(--color-accent)] px-3.5 text-[length:var(--font-size-xs)] font-medium text-[var(--color-accent-fg)] transition-colors hover:bg-[var(--color-accent-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)] disabled:pointer-events-none disabled:opacity-50"
+                >
+                  {disabled ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Send className="h-3.5 w-3.5" aria-hidden="true" />
+                  )}
+                  {t('composer.sendLabel')}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{t('composer.send')}</TooltipContent>
+            </Tooltip>
+          )}
+        </div>
       </div>
 
       <p className="mt-2 text-[length:var(--font-size-xs)] text-[var(--text-tertiary)]">

@@ -24,7 +24,7 @@
 | Hạng mục | Trạng thái |
 |---|---|
 | Docs | ✅ Đầy đủ 11 file (`docs/`) + `AGENTS.md` ở root |
-| Code | ✅ **M1 (Parity) ĐÓNG** — 23/25 task (T-M1-15 + T-M1-16 ⏸ tạm dừng) — 4 workspace, **2100 unit test + 108 E2E** · **M2 đang làm** (T-M2-02 ✅ · T-M2-03 ✅ · T-M2-03b ✅ · T-M2-04 ✅ · T-M2-05 ✅ · T-M2-06 ✅ · T-M2-21 ✅ · **T-M2-07 ✅** · **T-M2-09 ✅** · **T-M2-08 ✅** · **T-M2-12 ✅** · **T-M2-13 ✅** · **T-M2-14 ✅** · **T-M2-23 ✅** · **T-M2-24 ✅** · kiểm chứng live Chrome **15/15** mục §11b) |
+| Code | ✅ **M1 (Parity) ĐÓNG** — 23/25 task (T-M1-15 + T-M1-16 ⏸ tạm dừng) — 4 workspace, **2133 unit test + 111 E2E** · **M2 đang làm** (T-M2-02 ✅ · T-M2-03 ✅ · T-M2-03b ✅ · T-M2-04 ✅ · T-M2-05 ✅ · T-M2-06 ✅ · T-M2-21 ✅ · **T-M2-07 ✅** · **T-M2-09 ✅** · **T-M2-08 ✅** · **T-M2-12 ✅** · **T-M2-13 ✅** · **T-M2-14 ✅** · **T-M2-23 ✅** · **T-M2-24 ✅** · kiểm chứng live Chrome **15/15** mục §11b) · **T-M3-POLISH ✅** (UI/UX redesign) |
 | Git | ✅ Đã init (`main`) · tag `v0.1` (M0) · tag **`v0.2`** (M1 đóng 2026-11-09) |
 | Milestone hiện tại | **M2 — Advanced & Eval** (M0 ✅ · M1 ✅) |
 | Task tiếp theo | **T-M2-15 → 17** (eval — **cần người thật**: thu thập transcript Edge/Gemini · chấm tay 2 người · `docs/EVAL_REPORT.md`) — RAG (T-M2-10/11) đã **hoãn** 2026-11-11 |
@@ -32,6 +32,26 @@
 ### Đang làm dở
 
 _(Không có — M1 đóng xong 2026-11-09, tag `v0.2`)_
+
+### M3 — T-M3-POLISH — UI/UX redesign (2026-11-12) — ✅ **xong**
+
+| Workstream | Trạng thái | Ghi chú |
+|---|---|---|
+| u1 — Design tokens + shape language | ✅ | Neutral flat (`--color-accent` `#1f2937`) · zero shadow + hairline · radius 6/10/14 · `--surface-user-bubble` · `--chip-tint-*` · font 13 → 14px |
+| u2 — Primitive mới | ✅ | `tooltip.tsx` (tự bọc provider) · `icon-button.tsx` (tròn, prop `tooltip`) · `chip.tsx` · `toggle.tsx` + `button.tsx` variants |
+| u3 — Tab picker đa chọn | ✅ | `TabPicker.tsx` (tick nhiều tab + search + badge + "và N tab khác") · `listOpenTabs` 20 → 50 + `countOpenTabs()` |
+| u4 — One-shot attachment | ✅ | `chatStore.consumeAttachments()` + `turnContexts` snapshot theo `turnId` · toast báo đã tiêu thụ |
+| u5 — Header + Composer re-layout | ✅ | Logo mark · nút tròn + tooltip · composer **card** + toolbar pill + nút gửi pill |
+| u6 — Bubble + empty state | ✅ | user = filled chip · assistant = bare text · meta row dưới câu trả lời · hero + bordered row + icon tile pastel |
+| u7 — Tooltip toàn diện | ✅ | 11 bề mặt (xem `SYSTEM_DESIGN.md` §7.31.6) |
+| u8 — Markdown hardening | ✅ | `remark-math` + `rehype-katex` + allowlist MathML · `detect: false` · `max-w-full` |
+| u9 — Test | ✅ | 4 file unit mới (30 test) + `markdownSchema` + E2E `sidepanel.spec.ts` |
+| u10 — Docs | ✅ | 8 file docs đồng bộ |
+
+**Verify:** `pnpm typecheck` ✅ · `pnpm lint` ✅ (0 error) · `pnpm test` ✅ **2133 unit / 173 file** · `pnpm build:ext` ✅ (`dist` **1.57 MB** · `content.js` **17.77 kB** ≤ 40 kB) · `pnpm test:e2e` ✅ **111/111**.
+
+> **Không đổi:** API · schema DB · manifest · parity §E giữ **34/35 = 97.1%**.
+> Chi tiết: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) **§7.31** · [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) **§5.1**.
 
 ### M2 — tiến độ (2026-11-12) — **15/25 task ✅**
 

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { ExternalLink, Keyboard, RotateCcw } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { IconButton } from '@/components/ui/icon-button'
 import { useI18n } from '@/sidepanel/hooks/useI18n'
 import {
   DEFAULT_SHORTCUTS,
@@ -247,18 +248,18 @@ export function ShortcutsSettings() {
                   </Button>
                 )}
 
-                <Button
-                  variant="ghost"
+                <IconButton
                   size="sm"
                   disabled={isDefault}
                   onClick={() => {
                     resetQuickShortcut(name)
                   }}
                   aria-label={t('settings.shortcuts.reset')}
+                  tooltip={t('settings.shortcuts.reset')}
                   data-testid={`shortcut-reset-${name}`}
                 >
                   <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
-                </Button>
+                </IconButton>
               </div>
             </div>
           )

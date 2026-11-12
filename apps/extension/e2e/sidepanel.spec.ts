@@ -57,7 +57,8 @@ test('gui prompt nhan token tu BFF', async ({ sidePanel }) => {
 
   // Typography phai theo design token (Inter), khong phai font mac dinh cua Chromium.
   expect(styles.rootFontFamily.toLowerCase()).toContain('inter')
-  expect(styles.rootFontSize).toBe('13px')
+  // T-M3-POLISH: `--font-size-md` nang 13px → 14px (nhip body cua reference).
+  expect(styles.rootFontSize).toBe('14px')
 
   // Header phai dung token: chieu cao 48px va nen dung mau surface.
   expect(Number.parseFloat(styles.headerHeight)).toBeGreaterThan(20)

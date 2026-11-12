@@ -25,6 +25,7 @@ import { ContextNotice } from './components/context/ContextNotice'
 import { ContextChips } from './components/context/ContextChips'
 import { ContextBudget } from './components/context/ContextBudget'
 import { MentionPopover } from './components/context/MentionPopover'
+import { TabPicker } from './components/context/TabPicker'
 import { SkillMenu } from './components/skills/SkillMenu'
 import { SkillManager } from './components/skills/SkillManager'
 import { SkillFormDialog } from './components/skills/SkillFormDialog'
@@ -67,7 +68,7 @@ import {
   writeDraft,
 } from '@/lib/storage'
 import { activePathMessages, groupTurns, offPathTurns } from '@/lib/chatTurns'
-import type { OpenTab } from '@/lib/tabList'
+import { countOpenTabs, type OpenTab } from '@/lib/tabList'
 
 /**
  * Noi dung chat cua side panel (thread + composer).
@@ -147,14 +148,23 @@ export function ChatWorkspace({
    * (FR-SKILL-06 — T-M2-21).
    */
   const [isSkillTabPickerOpen, setIsSkillTabPickerOpen] = useState(false)
+  /**
+   * Popover chon **nhieu** tab (T-M3-POLISH — FR-CONTEXT-03).
+   *
+   * State o parent de `useTabs` nap danh sach chi khi picker thuc su mo,
+   * va de nut "chon tab" trong hang chip context mo **cung** 1 popover.
+   */
+  const [isTabPickerOpen, setIsTabPickerOpen] = useState(false)
+  /** Tong so tab doc duoc (chi bao "va N tab khac"). */
+  const [totalTabCount, setTotalTabCount] = useState<number | undefined>(undefined)
   const [isAtBottom, setIsAtBottom] = useState(true)
   const threadRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
   const mention = useMention()
   const skillCommand = useSkillCommand()
-  const { tabs, isLoading: isLoadingTabs } = useTabs(
-    mention.state.open || isSkillTabPickerOpen,
+  const { tabs, isLoading: isLoadingTabs, reload: reloadTabs } = useTabs(
+    mention.state.open || isSkillTabPickerOpen || isTabPickerOpen,
   )
   const imageAttachments = useImageAttachments()
   // FR-CONTEXT-14 — tai lieu dinh kem (T-M2-23).
@@ -469,6 +479,60 @@ export function ChatWorkspace({
       onSelect={handleSelectTab}
     />
   ) : undefined
+
+  /**
+   * Dinh kem **nhieu** tab tu picker (T-M3-POLISH — FR-CONTEXT-03).
+   *
+   * Khong await tung tab mot → user khong phoi doi tab qua lai nua.
+   * `attachTab` tu dedupe (tab da dinh kem → tra ve item cu).
+   *
+   * @param tabIds - Id cac tab user chon trong picker.
+   */
+  const handleAttachTabs = useCallback(
+    (tabIds: readonly number[]): void => {
+      if (tabIds.length === 0) return
+      setIsAttaching(true)
+      void Promise.all(tabIds.map((tabId) => attachTab(tabId))).finally(() => {
+        setIsAttaching(false)
+      })
+    },
+    [attachTab],
+  )
+
+  /**
+   * Popover chon nhieu tab (T-M3-POLISH — FR-CONTEXT-03).
+   *
+   * Dung chung cho ca trigger trong composer va benh "chon tab" trong
+   * hang chip context.
+   */
+  const tabPicker = (
+    <TabPicker
+      tabs={tabs}
+      activeTabId={activeTabId}
+      attachedTabIds={attachedTabIds}
+      isLoading={isLoadingTabs}
+      onReload={reloadTabs}
+      onAttachTabs={handleAttachTabs}
+      selectedCount={attachedTabIds.length}
+      isAttaching={isAttaching}
+      totalCount={totalTabCount}
+      open={isTabPickerOpen}
+      onOpenChange={setIsTabPickerOpen}
+    />
+  )
+
+  // Dem tong so tab doc duoc → chi bao "va N tab khac" (khong am tham bo tab).
+  useEffect(() => {
+    if (!isTabPickerOpen) return
+    let cancelled = false
+    void countOpenTabs().then((count) => {
+      if (cancelled) return
+      setTotalTabCount(count)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [isTabPickerOpen])
 
   // --- FR-SKILL-01: menu `/` (T-M2-04) ---
   const filteredSkills = useMemo(
@@ -894,6 +958,9 @@ export function ChatWorkspace({
         onAttachSelection={handleAttachSelection}
         onRemove={removeItem}
         isAttaching={isAttaching}
+        onOpenTabPicker={() => {
+          setIsTabPickerOpen(true)
+        }}
       />
 
       <ContextBudget budget={budget} />
@@ -941,6 +1008,10 @@ export function ChatWorkspace({
         inputRef={inputRef}
         onFilesSelected={handleFilesSelected}
         isReadingFiles={imageAttachments.isReading || documentAttachments.isReading}
+        onAttachCurrentTab={handleAddCurrentTab}
+        onAttachSelection={handleAttachSelection}
+        tabPicker={tabPicker}
+        isAttaching={isAttaching}
       />
 
       {/* Drawer danh sach cuoc tro chuyen (FR-CHAT-09 — T-M1-09). */}

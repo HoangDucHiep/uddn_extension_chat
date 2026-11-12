@@ -8,6 +8,10 @@ import { cn } from '@/lib/utils'
  *
  * Radix Popover render qua Portal → khong bi `overflow` cua thread chat
  * cat (FR-CONTEXT-10 — T-M1-08).
+ *
+ * Phong cach T-M3-POLISH: phong "flat" → vien 1px + surface-overlay,
+ * **khong** vien day. Boi shadow nhe (`--shadow-2`) de tach khoi nen
+ * khi panel dung noi dung dung.
  */
 
 const Popover = PopoverPrimitive.Root
@@ -31,7 +35,7 @@ const PopoverContent = React.forwardRef<
       sideOffset={sideOffset}
       collisionPadding={8}
       className={cn(
-        'z-50 max-w-[320px] rounded-[var(--radius-md)] border border-[var(--border-default)] ' +
+        'z-50 max-w-[min(320px,calc(100vw-16px))] rounded-[var(--radius-md)] border border-[var(--border-default)] ' +
           'bg-[var(--surface-overlay)] p-[var(--space-3)] text-[var(--text-primary)] ' +
           'shadow-[var(--shadow-2)] focus:outline-none',
         className,

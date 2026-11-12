@@ -2,6 +2,7 @@ import { Check, ChevronDown, ChevronRight, Wrench, X } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useI18n } from '@/sidepanel/hooks/useI18n'
 import { approveToolCall, denyToolCall } from '@/lib/toolClient'
 import type { ChatToolCall } from '../../store/chatStore'
@@ -67,27 +68,34 @@ export function ToolCallBlock({ toolCall, onUpdate }: ToolCallBlockProps) {
       data-tool-status={status}
       data-tool-name={toolCall.name}
     >
-      <button
-        type="button"
-        onClick={() => {
-          setIsOpen(!isOpen)
-        }}
-        className="flex w-full items-center gap-2 px-[var(--space-2)] py-[var(--space-2)] text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]"
-        aria-expanded={isOpen}
-        aria-label={isOpen ? t('tool.call.collapse') : t('tool.call.expand')}
-        data-testid="tool-call-toggle"
-      >
-        {isOpen ? (
-          <ChevronDown className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-        ) : (
-          <ChevronRight className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-        )}
-        <Wrench className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-        <span className="min-w-0 flex-1 truncate">
-          {t('tool.call.title', { name: toolCall.name })}
-        </span>
-        <StatusBadge status={status} />
-      </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={() => {
+              setIsOpen(!isOpen)
+            }}
+            className="flex w-full items-center gap-2 px-[var(--space-2)] py-[var(--space-2)] text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]"
+            aria-expanded={isOpen}
+            aria-label={isOpen ? t('tool.call.collapse') : t('tool.call.expand')}
+            data-testid="tool-call-toggle"
+          >
+            {isOpen ? (
+              <ChevronDown className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            ) : (
+              <ChevronRight className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            )}
+            <Wrench className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span className="min-w-0 flex-1 truncate">
+              {t('tool.call.title', { name: toolCall.name })}
+            </span>
+            <StatusBadge status={status} />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>
+          {isOpen ? t('tool.call.collapse') : t('tool.call.expand')}
+        </TooltipContent>
+      </Tooltip>
 
       {isOpen ? (
         <div className="border-t border-[var(--border-default)] px-[var(--space-2)] py-[var(--space-2)]">
@@ -155,8 +163,7 @@ export function ToolCallBlock({ toolCall, onUpdate }: ToolCallBlockProps) {
               >
                 <X className="h-3.5 w-3.5" aria-hidden="true" />
                 {t('tool.call.deny')}
-              </Button>
-            </div>
+              </Button>            </div>
           ) : null}
         </div>
       ) : null}

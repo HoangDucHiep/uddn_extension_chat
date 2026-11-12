@@ -119,6 +119,7 @@ Cột ưu tiên: **M** = Must (M1) · **S** = Should (M2) · **C** = Could (M2/M
 | C16 | **Tool registry + agent loop + tool call UI có approval gate** | FR-TOOLS-01/02/04/06 | — (không có ở A/B) — ✅ **T-M2-07 + T-M2-09 (2026-11-11)**: tool registry in-memory + tool built-in `calculator` (shunting-yard, **không** `eval`) · agent loop **tối đa 5 vòng** (`TOOL_LIMITS.MAX_TOOL_ROUNDS`) · server khai báo tool cho provider OpenAI-compatible (`groq`/`openrouter`/`ollama`) + `mock` → model gọi tool → server thực thi → kết quả quay lại model · UI: block collapsible "Đang dùng tool: X" (args + kết quả + trạng thái) trong thread · **approval gate**: tool `requiresApproval` → badge "Cần bạn duyệt" + nút Duyệt/Từ chối → `POST /api/tools/:callId/approve` · tool call ghi vào bảng `tool_calls` + `request_logs.tool_calls` (nguồn dữ liệu cho eval). **Giới hạn:** `gemini` **chưa** hỗ trợ tool (shape function-calling riêng) · MCP **đã có** (T-M2-08 — chỉ transport **stdio**) · **chưa** có tool ghi dữ liệu thật nên luồng "plan + diff" của FR-TOOLS-04 là **hạ tầng**, chưa phải hành vi end-to-end |
 | C17 | **Upload tài liệu cục bộ** (PDF / DOCX / TXT / MD / CSV) làm context | FR-CONTEXT-14 | — (không có ở A/B) — ✅ **T-M2-23 (2026-11-12)**: file picker / drag-drop / paste → BFF parse (`pdfjs-dist` · `mammoth` · `TextDecoder`) → `ContextItem kind:'file'` đi qua ngân sách + prompt + citation. **Giới hạn:** 8 MB / file · 5 tài liệu / lượt · **no-persist** (chỉ sống trong phiên panel) · PDF scan → `DOCUMENT_NOT_READABLE` |
 | C18 | **Tự nối tiếp câu trả lời khi bị cắt do giới hạn token** (auto-continue) | FR-CHAT-15, FR-CHAT-07 | A/B chỉ báo *"response stopped"* rồi dừng — ✅ **T-M2-24 (2026-11-12)**: server tự gọi lại provider tối đa **3 vòng** khi `finish_reason = 'length'` → user **không phải** bấm gì · nối text các vòng, cộng dồn token · hết vòng thì hiện nút **"Tiếp tục"** (fallback). Kèm nâng mặc định output **2048 → 8192** token (clamp theo trần từng provider). **Giới hạn:** tối đa 4 lần gọi provider / lượt → **chi phí tăng** |
+| C19 | **Giao diện flat, neutral, border-driven** + **tab picker đa chọn** + **tooltip toàn diện** + **công thức toán học** | FR-UX-11, FR-CONTEXT-03, FR-CHAT-16 | Edge/Gemini dùng **material/glass** (shadow, gradient) → Sidekick theo hướng **flat neutral** (near-black accent `#1f2937`, hairline 1px, **zero shadow**) — **độc quyền về mặt thẩm mỹ** + dễ đọc hơn ở panel hẹp. ✅ **T-M3-POLISH (2026-11-12)**: bảng màu neutral · 4 primitive mới (`tooltip` · `icon-button` · `chip` · `toggle`) · **tab picker tick nhiều tab** (Edge/Gemini phải chuyển tab qua lại từng cái) · **vòng đời one-shot** cho attachment (Edge/Gemini giữ context vô hạn → Sidekick chỉ gửi 1 lần / lượt, lịch sử vẫn giữ) · **tooltip mọi nút icon-only** · **KaTeX** render công thức toán học trong Markdown. Chi tiết: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.31 |
 
 ---
 
@@ -131,7 +132,7 @@ Cột ưu tiên: **M** = Must (M1) · **S** = Should (M2) · **C** = Could (M2/M
 | Context trang | ✅ | ✅ (mặc định bật) | ✅ (**đính kèm chủ động** — T-M1-23) | — |
 | Context PDF / video (transcript) | ✅ (A20) | ✅ (B10) | ✅ (T-M1-21/22) | — |
 | Upload tài liệu cục bộ (PDF/DOCX/TXT/MD/CSV) | ➖ | ➖ | ✅ (T-M2-23 — **độc quyền**: parse ở BFF local → context item; no-persist) | — |
-| Multi-tab | ✅ không giới hạn | ✅ tối đa 10 | ✅ không giới hạn | — |
+| Multi-tab | ✅ không giới hạn | ✅ tối đa 10 | ✅ không giới hạn | — (**T-M3-POLISH** — tab picker **đa chọn**: tick nhiều tab 1 lần, không phải chuyển tab qua lại từng cái) |
 | Selection → hỏi | ✅ | ✅ | ✅ (T-M1-02) | — |
 | Trích dẫn nguồn (chip + popover) | ✅ | ✅ | ✅ (T-M1-08 — chi tiết hơn: popover xem **đoạn nguồn**) | — |
 | Summarize 1-click | ✅ | ✅ | ✅ | — |
@@ -215,6 +216,7 @@ Dùng làm acceptance checklist cho M1.
 | **Tỉ lệ pass (lúc đóng M1)** | **32/35 = 91.4%** ✅ **≥ 90% → gate đạt** |
 | **Cập nhật sau T-M2-03 (2026-11-10)** | **33/35 = 94.3%** (đóng thêm dòng "Token/cost hiển thị" — xem §E.1.3) |
 | **Cập nhật sau T-M2-21 (2026-11-10)** | **34/35 = 97.1%** (đóng thêm dòng "Skills" — xem §E.1.5) |
+| **Cập nhật sau T-M3-POLISH (2026-11-12)** | **34/35 = 97.1%** — **không đổi** (M3 là polish: không mở/đóng dòng parity nào) — xem §E.1.9 |
 
 **3 dòng còn mở — đều có lý do và task kế tiếp (không phải thiếu sót):**
 
@@ -361,6 +363,23 @@ RAG (**FR-TOOLS-05**) bị **hoãn** theo quyết định user → **không** đ
 | **Nền đã có sẵn nếu mở lại** | `pgvector/pgvector:pg16` đã chạy trong `docker-compose.yml` (extension `vector`) · cột `citations.score` đã có · pipeline citation (`CitationChip` · `parseCitationMarkers`) đã hoàn chỉnh |
 
 > **Ghi chú công bằng:** khi trình bày **không** nói Sidekick "có RAG" — nói *"RAG là hạng mục đã đánh giá và hoãn vì lợi ích chưa vượt công sức trong phạm vi đồ án; đã đánh giá theo §9.3"*. Ưu tiên M2 chuyển sang **Eval (T-M2-12 → 17)** — deliverable bắt buộc (`docs/EVAL_REPORT.md`).
+
+#### E.1.9 Cập nhật sau T-M3-POLISH — UI/UX redesign (2026-11-12)
+
+T-M3-POLISH là **polish**, **không** mở/đóng dòng §E nào → **tỉ lệ pass §E giữ nguyên 34/35 = 97.1%**.
+
+| Hạng mục | Bằng chứng |
+|---|---|
+| **§C19** (UI flat neutral + tab picker đa chọn + tooltip + KaTeX) | ⬜ → ✅ — xem §C19 + [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.31 |
+| **§D dòng "Multi-tab"** | ✅ không giới hạn → bổ sung **tab picker đa chọn** (tick nhiều tab 1 lần — không phải chuyển tab qua lại từng cái như Edge/Gemini) |
+| **§D dòng "Lõi chat (streaming, markdown, code)"** | ✅ → bổ sung **KaTeX** (công thức toán học) + code block `detect: false` + table không tràn ngang |
+| **Không ảnh hưởng §E** | M3 **không** thêm dòng §E mới (UI polish không thuộc checklist parity Edge/Gemini) |
+| **Không ảnh hưởng eval** | `EVAL_GROUPS` không đổi · `EVAL_REPORT.md` không đổi — **trừ** nhóm `page_qa`/`doc_extract` có thể hưởng lợi từ KaTeX nếu dataset có công thức (chưa có) |
+| **Không ảnh hưởng contract** | Không đổi API · không đổi schema DB · không đổi `manifest.json` |
+
+> **Ghi chú công bằng:** khi trình bày **không** nói "Sidekick đẹp hơn Edge/Gemini" — nói *"Sidekick dùng hướng thiết kế flat, border-driven (neutral + hairline, không shadow), ưu tiên đọc dễ ở panel hẹp; Edge Copilot và Chrome Gemini dùng hướng material/glass"*. Cả hai hướng đều hợp lệ — khác nhau về triết lý, không phải về chất lượng.
+>
+> **Về vòng đời one-shot:** Edge/Gemini giữ context **vô hạn** trong phiên → Sidekick chỉ gửi context của lượt đó **1 lần** (lịch sử hội thoại vẫn giữ nội dung → vẫn nói chuyện tiếp được). Đây là **đánh đổi có chủ ý** (ít nhiễu ngữ cảnh + tiết kiệm token) — nói rõ khi trình bày, **không** giấu.
 
 ### E.2 Checklist M4 — Workflow (ngoài đường găng, chỉ làm sau khi M0–M3 xong)
 

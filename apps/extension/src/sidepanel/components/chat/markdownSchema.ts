@@ -19,14 +19,83 @@ import { defaultSchema, type Options } from 'rehype-sanitize'
  * `attributes` va `protocols` cua `defaultSchema` bi **thay the** hoan toan
  * khi truyen vao `sanitize()` → phai merge thu cong de giu het quy tac mac
  * dinh (task list, footnote, table...).
+ *
+ * ## KaTeX (T-M3-POLISH)
+ *
+ * `rehype-katex` sinh ra **MathML** (`<math>`, `<semantics>`, `<mrow>`...)
+ * + `<span class="katex…">` + `style` inline → `defaultSchema` se **xoa het**
+ * → cong thuc toan ra thuoc text thoi. Phai mo allowlist cho:
+ *  - `tagNames`: cac tag MathML.
+ *  - `attributes`: `math[xmlns|display|encoding]` · `annotation[encoding]` ·
+ *    `span[class^=katex]` + `span[style]` · `math[style]`.
+ *
+ * CSP hien tai (`script-src 'self'; object-src 'self'`) **khong** chan
+ * `style` inline → cho phep `style` tren `span`/`math` an toan.
  */
 export const markdownSchema: Options = {
+  tagNames: [
+    ...(defaultSchema.tagNames ?? []),
+    // --- MathML (KaTeX) ---
+    'math',
+    'semantics',
+    'annotation',
+    'annotation-xml',
+    'mrow',
+    'mi',
+    'mo',
+    'mn',
+    'ms',
+    'mtext',
+    'mspace',
+    'msup',
+    'msub',
+    'msubsup',
+    'mfrac',
+    'msqrt',
+    'mroot',
+    'mtable',
+    'mtr',
+    'mtd',
+    'mstyle',
+    'munder',
+    'mover',
+    'munderover',
+    'menclose',
+    'mpadded',
+    'mphantom',
+    'merror',
+    'mfenced',
+  ],
   attributes: {
     ...(defaultSchema.attributes ?? {}),
     // `rehype-highlight` them `hljs` vao `code` + `language-*` tu fence info.
     code: [['className', /^language-./, 'hljs']],
     // Token mau cua highlight.js deu co tien to `hljs-`.
-    span: [['className', /^hljs-/], 'dataCitationIndex'],
+    // `katex-*` la class cua KaTeX (T-M3-POLISH).
+    span: [['className', /^hljs-/, /^katex/], 'dataCitationIndex', 'style'],
+    // KaTeX: MathML goc + thuoc tinh hien thi.
+    math: ['xmlns', 'display', 'encoding', 'style'],
+    annotation: ['encoding'],
+    'annotation-xml': ['encoding'],
+    // KaTeX dat `style` tren `math` va cac node MathML con.
+    mrow: ['style'],
+    mi: ['style'],
+    mo: ['style'],
+    mn: ['style'],
+    mtext: ['style'],
+    mspace: ['style'],
+    msup: ['style'],
+    msub: ['style'],
+    msubsup: ['style'],
+    mfrac: ['style'],
+    msqrt: ['style'],
+    mstyle: ['style'],
+    mtable: ['style'],
+    mtr: ['style'],
+    mtd: ['style'],
+    munder: ['style'],
+    mover: ['style'],
+    munderover: ['style'],
   },
   protocols: {
     ...(defaultSchema.protocols ?? {}),

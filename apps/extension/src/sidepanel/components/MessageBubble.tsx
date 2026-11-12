@@ -1,6 +1,7 @@
 import { Copy, Check } from 'lucide-react'
 import { useState } from 'react'
-import { Button } from '@/components/ui/button'
+import { IconButton } from '@/components/ui/icon-button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { CitationList } from './chat/CitationList'
 import { MessageActions } from './chat/MessageActions'
 import { MessageContent } from './chat/MessageContent'
@@ -93,17 +94,26 @@ export function MessageBubble({
 
   return (
     <div
-      className={isUser ? 'flex min-w-0 justify-end' : 'flex min-w-0 justify-start'}
+      className={
+        isUser
+          ? 'flex min-w-0 justify-end pl-[var(--space-6)]'
+          : 'flex min-w-0 justify-start pr-[var(--space-6)]'
+      }
       data-testid={isUser ? 'message-user' : 'message-assistant'}
       data-role={message.role}
     >
+      {/*
+        Phong cach T-M3-POLISH:
+        - **User** → chip nen nhat (`--surface-user-bubble`), can phai.
+        - **Assistant** → **text trần** tren nen trang (khong bubble).
+      */}
       <div
         className={[
-          'min-w-0 max-w-[var(--message-max-width)] rounded-[var(--radius-lg)] px-[var(--space-3)] py-[var(--space-2)]',
+          'min-w-0 max-w-[var(--message-max-width)]',
           'text-[length:var(--font-size-md)] leading-[var(--line-height-base)]',
           isUser
-            ? 'bg-[var(--color-accent)] text-[var(--color-accent-fg)]'
-            : 'bg-[var(--surface-sunken)] text-[var(--text-primary)]',
+            ? 'rounded-[var(--radius-lg)] bg-[var(--surface-user-bubble)] px-[var(--space-3)] py-[var(--space-2)] text-[var(--text-primary)]'
+            : 'text-[var(--text-primary)]',
         ].join(' ')}
       >
         {message.images !== undefined && message.images.length > 0 ? (
@@ -181,20 +191,29 @@ export function MessageBubble({
           />
         ) : null}
 
+        {/*
+          Dong meta (provider · model · token · request-id) — **ben duoi**
+          noi dung assistant, giong thiet ke tham khao (T-M3-POLISH).
+        */}
         {!isUser && message.content.length > 0 ? (
-          <div className="mt-2 flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={handleCopy}
-              aria-label={t('chat.copyContent')}
-            >
-              {copied ? (
-                <Check className="h-3.5 w-3.5" aria-hidden="true" />
-              ) : (
-                <Copy className="h-3.5 w-3.5" aria-hidden="true" />
-              )}
-            </Button>
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <IconButton
+                  size="sm"
+                  onClick={handleCopy}
+                  aria-label={t('chat.copyContent')}
+                  data-testid="message-copy-button"
+                >
+                  {copied ? (
+                    <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+                  )}
+                </IconButton>
+              </TooltipTrigger>
+              <TooltipContent>{t('chat.copyContent')}</TooltipContent>
+            </Tooltip>
             {message.model ? (
               <span className="text-[length:var(--font-size-xs)] text-[var(--text-tertiary)]">
                 {message.provider} · {message.model}

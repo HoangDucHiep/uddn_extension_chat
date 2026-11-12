@@ -6,6 +6,11 @@ import { cn } from '@/lib/utils'
 /**
  * Button — shadcn/ui (copy vao repo).
  * Dung design token, khong hardcode mau.
+ *
+ * Phong cach T-M3-POLISH:
+ *  - `default` = **near-black** fill (CTA chinh) — khong con indigo.
+ *  - `icon` = **tron** (circle) — nhan dang chuan cua side panel.
+ *  - `pill` = **pill** (chip / toolbar).
  */
 
 const buttonVariants = cva(
@@ -22,13 +27,19 @@ const buttonVariants = cva(
           'border border-[var(--border-default)] bg-transparent text-[var(--text-primary)] hover:bg-[var(--surface-sunken)]',
         ghost: 'bg-transparent text-[var(--text-secondary)] hover:bg-[var(--surface-sunken)]',
         danger: 'bg-[var(--danger)] text-[var(--text-inverse)] hover:opacity-90',
+        /** Pill — vien day + nen nhat, dung cho chip/toolbar (T-M3-POLISH). */
+        pill:
+          'rounded-[var(--radius-full)] border border-[var(--border-default)] bg-[var(--surface-raised)] text-[var(--text-secondary)] hover:bg-[var(--surface-sunken)] hover:text-[var(--text-primary)]',
       },
       size: {
         default: 'h-9 px-4 py-2',
         sm: 'h-8 rounded-md px-3 text-xs',
         lg: 'h-10 rounded-md px-6',
-        icon: 'h-9 w-9',
-        'icon-sm': 'h-7 w-7 rounded-sm',
+        icon: 'h-9 w-9 rounded-full',
+        'icon-sm': 'h-7 w-7 rounded-full',
+        /** Pill nhỏ — chip trong toolbar composer. */
+        'pill-sm': 'h-7 rounded-[var(--radius-full)] px-2.5 text-xs',
+        'pill-md': 'h-8 rounded-[var(--radius-full)] px-3 text-xs',
       },
     },
     defaultVariants: {
