@@ -647,10 +647,26 @@ export const evalTaskSchema = z.object({
   expected_citations: z.number().int().nonnegative().optional(),
   tags: z.array(z.string().min(1)).optional(),
   notes: z.string().optional(),
+  // T-M2-12: mo rong
+  pages: z.array(evalPageSchema).optional(),
+  assets: z.array(evalAssetSchema).optional(),
+  context_mode: evalContextModeSchema.optional(),
 })
 
 export const evalTaskListSchema = z.array(evalTaskSchema)
 ```
+
+**Mở rộng T-M2-12 (2026-11-11):** contract thêm **3 field optional** + **1 schema output** (mọi thứ **optional** → dataset M1 chỉ có `page` vẫn hợp lệ):
+
+| Field / schema | Ý nghĩa |
+|---|---|
+| `pages?: EvalPage[]` | Nhóm `cross_tab` — 2–3 tab. `page` luôn là tab đầu, `pages` chứa các tab còn lại |
+| `assets?: EvalAsset[]` | Nhóm `vision` (ảnh) + `doc_extract` (PDF) — **chỉ lưu đường dẫn + metadata**, **không** nhét base64 vào JSON |
+| `context_mode?: 'none' \| 'page' \| 'pages'` | Nhóm `general_qa` dùng `'none'` → request **không** có payload `context` (đo đường "chat thuần LLM" — FC-12) |
+| `evalAssetSchema` | `{ kind: 'image' \| 'pdf', path, mime_type, bytes, description? }` |
+| `evalContextModeSchema` | `z.enum(['none', 'page', 'pages'])` |
+| `evalJudgeScoresSchema` | Output judge: `R1`–`R5` + `R7` (số nguyên 1–5) |
+| `evalJudgeResultSchema` | Output judge đầy đủ: `{ scores, missing_key_points[], hallucinated_claims[], citation_check: { cited, verified }, reasoning }` |
 
 **Quy ước field:** **snake_case** (`snapshot_path` · `content_hash` · `key_points` · `must_include_facts` · `must_not_contain` · `expected_citations`) — vì dataset là JSON **interchange**, dùng chung với transcript thủ công của Edge/Gemini.
 
@@ -665,11 +681,26 @@ export const evalTaskListSchema = z.array(evalTaskSchema)
 
 #### 4.5.4 Trạng thái dataset
 
-`apps/eval/dataset/tasks.json` **để rỗng `[]`** — đúng chuẩn M1 (M1 không có nội dung trang thật để chụp snapshot). Điền dataset thật là **T-M2-12** (M2). Không phải bug.
+`apps/eval/dataset/tasks.json` — **T-M2-12 đã điền** (2026-11-11): **52 task / 8 nhóm**, 26 VI + 26 EN, **100%** có `must_include_facts`.
+
+| Nhóm | Số task | Nhóm | Số task |
+|---|---|---|---|
+| `page_qa` | 12 | `vision` | 4 |
+| `summarize` | 10 | `doc_extract` | 2 |
+| `cross_tab` | 10 | `video_transcript` | 2 |
+| `writing` | 8 | `general_qa` | 4 |
+
+- **Snapshot:** 47 file text trong `dataset/snapshots/` (đóng băng nội dung trang thật) + `dataset_meta.json` (URL nguồn · license · sha256 checksum).
+- **Assets:** `dataset/assets/` — 4 ảnh PNG nhỏ (logo PostgreSQL / Python / Rust / W3C) cho nhóm `vision`.
+- **Tái lập:** hash `content_hash` của mỗi snapshot được **verify** bằng test (`datasetQuality.test.ts`) → dataset hỏng thì CI đỏ.
 
 #### 4.5.5 Kiểm thử
 
-`apps/eval/tests/dataset.test.ts` (mới, 11 test) — fixture hợp lệ cho **từng** group trong 8 group · giữ nguyên field snake_case · field optional không bắt buộc · reject: group sai · `must_include_facts` sai kiểu · thiếu `page.snapshot_path` · thiếu `id` · `lang` sai · dataset không phải array · `filterTasks` lọc theo group + lang.
+`apps/eval/tests/dataset.test.ts` (11 test) — fixture hợp lệ cho **từng** group trong 8 group · giữ nguyên field snake_case · field optional không bắt buộc · reject: group sai · `must_include_facts` sai kiểu · thiếu `page.snapshot_path` · thiếu `id` · `lang` sai · dataset không phải array · `filterTasks` lọc theo group + lang.
+
+`packages/shared/tests/evalSchema.test.ts` (mới — T-M2-12) — validate `evalAssetSchema` · `evalContextModeSchema` · `evalJudgeResultSchema` (reject score ngoài 1–5 · `missing_key_points` mặc định `[]` · `citation_check` mặc định `{cited:0, verified:0}`).
+
+`apps/eval/tests/datasetQuality.test.ts` (mới — T-M2-12) — kiểm tra dataset **thật**: ≥ 44 task · ≥ 80% có `must_include_facts` · ≥ 40% VI · đủ 8 nhóm · **mỗi nhóm có cả VI + EN** · file snapshot tồn tại + `content_hash` khớp.
 
 ---
 
@@ -3992,6 +4023,162 @@ if (deps.mcpManager !== undefined) {
 | Server unit | `apps/server/tests/mcpRoute.test.ts` | `GET/POST/PATCH/DELETE /api/mcp/servers` · `reconnect` · `GET /api/mcp/tools` · 409 / 400 / 404 |
 | Server helper | `apps/server/tests/helpers/fakeMcpDb.ts` | Fake Drizzle cho bảng `mcp_servers` (không cần Docker) |
 | Server fixture | `apps/server/scripts/sample-mcp-server.mjs` | MCP server mẫu (tool `echo` + `add`) — dùng cho test **và** demo tay |
+
+---
+
+### 7.28 Eval harness + LLM-as-judge (T-M2-12/13/14)
+
+> Nguồn sự thật cho hành vi: [`EVAL_PLAN.md`](EVAL_PLAN.md) §3 · §4 · §5 · §7.
+> Khối eval **tự động** — tạo **nền** cho T-M2-15 (thu thập thủ công Edge/Gemini) · T-M2-16 (chấm tay 2 người) · T-M2-17 (`docs/EVAL_REPORT.md`).
+
+#### 7.28.1 Bộ thu thập snapshot (`apps/eval/src/snapshot.ts` + `collect.ts`)
+
+| Hàm / file | Ý nghĩa |
+|---|---|
+| `htmlToText(html)` | Bóc HTML → text thuần Node (bỏ `script`/`style`/`nav`/`footer`/`header`/`aside` · ưu tiên `article` → `main` → `body` · tách block thành dòng · chuẩn hoá whitespace · cắt tại `LIMITS.MAX_PAGE_TEXT_CHARS`) |
+| `sha256Content(text)` | Checksum sha256 của nội dung snapshot → `content_hash` |
+| `readSnapshot(path)` / `writeSnapshot(path, text)` | Đọc/ghi `apps/eval/dataset/snapshots/<slug>.txt` |
+| `loadSnapshotWithHash(path)` | Đọc + **verify** hash → trả `{ content, hash }` (dùng bởi runner + test) |
+| `collectAll({ force, baseUrl })` | Fetch **45 nguồn thật** (Wikipedia VI/EN · developer.chrome.com · web.dev · MDN · docs.python.org · kubernetes.io · postgresql.org · react.dev · arxiv PDF · YouTube transcript · ảnh logo) → `htmlToText` → ghi snapshot + tính hash |
+
+**Quy tắc:**
+
+| Quy tắc | Chi tiết |
+|---|---|
+| **Idempotent** | Không ghi đè snapshot đã có nếu hash khớp (trừ `--force`) → chạy lại `eval:collect` **an toàn** |
+| **Accept-Language theo slug** | Nguồn tiếng Anh gửi `Accept-Language: en-US,en;q=0.9` → không bị Google tự dịch sang VI (đã gặp lỗi này khi thu thập Chrome Docs) |
+| **Ảnh nhị phân** | `downloadImage` kiểm tra `Content-Type` bắt buộc là `image/*` → chặn URL trả về HTML 404 |
+| **PDF / YouTube** | Trích qua **logic sẵn có của BFF** (`POST /api/extract/pdf` · `/api/extract/youtube`) → không thêm dependency mới vào `apps/eval` |
+| **Attribution** | `dataset_meta.json` lưu URL nguồn + license + sha256 → **không** nhét binary vào repo |
+
+#### 7.28.2 Dataset (`apps/eval/dataset/tasks.json`)
+
+- **52 task / 8 nhóm** — `page_qa` 12 · `summarize` 10 · `cross_tab` 10 · `writing` 8 · `vision` 4 · `doc_extract` 2 · `video_transcript` 2 · `general_qa` 4.
+- **26 VI + 26 EN** (50% VI ≥ yêu cầu 40%) — **mỗi nhóm có cả VI + EN**.
+- **100%** task có `reference.must_include_facts` (≥ yêu cầu 80%).
+- `general_qa` → `context_mode: 'none'` → đo đường "chat thuần LLM" (FC-12).
+- `vision` → 2 task ghi rõ `notes` "provider limitation" (đường upload ✅ vs đường ảnh trong DOM ⬜).
+- Sinh bằng `apps/eval/scripts/build-tasks.mjs` (script thuần Node, chạy lại được).
+
+#### 7.28.3 SSE client cho Node (`apps/eval/src/sse.ts`)
+
+`streamChat(baseUrl, body, opts)` → **async generator** event đã parse:
+
+| Ý nghĩa | Chi tiết |
+|---|---|
+| **Không dependency mới** | Node 22 có `fetch` sẵn → tự parse `event:`/`data:` theo chunk |
+| **TTFT** | Thời gian tới **token đầu tiên** (đo ở client, khác `request_logs.ttft_ms` của server) |
+| **Latency** | Tới event `done` |
+| **Thu thập** | `citation[]` · `usage` (token in/out + cost) · `error` (code) · `meta` (messageId) |
+| **Request-id** | `X-Request-Id` sinh tại chỗ → đối chiếu được với `request_logs` |
+
+#### 7.28.4 Runner hệ thống ta (`apps/eval/src/runners/ours.ts`)
+
+Mỗi task × run:
+
+1. **Dựng context từ snapshot** (FC-2 — **không** đọc trang live): `context_mode: 'none'` → không gửi context · `'pages'` → gom `page` + `pages[]` · mặc định `'page'` → chỉ `page`. Mỗi item: `{ kind:'tab', tier:'currentTab', url, title, text, sourceKind }`.
+2. **Vision** → đính kèm ảnh base64 vào `messages[0].attachments[]` (T-M1-24) · `doc_extract` → `sourceKind:'pdf'` · `video_transcript` → `sourceKind:'youtube'`.
+3. Gọi `POST /api/chat` với `provider`/`model` từ flag + `X-Request-Id` sinh tại chỗ.
+4. **Retry tối đa 2 lần** khi lỗi mạng / 5xx (backoff 1.5 s) → lỗi → ghi `status:'error'` + error code (**không** lặp vô hạn).
+5. Ghi `apps/eval/results/ours/<run_id>/<task_id>.json` — transcript đầy đủ + TTFT/latency/token/cost/citations/requestId/provider/model/contextHash.
+
+**Flags:** `--tasks` · `--runs` (mặc định `EVAL_RUNS_PER_TASK` = 3) · `--group` · `--lang` · `--limit` · `--provider` · `--model` · `--base-url` · `--run-id` · `--delay` · `--merge` · `--dry-run`.
+
+**Chạy lại khi provider lỗi tạm thời (`--merge`):**
+
+| Cờ | Hành vi |
+|---|---|
+| `--merge` | Gộp kết quả vào thư mục run cũ: lượt **mới thành công** ghi đè lượt lỗi cùng số · lượt **đã thành công** giữ nguyên |
+| `--merge` (kèm `retryFailedOnly`) | **Chỉ** gọi provider cho các lượt bị lỗi → không tốn quota cho lượt đã có kết quả tốt |
+| `--delay <ms>` | Nghỉ giữa 2 lượt (mặc định 1 500 ms) → tránh vượt RPM của provider free tier |
+
+> **Lý do cần `--merge`:** provider free tier rất hạn chế — Gemini `429 quota exceeded` · Groq `413` (context quá lớn) / `429` · OpenRouter `402` (hạn mức ngày). Chạy lại **toàn bộ** sẽ vừa tốn quota vừa có nguy cơ đè mất lượt đã thành công. Cờ `--merge` giữ nguyên lượt tốt và chỉ bù lượt hỏng.
+
+> **Danh sách `--tasks` nhận cả phẩy lẫn khoảng trắng** — một số shell (PowerShell + pnpm) biến `"a,b"` thành `"a b"` → parser gom **mọi** token sau cờ cho tới token bắt đầu bằng `--`.
+
+#### 7.28.5 Metrics aggregator (`apps/eval/src/metrics/aggregate.ts`)
+
+| Nhóm metric | Hàm / field | Nguồn |
+|---|---|---|
+| **Chất lượng** | `computeOverallScore()` (0–100, trọng số R1–R5 = 2 · R7 = 1) · `rubricAverages` · `taskSuccessRate` (R1/R2/R3 ≥ 4) | Điểm judge (T-M2-14) |
+| | `groundednessRate` · `hallucinationRate` · `citationPrecision` | `judge.citation_check` + `judge.hallucinated_claims` |
+| | `citationRecall` | `min(citations thực tế, expected_citations)` / `expected_citations` |
+| **Hiệu năng** | `ttftP50` / `ttftP95` · `latencyP50` / `latencyP95` · `tokensPerSecond` | Runner (client) |
+| **Chi phí** | `costUsd` · `costPerTask` · `costPerCorrectTask` | `request_logs.cost_usd` (server) |
+| **Cắt lọc** | `aggregateAll()` → `overall` + `byGroup` + `byLang` | — |
+
+- **Percentile dùng nearest-rank** → giá trị luôn có thật trong dataset (đọc + đối chiếu được).
+- **Lượt không có điểm judge** → **không** tính vào `overallScore` (**không** coi là 0 — tránh "phân biệt do model" sai lệch).
+- Xuất `apps/eval/reports/summary-<run_id>.json` + bảng Markdown (dùng để lấy số liệu cho `EVAL_REPORT.md`).
+
+#### 7.28.6 LLM-as-judge (`apps/eval/src/judge/`)
+
+| File | Ý nghĩa |
+|---|---|
+| `prompt.ts` | `JUDGE_SYSTEM_PROMPT` (đúng §4.3) + `buildJudgeUserMessage()` — ghép QUESTION / SOURCE MATERIAL / RESPONSE / KEY POINTS / MUST-INCLUDE / MUST-NOT + TASK. Giới hạn **31 000 ký tự** (BFF chặn `messages[].content` > 32 000) |
+| `blind.ts` | `createBlindMap(systems, seed)` — map **deterministic** (FNV-1a + seed) giữa hệ thống thật và nhãn giả `system_A/B/C` → FC-6 (judge **không** biết tên hệ thống) |
+| `run_judge.ts` | `judgeOnce()` — gọi BFF (`systemPrompt` = judge prompt · `temperature: 0`) → `extractJsonPayload()` (bóc fence ```` ```json ````) → validate `evalJudgeResultSchema` → ghi `apps/eval/results/judged/<run_id>/<task_id>__<label>__run<N>.json` |
+
+- **Lỗi parse / schema → `status:'judge_error'`** → **không** tính điểm 0.
+- `blind_map.json` lưu ở `apps/eval/results/<run_id>/blind_map.json` — **chỉ** mở **sau** khi chấm xong.
+- **Flags:** `--run` · `--judge-provider` · `--judge-model` · `--limit` · `--dry-run` · `--seed`.
+
+#### 7.28.7 CLI (`apps/eval/src/cli.ts`)
+
+| Lệnh | Việc |
+|---|---|
+| `pnpm eval:collect` | Thu thập snapshot trang thật (idempotent) |
+| `pnpm eval:run -- run --runs 3` | Chạy hệ thống của nhóm trên dataset |
+| `pnpm eval:judge -- --run <id>` | Chấm LLM-as-judge (temperature 0 · blind) |
+| `pnpm eval:report -- --run <id>` | Tổng hợp metric → JSON + Markdown |
+| `pnpm eval:run logs --limit 20` | Đọc `request_logs` (T-M1-14) |
+| `pnpm eval:run` (không subcommand) | Thống kê dataset |
+
+#### 7.28.8 Kiểm thử
+
+| Tầng | File | Phủ |
+|---|---|---|
+| Shared unit | `packages/shared/tests/evalSchema.test.ts` | `evalAssetSchema` · `evalContextModeSchema` · `evalJudgeResultSchema` (kèm **clamp** điểm ngoài thang 1–5) |
+| Eval unit | `apps/eval/tests/snapshot.test.ts` | `htmlToText` (bỏ tag rác · ưu tiên `article` · cắt độ dài) · hash ổn định · đọc/ghi snapshot |
+| Eval unit | `apps/eval/tests/datasetQuality.test.ts` | Dataset **thật**: ≥ 44 task · ≥ 80% `must_include_facts` · ≥ 40% VI · đủ 8 nhóm · mỗi nhóm có VI+EN · snapshot tồn tại + hash khớp |
+| Eval unit | `apps/eval/tests/sse.test.ts` | Parse SSE từ chunk thô · thiếu field bắt buộc → bỏ qua |
+| Eval unit | `apps/eval/tests/aggregate.test.ts` | `percentile` (nearest-rank) · `computeOverallScore` (trọng số theo nhóm) · `isCorrectTask` · `aggregateRuns` (success rate · cost/task) |
+| Eval unit | `apps/eval/tests/judge.test.ts` | `extractJsonPayload` (bóc fence · JSON thừa) · `buildJudgeUserMessage` (giới hạn 32 000) |
+| Eval unit | `apps/eval/tests/blind.test.ts` | Blind map **deterministic** (cùng seed → cùng map) · quan hệ 1-1 · nhãn `system_A/B/C` |
+| Eval unit | `apps/eval/tests/cliFlags.test.ts` | `readFlag` · `readNumberFlag` · `readBoolFlag` · `readListFlag` (phân tách theo phẩy **và** khoảng trắng) |
+| Eval unit | `apps/eval/tests/mergeRuns.test.ts` | `--merge` giữ lượt đã thành công · lượt mới thành công ghi đè lượt lỗi |
+| Server unit | `apps/server/tests/geminiThinkingConfig.test.ts` | `thinkingConfig` **nested** trong `generationConfig` (không flatten) · model `*-lite` → không gửi field |
+| Server unit | `apps/server/tests/fallbackChain.test.ts` | Provider dự phóng dùng **model mặc định của chính nó** (không dùng model của provider trước) |
+
+#### 7.28.9 Bug server phát hiện khi chạy eval thật (T-M2-14)
+
+Hai lỗi dưới đây **không** lộ ra ở unit test (mock provider không gọi network) → chỉ phát hiện khi chạy eval thật với provider thật. Cả hai đều làm **mất ~60% lượt judge**.
+
+##### 7.28.9.1 `thinkingConfig` bị flatten sai trong payload Gemini
+
+| Mặt | Chi tiết |
+|---|---|
+| **Triệu chứng** | Gemini trả `400 INVALID_ARGUMENT`: `Unknown name "thinkingBudget" at 'generation_config': Cannot find field.` — **mọi** model Gemini, kể cả model có thinking |
+| **Nguyên nhân** | `thinkingConfigFor()` trả **nội dung** của `thinkingConfig` (`{ thinkingBudget: 0 }`) → server **spread thẳng** vào `generationConfig` → thành `{ generationConfig: { thinkingBudget: 0 } }` thay vì `{ generationConfig: { thinkingConfig: { thinkingBudget: 0 } } }` |
+| **Sửa** | `apps/server/src/providers/gemini.ts` → `...(Object.keys(thinking).length > 0 ? { thinkingConfig: thinking } : {})` (**nested**) · model `*-lite` → `thinkingConfigFor()` trả `{}` → **không** gửi field nào |
+| **Test** | `apps/server/tests/geminiThinkingConfig.test.ts` — khẳng định `generationConfig` có `thinkingConfig` (con) chứ **không** có `thinkingBudget` (trực tiếp) |
+
+##### 7.28.9.2 Provider dự phóng dùng nhầm model của provider trước
+
+| Mặt | Chi tiết |
+|---|---|
+| **Triệu chứng** | Gemini trả `400`: `GenerateContentRequest.model: unexpected model name format` — khi chain fallback sang Gemini với model `openai/gpt-oss-120b` (model của Groq) |
+| **Nguyên nhân** | `chatService.ts` gọi `provider.resolveModel(requestedModel)` cho **mọi** provider trong chain → model của provider trước bị truyền sang provider sau (model đó **không tồn tại** ở provider sau) |
+| **Sửa** | Chỉ provider **user chọn** (`request.provider`) mới nhận `requestedModel` · provider dự phóng dùng **model mặc định của chính nó** (`resolveModel(undefined)`) |
+| **Test** | `apps/server/tests/fallbackChain.test.ts` — provider dự phóng phải nhận model mặc định của nó, **không** phải model của provider trước |
+
+##### 7.28.9.3 Điểm judge ngoài thang 1–5 → clamp thay vì `judge_error`
+
+| Mặt | Chi tiết |
+|---|---|
+| **Triệu chứng** | Judge trả `R5: 0` (cho "không áp dụng") → `evalJudgeResultSchema` **reject** → cả lượt thành `judge_error` → mất 1 điểm dữ liệu |
+| **Sửa** | `packages/shared/src/schemas/eval.ts` → `z.preprocess(normalizeJudgeScores, …)` — điểm **có mặt** ngoài `[1, 5]` được **clamp** (`0 → 1`, `6 → 5`) · điểm **thiếu** vẫn bị reject (R6/R8 không do judge → bắt buộc đủ 6 tiêu chí) |
+| **Test** | `packages/shared/tests/evalSchema.test.ts` — clamp trên/dưới · giá trị không phải số → `1` · thiếu tiêu chí → reject |
 
 ---
 

@@ -1038,9 +1038,9 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 | T-M2-09 | Tool call UI (collapsible block + approval) | FR-TOOLS-02/06, FR-TOOLS-04 | `sidepanel/components/tools/ToolCallBlock.tsx` | Hiện args/result/kết quả lỗi; approval gate chặn hành động | M | ✅ *(2026-11-11)* · block collapsible + badge "Cần bạn duyệt" + nút Duyệt/Từ chối |
 | T-M2-10 | RAG: embedding + `rag_documents` + search | FR-TOOLS-05 | `apps/server/src/rag/{embedder.ts,retriever.ts,indexer.ts}` | Index lịch sử chat; search trả đoạn liên quan kèm score | L | ⏸ **hoãn** *(quyết định user 2026-11-11 — chưa đủ lợi ích so với công sức; theo §9.3 `REQUIREMENTS.md`)* · nền: Postgres `pgvector` + extension `vector` |
 | T-M2-11 | RAG UI: toggle + hiện nguồn trong câu trả lời | FR-TOOLS-05 | `settings/ToolsSettings.tsx`, `CitationChip` (mở rộng) | Bật RAG → câu trả lời có citation tới đoạn đã index | M | ⏸ **hoãn** *(quyết định user 2026-11-11 — chưa đủ lợi ích so với công sức; theo §9.3 `REQUIREMENTS.md`)* · nền: `CitationChip` (T-M1-08) |
-| T-M2-12 | Eval: dataset 48 task + snapshot trang | NFR-MAINT-04 | `apps/eval/dataset/tasks.json`, `dataset/snapshots/*` | ≥ 44 task, ≥ 80% có `must_include_facts`, ≥ 40% tiếng Việt; có nhóm `doc_extract` (PDF) + `video_transcript` (YouTube) | L | ⬜ — nền: contract `evalTaskSchema` + `EVAL_GROUPS`; dataset **đang rỗng `[]`** |
-| T-M2-13 | Eval: harness runner cho hệ thống ta | NFR-MAINT-04, NFR-MAINT-02 | `apps/eval/runners/{ours.ts,aggregate.ts}` | 1 lệnh chạy được; log TTFT/latency/token/cost; coverage ≥ 70% core logic | L | ⬜ — nền: CLI `apps/eval` (dataset loader + `logs`) |
-| T-M2-14 | Eval: judge prompt + runner + blind mapping | NFR-MAINT-04 | `apps/eval/judge/{prompt.ts,run_judge.ts}` | Judge temperature 0; nhãn ngẫu nhiên; `blind_map.json` | M | ⬜ — chưa bắt đầu |
+| T-M2-12 | Eval: dataset 52 task + snapshot trang | NFR-MAINT-04 | `apps/eval/dataset/tasks.json`, `dataset/snapshots/*`, `dataset/assets/*` | ≥ 44 task, ≥ 80% có `must_include_facts`, ≥ 40% tiếng Việt; có nhóm `doc_extract` (PDF) + `video_transcript` (YouTube) | L | ✅ *(2026-11-11)* · **52 task / 8 nhóm** · 26 VI + 26 EN · **100%** có `must_include_facts` · 47 snapshot + 4 ảnh PNG · `dataset_meta.json` (URL + license + sha256) |
+| T-M2-13 | Eval: harness runner cho hệ thống ta | NFR-MAINT-04, NFR-MAINT-02 | `apps/eval/src/{sse.ts,runners/ours.ts,metrics/aggregate.ts}` | 1 lệnh chạy được; log TTFT/latency/token/cost; coverage ≥ 70% core logic | L | ✅ *(2026-11-11)* · SSE client Node (không dep mới) · runner gọi BFF + retry 2 lần · aggregator: overall 0–100 · p50/p95 · success rate · cost/task · cost/correct task |
+| T-M2-14 | Eval: judge prompt + runner + blind mapping | NFR-MAINT-04 | `apps/eval/src/judge/{prompt.ts,blind.ts,run_judge.ts}` | Judge temperature 0; nhãn ngẫu nhiên; `blind_map.json` | M | ✅ *(2026-11-11)* · judge qua BFF (`temperature: 0`) · strict JSON schema · **blind map deterministic** (FNV-1a + seed) → `system_A/B/C` · lỗi parse → `judge_error` (không tính 0) |
 | T-M2-15 | Eval: thu thập thủ công Edge + Gemini (n=3) | NFR-MAINT-04 | `apps/eval/results/manual/**` | Transcript đúng template; ghi rõ điều kiện phụ thuộc gói | L | ⬜ — **cần người thật** (lead-time dài nhất) |
 | T-M2-16 | Eval: chấm tay Tầng B (2 người) + độ tin cậy | NFR-MAINT-04 | `apps/eval/results/human_rubric.csv` | Tính ρ (judge vs human) và κ (human vs human) | M | ⬜ — **cần 2 người chấm tay** |
 | T-M2-17 | Eval: báo cáo `EVAL_REPORT.md` + radar chart | NFR-MAINT-04 | `docs/EVAL_REPORT.md`, `apps/eval/reports/*` | Có bảng 3 hệ thống, phân tích, kết luận, mục "chỗ ta thua" | L | ⬜ — **deliverable bắt buộc** · `docs/EVAL_REPORT.md` chưa tồn tại |
@@ -1051,11 +1051,11 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 | T-M2-22 | Vision mở rộng: chụp vùng, OCR, image-capable provider, alt text | FR-VISION-02/03/04/05 | `sidepanel/components/composer/RegionCapture.tsx`, `apps/server/src/lib/ocr.ts` | Chọn vùng bằng overlay; OCR trả text; provider không hỗ trợ image → ẩn tính năng không lỗi; alt text lưu lại để tiết kiệm token | L | ⬜ — Could · cắt được theo §10 |
 
 **Định mức M2:** 3 tuần · 23 task · ~40 ngày công
-> **Tiến độ (2026-11-11): 10/23 task ✅** (T-M2-02 · T-M2-03 · T-M2-03b · T-M2-04 · T-M2-05 · T-M2-06 · T-M2-21 · T-M2-07 · T-M2-09 · T-M2-08) · **3 task ⏸** (T-M2-01 · T-M2-10 · T-M2-11) · **10 task ⬜** chưa bắt đầu — chi tiết & bằng chứng ở **§4.1**.
+> **Tiến độ (2026-11-11): 13/23 task ✅** (T-M2-02 · T-M2-03 · T-M2-03b · T-M2-04 · T-M2-05 · T-M2-06 · T-M2-21 · T-M2-07 · T-M2-09 · T-M2-08 · **T-M2-12 · T-M2-13 · T-M2-14**) · **3 task ⏸** (T-M2-01 · T-M2-10 · T-M2-11) · **7 task ⬜** chưa bắt đầu — chi tiết & bằng chứng ở **§4.1**.
 
 > Nếu trễ: **cắt T-M2-18 (agentic)** → không ảnh hưởng tiêu chí bắt buộc. **T-M2-10/11 (RAG) đã chốt hoãn (2026-11-11 — quyết định user)** → không cần cắt thêm. Cắt T-M2-22 (vision mở rộng) trước — chỉ ảnh hưởng tính năng Could.
 
-> **Ghi chú T-M2-12 (2026-11-09):** **contract dataset đã hiện thực** ở [`packages/shared/src/schemas/eval.ts`](../packages/shared/src/schemas/eval.ts) (`evalTaskSchema` + `EVAL_GROUPS` 8 nhóm theo [`EVAL_PLAN.md`](EVAL_PLAN.md) §3.2) → `apps/eval` validate dataset bằng đúng schema đó. Khi điền `apps/eval/dataset/tasks.json` + `dataset/snapshots/*` phải tuân thủ shape §3.1 (`page.snapshot_path` · `page.content_hash` · `reference.key_points` / `must_include_facts` / `must_not_contain` — **snake_case**). Dataset hiện **rỗng `[]`** là **đúng chuẩn M1** (chưa có nội dung trang thật để chụp snapshot) — **không phải bug**.
+> **Ghi chú T-M2-12 (2026-11-11 — đã điền dataset):** contract dataset hiện thực ở [`packages/shared/src/schemas/eval.ts`](../packages/shared/src/schemas/eval.ts) (`evalTaskSchema` + `EVAL_GROUPS` 8 nhóm theo [`EVAL_PLAN.md`](EVAL_PLAN.md) §3.2) → `apps/eval` validate dataset bằng đúng schema đó. **T-M2-12 đã điền** `apps/eval/dataset/tasks.json` (**52 task**) + `dataset/snapshots/*` (**47 file**) + `dataset/assets/*` (4 ảnh PNG) + `dataset_meta.json` (URL nguồn · license · sha256) theo đúng shape §3.1 (`page.snapshot_path` · `page.content_hash` · `reference.key_points` / `must_include_facts` / `must_not_contain` — **snake_case**). Mở rộng contract T-M2-12: `pages?` (cross_tab) · `assets?` (vision/doc_extract) · `context_mode?` (`none` cho general_qa) · `evalJudgeResultSchema` (output judge). Chi tiết: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §4.5 + §7.28.
 
 ##### Ghi chú phạm vi M2 — đổi ngày 2026-11-10 (T-M2-02 · T-M2-03 ✅)
 
@@ -1071,8 +1071,8 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 
 ### 4.1 Kết quả M2 (tổng hợp — 2026-11-10 → 2026-11-11)
 
-> **Trạng thái tổng:** **10/23 task ✅** · **3 task ⏸** (T-M2-01 · T-M2-10 · T-M2-11) · **10 task ⬜** chưa bắt đầu.
-> Nhóm **Provider** (T-M2-02 · T-M2-03 · T-M2-03b) và nhóm **Skills** (T-M2-04 · T-M2-05 · T-M2-06 · T-M2-21) đã xong. Nhóm **Tools/MCP** (T-M2-07 · T-M2-09 · T-M2-08) cũng đã xong (2026-11-11). Nhóm **RAG** đã **hoãn** (2026-11-11 — quyết định user). Nhóm **Eval** (T-M2-12 → 17) là khối **tiếp theo** — deliverable bắt buộc `docs/EVAL_REPORT.md`.
+> **Trạng thái tổng:** **13/23 task ✅** · **3 task ⏸** (T-M2-01 · T-M2-10 · T-M2-11) · **7 task ⬜** chưa bắt đầu.
+> Nhóm **Provider** (T-M2-02 · T-M2-03 · T-M2-03b) và nhóm **Skills** (T-M2-04 · T-M2-05 · T-M2-06 · T-M2-21) đã xong. Nhóm **Tools/MCP** (T-M2-07 · T-M2-09 · T-M2-08) cũng đã xong (2026-11-11). Nhóm **RAG** đã **hoãn** (2026-11-11 — quyết định user). Nhóm **Eval tự động** (T-M2-12 · T-M2-13 · T-M2-14) **đã xong 2026-11-11** → còn **T-M2-15/16/17** (cần người thật) — deliverable bắt buộc `docs/EVAL_REPORT.md`.
 
 #### 4.1.1 Bảng trạng thái + commit + bằng chứng
 
@@ -1184,6 +1184,45 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 | Lỗi | 1 server lỗi **không** chặn server khác · lỗi MCP chỉ log, **không** hỏng luồng chat |
 | Script mẫu | `apps/server/scripts/sample-mcp-server.mjs` (tool `echo` + `add`) để demo tay/test offline |
 
+**Nhóm Eval tự động — T-M2-12 / T-M2-13 / T-M2-14 (2026-11-11 → 2026-11-12)**
+
+| Hạng mục | Kết quả |
+|---|---|
+| `pnpm typecheck` | ✅ pass (4 workspace) |
+| `pnpm lint` | ✅ pass (0 error — 45 warning `no-console` trong file CLI, chấp nhận được) |
+| `pnpm test` | ✅ **1987 unit** (shared 347 · server 638 · extension 876 · eval 126) — thêm `evalSchema.test.ts` (shared) · `snapshot` · `datasetQuality` · `sse` · `aggregate` · `judge` · `blind` · `cliFlags` · `mergeRuns` · `visionAttachments` (eval) · `geminiThinkingConfig` · `fallbackChain` (server) |
+| Chạy thật (harness) | ✅ run `run-m2-eval-2026-11-11` — **52 task × 3 lần = 156 lượt** · provider `gemini` / `gemini-3.5-flash` · **141 lượt thành công** · 15 lượt lỗi (quota provider) |
+| Chạy thật (judge) | ✅ **141/141 lượt chấm thành công** · provider `groq` / `openai/gpt-oss-120b` · `temperature: 0` · blind map deterministic → `system_A` |
+| Báo cáo | ✅ `apps/eval/reports/summary-run-m2-eval-2026-11-11.json` — **Overall 85.1/100** · task success **80.1%** · hallucination **7.8%** · citation recall **78.4%** · TTFT p50 **3 127 ms** · cost/task **$0.0023** |
+
+**Bảng metric theo nhóm (số liệu thật — run `run-m2-eval-2026-11-11`)**
+
+| Nhóm | Overall (0–100) | Task success (%) | Hallucination (%) | Citation recall (%) | TTFT p50 (ms) | Cost/task (USD) |
+|---|---|---|---|---|---|---|
+| **Tất cả** | **85.1** | **80.1** | **7.8** | **78.4** | 3 127 | $0.0023 |
+| `page_qa` | 90.8 | 83.3 | 0.0 | 97.2 | 2 868 | $0.0038 |
+| `doc_extract` | 94.0 | 100.0 | 0.0 | 50.0 | 4 671 | $0.0030 |
+| `general_qa` | 98.5 | 100.0 | n/a | n/a | 2 226 | $0.0001 |
+| `writing` | 83.5 | 79.2 | 7.7 | 100.0 | 3 067 | $0.0018 |
+| `video_transcript` | 84.1 | 100.0 | 0.0 | 16.7 | 3 841 | $0.0004 |
+| `summarize` | 80.3 | 83.3 | 0.0 | 100.0 | 3 573 | $0.0026 |
+| `cross_tab` | 79.8 | 59.1 | 24.1 | 59.4 | 4 134 | $0.0020 |
+| `vision` | 77.6 | 75.0 | n/a | n/a | 2 154 | $0.0019 |
+
+> `general_qa` + `vision` có `hallucination` = **n/a** (không tính) — 2 nhóm này **không** có tài liệu nguồn để đối chiếu → metric groundedness **không có nghĩa** (xem [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.28.9.4).
+
+**Bug server phát hiện khi chạy eval thật (đã sửa + có test)**
+
+| Bug | Triệu chứng | Sửa |
+|---|---|---|
+| `thinkingConfig` bị **flatten** trong payload Gemini | `400 INVALID_ARGUMENT` — *Unknown name "thinkingBudget" at 'generation_config'* → mất **82/141** lượt judge | `apps/server/src/providers/gemini.ts` → **nested** `generationConfig.thinkingConfig` |
+| Provider dự phóng dùng **model của provider trước** | `400` — *unexpected model name format* khi fallback sang Gemini | `chatService.ts` → provider dự phóng dùng **model mặc định của chính nó** (provider đầu chuỗi vẫn nhận model của request) |
+| Điểm judge ngoài thang 1–5 | `R5: 0` → **reject** → mất lượt judge | `packages/shared/src/schemas/eval.ts` → **clamp** `[1, 5]` thay vì reject (thiếu tiêu chí vẫn reject) |
+| **Ảnh** của task `vision` **không** được đính kèm | Model trả lời *"tôi không thể xem được hình ảnh"* → điểm nhóm `vision` chỉ **14.4/100** | `apps/eval/src/runners/ours.ts` → resolve asset từ **repo root** (`resolve(REPO_ROOT, asset.path)`, trước là `'..','..'` → trỏ ra ngoài monorepo) → điểm nhóm `vision` **77.6/100** |
+| Judge chấm "hallucination" cho task **không có tài liệu** | `general_qa` = 100% hallucination → điểm **52.3/100** | `apps/eval/src/judge/prompt.ts` + `src/metrics/aggregate.ts` → task `context_mode: 'none'` → judge **không** chấm hallucination · aggregator loại khỏi công thức → điểm **98.5/100** |
+
+> **Bài học (đưa vào quy trình):** chạy eval **thật** là bắt buộc — 4 bug trên **không** lộ ra ở unit test (mock provider không gọi network, mock asset không tồn tại). Cờ `--force` (thêm trong T-M2-13) cho phép chạy lại **toàn bộ** lượt khi chính harness bị lỗi — khác `--merge` (chỉ chạy lại lượt **lỗi**).
+
 #### 4.1.3 Ảnh hưởng lên gate parity
 
 - **T-M2-03** đóng dòng §E **"Token/cost hiển thị"** → **32/35 = 91.4%** → **33/35 = 94.3%** (xem `COMPARISON_MATRIX.md` §E.1.3).
@@ -1193,7 +1232,7 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 - **T-M2-08** (MCP client stdio + server manager) là tính năng **độc quyền** → dòng **C4** §C ⬜ → ✅ · dòng §D "MCP" ⬜ → ✅ + dòng §E.1.7 → giữ nguyên **34/35 = 97.1%**.
 - **Không** phá parity: không thêm permission, không đổi manifest, không đổi hành vi chat M1 (skill và budget là **tuỳ chọn**).
 
-#### 4.1.4 Nhóm còn lại — trạng thái nền (10 task ⬜ · 3 task ⏸)
+#### 4.1.4 Nhóm còn lại — trạng thái nền (7 task ⬜ · 3 task ⏸)
 
 > Bảng này ghi rõ **đã có gì** và **còn thiếu gì** — không tick sai dòng §E nào chưa đạt.
 
@@ -1201,8 +1240,8 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 |---|---|---|---|
 | **MCP** | T-M2-08 ✅ *(2026-11-11)* | `apps/server/src/tools/` (registry + executor + `calculator`) (từ T-M2-07) · contract `ToolDefinition` (`packages/shared`) · SSE `tool_call`/`tool_result`/`tool_approval` | ~~MCP client (stdio transport) · server manager · kết nối MCP server thật~~ → **đã xong**: `apps/server/src/tools/mcp/{protocol,client,manager}.ts` · bảng `mcp_servers` · API `/api/mcp/*` · UI `McpSettings.tsx` |
 | **RAG** ⏸ | T-M2-10 · T-M2-11 | Postgres `pgvector/pgvector:pg16` + extension `vector` (đã cài trong `docker-compose.yml`) · `CitationChip` + `parseCitationMarkers` (T-M1-08) · cột `citations.score` đã có | `apps/server/src/rag/` (**chưa** tồn tại) · bảng `rag_documents` · embedder/retriever/indexer · `ToolsSettings` toggle — **⏸ hoãn 2026-11-11 (quyết định user)**: không đóng dòng §E nào · `EVAL_GROUPS` không có nhóm nào đo RAG → không ảnh hưởng `EVAL_REPORT.md` · §9.2 đã đạt 4/5 tính năng 🟢 |
-| **Eval** | T-M2-12 · T-M2-13 · T-M2-14 | Contract `evalTaskSchema` + `EVAL_GROUPS` 8 nhóm (T-M1-14, commit `03a1d69`) · CLI `apps/eval` (dataset loader + subcommand `logs`) · `request_logs` đủ metric đo (T-M1-14) · **`tool_calls` jsonb đã có dữ liệu thật** (T-M2-07) | `apps/eval/dataset/tasks.json` đang **rỗng `[]`** · `dataset/snapshots/*` · `runners/` · `judge/` |
-| **Eval — cần người thật** | T-M2-15 · T-M2-16 · T-M2-17 | Template rubric trong [`EVAL_PLAN.md`](EVAL_PLAN.md) | Transcript Edge/Gemini · 2 người chấm tay · **`docs/EVAL_REPORT.md` chưa tồn tại** (deliverable bắt buộc) |
+| **Eval tự động** | T-M2-12 · T-M2-13 · T-M2-14 ✅ *(2026-11-11)* | Contract `evalTaskSchema` + `EVAL_GROUPS` 8 nhóm (T-M1-14, commit `03a1d69`) · CLI `apps/eval` (dataset loader + subcommand `logs`) · `request_logs` đủ metric đo (T-M1-14) · **`tool_calls` jsonb đã có dữ liệu thật** (T-M2-07) | ~~dataset rỗng · snapshots · runners · judge~~ → **đã xong**: `dataset/tasks.json` (**52 task**) · `dataset/snapshots/*` (**47 file**) · `dataset/assets/*` · `dataset_meta.json` · `src/snapshot.ts` + `src/collect.ts` · `src/sse.ts` + `src/runners/ours.ts` + `src/metrics/aggregate.ts` · `src/judge/{prompt,blind,run_judge}.ts` |
+| **Eval — cần người thật** | T-M2-15 · T-M2-16 · T-M2-17 | Template rubric trong [`EVAL_PLAN.md`](EVAL_PLAN.md) · **harness + judge đã sẵn sàng** (T-M2-13/14) → chỉ còn dữ liệu người thật | Transcript Edge/Gemini · 2 người chấm tay · **`docs/EVAL_REPORT.md` chưa tồn tại** (deliverable bắt buộc) |
 | **Could — cắt được** | T-M2-18 · T-M2-19 · T-M2-20 · T-M2-22 | Tool registry + agent loop + approval gate (T-M2-07/09) | Agentic action (tool ghi dữ liệu thật → plan + diff) · context policy theo domain · web search tool · chụp vùng/OCR/alt text |
 
 #### 4.1.5 Việc tiếp theo trong M2

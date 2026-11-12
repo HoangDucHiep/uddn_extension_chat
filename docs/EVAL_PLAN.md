@@ -465,59 +465,101 @@ notes: "Không có citation dạng link, chỉ có số đoạn"
 
 ## 7. Công cụ & cấu trúc repo eval
 
+> **Cập nhật 2026-11-11 (T-M2-12/13/14)** — cây thư mục dưới đây **khớp code thật**. Chi tiết thiết kế: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.28.
+
 ```text
 apps/eval/
 ├─ dataset/
-│  ├─ tasks.json              # task định nghĩa (đã version)
-│  ├─ dataset_meta.json       # version, ngày, người soạn, checksum
-│  └─ snapshots/              # nội dung trang snapshot cho từng task
+│  ├─ tasks.json              # 52 task / 8 nhóm (T-M2-12)
+│  ├─ dataset_meta.json       # version, ngày, URL nguồn, license, checksum
+│  ├─ snapshots/              # 47 file text — nội dung trang đóng băng
+│  └─ assets/                 # 4 ảnh PNG nhỏ cho nhóm `vision`
+├─ scripts/
+│  └─ build-tasks.mjs         # script sinh lại `tasks.json`
 ├─ src/
-│  ├─ cli.ts                  # CLI (có subcommand `logs` đọc request_logs — T-M1-14)
-│  └─ logs.ts                 # fetchLogs() + fetchUsage() + summarizeLogs() (T-M1-14)
-├─ runners/
-│  ├─ ours.ts                 # gọi BFF của nhóm
-│  ├─ import_manual.ts        # chuẩn hoá transcript thủ công → JSON
-│  └─ browser.ts              # (optional) Playwright cho phần tự động hoá
-├─ judge/
-│  ├─ judge_prompt.md         # rubric + prompt (mục 4.3)
-│  ├─ run_judge.ts            # gọi LLM judge, temperature 0
-│  └─ human_rubric.csv        # bảng chấm tay (Tầng B)
-├─ metrics/
-│  ├─ aggregate.ts            # tính overall, p50/p95, success rate
-│  └─ report.ts               # sinh bảng Markdown + radar chart
-├─ results/
-│  ├─ ours/<run_id>/
-│  ├─ manual/edge_copilot/<run_id>/
-│  ├─ manual/chrome_gemini/<run_id>/
-│  └─ judged/<run_id>/
-└─ reports/
-   └─ EVAL_REPORT.md
+│  ├─ cli.ts                  # dispatcher: collect | run | judge | report | logs
+│  ├─ cliFlags.ts             # parse cờ CLI dùng chung (readFlag/readNumberFlag/…)
+│  ├─ commands/               # 1 file = 1 subcommand (mỗi file < 300 dòng)
+│  │  ├─ collect.ts
+│  │  ├─ run.ts
+│  │  ├─ judge.ts
+│  │  ├─ report.ts
+│  │  └─ logs.ts
+│  ├─ logs.ts                 # fetchLogs() + fetchUsage() + summarizeLogs() (T-M1-14)
+│  ├─ dataset.ts              # loader + validate bằng `evalTaskSchema`
+│  ├─ types.ts                # re-export từ `@sidekick/shared`
+│  ├─ snapshot.ts             # htmlToText() + sha256 + đọc/ghi snapshot
+│  ├─ collect.ts              # thu thập trang thật (45 nguồn)
+│  ├─ sse.ts                  # SSE client Node (đo TTFT/latency)
+│  ├─ runners/
+│  │  └─ ours.ts              # gọi BFF của nhóm + ghi transcript
+│  ├─ judge/
+│  │  ├─ prompt.ts            # rubric + prompt judge (§4.3)
+│  │  ├─ blind.ts             # blind map deterministic (FC-6)
+│  │  └─ run_judge.ts         # gọi LLM judge, temperature 0
+│  ├─ metrics/
+│  │  └─ aggregate.ts         # overall, p50/p95, success rate, cost
+│  ├─ results/
+│  │  └─ judgeStore.ts        # kiểu + đọc/ghi kết quả judge (trung lập)
+│  └─ ...
+├─ results/                   # ⚠️ git-ignore — dữ liệu thô
+│  ├─ ours/<run_id>/          # transcript hệ thống của nhóm
+│  ├─ judged/<run_id>/        # điểm judge
+│  └─ <run_id>/blind_map.json # map thật ↔ nhãn giả (mở sau khi chấm)
+├─ reports/
+│  └─ summary-<run_id>.json   # ✅ commit — bản tổng hợp
+└─ tests/                     # snapshot · datasetQuality · aggregate · judge · blind · sse · cliFlags · mergeRuns
 ```
 
-> Đường dẫn repo là monorepo pnpm: `apps/eval/`. Bản `docs/EVAL_REPORT.md` được **commit** vào repo; `apps/eval/results/raw/` bị git-ignore (dữ liệu thô).
+> Đường dẫn repo là monorepo pnpm: `apps/eval/`. Bản `docs/EVAL_REPORT.md` được **commit** vào repo; `apps/eval/results/**` bị git-ignore (dữ liệu thô) — chỉ `apps/eval/reports/summary-*.json` được commit.
 
 ### 7.1 Lệnh vận hành
 
 ```bash
 # 0. Đọc log đã ghi (metadata) — dùng để đối chiếu metric
-pnpm eval:run logs -- --limit 20
+pnpm eval:run logs --limit 20
 
-# 1. Hạ dataset + chạy hệ thống của nhóm
-pnpm eval:run -- --tasks apps/eval/dataset/tasks.json --runs 3
+# 1. Thu thập snapshot trang thật (idempotent — chạy lại không hỏng dataset)
+pnpm eval:collect
 
-# 2. Nhập transcript thủ công (Edge/Gemini) — có template hướng dẫn
-pnpm eval:import -- --system edge_copilot --run 1
+# 2. Chạy hệ thống của nhóm trên dataset (n=3 theo FC-5)
+pnpm eval:run -- run --runs 3 --provider gemini --model gemini-2.5-flash
 
-# 3. Chấm điểm bằng LLM judge
-pnpm eval:judge -- --run <run_id> --judge gemini-2.5-pro
+# 3. Chấm điểm bằng LLM judge (temperature 0 + blind mapping)
+pnpm eval:judge -- --run <run_id>
 
 # 4. Tổng hợp + sinh báo cáo
-pnpm eval:report -- --run <run_id> --out docs/EVAL_REPORT.md
+pnpm eval:report -- --run <run_id>
 ```
+
+**Lệnh dùng khi BFF chưa chạy / Docker tắt:** `pnpm eval:run -- run --dry-run` — in kế hoạch chạy, **không** gọi mạng.
+
+**Yêu cầu môi trường:** BFF đang chạy ở `http://127.0.0.1:8787` (đổi bằng `--base-url` hoặc env `SIDECKICK_BFF_URL`) + Postgres (Docker Compose) + **key provider** trong `apps/server/.env`.
+
+#### 7.1.1 Cờ của subcommand `run`
+
+| Cờ | Mặc định | Ý nghĩa |
+|---|---|---|
+| `--run-id <id>` | `run-<ngày>-<uuid6>` | Tên thư mục kết quả. Dùng lại id cũ + `--merge` để chạy tiếp. |
+| `--runs <n>` | `EVAL_RUNS_PER_TASK` = 3 | Số lần chạy mỗi task (FC-5). |
+| `--tasks <a,b,…>` | tất cả | Chỉ chạy các task id này (danh sách phân tách bằng **phẩy hoặc khoảng trắng** — một số shell biến phẩy thành khoảng trắng). |
+| `--group <g>` / `--lang <l>` | — | Lọc theo nhóm task / ngôn ngữ. |
+| `--limit <n>` | — | Giới hạn số task (chạy thử). |
+| `--provider` / `--model` | `gemini` / `gemini-2.5-flash` | Provider + model đo. |
+| `--base-url <url>` | `http://127.0.0.1:8787` | BFF. |
+| `--delay <ms>` | `1500` | **Nghỉ giữa 2 lượt** — provider free tier (Gemini) giới hạn RPM. |
+| `--merge` | tắt | Gộp kết quả vào run cũ: lượt **mới thành công** ghi đè lượt lỗi, lượt **đã thành công** được giữ nguyên. |
+| `--dry-run` | tắt | Chỉ in kế hoạch, không gọi BFF. |
+
+> **`--merge` chỉ chạy lại lượt bị lỗi.** Provider free tier rất hạn chế (Gemini 429 quota · Groq 413/TPM · OpenRouter 402 hạn mức ngày) → chạy lại toàn bộ sẽ vừa tốn quota vừa có nguy cơ đè kết quả tốt đã có. Khi gặp lỗi provider tạm thời, chạy lại đúng lệnh cũ kèm `--merge` là đủ.
 
 ### 7.2 Blind labeling
 
 Trước khi judge, mapping thật → nhãn giả được lưu ở `apps/eval/results/<run_id>/blind_map.json` (chỉ mở sau khi chấm xong). Judge chỉ nhận nhãn giả.
+
+- Map **deterministic** theo seed (FNV-1a) → cùng `run_id` cho ra cùng map → **tái lập được** (không random thuần → không tái lập metric).
+- Nhãn dùng trong judge: `system_A` · `system_B` · `system_C` (3 hệ thống: Sidekick · Edge Copilot · Chrome Gemini).
+- Quan hệ **1-1** → mỗi hệ thống đúng 1 nhãn.
 
 ---
 

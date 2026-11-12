@@ -24,16 +24,16 @@
 | Hạng mục | Trạng thái |
 |---|---|
 | Docs | ✅ Đầy đủ 11 file (`docs/`) + `AGENTS.md` ở root |
-| Code | ✅ **M1 (Parity) ĐÓNG** — 23/25 task (T-M1-15 + T-M1-16 ⏸ tạm dừng) — 4 workspace, **1848 unit test + 108 E2E** · **M2 đang làm** (T-M2-02 ✅ · T-M2-03 ✅ · T-M2-03b ✅ · T-M2-04 ✅ · T-M2-05 ✅ · T-M2-06 ✅ · T-M2-21 ✅ · **T-M2-07 ✅** · **T-M2-09 ✅** · **T-M2-08 ✅** · kiểm chứng live Chrome **15/15** mục §11b) |
+| Code | ✅ **M1 (Parity) ĐÓNG** — 23/25 task (T-M1-15 + T-M1-16 ⏸ tạm dừng) — 4 workspace, **1962 unit test + 108 E2E** · **M2 đang làm** (T-M2-02 ✅ · T-M2-03 ✅ · T-M2-03b ✅ · T-M2-04 ✅ · T-M2-05 ✅ · T-M2-06 ✅ · T-M2-21 ✅ · **T-M2-07 ✅** · **T-M2-09 ✅** · **T-M2-08 ✅** · **T-M2-12 ✅** · **T-M2-13 ✅** · **T-M2-14 ✅** · kiểm chứng live Chrome **15/15** mục §11b) |
 | Git | ✅ Đã init (`main`) · tag `v0.1` (M0) · tag **`v0.2`** (M1 đóng 2026-11-09) |
 | Milestone hiện tại | **M2 — Advanced & Eval** (M0 ✅ · M1 ✅) |
-| Task tiếp theo | **T-M2-12 → 17** (eval — deliverable bắt buộc `docs/EVAL_REPORT.md`) — RAG (T-M2-10/11) đã **hoãn** 2026-11-11 |
+| Task tiếp theo | **T-M2-15 → 17** (eval — **cần người thật**: thu thập transcript Edge/Gemini · chấm tay 2 người · `docs/EVAL_REPORT.md`) — RAG (T-M2-10/11) đã **hoãn** 2026-11-11 |
 
 ### Đang làm dở
 
 _(Không có — M1 đóng xong 2026-11-09, tag `v0.2`)_
 
-### M2 — tiến độ (2026-11-11) — **10/23 task ✅**
+### M2 — tiến độ (2026-11-11) — **13/23 task ✅**
 
 | Nhóm / Task | Trạng thái | Ghi chú |
 |---|---|---|
@@ -41,7 +41,8 @@ _(Không có — M1 đóng xong 2026-11-09, tag `v0.2`)_
 | **Nhóm Skills** — T-M2-04 · T-M2-05 · T-M2-06 · T-M2-21 | ✅ **xong** | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.25 (menu `/` + CRUD) · §7.25.8 (import/export JSON) · §7.25.9 (library browser lọc theo tag) · §7.25.10 (**9** skill built-in + điều kiện tab, migration `0005_skill_tab_condition.sql`) |
 | T-M2-01 Multi-provider (OpenAI/Anthropic) | ⏸ **đẩy lại** | Quyết định user 2026-11-10: **không thêm provider mới** → giữ nguyên `PROVIDER_IDS` (`mock · groq · openrouter · gemini · ollama`). Phần "model list động" đã xong trong T-M2-02 |
 | **Nhóm Tools/MCP/RAG** — T-M2-07 → T-M2-11 | 🟡 **3/5 xong + RAG ⏸** | **T-M2-07 ✅** tool registry + builtin calculator + agent loop · **T-M2-09 ✅** tool call UI + approval gate · **T-M2-08 ✅** MCP client (stdio) + server manager + UI Settings · **T-M2-10 + T-M2-11 (RAG) ⏸ hoãn 2026-11-11** (quyết định user) — xem "Quyết định mới" bên dưới |
-| **Nhóm Eval** — T-M2-12 → T-M2-17 | ⬜ **chưa bắt đầu — khối TIẾP THEO (ưu tiên 1)** | Nền có sẵn: contract `evalTaskSchema` + `EVAL_GROUPS` 8 nhóm + CLI `apps/eval` · `request_logs` đủ metric đo (T-M1-14) · `tool_calls` jsonb đã có dữ liệu thật (T-M2-07) · `citations.snippet` hỗ trợ đo `citation_precision`. Dataset `apps/eval/dataset/tasks.json` đang **rỗng `[]`** · `docs/EVAL_REPORT.md` **chưa tồn tại** (deliverable bắt buộc) |
+| **Nhóm Eval (tự động)** — T-M2-12 · T-M2-13 · T-M2-14 | ✅ **xong 2026-11-11** | **T-M2-12 ✅** dataset **52 task / 8 nhóm** + 47 snapshot trang thật + 4 ảnh + `dataset_meta.json` · **T-M2-13 ✅** SSE client + runner + metrics aggregator (`overallScore` · p50/p95 · success rate · cost/task) · **T-M2-14 ✅** LLM-as-judge (`temperature: 0` · strict JSON) + blind map deterministic → [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) **§4.5 + §7.28** |
+| **Nhóm Eval (cần người thật)** — T-M2-15 → T-M2-17 | ⬜ **chưa bắt đầu — khối TIẾP THEO (ưu tiên 1)** | **Harness + judge đã sẵn sàng** (T-M2-13/14) → chỉ còn dữ liệu người thật: transcript Edge/Gemini (n=3) · chấm tay Tầng B (2 người) · **`docs/EVAL_REPORT.md` chưa tồn tại** (deliverable bắt buộc) |
 | **Nhóm Could** — T-M2-18 · T-M2-19 · T-M2-20 · T-M2-22 | ⬜ **chưa bắt đầu** | Agentic action · context policy theo domain · web search tool · vision mở rộng — **cắt được** nếu thiếu thời gian (xem §10) |
 
 > **Bảng kết quả chi tiết của M2** (trạng thái task · verify · commit · ảnh hưởng gate parity · trạng thái nền nhóm còn lại) nằm ở [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) **§4.1** — đọc ở đó thay vì tra lại từng file.
@@ -66,22 +67,54 @@ _(Không có — M1 đóng xong 2026-11-09, tag `v0.2`)_
 
 **Docs đã đồng bộ (2026-11-11):** `docs/COMPARISON_MATRIX.md` (§C7 ⏸ · §B15 N/A · §D dòng "RAG local" · §E.1.8 mới) · `docs/REQUIREMENTS.md` (FR-TOOLS-05 ⏸ · bảng coverage FR · §9.2 · §9.3) · `docs/IMPLEMENTATION_PLAN.md` (bảng task M2 · §4.1 · §4.1.4 · §4.1.5 · §8 · §10) · `AGENTS.md` (§6) · `docs/CHANGELOG.md` · `docs/README.md`.
 
-### Chuẩn bị cho Eval (T-M2-12 → 17) — bảng làm việc cho session sau
+### Chuẩn bị cho Eval (T-M2-15 → 17) — bảng làm việc cho session sau
+
+> **T-M2-12/13/14 đã xong (2026-11-11)** → phần **tự động** của Eval đã sẵn sàng. Dưới đây là phần **cần người thật**.
 
 | Task | Nội dung | File đích |
 |---|---|---|
-| T-M2-12 | Dataset ≥ 48 task × 8 nhóm + snapshot trang + `must_include_facts` | `apps/eval/dataset/tasks.json` (đang rỗng `[]`) + `apps/eval/dataset/snapshots/*` |
-| T-M2-13 | Harness runner gọi `POST /api/chat` của BFF, đo TTFT/latency/token/cost | `apps/eval/runners/ours.ts` + `apps/eval/metrics/aggregate.ts` |
-| T-M2-14 | Judge prompt + runner (temperature 0) + `blind_map.json` | `apps/eval/judge/{prompt.ts,run_judge.ts}` |
+| ~~T-M2-12~~ | ~~Dataset ≥ 48 task × 8 nhóm + snapshot trang~~ | ✅ **xong** — `apps/eval/dataset/tasks.json` (**52 task**) + `dataset/snapshots/*` (**47**) + `dataset/assets/*` + `dataset_meta.json` |
+| ~~T-M2-13~~ | ~~Harness runner gọi `POST /api/chat` của BFF~~ | ✅ **xong** — `apps/eval/src/sse.ts` + `src/runners/ours.ts` + `src/metrics/aggregate.ts` |
+| ~~T-M2-14~~ | ~~Judge prompt + runner + `blind_map.json`~~ | ✅ **xong** — `apps/eval/src/judge/{prompt,blind,run_judge}.ts` |
 | T-M2-15 | Transcript thủ công Edge + Gemini (n=3) | `apps/eval/results/manual/**` — **cần người thật** |
 | T-M2-16 | Chấm tay Tầng B (2 người) → ρ (human vs judge) + κ (human vs human) | `apps/eval/results/human_rubric.csv` — **cần người thật** |
 | T-M2-17 | Báo cáo `EVAL_REPORT.md` + radar chart | `docs/EVAL_REPORT.md` — **deliverable bắt buộc** |
 
-**Nền đã có sẵn (không phải làm lại):** contract dataset `packages/shared/src/schemas/eval.ts` (`evalTaskSchema` + `EVAL_GROUPS` 8 nhóm) → `apps/eval` validate bằng đúng schema đó · loader + filter `apps/eval/src/dataset.ts` (`loadDataset` + `filterTasks`) · CLI `apps/eval/src/cli.ts` (hiện có subcommand `logs`) · metric server đã ghi: `request_logs` (`ttft_ms` · `latency_ms` · `tokens_in/out` · `cost_usd` · `tool_calls` jsonb) + bảng `tool_calls` (T-M2-07) + `citations.snippet` (T-M1-08 → hỗ trợ đo `citation_precision`).
+#### Kết quả eval thật đầu tiên (2026-11-12) — run `run-m2-eval-2026-11-11`
+
+> **Đây là số liệu đầu tiên của hệ thống** → dùng làm cột "Sidekick AI" trong `docs/EVAL_REPORT.md`.
+
+| Hạng mục | Kết quả |
+|---|---|
+| Harness | 52 task × 3 lần = **156 lượt** · provider `gemini` / `gemini-3.5-flash` · **141 lượt thành công** (15 lượt lỗi quota provider) |
+| Judge | **141/141** chấm thành công · provider `groq` / `openai/gpt-oss-120b` · `temperature: 0` · blind → `system_A` |
+| Overall | **85.1/100** · task success **80.1%** · hallucination **7.8%** · citation precision **57.8%** · citation recall **78.4%** |
+| Hiệu năng | TTFT p50 **3 127 ms** / p95 **5 665 ms** · latency p50 **3 021 ms** · **88.2 token/s** |
+| Chi phí | tổng **$0.1125** → **$0.0023/task** → **$0.0030/task đạt chuẩn** |
+| Theo nhóm | `doc_extract` 94.0 · `general_qa` 98.5 · `page_qa` 90.8 · `video_transcript` 84.1 · `writing` 83.5 · `summarize` 80.3 · `cross_tab` 79.8 · `vision` 77.6 |
+| Bản tổng hợp | `apps/eval/reports/summary-run-m2-eval-2026-11-11.json` (**đã commit**) |
+
+> **4 bug đã sửa** trong lúc chạy thật (chi tiết: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.28.9): `thinkingConfig` **flatten** sai trong payload Gemini · provider dự phóng dùng nhầm model của provider trước · điểm judge ngoài thang 1–5 bị reject · **ảnh** task `vision` không được đính kèm (đường dẫn asset trỏ ra ngoài monorepo) → điểm nhóm `vision` **14.4 → 77.6**, `general_qa` **52.3 → 98.5**.
+
+**Cách chạy lại phần tự động (đã viết sẵn):**
+
+```bash
+docker compose up -d && pnpm db:migrate && pnpm dev:server
+pnpm eval:collect                                     # thu thập snapshot (idempotent)
+pnpm eval:run -- run --runs 3 --provider gemini --model gemini-3.5-flash --delay 3000
+pnpm eval:judge -- --run <run_id>
+pnpm eval:report -- --run <run_id>
+```
+
+**Nền đã có sẵn (không phải làm lại):** contract dataset `packages/shared/src/schemas/eval.ts` (`evalTaskSchema` + `EVAL_GROUPS` 8 nhóm + `evalJudgeResultSchema`) → `apps/eval` validate bằng đúng schema đó · loader + filter `apps/eval/src/dataset.ts` (`loadDataset` + `filterTasks`) · CLI `apps/eval/src/cli.ts` (subcommand `collect` · `run` · `judge` · `report` · `logs` · `src/commands/*`) · metric server đã ghi: `request_logs` (`ttft_ms` · `latency_ms` · `tokens_in/out` · `cost_usd` · `tool_calls` jsonb) + bảng `tool_calls` (T-M2-07) + `citations.snippet` (T-M1-08 → hỗ trợ đo `citation_precision`).
 
 **Rủi ro cần xử lý:**
-- [`EVAL_PLAN.md`](EVAL_PLAN.md) §10 yêu cầu `must_include_facts` cho ≥ 80% task và ≥ 40% tiếng Việt → dataset **không** được sinh hàng loạt bằng script, phải có đáp án tham chiếu thật.
-- T-M2-15/16 **cần người thật** → phát **song song** với T-M2-12 → 14 (phần tự động) để không bị nghẽn lead-time.
+- **Provider free tier giới hạn RPM** → Gemini trả `429 quota exceeded` khi bắn 156 lượt liên tiếp → dùng cờ **`--delay 3000`** (mặc định 1 500 ms) + cờ **`--merge`** để chạy lại lượt lỗi mà **không** mất lượt tốt đã có.
+- **BFF có thể chết giữa chừng** → mọi lượt judge sẽ fail với `PROVIDER_ERROR` → chạy lại `pnpm eval:judge -- --run <id>` (lệnh tự bỏ qua lượt đã chấm thành công).
+- **Model mặc định `gemini-2.5-flash` đã bị Google thu hồi** → dùng **`gemini-3.5-flash`** (`GEMINI_FALLBACK_MODELS=gemini-3.6-flash,gemini-flash-lite-latest`).
+- **Cờ `--force`** (mới) — chạy lại **toàn bộ** lượt khi **chính harness** bị lỗi (khác `--merge` chỉ chạy lại lượt lỗi).
+- [`EVAL_PLAN.md`](EVAL_PLAN.md) §10 yêu cầu `must_include_facts` cho ≥ 80% task và ≥ 40% tiếng Việt → dataset **không** được sinh hàng loạt bằng script, phải có đáp án tham chiếu thật. *(Đã đạt: 100% · 50% VI — xem T-M2-12.)*
+- T-M2-15/16 **cần người thật** → phát **song song** với phần tự động để không bị nghẽn lead-time.
 
 ### Quyết định mới (2026-11-10) — thứ tự ưu tiên M2
 

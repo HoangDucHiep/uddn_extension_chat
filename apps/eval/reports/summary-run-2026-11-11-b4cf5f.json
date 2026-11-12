@@ -1,0 +1,98 @@
+{
+  "runId": "run-2026-11-11-b4cf5f",
+  "generatedAt": "2026-11-11T16:11:59.750Z",
+  "overall": {
+    "runs": 2,
+    "scoredRuns": 2,
+    "tasks": 2,
+    "rubricAverages": {
+      "R1": 5,
+      "R2": 5,
+      "R3": 5,
+      "R4": 5,
+      "R5": 5,
+      "R7": 5
+    },
+    "overallScore": 100,
+    "groundednessRate": 100,
+    "citationPrecision": 100,
+    "citationRecall": 100,
+    "hallucinationRate": 0,
+    "taskSuccessRate": 100,
+    "ttftP50": 2147,
+    "ttftP95": 2316,
+    "latencyP50": 2162,
+    "latencyP95": 2336,
+    "tokensPerSecond": 36.8,
+    "tokensIn": 15039,
+    "tokensOut": 165,
+    "costUsd": 0.004925,
+    "costPerTask": 0.002463,
+    "costPerCorrectTask": 0.002463,
+    "errors": 0
+  },
+  "byGroup": {
+    "page_qa": {
+      "runs": 2,
+      "scoredRuns": 2,
+      "tasks": 2,
+      "rubricAverages": {
+        "R1": 5,
+        "R2": 5,
+        "R3": 5,
+        "R4": 5,
+        "R5": 5,
+        "R7": 5
+      },
+      "overallScore": 100,
+      "groundednessRate": 100,
+      "citationPrecision": 100,
+      "citationRecall": 100,
+      "hallucinationRate": 0,
+      "taskSuccessRate": 100,
+      "ttftP50": 2147,
+      "ttftP95": 2316,
+      "latencyP50": 2162,
+      "latencyP95": 2336,
+      "tokensPerSecond": 36.8,
+      "tokensIn": 15039,
+      "tokensOut": 165,
+      "costUsd": 0.004925,
+      "costPerTask": 0.002463,
+      "costPerCorrectTask": 0.002463,
+      "errors": 0
+    }
+  },
+  "byLang": {
+    "vi": {
+      "runs": 2,
+      "scoredRuns": 2,
+      "tasks": 2,
+      "rubricAverages": {
+        "R1": 5,
+        "R2": 5,
+        "R3": 5,
+        "R4": 5,
+        "R5": 5,
+        "R7": 5
+      },
+      "overallScore": 100,
+      "groundednessRate": 100,
+      "citationPrecision": 100,
+      "citationRecall": 100,
+      "hallucinationRate": 0,
+      "taskSuccessRate": 100,
+      "ttftP50": 2147,
+      "ttftP95": 2316,
+      "latencyP50": 2162,
+      "latencyP95": 2336,
+      "tokensPerSecond": 36.8,
+      "tokensIn": 15039,
+      "tokensOut": 165,
+      "costUsd": 0.004925,
+      "costPerTask": 0.002463,
+      "costPerCorrectTask": 0.002463,
+      "errors": 0
+    }
+  }
+}
