@@ -59,6 +59,16 @@ export const ERROR_CODES = {
   /** Provider/model hien tai khong ho tro xu ly anh. */
   PROVIDER_VISION_UNSUPPORTED: 'PROVIDER_VISION_UNSUPPORTED',
 
+  // Tai lieu dinh kem (FR-CONTEXT-14 — T-M2-23)
+  /** Khong phai dinh dang tai lieu duoc phep (vd `.xlsx`, `.doc` binary). */
+  DOCUMENT_UNSUPPORTED_TYPE: 'DOCUMENT_UNSUPPORTED_TYPE',
+  /** File vuot gioi han kich thuoc. */
+  DOCUMENT_TOO_LARGE: 'DOCUMENT_TOO_LARGE',
+  /** File hong / khong doc duoc noi dung (vd PDF scan khong co text layer). */
+  DOCUMENT_NOT_READABLE: 'DOCUMENT_NOT_READABLE',
+  /** File khong co noi dung text nao. */
+  DOCUMENT_EMPTY: 'DOCUMENT_EMPTY',
+
   // Budget cap (FR-PROVIDER-06 — T-M2-03b)
   /** Chi phi da vuot han muc → server chan luot chat moi. */
   BUDGET_EXCEEDED: 'BUDGET_EXCEEDED',
@@ -107,6 +117,11 @@ export const ERROR_STATUS_MAP: Record<ErrorCode, number> = {
   VISION_TOO_MANY_IMAGES: 400,
   VISION_TOTAL_TOO_LARGE: 413,
   PROVIDER_VISION_UNSUPPORTED: 400,
+
+  DOCUMENT_UNSUPPORTED_TYPE: 400,
+  DOCUMENT_TOO_LARGE: 413,
+  DOCUMENT_NOT_READABLE: 422,
+  DOCUMENT_EMPTY: 422,
 
   BUDGET_EXCEEDED: 402,
 }

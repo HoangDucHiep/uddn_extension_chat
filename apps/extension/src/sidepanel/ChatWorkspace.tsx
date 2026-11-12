@@ -49,6 +49,7 @@ import { useSelection } from './hooks/useSelection'
 import { useTabs } from './hooks/useTabs'
 import { useActivePage } from './hooks/useActivePage'
 import { useImageAttachments } from './hooks/useImageAttachments'
+import { useDocumentAttachments } from './hooks/useDocumentAttachments'
 import { useChatStore, type ChatMessage } from './store/chatStore'
 import { useConversationStore } from './store/conversationStore'
 import { useSkillStore } from './store/skillStore'
@@ -156,6 +157,21 @@ export function ChatWorkspace({
     mention.state.open || isSkillTabPickerOpen,
   )
   const imageAttachments = useImageAttachments()
+  // FR-CONTEXT-14 — tai lieu dinh kem (T-M2-23).
+  const documentAttachments = useDocumentAttachments()
+
+  /** Tai lieu da dinh kem vao context (hien tren AttachmentTray). */
+  const documentItems = useMemo(
+    () =>
+      attachedItems
+        .filter((item) => item.kind === 'file')
+        .map((item) => ({
+          id: item.id,
+          title: item.title,
+          excerpt: item.excerpt,
+        })),
+    [attachedItems],
+  )
 
   // --- FR-SKILL-01: danh sach skill cho menu `/` + drawer (T-M2-04) ---
   const skills = useSkillStore((state) => state.items)
@@ -346,6 +362,24 @@ export function ChatWorkspace({
       setIsAttaching(false)
     })
   }
+
+  /**
+   * Xu ly file user chon (file picker / drag-drop / paste).
+   *
+   * Tach 2 nhanh: anh dinh kem truc tiep vao cau hoi (FR-VISION-01) ·
+   * tai lieu duoc parse o BFF roi dua vao context (FR-CONTEXT-14).
+   */
+  const handleFilesSelected = useCallback((files: readonly File[]): void => {
+    const images = files.filter((file) => file.type.startsWith('image/'))
+    const documents = files.filter((file) => !file.type.startsWith('image/'))
+
+    if (images.length > 0) {
+      void imageAttachments.addFiles(images)
+    }
+    if (documents.length > 0) {
+      void documentAttachments.addFiles(documents)
+    }
+  }, [documentAttachments, imageAttachments])
 
   /**
    * Chay 1 goi y (FR-UX-03 — T-M1-11).
@@ -867,7 +901,9 @@ export function ChatWorkspace({
       <AttachmentTray
         images={imageAttachments.images}
         onRemove={imageAttachments.removeImage}
-        errorMessage={imageAttachments.error?.message}
+        errorMessage={imageAttachments.error?.message ?? documentAttachments.error?.message}
+        documents={documentItems}
+        onRemoveDocument={removeItem}
       />
 
       <Composer
@@ -903,10 +939,8 @@ export function ChatWorkspace({
           skillCommand.close()
         }}
         inputRef={inputRef}
-        onImagesSelected={(files) => {
-          void imageAttachments.addFiles(files)
-        }}
-        isReadingImages={imageAttachments.isReading}
+        onFilesSelected={handleFilesSelected}
+        isReadingFiles={imageAttachments.isReading || documentAttachments.isReading}
       />
 
       {/* Drawer danh sach cuoc tro chuyen (FR-CHAT-09 — T-M1-09). */}

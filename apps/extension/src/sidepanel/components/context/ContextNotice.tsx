@@ -29,6 +29,10 @@ const ERROR_MESSAGE_KEY: Record<string, TranslationKey> = {
   CONTEXT_PDF_UNREACHABLE: 'context.notice.pdfUnreachable',
   CONTEXT_TRANSCRIPT_UNAVAILABLE: 'context.notice.transcriptUnavailable',
   CONTEXT_SELECTION_EMPTY: 'context.notice.selectionEmpty',
+  DOCUMENT_NOT_READABLE: 'context.notice.documentNotReadable',
+  DOCUMENT_UNSUPPORTED_TYPE: 'context.notice.documentUnsupportedType',
+  DOCUMENT_TOO_LARGE: 'context.notice.documentTooLarge',
+  DOCUMENT_EMPTY: 'context.notice.documentEmpty',
 }
 
 /**
@@ -46,6 +50,14 @@ function describeError(errorCode: string): { key: TranslationKey; icon: 'pdf' | 
       return { key: 'context.notice.transcriptUnavailable', icon: 'warning' }
     case 'CONTEXT_SELECTION_EMPTY':
       return { key: 'context.notice.selectionEmpty', icon: 'warning' }
+    case 'DOCUMENT_NOT_READABLE':
+      return { key: 'context.notice.documentNotReadable', icon: 'pdf' }
+    case 'DOCUMENT_UNSUPPORTED_TYPE':
+      return { key: 'context.notice.documentUnsupportedType', icon: 'warning' }
+    case 'DOCUMENT_TOO_LARGE':
+      return { key: 'context.notice.documentTooLarge', icon: 'warning' }
+    case 'DOCUMENT_EMPTY':
+      return { key: 'context.notice.documentEmpty', icon: 'warning' }
     default:
       return { key: ERROR_MESSAGE_KEY[errorCode] ?? 'context.notice.generic', icon: 'warning' }
   }

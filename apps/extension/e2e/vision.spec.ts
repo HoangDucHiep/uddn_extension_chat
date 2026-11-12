@@ -236,14 +236,15 @@ test('file khong phai dinh dang anh → hien loi, khong gui anh', async ({
   await panel.goto(`chrome-extension://${extensionId}/sidepanel.html`)
 
   const filePath = await writeTempFile(
-    'tai-lieu.txt',
-    Buffer.from('day la van ban', 'utf-8'),
+    'chuong-trinh.exe',
+    Buffer.from('day la nhi phan', 'utf-8'),
   )
 
   await panel.getByTestId('composer-file-input').setInputFiles(filePath)
 
-  // File txt khong duoc `accept` → browser/panel tu cho vao khong.
+  // File `.exe` khong duoc `accept` → browser/panel tu cho vao khong.
   // Neu van duoc them → phai hien loi va khong co thumbnail.
+  // (`.txt` khong con la file "khong hop le" — T-M2-23 da ho tro txt/md/csv.)
   const errorCount = await panel.getByTestId('attachment-error').count()
   const thumbCount = await panel.getByTestId('attachment-thumb').count()
 

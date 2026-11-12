@@ -251,9 +251,9 @@ DP-2 quy định thread chat chiếm ≥ 90% không gian panel (DP-1: panel hẹ
 | `ContextBudget` | Hiện "đã dùng X/Y token" + cảnh báo khi sắp vượt | FR-CONTEXT-07 | Người dùng không biết vì sao context bị cắt |
 | `MentionPopover` | `@` → chọn tab | FR-CONTEXT-03 | Điểm parity so với Chrome Gemini |
 | `SkillMenu` | `/` → chọn skill | FR-SKILL-01 | Điểm parity so với Chrome Gemini |
-| `AttachmentTray` | Ảnh chờ gửi | FR-VISION-01 | |
+| `AttachmentTray` | Ảnh chờ gửi + tài liệu đã đính kèm vào context | FR-VISION-01, FR-CONTEXT-14 | |
 | `ProviderBadge` | Chip provider/model + nguồn key đang dùng | FR-PROVIDER-09 | |
-| `ContextNotice` | Banner lỗi trích xuất context (PDF scan, không có caption, không tải được file) — nằm ngay trên Composer, có nút đóng | FR-CONTEXT-05, FR-CONTEXT-06 | Người dùng tưởng chatbot bị hỏng → mất niềm tin |
+| `ContextNotice` | Banner lỗi trích xuất context (PDF scan, không có caption, không tải được file, tài liệu hỏng/không hỗ trợ) — nằm ngay trên Composer, có nút đóng | FR-CONTEXT-05, FR-CONTEXT-06, FR-CONTEXT-14 | Người dùng tưởng chatbot bị hỏng → mất niềm tin |
 
 #### `ContextChips` (đã implement T-M1-23 — hấp thụ T-M1-04)
 
@@ -296,6 +296,22 @@ DP-2 quy định thread chat chiếm ≥ 90% không gian panel (DP-1: panel hẹ
 - Trạng thái đang đọc file → icon `Loader2` xoay, nút disabled.
 - `aria-label="Đính kèm ảnh"` (tiếng Việt).
 - Nút **không** render khi không có handler ảnh (giữ component tái sử dụng được cho context khác).
+
+#### `Composer` — nút đính kèm file (ảnh **hoặc** tài liệu) (đã implement T-M2-23)
+
+- **Đổi từ T-M2-23:** 1 file picker phục vụ **cả** ảnh lẫn tài liệu → icon đổi từ `ImagePlus` → **`Paperclip`** (`lucide-react`).
+- `<input type="file" accept="image/png,image/jpeg,image/webp,image/gif,.pdf,.docx,.txt,.md,.csv" multiple>` **ẩn** (`.hidden`).
+- Prop đổi tên: `onImagesSelected` → **`onFilesSelected`** (nhận **mọi** file) · `isReadingImages` → **`isReadingFiles`**. Việc phân loại ảnh/tài liệu do `ChatWorkspace` đảm nhiệm.
+- Drag-drop & paste: lọc file theo `file.type.startsWith('image/')` **hoặc** `isDocumentFile(file)` (đuôi `.pdf/.docx/.txt/.md/.csv`) → file khác **bỏ qua** (không `preventDefault`).
+- `aria-label="Đính kèm ảnh / tài liệu"` · `data-testid="composer-file-button"`.
+
+#### `AttachmentTray` — danh sách tài liệu (đã implement T-M2-23)
+
+- **Vị trí:** trong `AttachmentTray`, **dưới** hàng thumbnail ảnh (nếu có) — mỗi tài liệu 1 dòng dạng chip ngang.
+- **Nội dung:** icon `FileText` (`lucide-react`) · **tên file** (`truncate` — không tràn ngang ở panel 320 px) · nút ✕ để bỏ tài liệu khỏi context.
+- **Token:** `--surface-raised` (nền dòng) · `--border-default` (viền) · `--text-secondary` (tên file) · `--text-tertiary` (icon ✕) · `--font-size-xs` · `--radius-md` · `--radius-sm`.
+- **A11y:** nút ✕ có `aria-label="Xoa context {title}"` (tiếng Việt) · focus ring `--focus-ring` · `title` của dòng = **trích đan** nội dung tài liệu (để hover xem trước).
+- **Không render** khi không có ảnh, không có tài liệu và không có lỗi → panel giữ gọn.
 
 #### `ContextNotice` (đã implement T-M1-21/T-M1-22)
 

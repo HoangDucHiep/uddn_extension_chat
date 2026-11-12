@@ -9,6 +9,30 @@
 ## [Unreleased]
 
 ### Added
+- **T-M2-23 — Upload tài liệu đính kèm PDF / DOCX / TXT / MD / CSV (FR-CONTEXT-14)**
+  - **Contract (`packages/shared/src/schemas/document.ts` — mới):** `DOCUMENT_KINDS` (`pdf` · `docx` · `text`) · `documentExtractRequestSchema` (`{ fileName 1–255, mimeType ≤120, data (base64) }`) · `documentExtractResponseSchema` (`{ kind, text, title?, excerpt?, truncated, error?, errorMessage? }`) · `DOCUMENT_ERROR_CODES`.
+  - **Constants (`packages/shared/src/constants.ts`):** `DOCUMENT` (`MAX_BYTES: 8_000_000` · `MAX_PER_MESSAGE: 5` · `ALLOWED_EXTENSIONS` · `ALLOWED_MIME_TYPES` · `MAX_BASE64_CHARS`) + `API_ROUTES.extractDocument` (`/api/extract/document`).
+  - **Error codes (`packages/shared/src/errors.ts`):** `DOCUMENT_UNSUPPORTED_TYPE` (400) · `DOCUMENT_TOO_LARGE` (413) · `DOCUMENT_NOT_READABLE` (422) · `DOCUMENT_EMPTY` (422).
+  - **`contextItemSchema`:** thêm 2 field optional `fileName` · `mimeType` (không đụng `sourceKind`).
+  - **Server (`apps/server/src/lib/documentExtractor.ts` — mới):** `detectDocumentKind()` **sniff magic byte trước** (`%PDF` → `pdf` · `PK\x03\x04` → `docx` · còn lại theo đuôi file) · `extractDocumentText()` (PDF → tái dùng `extractPdfText` của T-M1-21 · DOCX → `mammoth@^1.13.0` · TXT/MD/CSV → `TextDecoder` UTF-8 + bỏ BOM + chặn byte NUL) · `normalizeText()` · cắt `LIMITS.MAX_EXTRACT_TEXT_CHARS` (40 000) → `truncated` · `excerpt` 500 ký tự.
+  - **Endpoint mới `POST /api/extract/document` (`apps/server/src/routes/extract.ts`):** nhận `{ fileName, mimeType, data (base64) }` · **luôn trả HTTP 200** cho lỗi nghiệp vụ (`error` trong body) · 400 khi body sai schema · 413 khi file > 8 MB. `express.json({ limit: '16mb' })` **không** đổi (8 MB → base64 ≈ 10.7 MB).
+  - **Extension:** `apps/extension/src/lib/documentUpload.ts` (mới — `validateDocumentFile` · `readFileAsBase64` · `requestDocumentExtract` **không bao giờ throw**) · `apps/extension/src/sidepanel/hooks/useDocumentAttachments.ts` (mới — tạo `ContextItem kind:'file'` + `tier:'attachment'`) · `Composer.tsx` (1 file picker phục vụ ảnh **+** tài liệu · prop `onImagesSelected` → `onFilesSelected` · `isReadingImages` → `isReadingFiles` · icon `ImagePlus` → `Paperclip`) · `AttachmentTray.tsx` (danh sách tài liệu + icon `FileText` + nút xoá) · `ChatWorkspace.tsx` (tách file → ảnh / tài liệu) · `ContextNotice.tsx` (mapping 4 error code mới) · i18n VI/EN (10 khoá mới).
+  - **Quyết định (user, 2026-11-12):** định dạng **core** (`pdf` · `docx` · `txt`/`md`/`csv`) + **no-persist** (chỉ sống trong phiên panel — **không** migration, **không** bảng DB).
+  - **Test:** `packages/shared/tests/documentSchema.test.ts` · `apps/server/tests/documentExtractor.test.ts` (PDF mini + DOCX mini tạo tay) · `apps/server/tests/extractRoute.test.ts` (mở rộng) · `apps/extension/tests/documentUpload.test.ts` · `apps/extension/tests/useDocumentAttachments.test.ts` · `apps/extension/tests/AttachmentTray.test.tsx` (cập nhật) · `apps/extension/e2e/vision.spec.ts` (fixture `.txt` → `.exe`).
+
+### Changed
+- `POST /api/extract/document` trả `413` với code `PAYLOAD_TOO_LARGE` khi body vượt `express.json({ limit })` — trước đó là `500` (`apps/server/src/middleware/error.ts`).
+- `Composer` nhận **mọi** file (ảnh + tài liệu) qua 1 input — `apps/extension/src/i18n/vi.ts` + `en.ts`: `composer.pickImage`/`composer.attachImage` → `composer.pickFile`/`composer.attachFile`.
+
+### Docs
+- `REQUIREMENTS.md` — thêm **FR-CONTEXT-14** (M) + cập nhật bảng mapping FR → task.
+- `SYSTEM_DESIGN.md` — thêm **§7.29** (endpoint · contract · parser · extension · quyết định no-persist · giới hạn) + cập nhật **§4.1** (bảng endpoint).
+- `IMPLEMENTATION_PLAN.md` — thêm task card **T-M2-23** · tiến độ M2 **13/23 → 14/24**.
+- `COMPARISON_MATRIX.md` — thêm dòng **§C17** (upload tài liệu — **độc quyền**) + dòng §D.
+- `DESIGN_SYSTEM_BRIEF.md` — mô tả nút `Paperclip` + danh sách tài liệu trong `AttachmentTray`.
+- `AGENTS.md` §6 + `docs/README.md` — cập nhật số liệu M2.
+
+### Added
 - **T-M2-12 — Eval dataset: 52 task / 8 nhóm + snapshot từ trang thật**
   - **Contract (`packages/shared/src/schemas/eval.ts`):** `evalAssetSchema` (`kind: 'image' | 'pdf'` · `path` · `mime_type` · `bytes` · `description?`) · `evalContextModeSchema` (`'none' | 'page' | 'pages'`) · `evalJudgeScoresSchema` (R1–R5 + R7, số nguyên 1–5) · `evalJudgeResultSchema` (`{ scores, missing_key_points[], hallucinated_claims[], citation_check: { cited, verified }, reasoning }`) · mở rộng `evalTaskSchema` với **`pages?`** (nhóm `cross_tab`) · **`assets?`** (nhóm `vision` / `doc_extract`) · **`context_mode?`** (nhóm `general_qa` dùng `'none'` → chat thuần LLM theo FC-12). Mọi field mới **optional** → dataset M1 vẫn hợp lệ.
   - **Bộ thu thập snapshot (`apps/eval/src/snapshot.ts` + `apps/eval/src/collect.ts`):** `htmlToText()` thuần Node (bỏ `script`/`style`/`nav`/`footer`/`header`/`aside` · ưu tiên `article` → `main` → `body` · chuẩn hoá whitespace · cắt tại `LIMITS.MAX_PAGE_TEXT_CHARS`) · `sha256Content()` · `readSnapshot`/`writeSnapshot`/`loadSnapshotWithHash` · `collectAll()` thu **45 nguồn thật** (Wikipedia VI/EN · developer.chrome.com · web.dev · MDN · docs.python.org · kubernetes.io · postgresql.org · react.dev · arxiv PDF · YouTube transcript · ảnh logo).

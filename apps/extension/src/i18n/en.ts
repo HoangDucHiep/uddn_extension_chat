@@ -34,8 +34,8 @@ export const enDictionary: Dictionary = {
   // --- composer ---
   'composer.placeholder': 'Ask Sidekick AI about the current page... (type @ to attach a tab)',
   'composer.inputLabel': 'Enter your question',
-  'composer.pickImage': 'Choose image to attach',
-  'composer.attachImage': 'Attach image',
+  'composer.pickFile': 'Choose an image or document to attach',
+  'composer.attachFile': 'Attach image / document',
   'composer.stop': 'Stop generating',
   'composer.send': 'Send question',
   'composer.mentionLabel': 'Choose a tab to attach',
@@ -78,6 +78,14 @@ export const enDictionary: Dictionary = {
   'vision.tooManyImages': 'You can attach at most {count} images per message.',
   'vision.totalTooLarge': 'The total image size exceeds the limit for one message.',
   'vision.unsupportedType': 'Could not read the file "{name}".',
+
+  // --- document (FR-CONTEXT-14 — T-M2-23) ---
+  'document.tooMany': 'You can attach at most {count} documents per message.',
+  'document.tooLarge': 'The document exceeds the allowed size.',
+  'document.empty': 'The document is empty — there is nothing to read.',
+  'document.notReadable': 'Could not read the document "{name}".',
+  'document.unsupportedType': 'This document format is not supported.',
+  'document.added': 'Attached document "{name}".',
 
   // --- conversation list ---
   'conversation.new': 'New conversation',
@@ -219,6 +227,12 @@ export const enDictionary: Dictionary = {
   'context.notice.selectionEmptyHint':
     'Highlight a passage on the page before pasting it.',
   'context.notice.generic': 'Could not extract this page’s content — you can still chat normally.',
+  'context.notice.documentNotReadable':
+    'Could not read this document (corrupt file, scanned PDF without a text layer, or binary format).',
+  'context.notice.documentUnsupportedType':
+    'Only PDF, DOCX, TXT, MD and CSV documents are supported.',
+  'context.notice.documentTooLarge': 'The document exceeds 8 MB — please choose a smaller one.',
+  'context.notice.documentEmpty': 'The document is empty — there is nothing to read.',
 
   // --- onboarding ---
   'onboarding.step.permissions': 'Permissions',

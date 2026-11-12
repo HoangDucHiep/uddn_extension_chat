@@ -41,8 +41,8 @@ export const viDictionary = {
   // --- composer ---
   'composer.placeholder': 'Hoi Sidekick AI ve trang dang mo... (go @ de dinh kem tab)',
   'composer.inputLabel': 'Nhap cau hoi',
-  'composer.pickImage': 'Chon anh de dinh kem',
-  'composer.attachImage': 'Dinh kem anh',
+  'composer.pickFile': 'Chọn ảnh hoặc tài liệu để đính kèm',
+  'composer.attachFile': 'Đính kèm ảnh / tài liệu',
   'composer.stop': 'Dung tao cau tra loi',
   'composer.send': 'Gui cau hoi',
   'composer.mentionLabel': 'Chon tab de dinh kem',
@@ -85,6 +85,14 @@ export const viDictionary = {
   'vision.tooManyImages': 'Chỉ đính kèm được tối đa {count} ảnh mỗi lượt.',
   'vision.totalTooLarge': 'Tổng dung lượng ảnh vượt quá giới hạn cho mỗi lượt.',
   'vision.unsupportedType': 'Không đọc được tệp "{name}".',
+
+  // --- document (FR-CONTEXT-14 — T-M2-23) ---
+  'document.tooMany': 'Chỉ đính kèm được tối đa {count} tài liệu mỗi lượt.',
+  'document.tooLarge': 'Tài liệu vượt quá giới hạn cho phép.',
+  'document.empty': 'Tài liệu rỗng — không có nội dung để đọc.',
+  'document.notReadable': 'Không đọc được tài liệu "{name}".',
+  'document.unsupportedType': 'Định dạng tài liệu không được hỗ trợ.',
+  'document.added': 'Đã đính kèm tài liệu "{name}".',
 
   // --- conversation list ---
   'conversation.new': 'Chat mới',
@@ -226,6 +234,12 @@ export const viDictionary = {
   'context.notice.selectionEmptyHint':
     'Hãy bôi đen một đoạn văn bản trên trang trước khi dính.',
   'context.notice.generic': 'Khong trich duoc noi dung trang nay — ban van chat binh thuong.',
+  'context.notice.documentNotReadable':
+    'Không đọc được tài liệu này (file hỏng, PDF scan không có text layer, hoặc định dạng nhị phân).',
+  'context.notice.documentUnsupportedType':
+    'Chỉ hỗ trợ tài liệu PDF, DOCX, TXT, MD và CSV.',
+  'context.notice.documentTooLarge': 'Tài liệu vượt quá 8 MB — hãy chọn tài liệu nhỏ hơn.',
+  'context.notice.documentEmpty': 'Tài liệu rỗng — không có nội dung để đọc.',
 
   // --- onboarding ---
   'onboarding.step.permissions': 'Quyen',

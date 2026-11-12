@@ -67,11 +67,58 @@ describe('AttachmentTray', () => {
     const tray = screen.getByTestId('attachment-tray')
     expect(tray.textContent).toContain('1 ảnh')
   })
+
+  // --- FR-CONTEXT-14 — tai lieu dinh kem (T-M2-23) ---
+
+  it('hien thi danh sach tai lieu', () => {
+    render(
+      <AttachmentTray
+        images={[]}
+        onRemove={vi.fn()}
+        errorMessage={undefined}
+        documents={[{ id: 'doc-1', title: 'bao-cao.pdf', excerpt: 'trich dan' }]}
+      />,
+    )
+
+    const items = screen.getAllByTestId('document-item')
+    expect(items).toHaveLength(1)
+    expect(items[0]?.textContent).toContain('bao-cao.pdf')
+  })
+
+  it('goi onRemoveDocument voi id dung', () => {
+    const onRemoveDocument = vi.fn()
+    render(
+      <AttachmentTray
+        images={[]}
+        onRemove={vi.fn()}
+        errorMessage={undefined}
+        documents={[{ id: 'doc-1', title: 'bao-cao.pdf', excerpt: undefined }]}
+        onRemoveDocument={onRemoveDocument}
+      />,
+    )
+
+    fireEvent.click(screen.getByLabelText('Xoa context bao-cao.pdf'))
+
+    expect(onRemoveDocument).toHaveBeenCalledWith('doc-1')
+  })
+
+  it('render tray khi chi co tai lieu (khong co anh)', () => {
+    render(
+      <AttachmentTray
+        images={[]}
+        onRemove={vi.fn()}
+        errorMessage={undefined}
+        documents={[{ id: 'doc-1', title: 'a.txt', excerpt: undefined }]}
+      />,
+    )
+
+    expect(screen.getByTestId('attachment-tray')).toBeDefined()
+  })
 })
 
-describe('Composer — dinh kem anh', () => {
-  /** Render composer voi callback dinh kem anh. */
-  function renderComposer(onImagesSelected: (files: readonly File[]) => void) {
+describe('Composer — dinh kem file (anh + tai lieu)', () => {
+  /** Render composer voi callback dinh kem file. */
+  function renderComposer(onFilesSelected: (files: readonly File[]) => void) {
     return render(
       <Composer
         value=""
@@ -79,19 +126,28 @@ describe('Composer — dinh kem anh', () => {
         onSend={vi.fn()}
         onStop={vi.fn()}
         isStreaming={false}
-        onImagesSelected={onImagesSelected}
+        onFilesSelected={onFilesSelected}
       />,
     )
   }
 
-  it('co nut dinh kem anh khi handler duoc truyen', () => {
+  it('co nut dinh kem file khi handler duoc truyen', () => {
     renderComposer(vi.fn())
 
-    expect(screen.getByTestId('composer-image-button')).toBeDefined()
+    expect(screen.getByTestId('composer-file-button')).toBeDefined()
     expect(screen.getByTestId('composer-file-input')).toBeDefined()
   })
 
-  it('khong co nut dinh kem anh khi khong truyen handler', () => {
+  it('file picker chap nhan ca dinh dang tai lieu', () => {
+    renderComposer(vi.fn())
+
+    const input = screen.getByTestId('composer-file-input') as HTMLInputElement
+    expect(input.getAttribute('accept')).toContain('.pdf')
+    expect(input.getAttribute('accept')).toContain('.docx')
+    expect(input.getAttribute('accept')).toContain('.txt')
+  })
+
+  it('khong co nut dinh kem file khi khong truyen handler', () => {
     render(
       <Composer
         value=""
@@ -102,12 +158,12 @@ describe('Composer — dinh kem anh', () => {
       />,
     )
 
-    expect(screen.queryByTestId('composer-image-button')).toBeNull()
+    expect(screen.queryByTestId('composer-file-button')).toBeNull()
   })
 
   it('file picker gui file da chon', () => {
-    const onImagesSelected = vi.fn()
-    renderComposer(onImagesSelected)
+    const onFilesSelected = vi.fn()
+    renderComposer(onFilesSelected)
 
     const input = screen.getByTestId('composer-file-input') as HTMLInputElement
     const file = new File(['x'], 'a.png', { type: 'image/png' })
@@ -115,13 +171,27 @@ describe('Composer — dinh kem anh', () => {
 
     fireEvent.change(input)
 
-    expect(onImagesSelected).toHaveBeenCalledTimes(1)
-    expect(onImagesSelected.mock.calls[0]?.[0]).toHaveLength(1)
+    expect(onFilesSelected).toHaveBeenCalledTimes(1)
+    expect(onFilesSelected.mock.calls[0]?.[0]).toHaveLength(1)
+  })
+
+  it('file picker gui ca tai lieu (khong phai anh)', () => {
+    const onFilesSelected = vi.fn()
+    renderComposer(onFilesSelected)
+
+    const input = screen.getByTestId('composer-file-input') as HTMLInputElement
+    const file = new File(['x'], 'bao-cao.pdf', { type: 'application/pdf' })
+    Object.defineProperty(input, 'files', { value: [file] })
+
+    fireEvent.change(input)
+
+    expect(onFilesSelected).toHaveBeenCalledTimes(1)
+    expect(onFilesSelected.mock.calls[0]?.[0]).toHaveLength(1)
   })
 
   it('paste anh → gui file, chan hanh dong mac dinh', () => {
-    const onImagesSelected = vi.fn()
-    renderComposer(onImagesSelected)
+    const onFilesSelected = vi.fn()
+    renderComposer(onFilesSelected)
 
     const input = screen.getByTestId('composer-input')
     const file = new File(['x'], 'a.png', { type: 'image/png' })
@@ -132,13 +202,30 @@ describe('Composer — dinh kem anh', () => {
     })
     input.dispatchEvent(event)
 
-    expect(onImagesSelected).toHaveBeenCalledTimes(1)
+    expect(onFilesSelected).toHaveBeenCalledTimes(1)
+    expect(event.defaultPrevented).toBe(true)
+  })
+
+  it('paste tai lieu → gui file', () => {
+    const onFilesSelected = vi.fn()
+    renderComposer(onFilesSelected)
+
+    const input = screen.getByTestId('composer-input')
+    const file = new File(['x'], 'ghi-chu.txt', { type: 'text/plain' })
+
+    const event = new Event('paste', { bubbles: true, cancelable: true })
+    Object.defineProperty(event, 'clipboardData', {
+      value: { files: [file] },
+    })
+    input.dispatchEvent(event)
+
+    expect(onFilesSelected).toHaveBeenCalledTimes(1)
     expect(event.defaultPrevented).toBe(true)
   })
 
   it('paste text thuong → KHONG goi handler, KHONG chan', () => {
-    const onImagesSelected = vi.fn()
-    renderComposer(onImagesSelected)
+    const onFilesSelected = vi.fn()
+    renderComposer(onFilesSelected)
 
     const input = screen.getByTestId('composer-input')
     const event = new Event('paste', { bubbles: true, cancelable: true })
@@ -147,7 +234,7 @@ describe('Composer — dinh kem anh', () => {
     })
     input.dispatchEvent(event)
 
-    expect(onImagesSelected).not.toHaveBeenCalled()
+    expect(onFilesSelected).not.toHaveBeenCalled()
     expect(event.defaultPrevented).toBe(false)
   })
 
@@ -162,8 +249,8 @@ describe('Composer — dinh kem anh', () => {
   })
 
   it('drop anh → gui file', () => {
-    const onImagesSelected = vi.fn()
-    renderComposer(onImagesSelected)
+    const onFilesSelected = vi.fn()
+    renderComposer(onFilesSelected)
 
     const composer = screen.getByTestId('composer')
     const file = new File(['x'], 'a.png', { type: 'image/png' })
@@ -173,22 +260,38 @@ describe('Composer — dinh kem anh', () => {
     })
     composer.dispatchEvent(event)
 
-    expect(onImagesSelected).toHaveBeenCalledTimes(1)
+    expect(onFilesSelected).toHaveBeenCalledTimes(1)
     expect(event.defaultPrevented).toBe(true)
   })
 
-  it('drop file khong phai anh → khong gui', () => {
-    const onImagesSelected = vi.fn()
-    renderComposer(onImagesSelected)
+  it('drop tai lieu → gui file (FR-CONTEXT-14)', () => {
+    const onFilesSelected = vi.fn()
+    renderComposer(onFilesSelected)
 
     const composer = screen.getByTestId('composer')
-    const file = new File(['x'], 'a.txt', { type: 'text/plain' })
+    const file = new File(['x'], 'bao-cao.pdf', { type: 'application/pdf' })
     const event = new Event('drop', { bubbles: true, cancelable: true })
     Object.defineProperty(event, 'dataTransfer', {
       value: { files: [file] },
     })
     composer.dispatchEvent(event)
 
-    expect(onImagesSelected).not.toHaveBeenCalled()
+    expect(onFilesSelected).toHaveBeenCalledTimes(1)
+    expect(event.defaultPrevented).toBe(true)
+  })
+
+  it('drop file khong ho tro → khong gui', () => {
+    const onFilesSelected = vi.fn()
+    renderComposer(onFilesSelected)
+
+    const composer = screen.getByTestId('composer')
+    const file = new File(['x'], 'a.exe', { type: 'application/octet-stream' })
+    const event = new Event('drop', { bubbles: true, cancelable: true })
+    Object.defineProperty(event, 'dataTransfer', {
+      value: { files: [file] },
+    })
+    composer.dispatchEvent(event)
+
+    expect(onFilesSelected).not.toHaveBeenCalled()
   })
 })

@@ -1,14 +1,25 @@
-import { X } from 'lucide-react'
+import { FileText, X } from 'lucide-react'
 import { VISION, type ImageAttachment } from '@sidekick/shared'
 import { formatBytes } from '@/lib/imageUpload'
 import { useI18n } from '@/sidepanel/hooks/useI18n'
 
 /**
- * Tray anh cho san — hien thi preview + nut xoa (FR-VISION-01 — T-M1-24).
+ * Tray dinh kem cho san — hien thi preview anh + danh sach tai lieu
+ * (FR-VISION-01 — T-M1-24 · FR-CONTEXT-14 — T-M2-23).
  *
  * Khong hardcode mau — dung design token.
  * Docs: docs/DESIGN_SYSTEM_BRIEF.md §3.4
  */
+
+/** Mot tai lieu da dinh kem (context item dang text). */
+export interface DocumentAttachment {
+  /** Id context item. */
+  id: string
+  /** Ten file goc. */
+  title: string
+  /** Trich dan ngan (neu co). */
+  excerpt: string | undefined
+}
 
 export interface AttachmentTrayProps {
   /** Anh cho san (chua gui). */
@@ -17,6 +28,10 @@ export interface AttachmentTrayProps {
   onRemove: (id: string) => void
   /** Loi hien thi (neu co). */
   errorMessage?: string | undefined
+  /** Tai lieu da dinh kem vao context (FR-CONTEXT-14). */
+  documents?: readonly DocumentAttachment[]
+  /** Xoa mot tai lieu theo id. */
+  onRemoveDocument?: (id: string) => void
 }
 
 /**
@@ -24,10 +39,18 @@ export interface AttachmentTrayProps {
  *
  * Khong co anh → khong render (giu panel gọn).
  */
-export function AttachmentTray({ images, onRemove, errorMessage }: AttachmentTrayProps) {
+export function AttachmentTray({
+  images,
+  onRemove,
+  errorMessage,
+  documents = [],
+  onRemoveDocument,
+}: AttachmentTrayProps) {
   const { t } = useI18n()
 
-  if (images.length === 0 && errorMessage === undefined) return null
+  if (images.length === 0 && errorMessage === undefined && documents.length === 0) {
+    return null
+  }
 
   return (
     <div
@@ -67,6 +90,34 @@ export function AttachmentTray({ images, onRemove, errorMessage }: AttachmentTra
               >
                 <X className="h-3 w-3" aria-hidden="true" />
               </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      {/* FR-CONTEXT-14 — danh sach tai lieu da dinh kem vao context. */}
+      {documents.length > 0 ? (
+        <ul className="flex flex-col gap-1" data-testid="document-list">
+          {documents.map((document) => (
+            <li
+              key={document.id}
+              className="inline-flex max-w-full items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--surface-raised)] px-2 py-1 text-[length:var(--font-size-xs)] text-[var(--text-secondary)]"
+              data-testid="document-item"
+              data-document-id={document.id}
+              title={document.excerpt ?? document.title}
+            >
+              <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
+              <span className="truncate">{document.title}</span>
+              {onRemoveDocument !== undefined ? (
+                <button
+                  type="button"
+                  onClick={() => onRemoveDocument(document.id)}
+                  aria-label={t('context.remove', { title: document.title })}
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--text-tertiary)] transition-colors hover:bg-[var(--surface-sunken)] hover:text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]"
+                >
+                  <X className="h-3 w-3" aria-hidden="true" />
+                </button>
+              ) : null}
             </li>
           ))}
         </ul>

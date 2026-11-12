@@ -46,6 +46,18 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     return
   }
 
+  // Body qua gioi han kich thuoc (`express.json({ limit })`) — vd tai lieu
+  // dinh kem > 16 MB → 413 thay vi 500 (FR-CONTEXT-14 — T-M2-23).
+  if (err instanceof Error && err.name === 'PayloadTooLargeError') {
+    res.status(413).json({
+      error: {
+        code: ERROR_CODES.PAYLOAD_TOO_LARGE,
+        message: 'Body qua gioi han kich thuoc cho phep',
+      },
+    })
+    return
+  }
+
   // Khong log noi dung nhay cam — chi log message + stack.
   console.error('[error]', err instanceof Error ? err.message : String(err))
   if (err instanceof Error && err.stack) {

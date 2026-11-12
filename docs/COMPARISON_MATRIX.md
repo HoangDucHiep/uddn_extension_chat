@@ -117,6 +117,7 @@ Cột ưu tiên: **M** = Must (M1) · **S** = Should (M2) · **C** = Could (M2/M
 | C14 | **Skill library browser nội bộ** (xem/lọc skill) | FR-SKILL-07 | Tương đương `chrome://skills/browse` nhưng không phụ thuộc Google — ✅ **T-M2-06 (2026-11-10)** — tab "Thư viện" trong drawer Kỹ năng · lọc server theo `?q=` (tên/mô tả) + `?tags=` (mode `any`) · chip tag · click card → chạy ngay |
 | C15 | **Scheduler chạy nền trong sidebar, self-hosted, không cần license** | FR-WORKFLOW-03, §4.7 | Đánh trực tiếp A28, B28 — cả hai đều đẩy tính năng này ra khỏi sidebar sang sản phẩm khác (M365 Copilot Tasks / Gemini Apps) |
 | C16 | **Tool registry + agent loop + tool call UI có approval gate** | FR-TOOLS-01/02/04/06 | — (không có ở A/B) — ✅ **T-M2-07 + T-M2-09 (2026-11-11)**: tool registry in-memory + tool built-in `calculator` (shunting-yard, **không** `eval`) · agent loop **tối đa 5 vòng** (`TOOL_LIMITS.MAX_TOOL_ROUNDS`) · server khai báo tool cho provider OpenAI-compatible (`groq`/`openrouter`/`ollama`) + `mock` → model gọi tool → server thực thi → kết quả quay lại model · UI: block collapsible "Đang dùng tool: X" (args + kết quả + trạng thái) trong thread · **approval gate**: tool `requiresApproval` → badge "Cần bạn duyệt" + nút Duyệt/Từ chối → `POST /api/tools/:callId/approve` · tool call ghi vào bảng `tool_calls` + `request_logs.tool_calls` (nguồn dữ liệu cho eval). **Giới hạn:** `gemini` **chưa** hỗ trợ tool (shape function-calling riêng) · MCP **đã có** (T-M2-08 — chỉ transport **stdio**) · **chưa** có tool ghi dữ liệu thật nên luồng "plan + diff" của FR-TOOLS-04 là **hạ tầng**, chưa phải hành vi end-to-end |
+| C17 | **Upload tài liệu cục bộ** (PDF / DOCX / TXT / MD / CSV) làm context | FR-CONTEXT-14 | — (không có ở A/B) — ✅ **T-M2-23 (2026-11-12)**: file picker / drag-drop / paste → BFF parse (`pdfjs-dist` · `mammoth` · `TextDecoder`) → `ContextItem kind:'file'` đi qua ngân sách + prompt + citation. **Giới hạn:** 8 MB / file · 5 tài liệu / lượt · **no-persist** (chỉ sống trong phiên panel) · PDF scan → `DOCUMENT_NOT_READABLE` |
 
 ---
 
@@ -127,6 +128,7 @@ Cột ưu tiên: **M** = Must (M1) · **S** = Should (M2) · **C** = Could (M2/M
 | Lõi chat (streaming, markdown, code) | ✅ | ✅ | ✅ | — |
 | Context trang | ✅ | ✅ (mặc định bật) | ✅ (**đính kèm chủ động** — T-M1-23) | — |
 | Context PDF / video (transcript) | ✅ (A20) | ✅ (B10) | ✅ (T-M1-21/22) | — |
+| Upload tài liệu cục bộ (PDF/DOCX/TXT/MD/CSV) | ➖ | ➖ | ✅ (T-M2-23 — **độc quyền**: parse ở BFF local → context item; no-persist) | — |
 | Multi-tab | ✅ không giới hạn | ✅ tối đa 10 | ✅ không giới hạn | — |
 | Selection → hỏi | ✅ | ✅ | ✅ (T-M1-02) | — |
 | Trích dẫn nguồn (chip + popover) | ✅ | ✅ | ✅ (T-M1-08 — chi tiết hơn: popover xem **đoạn nguồn**) | — |

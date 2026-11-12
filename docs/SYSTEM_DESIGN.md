@@ -333,6 +333,7 @@ X-Request-Id: <uuid v4>            // idempotency + tracing
 | GET | `/attachments/:id` | — | **binary** (`Content-Type` = mime của ảnh) | `NOT_FOUND` |
 | POST | `/extract/pdf` | `{ url }` | `{ text, title?, excerpt?, truncated, error? }` | `VALIDATION_ERROR`, `CONTEXT_PDF_NOT_READABLE`, `CONTEXT_PDF_UNREACHABLE` |
 | POST | `/extract/youtube` | `{ url }` | `{ text, title?, excerpt?, truncated, error? }` | `VALIDATION_ERROR`, `CONTEXT_TRANSCRIPT_UNAVAILABLE` |
+| POST | `/extract/document` ✅ | `{ fileName, mimeType, data (base64) }` | `{ kind: 'pdf'\|'docx'\|'text', text, title?, excerpt?, truncated, error?, errorMessage? }` — **luôn HTTP 200** cho lỗi nghiệp vụ (FR-CONTEXT-14, T-M2-23) | `VALIDATION_ERROR` (400), `DOCUMENT_TOO_LARGE` (413), `PAYLOAD_TOO_LARGE` (413), `DOCUMENT_UNSUPPORTED_TYPE` / `DOCUMENT_NOT_READABLE` / `DOCUMENT_EMPTY` (trong body, HTTP 200) |
 | GET | `/conversations` | `?q=&archived=&limit=&cursor=` ✅ | `{ items, nextCursor }` | `VALIDATION_ERROR` |
 | POST | `/conversations` | `{ title? }` ✅ | `201` + `ConversationSummary` | `VALIDATION_ERROR` |
 | GET | `/conversations/:id/messages` | — ✅ | `{ conversation, messages, path, turns }` (kèm `citations[]` đã lưu + `turnId`/`variantIndex`/`active`/`aborted`; `path` = đường đi active, `turns` = turn + biến thể) | `VALIDATION_ERROR`, `NOT_FOUND` |
@@ -4199,6 +4200,100 @@ Năm lỗi dưới đây **không** lộ ra ở unit test (mock provider không 
 | **Test** | `apps/eval/tests/aggregate.test.ts` — task `context_mode: 'none'` không được tính vào hallucination |
 
 > **Bài học (đưa vào quy trình):** chạy eval **thật** là bắt buộc — 5 lỗi trên **không** lộ ra ở unit test (mock provider không gọi network, mock asset không tồn tại). Cờ `--force` (T-M2-13) cho phép chạy lại **toàn bộ** lượt khi chính harness bị lỗi — khác `--merge` (chỉ chạy lại lượt **lỗi**).
+
+---
+
+### 7.29 Upload tài liệu đính kèm — FR-CONTEXT-14 (T-M2-23)
+
+> Nguồn sự thật cho hành vi: [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.4 FR-CONTEXT-14.
+
+#### 7.29.1 Vì sao tách khỏi đường ảnh (FR-VISION-01)
+
+| Đường | Đơn vị | Đường đi | Lưu DB |
+|---|---|---|---|
+| **Ảnh** (T-M1-24) | `messages[].attachments[]` | base64 → BFF → **multimodal** (model đọc ảnh) | ✅ `message_attachments` |
+| **Tài liệu** (T-M2-23) | `context.items[]` | file → BFF parse → **text** → system prompt | ❌ **no-persist** |
+
+Tài liệu **không** đi qua `message_attachments` → nó là **context item dạng text** → tự động thừa hưởng: ngân sách context (`applyContextBudget` · `tier: 'attachment'`), prompt assembly (`buildContextPrompt`), citation (`citationService`), `context_hash` + `context_snapshot`.
+
+#### 7.29.2 Contract (`packages/shared/src/schemas/document.ts`)
+
+| Export | Ý nghĩa |
+|---|---|
+| `DOCUMENT_KINDS` | `['pdf', 'docx', 'text']` — loại tài liệu server biết parse |
+| `documentExtractRequestSchema` | `{ fileName (1–255), mimeType (≤120), data (base64, ≥1) }` |
+| `documentExtractResponseSchema` | `{ kind, text, title?, excerpt?, truncated, error?, errorMessage? }` |
+| `DOCUMENT_ERROR_CODES` | 4 code: `DOCUMENT_UNSUPPORTED_TYPE` · `DOCUMENT_TOO_LARGE` · `DOCUMENT_NOT_READABLE` · `DOCUMENT_EMPTY` |
+| `DOCUMENT` (constants) | `MAX_BYTES: 8_000_000` · `MAX_PER_MESSAGE: 5` · `ALLOWED_EXTENSIONS` (`.pdf .docx .txt .md .csv`) · `ALLOWED_MIME_TYPES` · `MAX_BASE64_CHARS: 12_000_000` |
+| `API_ROUTES.extractDocument` | `/api/extract/document` |
+
+`contextItemSchema` (shared) thêm 2 field **optional**: `fileName` · `mimeType`. **Không** đụng `sourceKind` (enum `PAGE_KINDS` là loại *trang*, không phải loại *file*).
+
+#### 7.29.3 Endpoint `POST /api/extract/document`
+
+| Mặt | Chi tiết |
+|---|---|
+| **Request** | `{ fileName, mimeType, data }` — `data` là **base64 thuần** (không có prefix `data:...;base64,`) |
+| **Response** | **luôn HTTP 200** cho lỗi nghiệp vụ — `error` + `errorMessage` trong body. Chỉ **400** khi body sai schema · **413** khi file > 8 MB |
+| **Body limit** | `express.json({ limit: '16mb' })` (đã có sẵn ở `app.ts`) — 8 MB file → base64 ≈ 10.7 MB → **không** đổi |
+| **Lỗi 413 từ body parser** | `PayloadTooLargeError` → middleware `error.ts` map sang `PAYLOAD_TOO_LARGE` (413) thay vì 500 |
+| **Kiểm tra kích thước** | Trên **byte thực** sau khi decode base64 (4 byte → 3 byte), không phải độ dài chuỗi |
+
+#### 7.29.4 Parser (`apps/server/src/lib/documentExtractor.ts`)
+
+`detectDocumentKind(fileName, bytes)` — **sniff magic byte trước**, đuôi file chỉ là gợi ý:
+
+| Điều kiện | Kind |
+|---|---|
+| Magic byte `%PDF` **hoặc** đuôi `.pdf` | `pdf` |
+| Magic byte `PK\x03\x04` (ZIP) **hoặc** đuôi `.docx` | `docx` (ZIP không phải `.docx` → `undefined`) |
+| Đuôi `.txt` / `.md` / `.csv` | `text` |
+| Khác | `undefined` → `DOCUMENT_UNSUPPORTED_TYPE` |
+
+> **Không** tin MIME type: nhiều OS trả `application/octet-stream` cho `.md`/`.csv`.
+
+`extractDocumentText(bytes, opts)`:
+
+| Kind | Cách parse | Ghi chú |
+|---|---|---|
+| `pdf` | `extractPdfText()` (`pdfjs-dist`, tái dùng T-M1-21) | PDF scan → `CONTEXT_PDF_NOT_READABLE` → map sang `DOCUMENT_NOT_READABLE` |
+| `docx` | `mammoth.extractRawText({ buffer })` (`mammoth@^1.13.0`) | `.doc` binary **không** hỗ trợ; `mammoth` không chạy macro (chỉ đọc XML) |
+| `text` | `TextDecoder('utf-8', { fatal: false })` | Bỏ BOM `\uFEFF`; byte NUL → coi là **binary** → `DOCUMENT_NOT_READABLE` |
+
+Chuẩn hoá: `normalizeText()` (bỏ BOM · `CRLF → LF` · gom khoang trang thua · gom ≥3 newline → 2) · cắt `LIMITS.MAX_EXTRACT_TEXT_CHARS` (40 000) → `truncated: true` · `excerpt` = `LIMITS.MAX_EXCERPT_CHARS` (500) ký tự đầu · text rỗng sau trim → `DOCUMENT_EMPTY`.
+
+#### 7.29.5 Extension
+
+| File | Vai trò |
+|---|---|
+| `apps/extension/src/lib/documentUpload.ts` | `validateDocumentFile()` (đuôi + kích thước + rỗng) · `readFileAsBase64()` (`FileReader` → cắt prefix `data:`) · `requestDocumentExtract()` (**không bao giờ throw** — mọi lỗi → `{ error, errorMessage }`) |
+| `apps/extension/src/sidepanel/hooks/useDocumentAttachments.ts` | `addFiles(files)` → validate → base64 → BFF → `attachItem({ id: 'doc-<uuid>', kind: 'file', tier: 'attachment', title, text, excerpt, fileName, mimeType })` · lỗi → `setContextError` (hiện `ContextNotice`) · giới hạn `DOCUMENT.MAX_PER_MESSAGE` |
+| `apps/extension/src/sidepanel/components/Composer.tsx` | 1 file picker phục vụ **cả** ảnh lẫn tài liệu (`accept="image/png,image/jpeg,image/webp,image/gif,.pdf,.docx,.txt,.md,.csv"`) · prop `onImagesSelected` → **`onFilesSelected`** · `isReadingImages` → `isReadingFiles` · drag-drop/paste lọc theo `file.type.startsWith('image/')` **hoặc** `isDocumentFile(file)` |
+| `apps/extension/src/sidepanel/ChatWorkspace.tsx` | `handleFilesSelected(files)` → tách `images` → `imageAttachments.addFiles` · `documents` → `documentAttachments.addFiles` |
+| `apps/extension/src/sidepanel/components/composer/AttachmentTray.tsx` | Thêm danh sách tài liệu (icon `FileText` + nút xoá) dưới hàng thumbnail ảnh |
+
+#### 7.29.6 Citation với tài liệu
+
+`ContextItem.kind === 'file'` → `describeContextSource()` trả `'[File đính kèm]'` (đã có sẵn từ T-M1-23) → prompt render `--- Nguồn [N] [File đính kèm] ---`. `citationService.extractCitations()` map `source.url ?? ''` → `''` → `CitationPopover` hiện **tiêu đề + đoạn trích** nhưng nút **"Mở trang gốc"** tự disable (`disabled={citation.url.length === 0}`).
+
+#### 7.29.7 Quyết định & giới hạn (ghi rõ, không overclaim)
+
+- **No-persist** (quyết định user 2026-11-12): tài liệu chỉ sống trong **phiên panel** → đóng panel là mất. **Không** migration, **không** bảng DB. Lịch sử chat vẫn lưu **câu trả lời**; nội dung tài liệu chỉ vào `context_snapshot` khi bật `LOG_CONTEXT_SNAPSHOT` (mặc định TẮT).
+- **Chỉ "core"**: `pdf` · `docx` · `txt`/`md`/`csv`. `.xlsx` / `.pptx` / `.doc` (binary) → `DOCUMENT_UNSUPPORTED_TYPE`.
+- **PDF scan** (không có text layer) → `DOCUMENT_NOT_READABLE` + gợi ý tải ảnh lên (OCR thuộc T-M2-22).
+- **Bảo mật**: file chỉ đi extension → BFF localhost (`127.0.0.1:8787`), **không** upload ra ngoài. `mammoth` không tự chạy macro (chỉ đọc XML của OOXML).
+
+#### 7.29.8 Kiểm thử
+
+| Tầng | File | Phủ |
+|---|---|---|
+| Shared unit | `packages/shared/tests/documentSchema.test.ts` | Request/response schema · reject thiếu `fileName` · reject `kind`/`error` lạ |
+| Server unit | `apps/server/tests/documentExtractor.test.ts` | PDF mini (text layer) · DOCX mini (zip tạo tay) · TXT có BOM · byte NUL → `DOCUMENT_NOT_READABLE` · rỗng → `DOCUMENT_EMPTY` · cắt ở `maxChars` → `truncated` |
+| Server integration | `apps/server/tests/extractRoute.test.ts` | 400 body sai · 200 + text · 200 + `error` sai định dạng/rỗng · 413 file > 8 MB |
+| Extension unit | `apps/extension/tests/documentUpload.test.ts` | Validate đuôi + kích thước · đọc base64 bỏ prefix · `requestDocumentExtract` trả lỗi thay vì throw |
+| Extension unit | `apps/extension/tests/useDocumentAttachments.test.ts` | Thành công → `attachItem` `kind:'file'` · lỗi → `setContextError` · vượt `MAX_PER_MESSAGE` |
+| Extension unit | `apps/extension/tests/AttachmentTray.test.tsx` | Danh sách tài liệu · nút xoá · Composer nhận `onFilesSelected` · drop/paste tài liệu |
+| E2E | `apps/extension/e2e/vision.spec.ts` | Fixture "file không hỗ trợ" đổi `.txt` → `.exe` (TXT nay **đã** hỗ trợ) |
 
 ---
 

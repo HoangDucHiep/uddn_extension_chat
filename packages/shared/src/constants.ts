@@ -182,6 +182,59 @@ export const VISION = {
   TOKEN_ESTIMATE_PER_IMAGE: 258,
 } as const
 
+/**
+ * Cac duoi file duoc phep cho tai lieu dinh kem (FR-CONTEXT-14 — T-M2-23).
+ *
+ * Khai bao o day (khong phai trong `schemas/document.ts`) de `constants.ts`
+ * khong phai import nguoc lai `document.ts` — tranh vong lap import.
+ */
+export const DOCUMENT_EXTENSIONS = [
+  '.pdf',
+  '.docx',
+  '.txt',
+  '.md',
+  '.csv',
+] as const
+
+/**
+ * Cac MIME type tuong ung voi tai lieu dinh kem.
+ *
+ * Trinh duyet cap MIME **khong doi** voi nhieu duoi file (vd `.md` →
+ * `text/markdown` hoac `text/plain` tuy OS) → server khong dua vao MIME
+ * de quyet dinh dinh dang, ma **sniff magic byte** + duoi file.
+ */
+export const DOCUMENT_MIME_TYPES = [
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'text/plain',
+  'text/markdown',
+  'text/csv',
+] as const
+export type DocumentMimeType = (typeof DOCUMENT_MIME_TYPES)[number]
+
+/**
+ * Gioi han cho tai lieu dinh kem (FR-CONTEXT-14 — T-M2-23).
+ *
+ * Dung chung giua extension (validate som khi user chon file) va server
+ * (validate lai o bien) → mot quy tac, mot nguon su that.
+ */
+export const DOCUMENT = {
+  /** Kich thuoc toi da cua mot tai lieu (byte) — 8 MB. */
+  MAX_BYTES: 8_000_000,
+  /** So tai lieu toi da dinh kem trong 1 luot hoi thoai. */
+  MAX_PER_MESSAGE: 5,
+  /** Cac duoi file duoc phep. */
+  ALLOWED_EXTENSIONS: DOCUMENT_EXTENSIONS,
+  /** Cac MIME type duoc phep (tham khao — server sniff magic byte). */
+  ALLOWED_MIME_TYPES: DOCUMENT_MIME_TYPES,
+  /**
+   * Do dai toi da cua `data` base64 trong request (ky tu).
+   *
+   * 8 MB file → base64 ≈ 10.7 MB → dat gan gioi han `express.json({ limit: '16mb' })`.
+   */
+  MAX_BASE64_CHARS: 12_000_000,
+} as const
+
 /** Endpoint cua BFF. */
 export const API_BASE_PATH = '/api'
 
@@ -200,6 +253,8 @@ export const API_ROUTES = {
   providerKeys: `${API_BASE_PATH}/providers/keys`,
   extractPdf: `${API_BASE_PATH}/extract/pdf`,
   extractYoutube: `${API_BASE_PATH}/extract/youtube`,
+  /** Trich xuat tai lieu dinh kem (file local) — FR-CONTEXT-14 (T-M2-23). */
+  extractDocument: `${API_BASE_PATH}/extract/document`,
   /** Anh dinh kem — GET /api/attachments/:id tra ve binary. */
   attachment: `${API_BASE_PATH}/attachments`,
   /** Log cau truc cua cac luot chat (chi metadata) — T-M1-14. */

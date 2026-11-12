@@ -226,6 +226,7 @@ Quy ước ưu tiên: **M** = Must (bắt buộc cho M1) · **S** = Should (bắ
 | FR-CONTEXT-11 | Chế độ "chỉ dùng trang" (không dùng lịch sử chat) | S | Toggle per-request — *hỗ trợ một phần bởi T-M1-23: `trimHistory()` đã cắt lịch sử theo ngân sách còn lại, nhưng chưa có toggle per-request* |
 | FR-CONTEXT-12 | Snapshot context để tái lập (reproducibility) | S | Lưu hash + nội dung context vào log phục vụ eval. **Đã implement (T-M1-06):** `request_logs.context_hash` luôn ghi (hash FNV-1a 32-bit của **context đã gửi**, đã cắt ngân sách — không phải hash của toàn bộ prompt); `request_logs.context_snapshot` (jsonb) ghi **theo setting `LOG_CONTEXT_SNAPSHOT`, mặc định TẮT** vì chứa nội dung trang. **Bổ sung (T-M1-14):** log đầy đủ (mọi lượt chat, kể cả lượt lỗi) + `cost_usd` thật + `tool_calls` đã wire + `GET /api/logs` · `GET /api/usage` chỉ trả **metadata** cho eval harness |
 | FR-CONTEXT-13 | Chat không cần context — đính kèm là hành động chủ động | M | Tab hiện tại **không** tự vào context; không đính kèm gì (hoặc toggle TẮT) → request **không** có payload `context` → model trả lời bằng kiến thức có sẵn + lịch sử hội thoại; đính kèm (nút "Thêm trang này" / `@` / selection / file) → item vào `context.items[]` với `tier` ưu tiên; web search tự động **chưa có** ở M1 (FR-TOOLS-03, M2) |
+| FR-CONTEXT-14 | Upload tài liệu đính kèm (PDF / DOCX / TXT / MD / CSV) | M | **✅ ĐÃ IMPLEMENT (T-M2-23, 2026-11-12):** user chọn file (file picker · drag-drop · paste) → extension đọc base64 → `POST /api/extract/document` → **BFF parse** (PDF: `pdfjs-dist` tái dùng `extractPdfText` T-M1-21 · DOCX: `mammoth` (OOXML) · TXT/MD/CSV: `TextDecoder` UTF-8) → trả text → extension tạo `ContextItem { kind: 'file', tier: 'attachment', title, text, excerpt, fileName, mimeType }` → đi qua đúng pipeline context sẵn có (ngân sách · prompt assembly · citation · `context_hash`). **Giới hạn:** tối đa **8 MB** / file · tối đa **5** tài liệu / lượt · chỉ 5 định dạng "core" (`.xlsx`/`.pptx`/`.doc` binary → `DOCUMENT_UNSUPPORTED_TYPE`) · PDF scan (không có text layer) → `DOCUMENT_NOT_READABLE` + gợi ý tải ảnh lên · **no-persist** (quyết định user 2026-11-12): tài liệu chỉ sống trong phiên panel, **không** lưu DB / không migration; lịch sử chat vẫn lưu câu trả lời (trừ khi bật `LOG_CONTEXT_SNAPSHOT`) |
 
 > **Mô hình context — quyết định sản phẩm (T-M1-23, 2026-11-04):**
 > Trước T-M1-23, panel **tự** capture tab active ở mọi lượt chat → không có cách "chat như LLM thuần" và không biểu diễn được nhiều nguồn theo thứ tự ưu tiên.
@@ -1152,6 +1153,7 @@ Chỉ bắt đầu M4 khi **đồng thời** thỏa:
 | FR-CONTEXT-11 | S | **T-M2-19** | M2 |
 | FR-CONTEXT-12 | S | **T-M1-06 ✅** · **T-M1-14 ✅** (log đầy đủ + API đọc metadata-only) | M1 |
 | FR-CONTEXT-13 | M | **T-M1-23 ✅** | M1 |
+| FR-CONTEXT-14 | M | **T-M2-23 ✅** (upload tài liệu PDF/DOCX/TXT/MD/CSV — no-persist) | M2 |
 
 #### FR-VISION — Ảnh & thị giác
 

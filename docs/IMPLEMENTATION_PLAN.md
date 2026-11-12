@@ -1001,7 +1001,7 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 | Nhóm | FR trong nhóm | Task phụ trách | Ghi chú |
 |---|---|---|---|
 | FR-CHAT-01..14 | 14 FR | T-M0-10 · T-M0-13 · **T-M1-07 ✅**/**T-M1-09 ✅**/**T-M1-10 ✅**/11/13/**19 ✅** | FR-CHAT-02/03/04 (Markdown, code block + copy, bảng) do T-M1-07 ✅ · **FR-CHAT-08/09/11 (chat CRUD: tạo/đổi tên/xoá/ghim/lưu trữ/search) do T-M1-09 ✅ (2026-11-07)** · **FR-CHAT-05/06/07/12/13 (regenerate + biến thể, edit-resend + branch, stop/continue, keyboard, draft) do T-M1-10 ✅ (2026-11-07)** · **FR-CHAT-14 (error + hành động khôi phục: 429 đếm ngược / 401 → mở Settings / 5xx → Thử lại) do T-M1-19 ✅ (2026-11-07)** |
-| FR-CONTEXT-01..13 | 13 FR | T-M1-01/02/04/05/**06 ✅**/**08 ✅**/**14 ✅** · **T-M1-21/22/23** · **T-M2-19** | FR-CONTEXT-05/06 nâng lên Must (2026-11-04) · FR-CONTEXT-13 (chat không cần context) do T-M1-23 · **FR-CONTEXT-03 (`@` multi-tab) do T-M1-05 ✅** · **FR-CONTEXT-04 (selection) do T-M1-02 ✅** · **FR-CONTEXT-01 (cache URL+hash) + FR-CONTEXT-12 (snapshot) do T-M1-06 ✅** · **FR-CONTEXT-10 (citation chip + popover) do T-M1-08 ✅ (2026-11-06)** · **FR-CONTEXT-12 (log đầy đủ + cost thật + read API metadata-only) do T-M1-14 ✅ (2026-11-07)** |
+| FR-CONTEXT-01..14 | 14 FR | T-M1-01/02/04/05/**06 ✅**/**08 ✅**/**14 ✅** · **T-M1-21/22/23** · **T-M2-19** · **T-M2-23 ✅** | FR-CONTEXT-05/06 nâng lên Must (2026-11-04) · FR-CONTEXT-13 (chat không cần context) do T-M1-23 · **FR-CONTEXT-03 (`@` multi-tab) do T-M1-05 ✅** · **FR-CONTEXT-04 (selection) do T-M1-02 ✅** · **FR-CONTEXT-01 (cache URL+hash) + FR-CONTEXT-12 (snapshot) do T-M1-06 ✅** · **FR-CONTEXT-10 (citation chip + popover) do T-M1-08 ✅ (2026-11-06)** · **FR-CONTEXT-12 (log đầy đủ + cost thật + read API metadata-only) do T-M1-14 ✅ (2026-11-07)** · **FR-CONTEXT-14 (upload tài liệu PDF/DOCX/TXT/MD/CSV) do T-M2-23 ✅ (2026-11-12)** |
 | FR-VISION-01..05 | 5 FR | **T-M1-24 ✅** (upload) · **T-M2-22** (mở rộng) | FR-VISION-01 nâng lên M · **T-M1-24 xong 2026-11-05** (vision đầy đủ Gemini + OpenAI-compatible, lưu Postgres, multi-turn) |
 | FR-TOOLS-01..06 | 6 FR | **T-M2-07 ✅**/08/**09 ✅**/10/11/18 · **T-M2-20** | FR-TOOLS-03 (web search) tách riêng khỏi tool registry · **FR-TOOLS-01/02/06 (tool registry + agent loop + audit log) do T-M2-07 ✅ (2026-11-11)** · **FR-TOOLS-02/04 (tool call UI + approval gate) do T-M2-09 ✅ (2026-11-11)** |
 | FR-SKILL-01..07 | 7 FR | **T-M2-04 ✅**/05/06/21 ✅ | **FR-SKILL-01/02/03 (menu `/` + CRUD skill) do T-M2-04 ✅ (2026-11-10)** — server resolve `prompt_template` + `model` override; seed tối thiểu 3 skill built-in · **FR-SKILL-05 (import/export JSON) do T-M2-05 ✅ (2026-11-10)** · **FR-SKILL-07 (library browser lọc theo tag) do T-M2-06 ✅ (2026-11-10)** · **FR-SKILL-04 (skill mẫu ≥8 → 9 skill) + FR-SKILL-06 (điều kiện tab) do T-M2-21 ✅ (2026-11-10)** |
@@ -1049,9 +1049,10 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 | T-M2-20 | Web search tool (bật/tắt được) | FR-TOOLS-03 | `apps/server/src/tools/builtin/webSearch.ts` | Kết quả có nguồn + ngày; tắt thì model không được gọi tool này | M | ⬜ — Could · phụ thuộc T-M2-07 |
 | T-M2-21 | Skill library built-in + skill gắn điều kiện (tab hiện tại / tab kèm theo) | FR-SKILL-04/06 | `apps/server/src/skills/builtin.ts`, `packages/shared/src/skill.ts`, `sidepanel/components/skills/SkillConditionBadge.tsx` | ≥ 8 skill mẫu (tóm tắt, giải thích đơn giản, dịch, so sánh, trích xuất dữ liệu, viết email, sinh quiz, kiểm tra hiểu); skill gắn điều kiện chạy được trên tab chỉ định | M | ✅ *(2026-11-11)* · registry **9 skill** + cột `skills.tab_condition` |
 | T-M2-22 | Vision mở rộng: chụp vùng, OCR, image-capable provider, alt text | FR-VISION-02/03/04/05 | `sidepanel/components/composer/RegionCapture.tsx`, `apps/server/src/lib/ocr.ts` | Chọn vùng bằng overlay; OCR trả text; provider không hỗ trợ image → ẩn tính năng không lỗi; alt text lưu lại để tiết kiệm token | L | ⬜ — Could · cắt được theo §10 |
+| T-M2-23 | Upload tài liệu đính kèm (PDF / DOCX / TXT / MD / CSV) | FR-CONTEXT-14 | `packages/shared/src/schemas/document.ts`, `apps/server/src/lib/documentExtractor.ts`, `apps/server/src/routes/extract.ts`, `apps/extension/src/lib/documentUpload.ts`, `apps/extension/src/sidepanel/hooks/useDocumentAttachments.ts` | User chọn file (picker · drag-drop · paste) → BFF parse ra text → thành `ContextItem kind:'file'` đi qua ngân sách + prompt + citation | M | ✅ *(2026-11-12)* · **no-persist** (quyết định user) · giới hạn 8 MB / file · 5 tài liệu / lượt · chỉ 5 định dạng "core" |
 
-**Định mức M2:** 3 tuần · 23 task · ~40 ngày công
-> **Tiến độ (2026-11-11): 13/23 task ✅** (T-M2-02 · T-M2-03 · T-M2-03b · T-M2-04 · T-M2-05 · T-M2-06 · T-M2-21 · T-M2-07 · T-M2-09 · T-M2-08 · **T-M2-12 · T-M2-13 · T-M2-14**) · **3 task ⏸** (T-M2-01 · T-M2-10 · T-M2-11) · **7 task ⬜** chưa bắt đầu — chi tiết & bằng chứng ở **§4.1**.
+**Định mức M2:** 3 tuần · 24 task · ~40 ngày công
+> **Tiến độ (2026-11-12): 14/24 task ✅** (T-M2-02 · T-M2-03 · T-M2-03b · T-M2-04 · T-M2-05 · T-M2-06 · T-M2-21 · T-M2-07 · T-M2-09 · T-M2-08 · **T-M2-12 · T-M2-13 · T-M2-14 · T-M2-23**) · **3 task ⏸** (T-M2-01 · T-M2-10 · T-M2-11) · **7 task ⬜** chưa bắt đầu — chi tiết & bằng chứng ở **§4.1**.
 
 > Nếu trễ: **cắt T-M2-18 (agentic)** → không ảnh hưởng tiêu chí bắt buộc. **T-M2-10/11 (RAG) đã chốt hoãn (2026-11-11 — quyết định user)** → không cần cắt thêm. Cắt T-M2-22 (vision mở rộng) trước — chỉ ảnh hưởng tính năng Could.
 
@@ -1071,8 +1072,8 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 
 ### 4.1 Kết quả M2 (tổng hợp — 2026-11-10 → 2026-11-11)
 
-> **Trạng thái tổng:** **13/23 task ✅** · **3 task ⏸** (T-M2-01 · T-M2-10 · T-M2-11) · **7 task ⬜** chưa bắt đầu.
-> Nhóm **Provider** (T-M2-02 · T-M2-03 · T-M2-03b) và nhóm **Skills** (T-M2-04 · T-M2-05 · T-M2-06 · T-M2-21) đã xong. Nhóm **Tools/MCP** (T-M2-07 · T-M2-09 · T-M2-08) cũng đã xong (2026-11-11). Nhóm **RAG** đã **hoãn** (2026-11-11 — quyết định user). Nhóm **Eval tự động** (T-M2-12 · T-M2-13 · T-M2-14) **đã xong 2026-11-11** → còn **T-M2-15/16/17** (cần người thật) — deliverable bắt buộc `docs/EVAL_REPORT.md`.
+> **Trạng thái tổng:** **14/24 task ✅** · **3 task ⏸** (T-M2-01 · T-M2-10 · T-M2-11) · **7 task ⬜** chưa bắt đầu.
+> Nhóm **Provider** (T-M2-02 · T-M2-03 · T-M2-03b) và nhóm **Skills** (T-M2-04 · T-M2-05 · T-M2-06 · T-M2-21) đã xong. Nhóm **Tools/MCP** (T-M2-07 · T-M2-09 · T-M2-08) cũng đã xong (2026-11-11). Nhóm **RAG** đã **hoãn** (2026-11-11 — quyết định user). Nhóm **Eval tự động** (T-M2-12 · T-M2-13 · T-M2-14) **đã xong 2026-11-11** → còn **T-M2-15/16/17** (cần người thật) — deliverable bắt buộc `docs/EVAL_REPORT.md`. Nhóm **Context** (T-M2-23 — upload tài liệu) **xong 2026-11-12**.
 
 #### 4.1.1 Bảng trạng thái + commit + bằng chứng
 
@@ -1089,6 +1090,7 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 | **T-M2-09** — Tool call UI + approval gate (FR-TOOLS-02/04) | ✅ **xong** | `cbf31c4` | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.26.9 · [`DESIGN_SYSTEM_BRIEF.md`](DESIGN_SYSTEM_BRIEF.md) §3.14 |
 | **T-M2-08** — MCP client (stdio) + server manager (FR-TOOLS-01/02) | ✅ **xong** | `5ab8d1c` · `c475488` | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.27 · [`DESIGN_SYSTEM_BRIEF.md`](DESIGN_SYSTEM_BRIEF.md) §3.7.4 |
 | **T-M2-01** — Multi-provider (OpenAI/Anthropic) | ⏸ **đẩy lại** | — | quyết định user 2026-11-10 — không thêm provider mới |
+| **T-M2-23** — Upload tài liệu PDF/DOCX/TXT/MD/CSV (FR-CONTEXT-14) | ✅ **xong** | *(commit hiện tại)* | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.29 · [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.4 |
 
 #### 4.1.2 Verify
 
@@ -1230,6 +1232,7 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 - **T-M2-03b** (budget cap) là tính năng **độc quyền** → ghi ở dòng **C6** §C, **không** thêm dòng §E → giữ nguyên **34/35 = 97.1%**.
 - **T-M2-07 + T-M2-09** (tool registry + agent loop + tool call UI + approval gate) là tính năng **độc quyền** → ghi ở dòng **C16** §C + dòng §D "Tool registry + agent loop", **không** thêm dòng §E → giữ nguyên **34/35 = 97.1%**.
 - **T-M2-08** (MCP client stdio + server manager) là tính năng **độc quyền** → dòng **C4** §C ⬜ → ✅ · dòng §D "MCP" ⬜ → ✅ + dòng §E.1.7 → giữ nguyên **34/35 = 97.1%**.
+- **T-M2-23** (upload tài liệu PDF/DOCX/TXT/MD/CSV) là tính năng **độc quyền** (Edge Copilot / Chrome Gemini **không** có upload tài liệu cục bộ) → ghi ở dòng **§D** + **§C** · **không** thêm dòng §E → giữ nguyên **34/35 = 97.1%**.
 - **Không** phá parity: không thêm permission, không đổi manifest, không đổi hành vi chat M1 (skill và budget là **tuỳ chọn**).
 
 #### 4.1.4 Nhóm còn lại — trạng thái nền (7 task ⬜ · 3 task ⏸)

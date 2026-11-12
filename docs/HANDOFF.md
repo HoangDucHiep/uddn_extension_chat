@@ -24,7 +24,7 @@
 | Hạng mục | Trạng thái |
 |---|---|
 | Docs | ✅ Đầy đủ 11 file (`docs/`) + `AGENTS.md` ở root |
-| Code | ✅ **M1 (Parity) ĐÓNG** — 23/25 task (T-M1-15 + T-M1-16 ⏸ tạm dừng) — 4 workspace, **1962 unit test + 108 E2E** · **M2 đang làm** (T-M2-02 ✅ · T-M2-03 ✅ · T-M2-03b ✅ · T-M2-04 ✅ · T-M2-05 ✅ · T-M2-06 ✅ · T-M2-21 ✅ · **T-M2-07 ✅** · **T-M2-09 ✅** · **T-M2-08 ✅** · **T-M2-12 ✅** · **T-M2-13 ✅** · **T-M2-14 ✅** · kiểm chứng live Chrome **15/15** mục §11b) |
+| Code | ✅ **M1 (Parity) ĐÓNG** — 23/25 task (T-M1-15 + T-M1-16 ⏸ tạm dừng) — 4 workspace, **2049 unit test + 108 E2E** · **M2 đang làm** (T-M2-02 ✅ · T-M2-03 ✅ · T-M2-03b ✅ · T-M2-04 ✅ · T-M2-05 ✅ · T-M2-06 ✅ · T-M2-21 ✅ · **T-M2-07 ✅** · **T-M2-09 ✅** · **T-M2-08 ✅** · **T-M2-12 ✅** · **T-M2-13 ✅** · **T-M2-14 ✅** · **T-M2-23 ✅** · kiểm chứng live Chrome **15/15** mục §11b) |
 | Git | ✅ Đã init (`main`) · tag `v0.1` (M0) · tag **`v0.2`** (M1 đóng 2026-11-09) |
 | Milestone hiện tại | **M2 — Advanced & Eval** (M0 ✅ · M1 ✅) |
 | Task tiếp theo | **T-M2-15 → 17** (eval — **cần người thật**: thu thập transcript Edge/Gemini · chấm tay 2 người · `docs/EVAL_REPORT.md`) — RAG (T-M2-10/11) đã **hoãn** 2026-11-11 |
@@ -33,7 +33,7 @@
 
 _(Không có — M1 đóng xong 2026-11-09, tag `v0.2`)_
 
-### M2 — tiến độ (2026-11-11) — **13/23 task ✅**
+### M2 — tiến độ (2026-11-12) — **14/24 task ✅**
 
 | Nhóm / Task | Trạng thái | Ghi chú |
 |---|---|---|
@@ -44,8 +44,28 @@ _(Không có — M1 đóng xong 2026-11-09, tag `v0.2`)_
 | **Nhóm Eval (tự động)** — T-M2-12 · T-M2-13 · T-M2-14 | ✅ **xong 2026-11-11** | **T-M2-12 ✅** dataset **52 task / 8 nhóm** + 47 snapshot trang thật + 4 ảnh + `dataset_meta.json` · **T-M2-13 ✅** SSE client + runner + metrics aggregator (`overallScore` · p50/p95 · success rate · cost/task) · **T-M2-14 ✅** LLM-as-judge (`temperature: 0` · strict JSON) + blind map deterministic → [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) **§4.5 + §7.28** |
 | **Nhóm Eval (cần người thật)** — T-M2-15 → T-M2-17 | ⬜ **chưa bắt đầu — khối TIẾP THEO (ưu tiên 1)** | **Harness + judge đã sẵn sàng** (T-M2-13/14) → chỉ còn dữ liệu người thật: transcript Edge/Gemini (n=3) · chấm tay Tầng B (2 người) · **`docs/EVAL_REPORT.md` chưa tồn tại** (deliverable bắt buộc) |
 | **Nhóm Could** — T-M2-18 · T-M2-19 · T-M2-20 · T-M2-22 | ⬜ **chưa bắt đầu** | Agentic action · context policy theo domain · web search tool · vision mở rộng — **cắt được** nếu thiếu thời gian (xem §10) |
+| **Nhóm Context** — T-M2-23 | ✅ **xong 2026-11-12** | Upload tài liệu PDF/DOCX/TXT/MD/CSV (FR-CONTEXT-14) — `POST /api/extract/document` + `documentExtractor.ts` (sniff magic byte) + `useDocumentAttachments` → `ContextItem kind:'file'` · **no-persist** → [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) **§7.29** |
 
 > **Bảng kết quả chi tiết của M2** (trạng thái task · verify · commit · ảnh hưởng gate parity · trạng thái nền nhóm còn lại) nằm ở [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) **§4.1** — đọc ở đó thay vì tra lại từng file.
+
+### Quyết định mới (2026-11-12) — **upload tài liệu đính kèm (FR-CONTEXT-14)**
+
+> **Quyết định của user (2026-11-12):** upload tài liệu chỉ hỗ trợ **định dạng "core"** (`pdf` · `docx` · `txt`/`md`/`csv`) và **no-persist** (chỉ sống trong phiên panel — **không** migration, **không** bảng DB).
+
+**Lý do:**
+
+| # | Lý do |
+|---|---|
+| 1 | `.xlsx` / `.pptx` / `.doc` (binary) cần thêm parser → tăng bề mặt lỗi mà **không** đóng dòng §E nào của parity Edge/Gemini (tính năng **độc quyền**) |
+| 2 | No-persist → **không** cần migration, **không** rủi ro bảo mật lưu nội dung tài liệu vào DB · đóng panel là mất (chấp nhận được) |
+| 3 | Tài liệu đi qua pipeline context **đã có** (ngân sách · prompt · citation) → không phát sinh hạ tầng mới |
+
+**Giới hạn đã ghi rõ trong docs (không overclaim):**
+
+- Tối đa **8 MB** / file · **5** tài liệu / lượt.
+- **PDF scan** (không có text layer) → `DOCUMENT_NOT_READABLE` + gợi ý tải ảnh lên (OCR thuộc T-M2-22).
+- File **binary** có byte NUL → `DOCUMENT_NOT_READABLE` (tránh gửi rác lên model).
+- Citation của tài liệu có `url = ''` → popover hiện tiêu đề + đoạn trích, nút "Mở trang gốc" tự disable.
 
 ### Quyết định mới (2026-11-11) — **hoãn RAG** + chuyển ưu tiên sang Eval
 

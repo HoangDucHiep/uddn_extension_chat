@@ -1,5 +1,6 @@
 /**
- * Route trich xuat context — `POST /api/extract/pdf` · `POST /api/extract/youtube`.
+ * Route trich xuat context — `POST /api/extract/pdf` · `POST /api/extract/youtube`
+ * · `POST /api/extract/document`.
  *
  * Nguyen tac quan trong:
  *  - LUON tra HTTP 200 cho loi nghiep vu (PDF scan, khong co caption) →
@@ -7,17 +8,22 @@
  *    body, khong phan biet theo status → panel khong bao gio crash.
  *  - Chi tra 400 khi body request sai schema.
  *
- * Docs: docs/SYSTEM_DESIGN.md §4.1, §7.3.1
+ * Docs: docs/SYSTEM_DESIGN.md §4.1, §7.3.1, §7.29
  */
 
 import { Router, type Request, type Response } from 'express'
 import {
+  DOCUMENT,
   ERROR_CODES,
   LIMITS,
+  documentExtractRequestSchema,
   extractRequestSchema,
+  type DocumentErrorCode,
+  type DocumentExtractResponse,
   type ExtractErrorCode,
   type ExtractResponse,
 } from '@sidekick/shared'
+import { extractDocumentText } from '../lib/documentExtractor.js'
 import { extractPdfText } from '../lib/pdfExtractor.js'
 import { extractYoutubeTranscript } from '../lib/youtubeExtractor.js'
 import { SafeFetchError, readBuffer, safeFetch } from '../lib/safeFetch.js'
@@ -103,7 +109,91 @@ export function createExtractRouter(): Router {
     }
   })
 
+  router.post('/extract/document', async (req: Request, res: Response) => {
+    const parsed = documentExtractRequestSchema.safeParse(req.body)
+    if (!parsed.success) {
+      res.status(400).json({
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'Body trich xuat tai lieu khong hop le',
+          details: { issues: parsed.error.issues },
+        },
+      })
+      return
+    }
+
+    const { fileName, mimeType, data } = parsed.data
+
+    // File vuot gioi han kich thuoc → 413 (loi bien, khong phai loi nghiep vu).
+    // Kiem tra tren **so byte thuc** sau khi giai ma base64 (4 byte → 3 byte).
+    const bytes = Buffer.from(data, 'base64')
+    if (bytes.byteLength > DOCUMENT.MAX_BYTES) {
+      res.status(413).json({
+        error: {
+          code: ERROR_CODES.DOCUMENT_TOO_LARGE,
+          message: `File vuot gioi han ${DOCUMENT.MAX_BYTES} byte`,
+        },
+      })
+      return
+    }
+
+    try {
+      const result = await extractDocumentText(bytes, {
+        fileName,
+        mimeType,
+        maxChars: LIMITS.MAX_EXTRACT_TEXT_CHARS,
+        maxExcerptChars: LIMITS.MAX_EXCERPT_CHARS,
+      })
+
+      const payload: DocumentExtractResponse = {
+        kind: result.kind,
+        text: result.text,
+        title: fileName,
+        excerpt: result.excerpt,
+        truncated: result.truncated,
+      }
+      res.status(200).json(payload)
+    } catch (error) {
+      respondDocumentError(res, fileName, error)
+    }
+  })
+
   return router
+}
+
+/**
+ * Tra loi loi nghiep vuu cua nhanh tai lieu — HTTP 200 + `error` trong body.
+ *
+ * @param res - Response cua Express.
+ * @param fileName - Ten file (đưa vào message cho dễ hiểu).
+ * @param error - Lỗi đã ném.
+ */
+function respondDocumentError(res: Response, fileName: string, error: unknown): void {
+  const code =
+    error instanceof SafeFetchError ? asDocumentErrorCode(error.code) : ERROR_CODES.DOCUMENT_NOT_READABLE
+  const message = error instanceof Error ? error.message : String(error)
+
+  res.status(200).json({
+    kind: 'text',
+    text: '',
+    truncated: false,
+    error: code,
+    errorMessage: `Khong doc duoc "${fileName}": ${message}`,
+  })
+}
+
+/** Ép error code về danh sách error của nhanh tai lieu. */
+function asDocumentErrorCode(code: string): DocumentErrorCode {
+  switch (code) {
+    case ERROR_CODES.DOCUMENT_UNSUPPORTED_TYPE:
+      return ERROR_CODES.DOCUMENT_UNSUPPORTED_TYPE
+    case ERROR_CODES.DOCUMENT_TOO_LARGE:
+      return ERROR_CODES.DOCUMENT_TOO_LARGE
+    case ERROR_CODES.DOCUMENT_EMPTY:
+      return ERROR_CODES.DOCUMENT_EMPTY
+    default:
+      return ERROR_CODES.DOCUMENT_NOT_READABLE
+  }
 }
 
 /**

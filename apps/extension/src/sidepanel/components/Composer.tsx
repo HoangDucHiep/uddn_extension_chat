@@ -1,4 +1,4 @@
-import { ImagePlus, Loader2, Send, Square } from 'lucide-react'
+import { Loader2, Paperclip, Send, Square } from 'lucide-react'
 import {
   type ChangeEvent,
   type ClipboardEvent,
@@ -11,6 +11,7 @@ import {
 } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { isDocumentFile } from '@/lib/documentUpload'
 import { useI18n } from '@/sidepanel/hooks/useI18n'
 
 export interface ComposerProps {
@@ -66,13 +67,16 @@ export interface ComposerProps {
    */
   inputRef?: RefObject<HTMLTextAreaElement>
   /**
-   * Callback khi user chon file anh (FR-VISION-01 — T-M1-24).
+   * Callback khi user chon file (anh **hoac** tai lieu).
+   *
+   * FR-VISION-01 (T-M1-24) — anh dinh kem truc tiep vao cau hoi.
+   * FR-CONTEXT-14 (T-M2-23) — tai lieu duoc parse o BFF roi dua vao context.
    *
    * Dinh huong tu file picker / drag-drop / paste → cung mot handler.
    */
-  onImagesSelected?: (files: readonly File[]) => void
-  /** Dang doc file anh → hien spinner tren nut. */
-  isReadingImages?: boolean
+  onFilesSelected?: (files: readonly File[]) => void
+  /** Dang doc file (anh hoac tai lieu) → hien spinner tren nut. */
+  isReadingFiles?: boolean
 }
 
 export function Composer({
@@ -89,8 +93,8 @@ export function Composer({
   onCursorChange,
   onEscape,
   inputRef,
-  onImagesSelected,
-  isReadingImages = false,
+  onFilesSelected,
+  isReadingFiles = false,
 }: ComposerProps) {
   const { t } = useI18n()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -129,23 +133,26 @@ export function Composer({
     onCursorChange?.(target.value, target.selectionStart ?? target.value.length)
   }
 
-  // Paste anh tu clipboard → dinh kem (FR-VISION-01 — T-M1-24).
+  // Paste file tu clipboard → dinh kem (anh: FR-VISION-01 · tai lieu: FR-CONTEXT-14).
   const handlePaste = (event: ClipboardEvent<HTMLTextAreaElement>): void => {
-    if (onImagesSelected === undefined) return
+    if (onFilesSelected === undefined) return
     const files = event.clipboardData?.files
     if (files === undefined || files === null || files.length === 0) return
-    const images = Array.from(files).filter((file) => file.type.startsWith('image/'))
-    if (images.length === 0) return
+    // Chi nhan file (anh hoac tai lieu) — text thuong van duoc paste binh thuong.
+    const picked = Array.from(files).filter(
+      (file) => file.type.startsWith('image/') || isDocumentFile(file),
+    )
+    if (picked.length === 0) return
     event.preventDefault()
-    onImagesSelected(images)
+    onFilesSelected(picked)
   }
 
-  // Drag & drop anh vao composer (FR-VISION-01 — T-M1-24).
+  // Drag & drop file vao composer (anh + tai lieu).
   //
   // `preventDefault()` bat buoc — neu khong, Chrome se dieu huong panel di
   // khoi trang khi user tha file.
   const handleDragOver = (event: DragEvent<HTMLDivElement>): void => {
-    if (onImagesSelected === undefined) return
+    if (onFilesSelected === undefined) return
     event.preventDefault()
     // `dataTransfer` co the undefined (mot so trinh duyet / test env) →
     // chi set `dropEffect` khi co dataTransfer.
@@ -155,19 +162,21 @@ export function Composer({
   }
 
   const handleDrop = (event: DragEvent<HTMLDivElement>): void => {
-    if (onImagesSelected === undefined) return
+    if (onFilesSelected === undefined) return
     event.preventDefault()
     const files = event.dataTransfer?.files
     if (files === undefined || files === null) return
-    const images = Array.from(files).filter((file) => file.type.startsWith('image/'))
-    if (images.length === 0) return
-    onImagesSelected(images)
+    const picked = Array.from(files).filter(
+      (file) => file.type.startsWith('image/') || isDocumentFile(file),
+    )
+    if (picked.length === 0) return
+    onFilesSelected(picked)
   }
 
   const handleFileInput = (event: ChangeEvent<HTMLInputElement>): void => {
     const files = event.target.files
     if (files !== null && files.length > 0) {
-      onImagesSelected?.(Array.from(files))
+      onFilesSelected?.(Array.from(files))
     }
     // Reset de chon lai cung file van tao su kien `change`.
     event.target.value = ''
@@ -206,30 +215,30 @@ export function Composer({
           />
         </div>
 
-        {onImagesSelected !== undefined ? (
+        {onFilesSelected !== undefined ? (
           <>
             <input
               type="file"
               ref={fileInputRef}
-              accept="image/png,image/jpeg,image/webp,image/gif"
+              accept="image/png,image/jpeg,image/webp,image/gif,.pdf,.docx,.txt,.md,.csv"
               multiple
               className="hidden"
               onChange={handleFileInput}
               data-testid="composer-file-input"
-              aria-label={t('composer.pickImage')}
+              aria-label={t('composer.pickFile')}
             />
             <Button
               variant="outline"
               size="icon"
               onClick={openFilePicker}
-              disabled={disabled || isReadingImages}
-              aria-label={t('composer.attachImage')}
-              data-testid="composer-image-button"
+              disabled={disabled || isReadingFiles}
+              aria-label={t('composer.attachFile')}
+              data-testid="composer-file-button"
             >
-              {isReadingImages ? (
+              {isReadingFiles ? (
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
               ) : (
-                <ImagePlus className="h-4 w-4" aria-hidden="true" />
+                <Paperclip className="h-4 w-4" aria-hidden="true" />
               )}
             </Button>
           </>

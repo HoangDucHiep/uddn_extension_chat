@@ -82,6 +82,10 @@ export const contextItemSchema = z.object({
   excerpt: z.string().max(LIMITS.MAX_EXCERPT_CHARS).optional(),
   /** Loai trang da trich xuat — `html` | `pdf` | `youtube` (FR-CONTEXT-05/06). */
   sourceKind: z.enum(PAGE_KINDS).optional(),
+  /** Ten file goc (chi co khi `kind: 'file'` — FR-CONTEXT-14). */
+  fileName: z.string().max(255).optional(),
+  /** MIME type cua file goc (chi co khi `kind: 'file'` — FR-CONTEXT-14). */
+  mimeType: z.string().max(120).optional(),
   tabId: z.number().int().optional(),
 })
 export type ContextItem = z.infer<typeof contextItemSchema>
