@@ -1,93 +1,27 @@
-import { loadDataset } from './dataset.js'
-import { fetchLogs, fetchUsage, summarizeLogs } from './logs.js'
-import { EVAL_RUNS_PER_TASK } from './types.js'
-
 /**
  * CLI cua eval harness.
  *
- * M0: chi kiem tra dataset co load duoc va hien thi thong ke.
- * M2 se them chay that + LLM-as-judge + xuat `EVAL_REPORT.md`.
+ * Subcommand:
+ *  - `collect` — thu thap snapshot trang that (T-M2-12).
+ *  - `run`     — chay he thong cua nhom tren dataset (goi BFF `POST /api/chat`) (T-M2-13).
+ *  - `judge`   — cham bang LLM-as-judge (temperature 0, blind mapping) (T-M2-14).
+ *  - `report`  — tong hop metric → JSON + Markdown (T-M2-13).
+ *  - `logs`    — doc `request_logs` tu BFF (T-M1-14).
+ *  - (khong co subcommand) — thong ke dataset.
  *
- * T-M1-14 them subcommand `logs` — doc `request_logs` tu BFF de lay so
- * lieu chi phi / token / ttft / latency cua cac luot chat da chay.
+ * moi subcommand nam trong `src/commands/<ten>.ts` → file nay chi giu phan
+ * dispatch + thong ke dataset.
  *
- * Docs: docs/EVAL_PLAN.md §3, §5
+ * Docs: docs/EVAL_PLAN.md §3, §5, §7.1
  */
 
-/** Base URL cua BFF (co the override bang `--base-url`). */
-const DEFAULT_BASE_URL = process.env['SIDECKICK_BFF_URL'] ?? 'http://127.0.0.1:8787'
-
-/**
- * Lay gia tri 1 flag tu argv.
- *
- * @param args - Tham so CLI.
- * @param name - Ten flag (vd `--base-url`).
- * @param fallback - Gia tri mac dinh khi khong co flag.
- */
-function readFlag(args: readonly string[], name: string, fallback: string): string {
-  const index = args.indexOf(name)
-  if (index === -1) return fallback
-  return args[index + 1] ?? fallback
-}
-
-/**
- * Chay subcommand `logs` — in cac dong log gan nhat + tong hop usage.
- */
-async function runLogs(args: readonly string[]): Promise<void> {
-  const baseUrl = readFlag(args, '--base-url', DEFAULT_BASE_URL)
-  const limit = Number(readFlag(args, '--limit', '20'))
-  const provider = readFlag(args, '--provider', '')
-
-  const logs = await fetchLogs(baseUrl, {
-    limit: Number.isFinite(limit) ? limit : 20,
-    ...(provider.length > 0 ? { provider } : {}),
-  })
-
-  console.log(`BFF: ${baseUrl}`)
-  console.log(`Tong so dong khop bo loc: ${logs.total}`)
-
-  if (logs.items.length === 0) {
-    console.log('Khong co dong log nao.')
-  } else {
-    console.log('')
-    console.log(
-      'requestId           provider      model                    in    out   cost(USD)  ttft   latency  error',
-    )
-    for (const item of logs.items) {
-      console.log(
-        [
-          item.requestId.slice(0, 18).padEnd(18),
-          item.provider.padEnd(13),
-          item.model.slice(0, 24).padEnd(24),
-          String(item.tokensIn).padStart(5),
-          String(item.tokensOut).padStart(6),
-          item.costUsd.toFixed(6).padStart(10),
-          String(item.ttftMs).padStart(6),
-          String(item.latencyMs).padStart(8),
-          item.error ?? '-',
-        ].join(' '),
-      )
-    }
-  }
-
-  const summary = summarizeLogs(logs.items)
-  console.log('')
-  console.log(`Tong hop (${summary.requests} dong trong page hien tai):`)
-  console.log(`  - requests: ${summary.requests} (${summary.errors} loi)`)
-  console.log(`  - tokens:   ${summary.tokensIn} in / ${summary.tokensOut} out`)
-  console.log(`  - cost:     $${summary.costUsd.toFixed(6)}`)
-  console.log(`  - ttft:     ${summary.avgTtftMs} ms (TB)`)
-  console.log(`  - latency:  ${summary.avgLatencyMs} ms (TB)`)
-
-  const usage = await fetchUsage(baseUrl)
-  console.log('')
-  console.log(`Tong hop toan bo (GET /api/usage): ${usage.totalTokens} tokens, $${usage.totalCostUsd.toFixed(6)}`)
-  for (const day of usage.byDay) {
-    console.log(
-      `  - ${day.date}: ${day.totalTokens} tokens, $${day.costUsd.toFixed(6)}, ${day.requests} luot`,
-    )
-  }
-}
+import { loadDataset } from './dataset.js'
+import { EVAL_RUNS_PER_TASK } from './types.js'
+import { runCollect } from './commands/collect.js'
+import { runOurs } from './commands/run.js'
+import { runJudge } from './commands/judge.js'
+import { runReport } from './commands/report.js'
+import { runLogs } from './commands/logs.js'
 
 /**
  * Chay lenh chinh cua CLI.
@@ -98,9 +32,24 @@ async function main(): Promise<void> {
   const args = process.argv.slice(2)
   const command = args[0]
 
-  if (command === 'logs') {
-    await runLogs(args.slice(1))
-    return
+  switch (command) {
+    case 'collect':
+      await runCollect(args.slice(1))
+      return
+    case 'run':
+      await runOurs(args.slice(1))
+      return
+    case 'judge':
+      await runJudge(args.slice(1))
+      return
+    case 'report':
+      await runReport(args.slice(1))
+      return
+    case 'logs':
+      await runLogs(args.slice(1))
+      return
+    default:
+      break
   }
 
   const tasks = await loadDataset()
@@ -128,7 +77,12 @@ async function main(): Promise<void> {
   }
 
   console.log('')
-  console.log('Lenh khac: `pnpm eval:run logs --limit 20` — doc request_logs tu BFF (T-M1-14).')
+  console.log('Lenh khac:')
+  console.log('  pnpm eval:collect            — thu thap snapshot trang that')
+  console.log('  pnpm eval:run -- run         — chay he thong cua nhom')
+  console.log('  pnpm eval:judge -- --run <id> — cham LLM-as-judge')
+  console.log('  pnpm eval:report -- --run <id> — tong hop metric')
+  console.log('  pnpm eval:run logs --limit 20 — doc request_logs tu BFF (T-M1-14)')
 }
 
 main().catch((error: unknown) => {

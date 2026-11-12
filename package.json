@@ -34,7 +34,10 @@
     "test:coverage": "pnpm -r --workspace-concurrency=1 test:coverage",
     "pretest:e2e": "pnpm --filter @sidekick/shared build && pnpm --filter @sidekick/extension build",
     "test:e2e": "pnpm --filter @sidekick/extension test:e2e",
-    "eval:run": "pnpm --filter @sidekick/eval run run",
+    "eval:run": "pnpm --filter @sidekick/eval exec tsx src/cli.ts",
+    "eval:collect": "pnpm --filter @sidekick/eval exec tsx src/cli.ts collect",
+    "eval:judge": "pnpm --filter @sidekick/eval exec tsx src/cli.ts judge",
+    "eval:report": "pnpm --filter @sidekick/eval exec tsx src/cli.ts report",
     "verify:providers": "node scripts/verify-providers.mjs",
     "manual:checklist": "node scripts/manual-checklist.mjs"
   },

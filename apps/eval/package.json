@@ -5,6 +5,9 @@
   "type": "module",
   "scripts": {
     "run": "tsx src/cli.ts",
+    "collect": "tsx src/cli.ts collect",
+    "judge": "tsx src/cli.ts judge",
+    "report": "tsx src/cli.ts report",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests"
   },
