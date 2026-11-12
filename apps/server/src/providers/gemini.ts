@@ -53,6 +53,40 @@ export interface GeminiProviderOptions {
   timeoutMs?: number
 }
 
+/**
+ * Model Gemini **khong** ho tro `thinkingConfig`.
+ *
+ * Cac model "lite" (vi du `gemini-flash-lite-latest`) khong co khoi reasoning →
+ * Google tra `400 INVALID_ARGUMENT` neu gui `thinkingConfig` → ca luot chat
+ * that bai. Chi gui `thinkingConfig` cho model biet la ho tro thinking.
+ *
+ * Docs: docs/SYSTEM_DESIGN.md §7.29
+ */
+const GEMINI_NON_THINKING_MODEL_PATTERN = /lite/i
+
+/**
+ * Sinh `thinkingConfig` cho 1 model Gemini.
+ *
+ * - Model **co** thinking (`gemini-2.5-*` · `gemini-3.*`) → `thinkingBudget: 0`
+ *   (mac dinh dung phan lon token cho reasoning → user chi nhan duoc text rong).
+ * - Model **khong** co thinking (`*-lite`) → tra `{}` → **khong** gui field.
+ *
+ * LUU Y: ham tra **noi dung cua** `thinkingConfig` (khong phai `thinkingConfig`).
+ * Server phai **spread vao** `generationConfig.thinkingConfig` — neu flatten
+ * truc tiep, Google tra `400 INVALID_ARGUMENT` ("Unknown name thinkingBudget
+ * at 'generation_config'") → ca luot chat that bai.
+ *
+ * @param model - Id model Gemini.
+ * @returns Object `thinkingConfig` (rong neu model khong ho tro thinking).
+ */
+export function thinkingConfigFor(model: string): Record<string, unknown> {
+  if (GEMINI_NON_THINKING_MODEL_PATTERN.test(model)) return {}
+  return { thinkingBudget: 0 }
+}
+
+/**
+ * Tao provider Gemini.
+ */
 export class GeminiProvider implements ProviderAdapter {
   readonly id = 'gemini'
   readonly name = 'Gemini'
@@ -212,6 +246,8 @@ export class GeminiProvider implements ProviderAdapter {
         ],
       }))
 
+    const thinking = thinkingConfigFor(model)
+
     const body: Record<string, unknown> = {
       contents,
       generationConfig: {
@@ -219,9 +255,9 @@ export class GeminiProvider implements ProviderAdapter {
         ...(request.maxOutputTokens !== undefined
           ? { maxOutputTokens: request.maxOutputTokens }
           : {}),
-        // Model 3.x la "thinking model" — mac dinh dung phan lon token cho reasoning
-        // nen user chi nhan duoc text rong. Tat thinking de cau tra loi nhanh va dung.
-        thinkingConfig: { thinkingBudget: 0 },
+        // `thinkingConfig` phai **nested** trong `generationConfig` — flatten
+        // truc tiep se bi Google tu choi voi `400 INVALID_ARGUMENT`.
+        ...(Object.keys(thinking).length > 0 ? { thinkingConfig: thinking } : {}),
       },
     }
 

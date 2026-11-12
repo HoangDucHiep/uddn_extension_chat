@@ -325,11 +325,26 @@ export function createChatStream(
      */
     const candidates: ProviderCandidate[] = []
 
-    for (const providerId of chain) {
+    for (const [index, providerId] of chain.entries()) {
       const provider = deps.registry.get(providerId)
       if (!provider) continue
 
-      const candidateModel = provider.resolveModel(requestedModel)
+      /**
+       * Model yeu cau chi co y nghia voi provider user **chon** (dau chain).
+       *
+       * Provider du phong phai dung **model mac dinh cua chinh no** — model
+       * cua provider truoc khong ton tai o provider sau (VD `openai/gpt-oss-120b`
+       * cua Groq khong co o Gemini → Gemini tra `400 "unexpected model name
+       * format"` → ca luot chat that bai du da co fallback).
+       *
+       * "Dau chuoi" = provider user chon (`request.provider`) **hoac** provider
+       * mac dinh cua he thong khi user khong chon — skill/model cua request
+       * van duoc ap dung cho provider dau tien.
+       */
+      const isChainHead = index === 0 || request.provider === providerId
+      const candidateModel = provider.resolveModel(
+        isChainHead ? requestedModel : undefined,
+      )
 
       // Request co anh → bo qua provider/model khong ho tro vision
       // (FR-VISION-01 — T-M1-24).

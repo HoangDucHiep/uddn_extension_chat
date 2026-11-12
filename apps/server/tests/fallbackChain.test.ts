@@ -320,4 +320,93 @@ describe('fallback chain runtime (FR-PROVIDER-04 — T-M2-02)', () => {
       | undefined
     expect(log?.fallbackFrom).toBeNull()
   })
+
+  it('provider du phong dung MODEL MAC DINH cua no (khong dung model cua provider truoc)', async () => {
+    // Bug (phat hien khi chay eval that): model yeu cau (`openai/gpt-oss-120b`
+    // cua Groq) duoc truyen cho **moi** provider trong chain → Gemini tra
+    // `400 "unexpected model name format"` → ca luot chat that bai du da co
+    // fallback.
+    const usedModels: Array<{ provider: string; model: string }> = []
+
+    const first = makeProvider('groq', [retryableError()])
+    const second = makeProvider('gemini', [
+      { kind: 'token', text: 'Chao ban' },
+      { kind: 'done', finishReason: 'stop' },
+    ])
+
+    const result = createChatStream(
+      {
+        db: makeDb() as never,
+        registry: makeRegistry({ groq: first, gemini: second }, ['groq', 'gemini']),
+        envKeys: {},
+        masterKey: undefined,
+        logFullContent: false,
+        logRequests: false,
+        logContextSnapshot: false,
+      },
+      makeRequest({ provider: 'groq', model: 'openai/gpt-oss-120b' }),
+      new AbortController().signal,
+    )
+
+    // Ghi lai model ma moi provider nhan.
+    const spy = async function* (
+      this: void,
+      request: { model?: string },
+    ): AsyncGenerator<ProviderChunk, void, undefined> {
+      usedModels.push({ provider: 'gemini', model: request.model ?? '' })
+      yield { kind: 'token', text: 'Chao ban' }
+      yield { kind: 'done', finishReason: 'stop' }
+    }
+    second.stream = spy as ProviderAdapter['stream']
+
+    const events = await collectEvents(result.events)
+
+    const switchEvent = events.find((event) => event.type === 'provider_switch')
+    expect(switchEvent).toBeDefined()
+
+    // Provider du phong phai dung model mac dinh cua chinh no (`gemini-model`),
+    // KHONG phai model cua Groq.
+    expect(usedModels[0]?.model).toBe('gemini-model')
+    expect(usedModels[0]?.model).not.toBe('openai/gpt-oss-120b')
+  })
+
+  it('user KHONG chon provider → provider dau chain van nhan model cua request', async () => {
+    // Regression (phat hien sau khi fix bug tren): neu chi dua `request.provider`
+    // vao dieu kien thi provider mac dinh cua he thong se **mat** model cua
+    // request (skill co model → model cua skill khong con ap dung).
+    const usedModels: Array<string> = []
+
+    const first = makeProvider('mock', [
+      { kind: 'token', text: 'Chao ban' },
+      { kind: 'done', finishReason: 'stop' },
+    ])
+    const spy = async function* (
+      this: void,
+      request: { model?: string },
+    ): AsyncGenerator<ProviderChunk, void, undefined> {
+      usedModels.push(request.model ?? '')
+      yield { kind: 'token', text: 'Chao ban' }
+      yield { kind: 'done', finishReason: 'stop' }
+    }
+    first.stream = spy as ProviderAdapter['stream']
+
+    const result = createChatStream(
+      {
+        db: makeDb() as never,
+        registry: makeRegistry({ mock: first }, ['mock']),
+        envKeys: {},
+        masterKey: undefined,
+        logFullContent: false,
+        logRequests: false,
+        logContextSnapshot: false,
+      },
+      // Khong co `provider` → dung fallback chain mac dinh.
+      makeRequest({ model: 'gpt-4o-mini' }),
+      new AbortController().signal,
+    )
+
+    await collectEvents(result.events)
+
+    expect(usedModels[0]).toBe('gpt-4o-mini')
+  })
 })
