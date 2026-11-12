@@ -44,13 +44,24 @@ export function useDocumentAttachments(): UseDocumentAttachmentsResult {
   const [error, setError] = useState<DocumentAttachmentError | undefined>(undefined)
   const [isReading, setIsReading] = useState(false)
 
+  /**
+   * Xoa loi hien tai (ca loi cuc bo cua hook va loi trong store).
+   *
+   * Loi trong store (`contextError`) la thong bao **persistent** tren panel
+   * → neu khong xoa, mot loi cu da xu ly van "keo" theo khi user lam viec
+   * khac (fix T-M2-23: canh bao dung ke ca khi tai lieu moi da thanh cong).
+   */
   const clearError = useCallback(() => {
     setError(undefined)
-  }, [])
+    setContextError({})
+  }, [setContextError])
 
   const addFiles = useCallback(
     async (files: readonly File[]) => {
       if (files.length === 0) return
+
+      // Bat dau xu ly file moi → xoa canh bao cu (neu co) de khong nham lan.
+      clearError()
 
       setIsReading(true)
       const current = useChatStore.getState().attachedItems
@@ -113,7 +124,7 @@ export function useDocumentAttachments(): UseDocumentAttachmentsResult {
         setIsReading(false)
       }
     },
-    [attachItem, setContextError, t],
+    [attachItem, clearError, setContextError, t],
   )
 
   return useMemo(

@@ -1,7 +1,7 @@
 ﻿# Documentation Index — Sidekick AI (Chrome Extension Chat Sidebar)
 
 **Dự án:** Extension chat-bot sidebar cho trình duyệt, cạnh tranh với Edge Copilot Sidebar và Chrome Gemini Sidebar.
-**Giai đoạn hiện tại:** **M0 (Foundation) ✅** (tag `v0.1`) · **M1 (Parity) ✅ ĐÓNG** (tag `v0.2`) — **23/25 task** (T-M1-13 export ✅ 2026-11-09) · **M2 đang làm — 14/24 task ✅** (T-M2-02 · T-M2-03 · T-M2-03b · T-M2-04 · T-M2-05 · T-M2-06 · T-M2-21 · T-M2-07 · T-M2-09 · T-M2-08 · **T-M2-12 · T-M2-13 · T-M2-14 · T-M2-23**) · **3 task ⏸** (T-M2-01 đẩy · **T-M2-10 + T-M2-11 RAG hoãn 2026-11-11**) · **7 task ⬜** — **2049 unit test + 108 E2E** · kiểm chứng live trên Chrome thật **15/15** mục (`pnpm manual:checklist`) · **tiếp theo: T-M2-15 → 17 (eval — cần người thật)** → `docs/EVAL_REPORT.md` (deliverable bắt buộc).
+**Giai đoạn hiện tại:** **M0 (Foundation) ✅** (tag `v0.1`) · **M1 (Parity) ✅ ĐÓNG** (tag `v0.2`) — **23/25 task** (T-M1-13 export ✅ 2026-11-09) · **M2 đang làm — 14/24 task ✅** (T-M2-02 · T-M2-03 · T-M2-03b · T-M2-04 · T-M2-05 · T-M2-06 · T-M2-21 · T-M2-07 · T-M2-09 · T-M2-08 · **T-M2-12 · T-M2-13 · T-M2-14 · T-M2-23**) · **3 task ⏸** (T-M2-01 đẩy · **T-M2-10 + T-M2-11 RAG hoãn 2026-11-11**) · **7 task ⬜** — **2072 unit test + 108 E2E** · kiểm chứng live trên Chrome thật **15/15** mục (`pnpm manual:checklist`) · **tiếp theo: T-M2-15 → 17 (eval — cần người thật)** → `docs/EVAL_REPORT.md` (deliverable bắt buộc).
 **Entry point cho agent:** [`../AGENTS.md`](../AGENTS.md) · [`HANDOFF.md`](HANDOFF.md)
 
 ---

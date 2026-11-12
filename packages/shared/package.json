@@ -13,6 +13,10 @@
     "./constants": {
       "types": "./dist/constants.d.ts",
       "import": "./dist/constants.js"
+    },
+    "./excerpt": {
+      "types": "./dist/excerpt.d.ts",
+      "import": "./dist/excerpt.js"
     }
   },
   "files": ["dist"],

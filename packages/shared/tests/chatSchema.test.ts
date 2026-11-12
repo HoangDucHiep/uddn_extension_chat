@@ -31,13 +31,17 @@ describe('pageContextSchema', () => {
     expect(parsed.success).toBe(false)
   })
 
-  it('reject excerpt vuot gioi han', () => {
+  it('excerpt vuot gioi han → TU CAT (khong reject) — fix T-M2-23', () => {
+    // Trước đây reject → `POST /api/chat` 400 → panel không chat được.
     const parsed = pageContextSchema.safeParse({
       url: 'https://a.b',
       title: 'T',
       excerpt: 'x'.repeat(LIMITS.MAX_EXCERPT_CHARS + 1),
     })
-    expect(parsed.success).toBe(false)
+    expect(parsed.success).toBe(true)
+    if (parsed.success) {
+      expect(parsed.data.excerpt?.length).toBeLessThanOrEqual(LIMITS.MAX_EXCERPT_CHARS)
+    }
   })
 
   it('reject thieu url', () => {

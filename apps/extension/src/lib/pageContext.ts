@@ -15,7 +15,7 @@
  * Docs: docs/SYSTEM_DESIGN.md §3 (lib/pageContext.ts), FR-CONTEXT-01/05/06
  */
 
-import { detectPageKind, type PageContext } from '@sidekick/shared'
+import { LIMITS, clampExcerpt, detectPageKind, type PageContext } from '@sidekick/shared'
 import type { ExtractedPage } from '../content/extractor.js'
 import { requestExtract } from './extractClient.js'
 
@@ -98,7 +98,8 @@ async function captureRemoteContext(
     }
   }
 
-  const excerpt = outcome.text.slice(0, 500)
+  // `clampExcerpt` bao dam excerpt **khong vuot** `LIMITS.MAX_EXCERPT_CHARS`.
+  const excerpt = clampExcerpt(outcome.text, LIMITS.MAX_EXCERPT_CHARS)
 
   return {
     ...base,

@@ -4317,9 +4317,79 @@ function toPlainUint8Array(bytes: Uint8Array): Uint8Array {
 | Server unit | `apps/server/tests/pdfExtractor.test.ts` | **Regression `Buffer`**: chấp nhận Node `Buffer` (đường upload tài liệu) · không mutate buffer gốc |
 | Server integration | `apps/server/tests/extractRoute.test.ts` | 400 body sai · 200 + text · 200 + `error` sai định dạng/rỗng · 413 file > 8 MB · **Regression `Buffer`**: 200 + text cho **PDF** và **DOCX** qua đúng đường thật (base64 → `Buffer` → server) |
 | Extension unit | `apps/extension/tests/documentUpload.test.ts` | Validate đuôi + kích thước · đọc base64 bỏ prefix · `requestDocumentExtract` trả lỗi thay vì throw |
-| Extension unit | `apps/extension/tests/useDocumentAttachments.test.ts` | Thành công → `attachItem` `kind:'file'` · lỗi → `setContextError` · vượt `MAX_PER_MESSAGE` |
+| Extension unit | `apps/extension/tests/useDocumentAttachments.test.ts` | Thành công → `attachItem` `kind:'file'` · lỗi → `setContextError` · vượt `MAX_PER_MESSAGE` · **Regression fix T-M2-23**: cảnh báo lỗi cũ **biến mất** khi tải file mới · `clearError` xoá cả lỗi trong store |
 | Extension unit | `apps/extension/tests/AttachmentTray.test.tsx` | Danh sách tài liệu · nút xoá · Composer nhận `onFilesSelected` · drop/paste tài liệu |
 | E2E | `apps/extension/e2e/vision.spec.ts` | Fixture "file không hỗ trợ" đổi `.txt` → `.exe` (TXT nay **đã** hỗ trợ) |
+
+#### 7.29.8.1 Bug `excerpt` vượt giới hạn → **không chat được** (fix T-M2-23)
+
+##### Triệu chứng
+
+Sau khi đính kèm tài liệu, panel hiện cảnh báo *"Tài liệu vượt quá giới hạn cho phép"* và **không gửi được tin nhắn** — server trả **400 "Body chat không hợp lệ"**.
+
+##### Nguyên nhân gốc — 2 lớp
+
+**Lớp 1 — `excerpt` dài hơn contract.** `contextItemSchema` giới hạn `excerpt` ≤ `LIMITS.MAX_EXCERPT_CHARS` (**500**) — **kể cả** sau khi thêm dấu `...`. Nhưng **3 nơi** sinh `excerpt` theo đúng công thức *"cắt 500 rồi **thêm** `...`"*:
+
+| Nơi | Công thức cũ | Kết quả |
+|---|---|---|
+| `apps/server/src/lib/documentExtractor.ts` | `text.slice(0, 500).trimEnd() + '...'` | **503** |
+| `apps/extension/src/content/extractor.ts` (`makeExcerpt`) | `safe.trimEnd() + '...'` | **503** |
+| `apps/extension/src/lib/contextAttach.ts` (`attachSelection`) | `text.slice(0, 500) + '...'` | **503** |
+
+→ `contextItemSchema` **reject** → `chatRequestSchema` **reject** → `POST /api/chat` **400**.
+
+**Lớp 2 — lỗi nghiệp vụ của context làm hỏng cả request chat.** `excerpt` chỉ dùng để **preview** trên chip → việc nó dài không ảnh hưởng nội dung chat (`text` vẫn giữ nguyên) → **reject cả request** là quá tay.
+
+##### Fix (2 lớp — chặn tái diễn ở cả 2 nơi)
+
+**Lớp phòng thủ ở contract (quan trọng nhất):**
+
+```ts
+// packages/shared/src/schemas/chat.ts
+excerpt: z
+  .string()
+  .transform((value) => clampExcerpt(value, LIMITS.MAX_EXCERPT_CHARS))
+  .optional(),
+```
+
+`contextItemSchema` + `pageContextSchema` **tự cắt** `excerpt` thay vì reject → context item "bẩn" **không** làm hỏng request chat. Áp dụng cho **cả** `contextItemSchema` và `pageContextSchema` (đường PDF/YouTube qua URL).
+
+**Lớp sinh đúng từ đầu:** helper thuần `clampExcerpt(text, maxChars)` (`packages/shared/src/excerpt.ts`) — cắt `maxChars - 3` rồi thêm `...` → **tổng ≤ `maxChars`**. Dùng ở:
+
+| File | Ghi chú |
+|---|---|
+| `apps/server/src/lib/documentExtractor.ts` | server (đường upload tài liệu) |
+| `apps/extension/src/content/extractor.ts` | content script → import subpath `@sidekick/shared/excerpt` (**không** barrel → không kéo Zod) |
+| `apps/extension/src/lib/contextAttach.ts` | đoạn bôi đen |
+| `apps/extension/src/lib/pageContext.ts` | đường PDF/YouTube qua URL |
+
+> `packages/shared/package.json` thêm export subpath `"./excerpt"` → cho phép content script import helper thuần mà **không** kéo theo `zod` (guard `contentBundleGuard.test.ts` chấp nhận subpath này).
+
+##### Lỗi thứ 2 — cảnh báo cũ **không biến mất** sau khi tải file khác
+
+`contextError` trong `chatStore` là trạng thái **persistent** → lỗi cũ (đã xử lý) vẫn hiện banner. Fix:
+
+| Nơi | Hành vi mới |
+|---|---|
+| `useDocumentAttachments.addFiles()` | **Xoá lỗi cũ ở đầu** mỗi lần user chọn file (`clearError()` → xoá cả `contextError` trong store) → lỗi cũ **biến mất**, lỗi mới (nếu có) thay thế |
+| `useDocumentAttachments.clearError()` | Xoá **cả** lỗi trong store (trước chỉ xoá lỗi cục bộ) |
+| `ContextNotice` (nút dismiss) | Xoá `contextError` trong store (trước chỉ `setDismissed` → chỉ ẩn UI, lỗi vẫn còn trong state) |
+
+##### Bài học
+
+- **Contract nên "sửa" dữ liệu vô hại thay vì "từ chối"** — `excerpt` quá dài chỉ ảnh hưởng preview → cắt bớt còn hơn reject cả request.
+- **Bug "không chat được" là triệu chứng, không phải nguyên nhân** — phải truy từ triệu chứng UI ("không chat được") → HTTP 400 → `chatRequestSchema` → field `excerpt` → công thức sinh ở 3 nơi. Tìm bằng `grep` cho **mọi** nơi sinh field bị giới hạn, không chỉ nơi đầu tiên phát hiện.
+- **Test tầng HTTP là bắt buộc** — unit test chỉ truyền `excerpt` hợp lệ nên **không** bắt được → đã thêm `apps/server/tests/chatExcerptRegression.test.ts` (POST `/api/chat` thật với `excerpt` 503 ký tự → phải **200** + `event: token`).
+
+##### Kiểm thử bổ sung (fix T-M2-23)
+
+| Tầng | File | Phủ |
+|---|---|---|
+| Shared unit | `packages/shared/tests/excerpt.test.ts` | `clampExcerpt` không bao giờ vượt giới hạn (kể cả khi ≤ 3) · `contextItemSchema`/`pageContextSchema` **tự cắt** `excerpt` · `chatRequestSchema` **accept** context có `excerpt` dài |
+| Shared unit | `packages/shared/tests/chatSchema.test.ts` | Đổi test cũ *"reject excerpt vuot gioi han"* → *"tu cat (khong reject)"* |
+| Server unit | `apps/server/tests/documentExtractor.test.ts` | `excerpt` ≤ `maxExcerptChars` (kể cả dấu `...`) |
+| Server integration | `apps/server/tests/chatExcerptRegression.test.ts` | **Regression end-to-end**: `POST /api/chat` với `excerpt` 503 ký tự → **200** + `event: token` (không phải 400) · context hợp lệ không regression · context thiếu `title` vẫn **400** `VALIDATION_ERROR` |
 
 ---
 

@@ -5,6 +5,7 @@
 
 import { z } from 'zod'
 import { LIMITS, MAX_CONTEXT_ITEMS, PROVIDER_IDS } from '../constants.js'
+import { clampExcerpt } from '../excerpt.js'
 import { PAGE_KINDS } from '../pageKind.js'
 import { imageAttachmentListSchema } from './vision.js'
 
@@ -47,8 +48,11 @@ export const pageContextSchema = z.object({
   selectedText: z.string().max(LIMITS.MAX_CONTEXT_CHARS).optional(),
   /** Noi dung chinh da trich xuat tu trang (FR-CONTEXT-01). */
   text: z.string().max(LIMITS.MAX_PAGE_TEXT_CHARS).optional(),
-  /** Trich dan ngan de preview trong UI (chip context). */
-  excerpt: z.string().max(LIMITS.MAX_EXCERPT_CHARS).optional(),
+  /** Trich dan ngan de preview trong UI (chip context) — tu cat neu vuot han. */
+  excerpt: z
+    .string()
+    .transform((value) => clampExcerpt(value, LIMITS.MAX_EXCERPT_CHARS))
+    .optional(),
   tabId: z.number().int().optional(),
   /** Loai trang da trich xuat — `html` | `pdf` | `youtube` (FR-CONTEXT-05/06). */
   sourceKind: z.enum(PAGE_KINDS).optional(),
@@ -78,8 +82,21 @@ export const contextItemSchema = z.object({
   title: z.string().max(1000),
   /** Noi dung chinh da trich xuat (co the bi cat bo). */
   text: z.string().max(LIMITS.MAX_PAGE_TEXT_CHARS).optional(),
-  /** Trich dan ngan de preview tren chip. */
-  excerpt: z.string().max(LIMITS.MAX_EXCERPT_CHARS).optional(),
+  /**
+   * Trich dan ngan de preview tren chip.
+   *
+   * **Tu cat** thay vi reject khi vuot gioi han (fix T-M2-23): truoc day nhieu
+   * noi cat `slice(0, 500)` roi **them** `"..."` → 503 ky tu → schema reject
+   * → `POST /api/chat` tra 400 "Body chat khong hop le" → **panel khong chat
+   * duoc** sau khi dinh kem tai lieu.
+   *
+   * `excerpt` chi dung de **preview** → cat bot khong lam mat thong tin quan
+   * trong (`text` van giu nguyen) → an toan hon reject ca request.
+   */
+  excerpt: z
+    .string()
+    .transform((value) => clampExcerpt(value, LIMITS.MAX_EXCERPT_CHARS))
+    .optional(),
   /** Loai trang da trich xuat — `html` | `pdf` | `youtube` (FR-CONTEXT-05/06). */
   sourceKind: z.enum(PAGE_KINDS).optional(),
   /** Ten file goc (chi co khi `kind: 'file'` — FR-CONTEXT-14). */

@@ -13,6 +13,7 @@
  */
 
 import { LIMITS } from '@sidekick/shared/constants'
+import { clampExcerpt } from '@sidekick/shared/excerpt'
 
 /** Chien luoc trich xuat dung de sinh ra ket qua. */
 export type ExtractionStrategy = 'article' | 'main' | 'body' | 'empty'
@@ -326,7 +327,9 @@ function makeExcerpt(text: string): string {
   const slice = text.slice(0, LIMITS.MAX_EXCERPT_CHARS)
   const lastSpace = slice.lastIndexOf(' ')
   const safe = lastSpace > LIMITS.MAX_EXCERPT_CHARS * 0.6 ? slice.slice(0, lastSpace) : slice
-  return `${safe.trimEnd()}...`
+  // `clampExcerpt` bao dam **tong** do dai (ke ca dau `...`) <= gioi han →
+  // `contextItemSchema` (shared) khong reject → chat khong 400.
+  return clampExcerpt(safe, LIMITS.MAX_EXCERPT_CHARS)
 }
 
 /** Dem so tu trong text. */

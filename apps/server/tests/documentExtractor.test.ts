@@ -249,4 +249,30 @@ describe('extractDocumentText', () => {
     expect(result.text.length).toBe(100)
     expect(result.excerpt.length).toBeLessThanOrEqual(23)
   })
+
+  // --- Fix T-M2-23: excerpt phai <= maxExcerptChars (ke ca dau "...") ---
+  it('excerpt KHONG vuot maxExcerptChars (ke ca dau ellipsis) — fix T-M2-23', async () => {
+    const result = await extractDocumentText(toBytes('a'.repeat(5000)), {
+      fileName: 'a.txt',
+      mimeType: 'text/plain',
+      maxChars: 40_000,
+      maxExcerptChars: 500,
+    })
+
+    // Truoc fix: 500 + "..." = 503 > 500 → `contextItemSchema` reject →
+    // `POST /api/chat` 400 → panel khong chat duoc.
+    expect(result.excerpt.length).toBeLessThanOrEqual(500)
+    expect(result.excerpt.endsWith('...')).toBe(true)
+  })
+
+  it('excerpt ngan hon gioi han → giu nguyen', async () => {
+    const result = await extractDocumentText(toBytes('Ngan'), {
+      fileName: 'a.txt',
+      mimeType: 'text/plain',
+      maxChars: 40_000,
+      maxExcerptChars: 500,
+    })
+
+    expect(result.excerpt).toBe('Ngan')
+  })
 })

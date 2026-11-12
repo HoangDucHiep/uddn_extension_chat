@@ -14,7 +14,7 @@
  */
 
 import type { ContextItem } from '@sidekick/shared'
-import { LIMITS } from '@sidekick/shared/constants'
+import { LIMITS, clampExcerpt } from '@sidekick/shared'
 import { isMeaningfulSelection, normalizeSelectionText } from '../content/selection.js'
 import {
   hasContentChanged,
@@ -210,10 +210,9 @@ export function attachSelection(
     }
   }
 
-  const excerpt =
-    text.length > LIMITS.MAX_EXCERPT_CHARS
-      ? `${text.slice(0, LIMITS.MAX_EXCERPT_CHARS)}...`
-      : text
+  // `clampExcerpt` bao dam excerpt **khong vuot** `LIMITS.MAX_EXCERPT_CHARS`
+  // (ke ca sau khi them dau `...`) → `contextItemSchema` khong reject.
+  const excerpt = clampExcerpt(text, LIMITS.MAX_EXCERPT_CHARS)
 
   return {
     item: {

@@ -1,6 +1,7 @@
 import { AlertTriangle, FileWarning, X } from 'lucide-react'
 import { useState } from 'react'
 import { useI18n } from '@/sidepanel/hooks/useI18n'
+import { useChatStore } from '@/sidepanel/store/chatStore'
 import type { TranslationKey } from '@/i18n'
 
 /**
@@ -67,15 +68,24 @@ function describeError(errorCode: string): { key: TranslationKey; icon: 'pdf' | 
  * Banner thong bao loi trich xuat context.
  *
  * Co nut dismiss de nguoi dung tat thu cong (khong tu dong mat).
+ *
+ * Dismiss **xoa luon** loi trong `chatStore` (khong chi an trong UI) →
+ * loi da xu ly khong "keo" theo khi user tiep tuc lam viec (fix T-M2-23).
  */
 export function ContextNotice({ errorCode, message }: ContextNoticeProps) {
   const { t } = useI18n()
   const [dismissed, setDismissed] = useState(false)
+  const setContextError = useChatStore((state) => state.setContextError)
 
   if (dismissed) return null
 
   const described = describeError(errorCode)
   const Icon = described.icon === 'pdf' ? FileWarning : AlertTriangle
+
+  const handleDismiss = (): void => {
+    setDismissed(true)
+    setContextError({})
+  }
 
   return (
     <div
@@ -95,7 +105,7 @@ export function ContextNotice({ errorCode, message }: ContextNoticeProps) {
       </p>
       <button
         type="button"
-        onClick={() => setDismissed(true)}
+        onClick={handleDismiss}
         aria-label={t('context.notice.dismiss')}
         className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--text-tertiary)] transition-colors hover:bg-[var(--surface-sunken)] hover:text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border-focus)]"
       >

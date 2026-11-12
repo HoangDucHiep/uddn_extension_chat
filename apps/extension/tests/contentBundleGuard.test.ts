@@ -50,8 +50,12 @@ const CONTENT_ENTRY = resolve(SRC_DIR, 'content', 'contentScript.ts')
 /**
  * Module **được phép** import `@sidekick/shared` — chỉ subpath hằng (không
  * kéo theo barrel `index` → Zod).
+ *
+ * - `constants` — hằng số (T-M1-20).
+ * - `excerpt` — helper `clampExcerpt` thuần, **không** import Zod
+ *   (fix T-M2-23 — `content/extractor.ts` cat excerpt).
  */
-const SHARED_ALLOWED_SUBPATHS = ['@sidekick/shared/constants']
+const SHARED_ALLOWED_SUBPATHS = ['@sidekick/shared/constants', '@sidekick/shared/excerpt']
 
 /**
  * Module **được phép** dùng trong bundle ngoài panel (dictionary đầy đủ).

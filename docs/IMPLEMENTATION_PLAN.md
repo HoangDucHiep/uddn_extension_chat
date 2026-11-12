@@ -1090,7 +1090,7 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 | **T-M2-09** — Tool call UI + approval gate (FR-TOOLS-02/04) | ✅ **xong** | `cbf31c4` | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.26.9 · [`DESIGN_SYSTEM_BRIEF.md`](DESIGN_SYSTEM_BRIEF.md) §3.14 |
 | **T-M2-08** — MCP client (stdio) + server manager (FR-TOOLS-01/02) | ✅ **xong** | `5ab8d1c` · `c475488` | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.27 · [`DESIGN_SYSTEM_BRIEF.md`](DESIGN_SYSTEM_BRIEF.md) §3.7.4 |
 | **T-M2-01** — Multi-provider (OpenAI/Anthropic) | ⏸ **đẩy lại** | — | quyết định user 2026-11-10 — không thêm provider mới |
-| **T-M2-23** — Upload tài liệu PDF/DOCX/TXT/MD/CSV (FR-CONTEXT-14) | ✅ **xong** | *(commit hiện tại)* | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.29 · [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.4 |
+| **T-M2-23** — Upload tài liệu PDF/DOCX/TXT/MD/CSV (FR-CONTEXT-14) | ✅ **xong** | *(commit hiện tại)* — gồm fix bug "không chat được" | [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.29 · §7.29.8.1 (fix bug) · [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.4 |
 
 #### 4.1.2 Verify
 
@@ -1224,6 +1224,16 @@ Verify: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm buil
 | Judge chấm "hallucination" cho task **không có tài liệu** | `general_qa` = 100% hallucination → điểm **52.3/100** | `apps/eval/src/judge/prompt.ts` + `src/metrics/aggregate.ts` → task `context_mode: 'none'` → judge **không** chấm hallucination · aggregator loại khỏi công thức → điểm **98.5/100** |
 
 > **Bài học (đưa vào quy trình):** chạy eval **thật** là bắt buộc — 4 bug trên **không** lộ ra ở unit test (mock provider không gọi network, mock asset không tồn tại). Cờ `--force` (thêm trong T-M2-13) cho phép chạy lại **toàn bộ** lượt khi chính harness bị lỗi — khác `--merge` (chỉ chạy lại lượt **lỗi**).
+
+**Nhóm Context — T-M2-23 (2026-11-12) + fix bug "không chat được"**
+
+| Hạng mục | Kết quả |
+|---|---|
+| `pnpm typecheck` | ✅ pass (4 workspace) |
+| `pnpm lint` | ✅ pass (0 error) |
+| `pnpm test` | ✅ **2072 unit** (shared 369 · server 669 · extension 908 · eval 126) — thêm `excerpt.test.ts` (shared) · `chatExcerptRegression.test.ts` (server) · `documentSchema.test.ts` · `documentExtractor.test.ts` · `extractRoute.test.ts` · `documentUpload.test.ts` · `useDocumentAttachments.test.ts` |
+| `pnpm build:ext` | ✅ pass — `dist/content.js` **17.38 kB** (gzip 6.70 kB) ≤ 40 kB · **không** chứa Zod (`invalid_type` absent) · guard `contentBundleGuard` pass (subpath `@sidekick/shared/excerpt` được phép) |
+| Fix bug (cùng commit) | ✅ **đính kèm tài liệu xong không chat được** (400 "Body chat không hợp lệ") + **cảnh báo lỗi cũ không mất** — root cause + fix 2 lớp: [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) **§7.29.8.1** |
 
 #### 4.1.3 Ảnh hưởng lên gate parity
 

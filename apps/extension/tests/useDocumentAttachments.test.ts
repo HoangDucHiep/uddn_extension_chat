@@ -184,4 +184,62 @@ describe('useDocumentAttachments', () => {
     expect(useChatStore.getState().attachedItems).toHaveLength(0)
     expect(result.current.error).toBeUndefined()
   })
+
+  // --- Fix T-M2-23: canh bao loi phai TU MAT khi user lam viec tiep ---
+  it('canh bao loi cu BIEN MAT khi tai file moi thanh cong (fix T-M2-23)', async () => {
+    const { result } = renderHook(() => useDocumentAttachments())
+
+    // 1. File qua dung luong → canh bao loi.
+    await act(async () => {
+      await result.current.addFiles([makeFile('a.pdf', 'application/pdf', DOCUMENT.MAX_BYTES + 1)])
+    })
+
+    expect(result.current.error?.code).toBe(ERROR_CODES.DOCUMENT_TOO_LARGE)
+    expect(useChatStore.getState().contextError).toBe(ERROR_CODES.DOCUMENT_TOO_LARGE)
+
+    // 2. Tai file hop le → canh bao loi cu phai bien mat.
+    await act(async () => {
+      await result.current.addFiles([makeFile('b.txt', 'text/plain', 5)])
+    })
+
+    expect(result.current.error).toBeUndefined()
+    expect(useChatStore.getState().contextError).toBeUndefined()
+    expect(useChatStore.getState().contextErrorMessage).toBeUndefined()
+    expect(useChatStore.getState().attachedItems).toHaveLength(1)
+  })
+
+  it('canh bao loi cu BIEN MAT khi tai file moi that bai (thay bang loi moi)', async () => {
+    const { result } = renderHook(() => useDocumentAttachments())
+
+    await act(async () => {
+      await result.current.addFiles([makeFile('a.pdf', 'application/pdf', DOCUMENT.MAX_BYTES + 1)])
+    })
+    expect(useChatStore.getState().contextError).toBe(ERROR_CODES.DOCUMENT_TOO_LARGE)
+
+    // File moi sai dinh dang → loi cu thay bang loi moi (khong con loi cu).
+    await act(async () => {
+      await result.current.addFiles([makeFile('b.xlsx', '', 5)])
+    })
+
+    expect(result.current.error?.code).toBe(ERROR_CODES.DOCUMENT_UNSUPPORTED_TYPE)
+    expect(useChatStore.getState().contextError).toBe(ERROR_CODES.DOCUMENT_UNSUPPORTED_TYPE)
+  })
+
+  it('clearError xoa ca loi trong store (khong chi loi cuc bo)', async () => {
+    stubFetchError(ERROR_CODES.DOCUMENT_NOT_READABLE)
+
+    const { result } = renderHook(() => useDocumentAttachments())
+
+    await act(async () => {
+      await result.current.addFiles([makeFile('a.pdf', 'application/pdf', 5)])
+    })
+    expect(useChatStore.getState().contextError).toBe(ERROR_CODES.DOCUMENT_NOT_READABLE)
+
+    act(() => {
+      result.current.clearError()
+    })
+
+    expect(result.current.error).toBeUndefined()
+    expect(useChatStore.getState().contextError).toBeUndefined()
+  })
 })

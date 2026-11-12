@@ -12,7 +12,7 @@
  * Docs: docs/SYSTEM_DESIGN.md §7.29
  */
 
-import { ERROR_CODES, type DocumentKind } from '@sidekick/shared'
+import { ERROR_CODES, clampExcerpt, type DocumentKind } from '@sidekick/shared'
 import { extractPdfText } from './pdfExtractor.js'
 import { SafeFetchError } from './safeFetch.js'
 
@@ -138,10 +138,10 @@ export async function extractDocumentText(
 
   const truncated = normalized.length > options.maxChars
   const text = truncated ? normalized.slice(0, options.maxChars) : normalized
-  const excerpt =
-    text.length > options.maxExcerptChars
-      ? `${text.slice(0, options.maxExcerptChars).trimEnd()}...`
-      : text
+  // `clampExcerpt` bao dam `excerpt` **khong vuot** `maxExcerptChars` (ke ca
+  // sau khi them dau `...`) → `contextItemSchema` (shared) khong reject →
+  // `POST /api/chat` khong tra 400.
+  const excerpt = clampExcerpt(text, options.maxExcerptChars)
 
   return {
     kind,
