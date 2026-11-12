@@ -1,0 +1,666 @@
+Google sử dụng công nghệ AI để dịch nội dung sang ngôn ngữ bạn ưu tiên. Bản dịch bằng AI có thể có lỗi.
+
+browser.scripting
+
+Mô tả
+
+Sử dụng API chrome.scripting để thực thi tập lệnh trong nhiều bối cảnh.
+
+Quyền
+
+scripting
+
+Phạm vi cung cấp
+
+Chrome 88 trở lên
+
+browser.* kể từ Chrome 148
+MV3 trở lên
+
+Tệp kê khai
+
+Để sử dụng API browser.scripting , hãy khai báo quyền "scripting" trong manifest cùng với quyền của máy chủ lưu trữ cho các trang để chèn tập lệnh vào. Sử dụng khoá "host_permissions" hoặc quyền "activeTab" để cấp quyền tạm thời cho máy chủ lưu trữ. Ví dụ sau đây sử dụng quyền activeTab.
+
+{
+"name" : "Scripting Extension" ,
+"manifest_version" : 3 ,
+"permissions" : [ "scripting" , "activeTab" ],
+...
+}
+
+Khái niệm và cách sử dụng
+
+Bạn có thể sử dụng API browser.scripting để chèn JavaScript và CSS vào trang web. Điều này tương tự như những gì bạn có thể làm với nội dung
+kịch bản . Tuy nhiên, bằng cách sử dụng không gian tên browser.scripting , các tiện ích có thể đưa ra quyết định trong thời gian chạy.
+
+Mục tiêu chèn
+
+Bạn có thể sử dụng tham số target để chỉ định mục tiêu chèn JavaScript hoặc CSS vào.
+
+Trường bắt buộc duy nhất là tabId . Theo mặc định, một lệnh chèn sẽ chạy trong khung chính của thẻ được chỉ định.
+
+function getTabId () { ... }
+
+browser . scripting
+. executeScript ({
+target : { tabId : getTabId ()},
+files : [ "script.js" ],
+})
+. then (() = > console . log ( "script injected" ));
+
+Để chạy trong tất cả khung của thẻ được chỉ định, bạn có thể đặt boolean allFrames thành true .
+
+function getTabId () { ... }
+
+browser . scripting
+. executeScript ({
+target : { tabId : getTabId (), allFrames : true },
+files : [ "script.js" ],
+})
+. then (() = > console . log ( "script injected in all frames" ));
+
+Bạn cũng có thể chèn vào các khung cụ thể của một thẻ bằng cách chỉ định mã khung riêng lẻ. Để biết thêm thông tin về mã khung, hãy xem API browser.webNavigation .
+
+function getTabId () { ... }
+
+browser . scripting
+. executeScript ({
+target : { tabId : getTabId (), frameIds : [ frameId1 , frameId2 ]},
+files : [ "script.js" ],
+})
+. then (() = > console . log ( "script injected on target frames" ));
+
+Mã được chèn
+
+Tiện ích có thể chỉ định mã cần chèn thông qua tệp bên ngoài hoặc biến thời gian chạy.
+
+Tệp
+
+Các tệp được chỉ định dưới dạng chuỗi là đường dẫn tương ứng với thư mục gốc của tiện ích. Mã sau đây sẽ chèn tệp script.js vào khung chính của thẻ.
+
+function getTabId () { ... }
+
+browser . scripting
+. executeScript ({
+target : { tabId : getTabId ()},
+files : [ "script.js" ],
+})
+. then (() = > console . log ( "injected script file" ));
+
+Hàm thời gian chạy
+
+Khi chèn JavaScript bằng scripting.executeScript() , bạn có thể chỉ định một hàm cần thực thi thay vì một tệp. Hàm này phải là một biến hàm có sẵn cho bối cảnh tiện ích hiện tại.
+
+function getTabId () { ... }
+function getTitle () { return document . title ; }
+
+browser . scripting
+. executeScript ({
+target : { tabId : getTabId ()},
+func : getTitle ,
+})
+. then (() = > console . log ( "injected a function" ));
+
+function getTabId () { ... }
+function getUserColor () { ... }
+
+function changeBackgroundColor () {
+document . body . style . backgroundColor = getUserColor ();
+}
+
+browser . scripting
+. executeScript ({
+target : { tabId : getTabId ()},
+func : changeBackgroundColor ,
+})
+. then (() = > console . log ( "injected a function" ));
+
+Bạn có thể giải quyết vấn đề này bằng cách sử dụng thuộc tính args :
+
+function getTabId () { ... }
+function getUserColor () { ... }
+function changeBackgroundColor ( backgroundColor ) {
+document . body . style . backgroundColor = backgroundColor ;
+}
+
+browser . scripting
+. executeScript ({
+target : { tabId : getTabId ()},
+func : changeBackgroundColor ,
+args : [ getUserColor () ],
+})
+. then (() = > console . log ( "injected a function" ));
+
+Chuỗi thời gian chạy
+
+Nếu chèn CSS vào một trang, bạn cũng có thể chỉ định một chuỗi để sử dụng trong thuộc tính css . Lựa chọn này chỉ dành cho scripting.insertCSS() ; bạn không thể thực thi một chuỗi bằng scripting.executeScript() .
+
+function getTabId () { ... }
+const css = "body { background-color: red; }" ;
+
+browser . scripting
+. insertCSS ({
+target : { tabId : getTabId ()},
+css : css ,
+})
+. then (() = > console . log ( "CSS injected" ));
+
+Xử lý kết quả
+
+Kết quả thực thi JavaScript được chuyển đến tiện ích. Mỗi khung hình chỉ có một kết quả. Khung chính được đảm bảo là chỉ mục đầu tiên trong mảng kết quả; tất cả các khung khác đều theo thứ tự không xác định.
+
+function getTabId () { ... }
+function getTitle () { return document . title ; }
+
+browser . scripting
+. executeScript ({
+target : { tabId : getTabId (), allFrames : true },
+func : getTitle ,
+})
+. then ( injectionResults = > {
+for ( const { frameId , result } of injectionResults ) {
+console . log ( `Frame ${ frameId } result:` , result );
+}
+});
+
+scripting.insertCSS() không trả về kết quả nào.
+
+Lời hứa
+
+Nếu giá trị kết quả của quá trình thực thi tập lệnh là một lời hứa, thì Chrome sẽ đợi
+lời hứa đó giải quyết và trả về giá trị kết quả.
+
+function getTabId () { ... }
+async function addIframe () {
+const iframe = document . createElement ( "iframe" );
+const loadComplete =
+new Promise ( resolve = > iframe . addEventListener ( "load" , resolve ));
+iframe . src = "https://example.com" ;
+document . body . appendChild ( iframe );
+await loadComplete ;
+return iframe . contentWindow . document . title ;
+}
+
+browser . scripting
+. executeScript ({
+target : { tabId : getTabId (), allFrames : true },
+func : addIframe ,
+})
+. then ( injectionResults = > {
+for ( const frameResult of injectionResults ) {
+const { frameId , result } = frameResult ;
+console . log ( `Frame ${ frameId } result:` , result );
+}
+});
+
+Ví dụ
+
+Huỷ đăng ký tất cả tập lệnh nội dung động
+
+Đoạn mã sau đây chứa một hàm huỷ đăng ký tất cả tập lệnh nội dung động mà tiện ích đã đăng ký trước đó.
+
+async function unregisterAllDynamicContentScripts () {
+try {
+const scripts = await browser . scripting . getRegisteredContentScripts ();
+const scriptIds = scripts . map ( script = > script . id );
+return browser . scripting . unregisterContentScripts ({ ids : scriptIds });
+} catch ( error ) {
+const message = [
+"An unexpected error occurred while" ,
+"unregistering dynamic content scripts." ,
+]. join ( " " );
+throw new Error ( message , { cause : error });
+}
+}
+
+Để dùng thử API browser.scripting , hãy cài đặt mẫu tập lệnh từ kho lưu trữ mẫu tiện ích Chrome .
+
+Loại
+
+ContentScriptFilter
+
+Chrome 96 trở lên
+
+browser.* kể từ Chrome 148
+
+Thuộc tính
+
+mã nhận dạng
+
+string[] không bắt buộc
+
+Nếu được chỉ định, getRegisteredContentScripts sẽ chỉ trả về các tập lệnh có mã nhận dạng được chỉ định trong danh sách này.
+
+CSSInjection
+
+Thuộc tính
+
+css
+
+chuỗi không bắt buộc
+
+Một chuỗi chứa CSS cần chèn. Bạn phải chỉ định chính xác một trong hai thuộc tính files và css .
+
+tệp
+
+string[] không bắt buộc
+
+Đường dẫn của tệp CSS cần chèn, tương ứng với thư mục gốc của tiện ích. Bạn phải chỉ định chính xác một trong hai thuộc tính files và css .
+
+nguồn gốc
+
+StyleOrigin không bắt buộc
+
+Nguồn gốc kiểu cho nội dung chèn. Giá trị mặc định là 'AUTHOR' .
+
+mục tiêu
+
+InjectionTarget
+
+Thông tin chi tiết chỉ định mục tiêu để chèn CSS.
+
+ExecutionWorld
+
+Chrome 95 trở lên
+
+trình duyệt.* kể từ Chrome 148
+
+Môi trường JavaScript để tập lệnh thực thi.
+
+Enum
+
+"ISOLATED"
+Chỉ định thế giới tách biệt, đây là môi trường thực thi duy nhất cho tiện ích này.
+
+"MAIN"
+Chỉ định môi trường chính của DOM, tức là môi trường thực thi được chia sẻ với JavaScript của trang lưu trữ.
+
+InjectionResult
+
+Thuộc tính
+
+documentId
+
+chuỗi
+
+Chrome 106 trở lên
+
+browser.* kể từ Chrome 148
+
+Tài liệu liên quan đến việc chèn.
+
+frameId
+
+số
+
+Trình duyệt Chrome 90 trở lên
+
+.* kể từ Chrome 148
+
+Khung liên kết với hoạt động chèn.
+
+kết quả
+
+bất kỳ không bắt buộc
+
+Kết quả thực thi tập lệnh.
+
+InjectionTarget
+
+Thuộc tính
+
+allFrames
+
+boolean không bắt buộc
+
+Liệu tập lệnh có nên chèn vào tất cả khung trong thẻ hay không. Giá trị mặc định là false. Giá trị này không được là true nếu bạn chỉ định frameIds .
+
+documentIds
+
+string[] không bắt buộc
+
+Chrome 106 trở lên
+
+browser.* kể từ Chrome 148
+
+Mã nhận dạng của documentId cụ thể cần chèn vào. Bạn không được đặt giá trị này nếu đã đặt frameIds .
+
+frameIds
+
+number[] không bắt buộc
+
+Mã nhận dạng của các khung cụ thể cần chèn vào.
+
+tabId
+
+số
+
+Mã nhận dạng của thẻ cần chèn.
+
+RegisteredContentScript
+
+Chrome 96 trở lên
+
+browser.* kể từ Chrome 148
+
+Thuộc tính
+
+allFrames
+
+boolean không bắt buộc
+
+Nếu được chỉ định là true, thì tập lệnh sẽ chèn vào tất cả các khung, ngay cả khi khung đó không phải là khung trên cùng trong thẻ. Mỗi khung được kiểm tra độc lập để đảm bảo đáp ứng các yêu cầu về URL; tập lệnh sẽ không chèn vào các khung con nếu không đáp ứng các yêu cầu về URL. Giá trị mặc định là false, nghĩa là chỉ so khớp khung trên cùng.
+
+css
+
+string[] không bắt buộc
+
+Danh sách các tệp CSS sẽ được chèn vào các trang phù hợp. Các tập lệnh này được chèn theo thứ tự xuất hiện trong mảng này, trước khi bất kỳ DOM nào được tạo hoặc hiển thị cho trang.
+
+excludeMatches
+
+string[] không bắt buộc
+
+Loại trừ các trang mà tập lệnh nội dung này sẽ được chèn vào. Hãy xem phần Kiểu khớp để biết thêm thông tin chi tiết về cú pháp của các chuỗi này.
+
+id
+
+chuỗi
+
+Mã nhận dạng của tập lệnh nội dung, được chỉ định trong lệnh gọi API. Không được bắt đầu bằng dấu "_" vì dấu này được dành riêng làm tiền tố cho mã tập lệnh được tạo.
+
+js
+
+string[] không bắt buộc
+
+Danh sách các tệp JavaScript cần chèn vào các trang phù hợp. Các giá trị này được chèn theo thứ tự xuất hiện trong mảng này.
+
+matchOriginAsFallback
+
+boolean không bắt buộc
+
+Chrome 119 trở lên
+
+browser.* kể từ Chrome 148
+
+Cho biết liệu tập lệnh có thể được chèn vào các khung mà URL chứa lược đồ không được hỗ trợ hay không; cụ thể là: about:, data:, blob: hoặc filesystem:. Trong những trường hợp này, nguồn gốc của URL sẽ được kiểm tra để xác định xem có nên chèn tập lệnh hay không. Nếu nguồn gốc là null (như trường hợp của URL data:), thì nguồn gốc được sử dụng là khung đã tạo khung hiện tại hoặc khung đã bắt đầu điều hướng đến khung này. Xin lưu ý rằng đây có thể không phải là khung mẹ.
+
+khớp với
+
+string[] không bắt buộc
+
+Chỉ định những trang mà tập lệnh nội dung này sẽ được chèn vào. Hãy xem phần Kiểu khớp để biết thêm thông tin chi tiết về cú pháp của các chuỗi này. Bạn phải chỉ định cho registerContentScripts .
+
+persistAcrossSessions
+
+boolean không bắt buộc
+
+Chỉ định xem tập lệnh nội dung này có được duy trì trong các phiên sau này hay không. Giá trị mặc định là "true".
+
+runAt
+
+RunAt không bắt buộc
+
+Chỉ định thời điểm chèn tệp JavaScript vào trang web. Giá trị ưu tiên và mặc định là document_idle .
+
+thế giới
+
+ExecutionWorld không bắt buộc
+
+Chrome 102 trở lên
+
+browser.* kể từ Chrome 148
+
+"Thế giới" JavaScript để chạy tập lệnh. Giá trị mặc định là ISOLATED .
+
+ScriptInjection
+
+Thuộc tính
+
+args
+
+any[] không bắt buộc
+
+Chrome 92 trở lên
+
+browser.* kể từ Chrome 148
+
+Các đối số cần truyền đến hàm được cung cấp. Giá trị này chỉ hợp lệ nếu bạn chỉ định tham số func . Các đối số này phải chuyển đổi được tuần tự thành JSON.
+
+tệp
+
+string[] không bắt buộc
+
+Đường dẫn của tệp JS hoặc CSS cần chèn, tương ứng với thư mục gốc của tiện ích. Bạn phải chỉ định chính xác một trong hai thuộc tính files hoặc func .
+
+injectImmediately
+
+boolean không bắt buộc
+
+Chrome 102 trở lên
+
+browser.* kể từ Chrome 148
+
+Liệu có nên kích hoạt việc chèn vào mục tiêu càng sớm càng tốt hay không. Xin lưu ý rằng điều này không đảm bảo việc chèn sẽ diễn ra trước khi tải trang, vì trang có thể đã tải xong khi tập lệnh đến được mục tiêu.
+
+mục tiêu
+
+InjectionTarget
+
+Thông tin chi tiết chỉ định mục tiêu để chèn tập lệnh.
+
+thế giới
+
+ExecutionWorld không bắt buộc
+
+Chrome 95 trở lên
+
+trình duyệt.* kể từ Chrome 148
+
+"Thế giới" JavaScript để chạy tập lệnh. Giá trị mặc định là ISOLATED .
+
+func
+
+không bắt buộc
+
+Chrome 92 trở lên
+
+browser.* kể từ Chrome 148
+
+Một hàm JavaScript cần chèn. Hàm này sẽ được chuyển đổi tuần tự, sau đó được chuyển đổi tuần tự để chèn. Điều này có nghĩa là mọi tham số ràng buộc và ngữ cảnh thực thi sẽ bị mất. Bạn phải chỉ định chính xác một trong hai thuộc tính files hoặc func .
+
+Hàm func có dạng như sau:
+
+() => {...}
+
+StyleOrigin
+
+Nguồn gốc của thay đổi về kiểu. Hãy xem phần nguồn gốc kiểu để biết thêm thông tin.
+
+Enum
+
+"AUTHOR"
+
+"USER"
+
+Phương thức
+
+executeScript()
+
+browser . scripting . executeScript (
+injection : ScriptInjection ,
+) : Promise< InjectionResult []>
+
+Chèn một tập lệnh vào ngữ cảnh mục tiêu. Theo mặc định, tập lệnh sẽ chạy tại document_idle hoặc ngay lập tức nếu trang đã tải xong. Nếu bạn đặt thuộc tính injectImmediately , tập lệnh sẽ chèn mà không cần chờ, ngay cả khi trang chưa tải xong. Nếu tập lệnh đánh giá một lời hứa, trình duyệt sẽ đợi lời hứa đó được giải quyết và trả về giá trị kết quả.
+
+Thông số
+
+tiêm
+
+ScriptInjection
+
+Thông tin chi tiết về tập lệnh cần chèn.
+
+Giá trị trả về
+
+Promise< InjectionResult []>
+
+Trình duyệt Chrome 90 trở lên
+
+.* kể từ Chrome 148
+
+Trả về một Lời hứa sẽ giải quyết khi hoàn tất việc chèn. Mảng kết quả chứa kết quả thực thi cho mỗi khung hình mà việc chèn thành công.
+
+getRegisteredContentScripts()
+
+Chrome 96 trở lên
+
+browser.* kể từ Chrome 148
+
+browser . scripting . getRegisteredContentScripts (
+filter? : ContentScriptFilter ,
+) : Promise< RegisteredContentScript []>
+
+Trả về tất cả tập lệnh nội dung được đăng ký động cho tiện ích này khớp với bộ lọc đã cho.
+
+Thông số
+
+filter
+
+ContentScriptFilter không bắt buộc
+
+Một đối tượng để lọc các tập lệnh được đăng ký linh động của tiện ích.
+
+Giá trị trả về
+
+Promise< RegisteredContentScript []>
+
+insertCSS()
+
+browser . scripting . insertCSS (
+injection : CSSInjection ,
+) : Promise<void>
+
+Chèn biểu định kiểu CSS vào ngữ cảnh mục tiêu. Nếu bạn chỉ định nhiều khung, thì các lần chèn không thành công sẽ bị bỏ qua.
+
+Thông số
+
+tiêm
+
+CSSInjection
+
+Thông tin chi tiết về kiểu cần chèn.
+
+Giá trị trả về
+
+Promise<void>
+
+Trình duyệt Chrome 90 trở lên
+
+.* kể từ Chrome 148
+
+Trả về một Lời hứa sẽ được thực hiện khi hoàn tất việc chèn.
+
+registerContentScripts()
+
+Chrome 96 trở lên
+
+browser.* kể từ Chrome 148
+
+browser . scripting . registerContentScripts (
+scripts : RegisteredContentScript [],
+) : Promise<void>
+
+Đăng ký một hoặc nhiều tập lệnh nội dung cho tiện ích này.
+
+Thông số
+
+các tập lệnh
+
+RegisteredContentScript []
+
+Chứa danh sách các tập lệnh cần đăng ký. Nếu có lỗi trong quá trình phân tích cú pháp tập lệnh/xác thực tệp hoặc nếu mã nhận dạng được chỉ định đã tồn tại, thì không có tập lệnh nào được đăng ký.
+
+Giá trị trả về
+
+Promise<void>
+
+Trả về một Lời hứa sẽ phân giải sau khi tập lệnh được đăng ký đầy đủ hoặc từ chối nếu xảy ra lỗi.
+
+removeCSS()
+
+Trình duyệt Chrome 90 trở lên
+
+.* kể từ Chrome 148
+
+browser . scripting . removeCSS (
+injection : CSSInjection ,
+) : Promise<void>
+
+Xoá biểu định kiểu CSS mà tiện ích này đã chèn trước đó khỏi ngữ cảnh mục tiêu.
+
+Thông số
+
+tiêm
+
+CSSInjection
+
+Thông tin chi tiết về các kiểu cần xoá. Xin lưu ý rằng các thuộc tính css , files và origin phải khớp chính xác với biểu định kiểu được chèn thông qua insertCSS . Việc cố gắng xoá một biểu định kiểu không tồn tại sẽ không có hiệu lực.
+
+Giá trị trả về
+
+Promise<void>
+
+Trả về một Lời hứa sẽ giải quyết khi hoàn tất việc xoá.
+
+unregisterContentScripts()
+
+Chrome 96 trở lên
+
+browser.* kể từ Chrome 148
+
+browser . scripting . unregisterContentScripts (
+filter? : ContentScriptFilter ,
+) : Promise<void>
+
+Huỷ đăng ký tập lệnh nội dung cho tiện ích này.
+
+Thông số
+
+filter
+
+ContentScriptFilter không bắt buộc
+
+Nếu được chỉ định, thì chỉ huỷ đăng ký các tập lệnh nội dung động khớp với bộ lọc. Nếu không, tất cả tập lệnh nội dung động của tiện ích sẽ bị huỷ đăng ký.
+
+Giá trị trả về
+
+Promise<void>
+
+Trả về một Lời hứa sẽ phân giải sau khi tập lệnh đã được huỷ đăng ký hoặc từ chối nếu xảy ra lỗi.
+
+updateContentScripts()
+
+Chrome 96 trở lên
+
+browser.* kể từ Chrome 148
+
+browser . scripting . updateContentScripts (
+scripts : RegisteredContentScript [],
+) : Promise<void>
+
+Cập nhật một hoặc nhiều tập lệnh nội dung cho tiện ích này.
+
+Thông số
+
+các tập lệnh
+
+RegisteredContentScript []
+
+Chứa danh sách các tập lệnh cần cập nhật. Một thuộc tính chỉ được cập nhật cho tập lệnh hiện có nếu thuộc tính đó được chỉ định trong đối tượng này. Nếu có lỗi trong quá trình phân tích cú pháp tập lệnh/xác thực tệp hoặc nếu mã nhận dạng được chỉ định không tương ứng với một tập lệnh đã đăng ký đầy đủ, thì không có tập lệnh nào được cập nhật.
+
+Giá trị trả về
+
+Promise<void>
+
+Trả về một Lời hứa sẽ phân giải sau khi tập lệnh được cập nhật hoặc từ chối nếu xảy ra lỗi.

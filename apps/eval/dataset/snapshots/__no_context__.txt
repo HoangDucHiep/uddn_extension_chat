@@ -1,0 +1,2 @@
+Task nhom general_qa: context_mode = "none" → harness KHONG gui payload context.
+File nay chi ton tai de snapshot_path tro dung → khong dung lam noi dung.

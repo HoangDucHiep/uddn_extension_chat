@@ -1,0 +1,45 @@
+Google sử dụng công nghệ AI để dịch nội dung sang ngôn ngữ bạn ưu tiên. Bản dịch bằng AI có thể có lỗi.
+
+Ngọn hải đăng
+
+Lighthouse có các quy trình kiểm tra về hiệu suất, khả năng hỗ trợ tiếp cận, ứng dụng web tiến bộ, SEO và nhiều khía cạnh khác. Bạn có thể chạy Lighthouse trên bất kỳ trang web nào, công khai hoặc yêu cầu xác thực.
+
+Bạn có thể chạy Lighthouse trong PageSpeed Insights, trong Công cụ của Chrome cho nhà phát triển, từ dòng lệnh hoặc dưới dạng mô-đun Node. Bạn cung cấp cho Lighthouse một URL để kiểm tra, công cụ này sẽ chạy một loạt quy trình kiểm tra trên trang, sau đó tạo báo cáo về hiệu suất của trang. Sau đó, hãy sử dụng các quy trình kiểm tra không đạt để làm chỉ báo về cách cải thiện trang.
+
+Mỗi quy trình kiểm tra đều có tài liệu tham khảo giải thích lý do quy trình kiểm tra đó quan trọng, cũng như cách khắc phục.
+
+Kiểm thử trang web
+
+Tổng quan
+
+bolt
+
+Kiểm tra hiệu suất
+
+Đo lường hiệu suất và tìm cơ hội tăng tốc độ tải trang.
+
+Bắt đầu
+
+accessibility
+
+Kiểm tra khả năng hỗ trợ tiếp cận
+
+Xác định xem liệu tất cả người dùng có truy cập vào nội dung và điều hướng trang web của bạn một cách hiệu quả hay không.
+
+Bắt đầu
+
+star
+
+Kiểm tra theo các phương pháp hay nhất
+
+Cải thiện trạng thái mã của trang web theo các phương pháp hay nhất sau.
+
+Bắt đầu
+
+search
+
+Kiểm tra SEO
+
+Đảm bảo rằng trang của bạn được tối ưu hoá cho thứ hạng kết quả trong công cụ tìm kiếm.
+
+Bắt đầu

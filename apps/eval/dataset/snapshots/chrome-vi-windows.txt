@@ -1,0 +1,661 @@
+Google sử dụng công nghệ AI để dịch nội dung sang ngôn ngữ bạn ưu tiên. Bản dịch bằng AI có thể có lỗi.
+
+browser.windows
+
+Mô tả
+
+Sử dụng API chrome.windows để tương tác với cửa sổ trình duyệt. Bạn có thể sử dụng API này để tạo, sửa đổi và sắp xếp lại các cửa sổ trong trình duyệt.
+
+Quyền
+
+Khi được yêu cầu, windows.Window sẽ chứa một mảng gồm các đối tượng tabs.Tab . Bạn phải khai báo quyền "tabs" trong tệp kê khai nếu cần truy cập vào các thuộc tính url , pendingUrl , title hoặc favIconUrl của tabs.Tab . Ví dụ:
+
+{
+"name" : "My extension" ,
+...
+"permissions" : [ "tabs" ],
+...
+}
+
+Khái niệm và cách sử dụng
+
+Cửa sổ hiện tại
+
+Nhiều hàm trong hệ thống tiện ích nhận một đối số windowId không bắt buộc, đối số này mặc định là cửa sổ hiện tại.
+
+Cửa sổ hiện tại là cửa sổ chứa mã đang thực thi. Bạn cần lưu ý rằng cửa sổ này có thể khác với cửa sổ trên cùng hoặc cửa sổ được lấy tiêu điểm.
+
+Ví dụ: giả sử một tiện ích tạo một vài thẻ hoặc cửa sổ từ một tệp HTML và tệp HTML đó chứa lệnh gọi đến tabs.query() . Cửa sổ hiện tại là cửa sổ chứa trang đã thực hiện lệnh gọi, bất kể cửa sổ trên cùng là gì.
+
+Trong trường hợp trình chạy dịch vụ , giá trị của cửa sổ hiện tại sẽ quay về cửa sổ hoạt động gần đây nhất. Trong một số trường hợp, có thể không có cửa sổ hiện tại cho các trang nền.
+
+Ví dụ
+
+Để dùng thử API này, hãy cài đặt ví dụ về API cửa sổ từ kho lưu trữ chrome-extension-samples .
+
+Hai cửa sổ, mỗi cửa sổ có một thẻ.
+
+Loại
+
+CreateType
+
+Trình duyệt Chrome 44 trở lên
+
+.* kể từ Chrome 148
+
+Chỉ định loại cửa sổ trình duyệt cần tạo. "panel" không được dùng nữa và chỉ dành cho các tiện ích hiện có trong danh sách cho phép trên ChromeOS.
+
+Enum
+
+"normal"
+Chỉ định cửa sổ là cửa sổ chuẩn.
+
+"popup"
+Chỉ định cửa sổ là cửa sổ bật lên.
+
+"panel"
+Chỉ định cửa sổ dưới dạng bảng điều khiển.
+
+QueryOptions
+
+Chrome 88 trở lên
+
+trình duyệt.* kể từ Chrome 148
+
+Thuộc tính
+
+điền sẵn
+
+boolean không bắt buộc
+
+Nếu đúng, đối tượng windows.Window sẽ có thuộc tính tabs chứa danh sách các đối tượng tabs.Tab . Đối tượng Tab chỉ chứa các thuộc tính url , pendingUrl , title và favIconUrl nếu tệp kê khai của tiện ích có quyền "tabs" .
+
+windowTypes
+
+WindowType [] không bắt buộc
+
+Nếu được đặt, windows.Window được trả về sẽ được lọc dựa trên loại của nó. Nếu bạn không đặt, bộ lọc mặc định sẽ được đặt thành ['normal', 'popup'] .
+
+Window
+
+Thuộc tính
+
+alwaysOnTop
+
+boolean
+
+Liệu cửa sổ có được đặt ở chế độ luôn ở trên cùng hay không.
+
+tập trung
+
+boolean
+
+Liệu cửa sổ hiện có phải là cửa sổ được lấy tiêu điểm hay không.
+
+chiều cao
+
+number không bắt buộc
+
+Chiều cao của cửa sổ, bao gồm cả khung, tính bằng pixel. Trong một số trường hợp, cửa sổ có thể không được chỉ định thuộc tính height ; ví dụ: khi truy vấn các cửa sổ đã đóng từ API sessions .
+
+id
+
+number không bắt buộc
+
+Mã nhận dạng của cửa sổ. Mã cửa sổ là duy nhất trong một phiên trình duyệt. Trong một số trường hợp, cửa sổ có thể không được chỉ định thuộc tính ID ; ví dụ: khi truy vấn cửa sổ bằng API sessions , trong trường hợp đó, mã phiên có thể xuất hiện.
+
+ẩn danh
+
+boolean
+
+Liệu cửa sổ có ở chế độ ẩn danh hay không.
+
+trái
+
+number không bắt buộc
+
+Độ lệch của cửa sổ so với cạnh trái của màn hình, tính bằng pixel. Trong một số trường hợp, cửa sổ có thể không được chỉ định thuộc tính left ; ví dụ: khi truy vấn các cửa sổ đã đóng từ API sessions .
+
+sessionId
+
+chuỗi không bắt buộc
+
+Mã phiên dùng để xác định riêng một cửa sổ, được lấy từ API sessions .
+
+tiểu bang
+
+WindowState không bắt buộc
+
+Trạng thái của cửa sổ trình duyệt này.
+
+Thẻ
+
+Thẻ [] không bắt buộc
+
+Mảng đối tượng tabs.Tab đại diện cho các thẻ hiện tại trong cửa sổ.
+
+trên cùng
+
+number không bắt buộc
+
+Độ lệch của cửa sổ so với cạnh trên của màn hình, tính bằng pixel. Trong một số trường hợp, cửa sổ có thể không được chỉ định thuộc tính top ; ví dụ: khi truy vấn các cửa sổ đã đóng từ API sessions .
+
+loại
+
+WindowType không bắt buộc
+
+Loại cửa sổ trình duyệt.
+
+chiều rộng
+
+number không bắt buộc
+
+Chiều rộng của cửa sổ, bao gồm cả khung, tính bằng pixel. Trong một số trường hợp, cửa sổ có thể không được chỉ định thuộc tính width ; ví dụ: khi truy vấn các cửa sổ đã đóng từ API sessions .
+
+WindowState
+
+Trình duyệt Chrome 44 trở lên
+
+.* kể từ Chrome 148
+
+Trạng thái của cửa sổ trình duyệt này. Trong một số trường hợp, cửa sổ có thể không được chỉ định thuộc tính state ; ví dụ: khi truy vấn các cửa sổ đã đóng từ API sessions .
+
+Enum
+
+"normal"
+Trạng thái cửa sổ bình thường (không thu nhỏ, phóng to hoặc toàn màn hình).
+
+"minimized"
+Trạng thái cửa sổ thu nhỏ.
+
+"maximized"
+Trạng thái cửa sổ được phóng to.
+
+"fullscreen"
+Trạng thái cửa sổ toàn màn hình.
+
+WindowType
+
+Trình duyệt Chrome 44 trở lên
+
+.* kể từ Chrome 148
+
+Loại cửa sổ trình duyệt. Trong một số trường hợp, cửa sổ có thể không được chỉ định thuộc tính type ; ví dụ: khi truy vấn các cửa sổ đã đóng từ API sessions .
+
+Enum
+
+"normal"
+Cửa sổ trình duyệt thông thường.
+
+"popup"
+Cửa sổ bật lên của trình duyệt.
+
+"panel"
+Không dùng nữa trong API này. Cửa sổ kiểu bảng điều khiển của Ứng dụng Chrome. Tiện ích chỉ có thể xem cửa sổ bảng điều khiển của riêng chúng.
+
+"app"
+Không dùng nữa trong API này. Cửa sổ Ứng dụng Chrome. Tiện ích chỉ có thể xem cửa sổ của ứng dụng của riêng chúng.
+
+"devtools"
+Cửa sổ Công cụ cho nhà phát triển.
+
+Thuộc tính
+
+WINDOW_ID_CURRENT
+
+Giá trị windowId đại diện cho cửa sổ hiện tại .
+
+Giá trị
+
+-2
+
+WINDOW_ID_NONE
+
+Giá trị windowId đại diện cho việc không có cửa sổ trình duyệt Chrome.
+
+Giá trị
+
+-1
+
+Phương thức
+
+create()
+
+browser . windows . create (
+createData? : object ,
+) : Promise< Window | undefined >
+
+Tạo (mở) một cửa sổ trình duyệt mới với mọi kích thước, vị trí hoặc URL mặc định được cung cấp (không bắt buộc).
+
+Thông số
+
+createData
+
+object không bắt buộc
+
+tập trung
+
+boolean không bắt buộc
+
+Nếu true , hãy mở một cửa sổ đang hoạt động. Nếu false , hãy mở một cửa sổ không hoạt động.
+
+chiều cao
+
+number không bắt buộc
+
+Chiều cao tính bằng pixel của cửa sổ mới, bao gồm cả khung. Nếu không được chỉ định, chiều cao sẽ mặc định là chiều cao tự nhiên.
+
+ẩn danh
+
+boolean không bắt buộc
+
+Liệu cửa sổ mới có phải là cửa sổ ẩn danh hay không.
+
+trái
+
+number không bắt buộc
+
+Số pixel để đặt vị trí cửa sổ mới từ cạnh trái của màn hình. Nếu không được chỉ định, cửa sổ mới sẽ được bù trừ một cách tự nhiên so với cửa sổ được lấy tiêu điểm gần đây nhất. Giá trị này bị bỏ qua đối với bảng điều khiển.
+
+setSelfAsOpener
+
+boolean không bắt buộc
+
+Chrome 64 trở lên
+
+browser.* kể từ Chrome 148
+
+Nếu true , thì "window.opener" của cửa sổ mới tạo sẽ được đặt thành phương thức gọi và nằm trong cùng một đơn vị của bối cảnh duyệt web có liên quan với phương thức gọi.
+
+tiểu bang
+
+WindowState không bắt buộc
+
+Trình duyệt Chrome 44 trở lên
+
+.* kể từ Chrome 148
+
+Trạng thái ban đầu của cửa sổ. Không thể kết hợp các trạng thái minimized , maximized và fullscreen với left , top , width hoặc height .
+
+tabId
+
+number không bắt buộc
+
+Mã nhận dạng của thẻ cần thêm vào cửa sổ mới.
+
+trên cùng
+
+number không bắt buộc
+
+Số pixel để đặt vị trí cửa sổ mới từ cạnh trên cùng của màn hình. Nếu không được chỉ định, cửa sổ mới sẽ được bù trừ một cách tự nhiên so với cửa sổ được lấy tiêu điểm gần đây nhất. Giá trị này bị bỏ qua đối với bảng điều khiển.
+
+loại
+
+CreateType không bắt buộc
+
+Chỉ định loại cửa sổ trình duyệt cần tạo.
+
+url
+
+string | string[] không bắt buộc
+
+Một URL hoặc mảng URL để mở dưới dạng thẻ trong cửa sổ. URL đủ điều kiện phải bao gồm một giao thức, ví dụ: "http://www.google.com", chứ không phải "www.google.com". Các URL không đủ điều kiện được coi là tương đối trong tiện ích. Mặc định là trang Thẻ mới.
+
+chiều rộng
+
+number không bắt buộc
+
+Chiều rộng tính bằng pixel của cửa sổ mới, bao gồm cả khung. Nếu không được chỉ định, giá trị mặc định sẽ là chiều rộng tự nhiên.
+
+Giá trị trả về
+
+Promise< Window | undefined>
+
+Chrome 88 trở lên
+
+trình duyệt.* kể từ Chrome 148
+
+get()
+
+browser . windows . get (
+windowId : number ,
+queryOptions? : QueryOptions ,
+) : Promise< Window >
+
+Lấy thông tin chi tiết về một cửa sổ.
+
+Thông số
+
+windowId
+
+số
+
+queryOptions
+
+QueryOptions không bắt buộc
+
+Chrome 88 trở lên
+
+trình duyệt.* kể từ Chrome 148
+
+Giá trị trả về
+
+Promise< Window >
+
+Chrome 88 trở lên
+
+trình duyệt.* kể từ Chrome 148
+
+getAll()
+
+browser . windows . getAll (
+queryOptions? : QueryOptions ,
+) : Promise< Window []>
+
+Lấy tất cả cửa sổ.
+
+Thông số
+
+queryOptions
+
+QueryOptions không bắt buộc
+
+Chrome 88 trở lên
+
+trình duyệt.* kể từ Chrome 148
+
+Giá trị trả về
+
+Promise< Window []>
+
+Chrome 88 trở lên
+
+trình duyệt.* kể từ Chrome 148
+
+getCurrent()
+
+browser . windows . getCurrent (
+queryOptions? : QueryOptions ,
+) : Promise< Window >
+
+Lấy cửa sổ hiện tại .
+
+Thông số
+
+queryOptions
+
+QueryOptions không bắt buộc
+
+Chrome 88 trở lên
+
+trình duyệt.* kể từ Chrome 148
+
+Giá trị trả về
+
+Promise< Window >
+
+Chrome 88 trở lên
+
+trình duyệt.* kể từ Chrome 148
+
+getLastFocused()
+
+browser . windows . getLastFocused (
+queryOptions? : QueryOptions ,
+) : Promise< Window >
+
+Lấy cửa sổ được lấy tiêu điểm gần đây nhất – thường là cửa sổ "trên cùng".
+
+Thông số
+
+queryOptions
+
+QueryOptions không bắt buộc
+
+Chrome 88 trở lên
+
+trình duyệt.* kể từ Chrome 148
+
+Giá trị trả về
+
+Promise< Window >
+
+Chrome 88 trở lên
+
+trình duyệt.* kể từ Chrome 148
+
+remove()
+
+browser . windows . remove (
+windowId : number ,
+) : Promise<void>
+
+Xoá (đóng) một cửa sổ và tất cả các thẻ bên trong cửa sổ đó.
+
+Thông số
+
+windowId
+
+số
+
+Giá trị trả về
+
+Promise<void>
+
+Chrome 88 trở lên
+
+trình duyệt.* kể từ Chrome 148
+
+update()
+
+browser . windows . update (
+windowId : number ,
+updateInfo : object ,
+) : Promise< Window >
+
+Cập nhật các thuộc tính của cửa sổ. Chỉ chỉ định những thuộc tính cần thay đổi; các thuộc tính không được chỉ định sẽ không thay đổi.
+
+Thông số
+
+windowId
+
+số
+
+updateInfo
+
+đối tượng
+
+drawAttention
+
+boolean không bắt buộc
+
+Nếu là true , thì cửa sổ sẽ hiển thị theo cách thu hút sự chú ý của người dùng vào cửa sổ mà không thay đổi cửa sổ được lấy tiêu điểm. Hiệu ứng này kéo dài cho đến khi người dùng chuyển tiêu điểm sang cửa sổ. Tuỳ chọn này không có hiệu lực nếu cửa sổ đã được lấy tiêu điểm. Đặt thành false để huỷ yêu cầu drawAttention trước đó.
+
+tập trung
+
+boolean không bắt buộc
+
+Nếu là true , hãy đưa cửa sổ ra trước; không thể kết hợp với trạng thái "thu nhỏ". Nếu false , đưa cửa sổ tiếp theo theo thứ tự z lên phía trước; không thể kết hợp với trạng thái "toàn màn hình" hoặc "phóng to".
+
+chiều cao
+
+number không bắt buộc
+
+Chiều cao để đổi kích thước cửa sổ, tính bằng pixel. Giá trị này bị bỏ qua đối với bảng điều khiển.
+
+trái
+
+number không bắt buộc
+
+Khoảng cách từ cạnh trái của màn hình để di chuyển cửa sổ đến, tính bằng pixel. Giá trị này bị bỏ qua đối với bảng điều khiển.
+
+tiểu bang
+
+WindowState không bắt buộc
+
+Trạng thái mới của cửa sổ. Không thể kết hợp các trạng thái "thu nhỏ", "phóng to" và "toàn màn hình" với "trái", "trên", "chiều rộng" hoặc "chiều cao".
+
+trên cùng
+
+number không bắt buộc
+
+Độ lệch tính từ cạnh trên cùng của màn hình để di chuyển cửa sổ đến, tính bằng pixel. Giá trị này bị bỏ qua đối với bảng điều khiển.
+
+chiều rộng
+
+number không bắt buộc
+
+Chiều rộng để đổi kích thước cửa sổ, tính bằng pixel. Giá trị này bị bỏ qua đối với bảng điều khiển.
+
+Giá trị trả về
+
+Promise< Window >
+
+Chrome 88 trở lên
+
+trình duyệt.* kể từ Chrome 148
+
+Sự kiện
+
+onBoundsChanged
+
+Chrome 86 trở lên
+
+browser.* kể từ Chrome 148
+
+browser . windows . onBoundsChanged . addListener (
+callback : function ,
+)
+
+Được kích hoạt khi cửa sổ đã được đổi kích thước; sự kiện này chỉ được gửi khi các giới hạn mới được áp dụng, chứ không phải cho các thay đổi đang diễn ra.
+
+Thông số
+
+callback
+
+hàm
+
+Tham số callback có dạng như sau:
+
+( window : Window ) => void
+
+cửa sổ
+
+Cửa sổ
+
+onCreated
+
+browser . windows . onCreated . addListener (
+callback : function ,
+filters? : object ,
+)
+
+Được kích hoạt khi một cửa sổ được tạo.
+
+Thông số
+
+callback
+
+hàm
+
+Chrome 46 trở lên
+
+browser.* kể từ Chrome 148
+
+Tham số callback có dạng như sau:
+
+( window : Window ) => void
+
+cửa sổ
+
+Cửa sổ
+
+Thông tin chi tiết về cửa sổ đã tạo.
+
+bộ lọc
+
+object không bắt buộc
+
+windowTypes
+
+WindowType []
+
+Các điều kiện mà loại cửa sổ đang được tạo phải đáp ứng. Theo mặc định, chế độ này đáp ứng ['normal', 'popup'] .
+
+onFocusChanged
+
+browser . windows . onFocusChanged . addListener (
+callback : function ,
+filters? : object ,
+)
+
+Được kích hoạt khi cửa sổ đang được lấy tiêu điểm thay đổi. Trả về chrome.windows.WINDOW_ID_NONE nếu tất cả cửa sổ Chrome đều mất tiêu điểm. Lưu ý: Trên một số trình quản lý cửa sổ Linux, WINDOW_ID_NONE luôn được gửi ngay trước khi chuyển từ cửa sổ Chrome này sang cửa sổ Chrome khác.
+
+Thông số
+
+callback
+
+hàm
+
+Chrome 46 trở lên
+
+browser.* kể từ Chrome 148
+
+Tham số callback có dạng như sau:
+
+( windowId : number ) => void
+
+windowId
+
+số
+
+Mã nhận dạng của cửa sổ mới được lấy tiêu điểm.
+
+bộ lọc
+
+object không bắt buộc
+
+windowTypes
+
+WindowType []
+
+Điều kiện mà loại cửa sổ bị xoá phải đáp ứng. Theo mặc định, chế độ này đáp ứng ['normal', 'popup'] .
+
+onRemoved
+
+browser . windows . onRemoved . addListener (
+callback : function ,
+filters? : object ,
+)
+
+Được kích hoạt khi một cửa sổ bị xoá (đóng).
+
+Thông số
+
+callback
+
+hàm
+
+Chrome 46 trở lên
+
+browser.* kể từ Chrome 148
+
+Tham số callback có dạng như sau:
+
+( windowId : number ) => void
+
+windowId
+
+số
+
+Mã nhận dạng của cửa sổ đã bị xoá.
+
+bộ lọc
+
+object không bắt buộc
+
+windowTypes
+
+WindowType []
+
+Điều kiện mà loại cửa sổ bị xoá phải đáp ứng. Theo mặc định, chế độ này đáp ứng ['normal', 'popup'] .

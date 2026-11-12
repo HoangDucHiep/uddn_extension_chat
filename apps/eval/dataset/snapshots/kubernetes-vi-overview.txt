@@ -1,0 +1,20 @@
+Thông tin trong tài liệu này có thể đã lỗi thời
+
+Tài liệu này có ngày cập nhật cũ hơn so với bản gốc, vì vậy thông tin mà nó chứa có thể đã lỗi thời. Nếu bạn có thể đọc tiếng Anh, hãy xem phiên bản tiếng Anh để có thông tin mới nhất: Overview
+
+Tổng quan
+
+Kubernetes là gì
+
+Phản hồi
+
+Trang này có hữu ích không?
+
+Cảm ơn bạn đã phản hồi. Nếu bạn có một câu hỏi cụ thể và có thể trả lời về cách sử dụng Kubernetes, hãy đặt nó trên
+Stack Overflow .
+Mở một vấn đề trong Kho GitHub nếu bạn muốn
+báo cáo một vấn đề
+hoặc
+đề xuất một cải tiến .
+
+Last modified December 17, 2019 at 10:35 PM PST: Adding overview of K8s (#18105) (32c4f269cd)

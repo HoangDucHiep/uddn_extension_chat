@@ -1,0 +1,1997 @@
+Google sử dụng công nghệ AI để dịch nội dung sang ngôn ngữ bạn ưu tiên. Bản dịch bằng AI có thể có lỗi.
+
+browser.tabs
+
+Mô tả
+
+Sử dụng API chrome.tabs để tương tác với hệ thống thẻ của trình duyệt. Bạn có thể sử dụng API này để tạo, sửa đổi và sắp xếp lại các thẻ trong trình duyệt.
+
+Tabs API không chỉ cung cấp các tính năng để thao tác và quản lý thẻ, mà còn có thể phát hiện
+ngôn ngữ của thẻ, chụp ảnh chụp màn hình và
+giao tiếp với tập lệnh nội dung của thẻ.
+
+Quyền
+
+Hầu hết các tính năng đều không yêu cầu quyền sử dụng. Ví dụ: tạo một thẻ mới,
+tải lại một thẻ, chuyển đến một URL khác, v.v.
+
+Có 3 quyền mà nhà phát triển cần lưu ý khi làm việc với Tabs API.
+
+Quyền "tabs"
+
+Quyền này không cấp quyền truy cập vào không gian tên browser.tabs . Thay vào đó, quyền này cho phép một tiện ích gọi tabs.query() đối với 4 thuộc tính nhạy cảm trên các thực thể tabs.Tab : url , pendingUrl , title và favIconUrl .
+
+{
+"name" : "My extension" ,
+...
+"permissions" : [
+"tabs"
+],
+...
+}
+
+Quyền của người tổ chức
+
+Quyền của máy chủ lưu trữ cho phép tiện ích đọc và truy vấn 4 thuộc tính nhạy cảm của thẻ khớp tabs.Tab . Họ cũng có thể tương tác trực tiếp với các thẻ phù hợp bằng các phương thức như tabs.captureVisibleTab() , scripting.executeScript() , scripting.insertCSS() và scripting.removeCSS() .
+
+{
+"name" : "My extension" ,
+...
+"host_permissions" : [
+"http://*/*" ,
+"https://*/*"
+],
+...
+}
+
+Quyền "activeTab"
+
+activeTab cấp quyền lưu trữ tạm thời cho tiện ích của thẻ hiện tại để phản hồi lệnh gọi của người dùng. Không giống như quyền của máy chủ lưu trữ, activeTab không kích hoạt bất kỳ cảnh báo nào.
+
+{
+"name" : "My extension" ,
+...
+"permissions" : [
+"activeTab"
+],
+...
+}
+
+Trường hợp sử dụng
+
+Các phần sau đây minh hoạ một số trường hợp sử dụng phổ biến.
+
+Mở trang tiện ích trong thẻ mới
+
+Một mẫu phổ biến cho tiện ích là mở trang giới thiệu trong một thẻ mới khi tiện ích được cài đặt. Ví dụ sau đây cho thấy cách thực hiện việc này.
+
+background.js:
+
+browser . runtime . onInstalled . addListener (({ reason }) = > {
+if ( reason === 'install' ) {
+browser . tabs . create ({
+url : "onboarding.html"
+});
+}
+});
+
+Lấy thẻ hiện tại
+
+Ví dụ này minh hoạ cách trình chạy dịch vụ của tiện ích có thể truy xuất thẻ đang hoạt động từ cửa sổ đang được lấy tiêu điểm (hoặc cửa sổ được lấy tiêu điểm gần đây nhất, nếu không có cửa sổ Chrome nào được lấy tiêu điểm). Thường thì đây là thẻ hiện tại của người dùng.
+
+async function getCurrentTab () {
+let queryOptions = { active : true , lastFocusedWindow : true };
+// `tab` will either be a `tabs.Tab` instance or `undefined`.
+let [ tab ] = await browser . tabs . query ( queryOptions );
+return tab ;
+}
+
+function getCurrentTab ( callback ) {
+let queryOptions = { active : true , lastFocusedWindow : true };
+browser . tabs . query ( queryOptions , ([ tab ]) = > {
+if ( browser . runtime . lastError )
+console . error ( browser . runtime . lastError );
+// `tab` will either be a `tabs.Tab` instance or `undefined`.
+callback ( tab );
+});
+}
+
+Tắt tiếng thẻ được chỉ định
+
+Ví dụ này cho thấy cách một tiện ích có thể bật/tắt trạng thái tắt tiếng cho một thẻ nhất định.
+
+async function toggleMuteState ( tabId ) {
+const tab = await browser . tabs . get ( tabId );
+const muted = ! tab . mutedInfo . muted ;
+await browser . tabs . update ( tabId , { muted });
+console . log ( `Tab ${ tab . id } is ${ muted ? "muted" : "unmuted" } ` );
+}
+
+function toggleMuteState ( tabId ) {
+browser . tabs . get ( tabId , async ( tab ) = > {
+let muted = ! tab . mutedInfo . muted ;
+await browser . tabs . update ( tabId , { muted });
+console . log ( `Tab ${ tab . id } is ${ muted ? "muted" : "unmuted" } ` );
+});
+}
+
+Di chuyển thẻ hiện tại đến vị trí đầu tiên khi được nhấp vào
+
+Ví dụ này cho thấy cách di chuyển một thẻ trong khi thao tác kéo có thể đang diễn ra hoặc không. Mặc dù ví dụ này sử dụng browser.tabs.move , nhưng bạn có thể sử dụng cùng một mẫu chờ cho các lệnh gọi khác sửa đổi thẻ trong khi thao tác kéo đang diễn ra.
+
+browser . tabs . onActivated . addListener ( moveToFirstPosition );
+
+async function moveToFirstPosition ( activeInfo ) {
+try {
+await browser . tabs . move ( activeInfo . tabId , { index : 0 });
+console . log ( "Success." );
+} catch ( error ) {
+if ( error == "Error: Tabs cannot be edited right now (user may be dragging a tab)." ) {
+setTimeout (() = > moveToFirstPosition ( activeInfo ), 50 );
+} else {
+console . error ( error );
+}
+}
+}
+
+browser . tabs . onActivated . addListener ( moveToFirstPositionMV2 );
+
+function moveToFirstPositionMV2 ( activeInfo ) {
+browser . tabs . move ( activeInfo . tabId , { index : 0 }, () = > {
+if ( browser . runtime . lastError ) {
+const error = browser . runtime . lastError ;
+if ( error == "Error: Tabs cannot be edited right now (user may be dragging a tab)." ) {
+setTimeout (() = > moveToFirstPositionMV2 ( activeInfo ), 50 );
+} else {
+console . error ( error );
+}
+} else {
+console . log ( "Success." );
+}
+});
+}
+
+Truyền thông báo đến tập lệnh nội dung của thẻ đã chọn
+
+Ví dụ này minh hoạ cách trình chạy dịch vụ của tiện ích có thể giao tiếp với tập lệnh nội dung trong các thẻ trình duyệt cụ thể bằng tabs.sendMessage() .
+
+function sendMessageToActiveTab ( message ) {
+const [ tab ] = await browser . tabs . query ({ active : true , lastFocusedWindow : true });
+const response = await browser . tabs . sendMessage ( tab . id , message );
+// TODO: Do something with the response.
+}
+
+Ví dụ về tiện ích
+
+Để xem thêm bản minh hoạ về tiện ích Tabs API, hãy khám phá bất kỳ nội dung nào sau đây:
+
+Manifest V2 – Tiện ích Tabs API .
+
+Manifest V3 – Trình quản lý thẻ .
+
+Loại
+
+MutedInfo
+
+Chrome 46 trở lên
+
+browser.* kể từ Chrome 148
+
+Trạng thái tắt tiếng của thẻ và lý do thay đổi trạng thái gần đây nhất.
+
+Thuộc tính
+
+extensionId
+
+chuỗi không bắt buộc
+
+Mã của tiện ích đã thay đổi trạng thái tắt tiếng. Không được đặt nếu tiện ích không phải là lý do khiến trạng thái tắt tiếng thay đổi gần đây nhất.
+
+đã tắt tiếng
+
+boolean
+
+Liệu thẻ có bị tắt tiếng (không phát âm thanh) hay không. Thẻ có thể bị tắt tiếng ngay cả khi chưa phát hoặc hiện không phát âm thanh. Tương đương với việc chỉ báo âm thanh "đã tắt tiếng" có đang hiển thị hay không.
+
+lý do
+
+MutedInfoReason không bắt buộc
+
+Lý do thẻ bị tắt tiếng hoặc bật tiếng. Không được đặt nếu trạng thái tắt tiếng của thẻ chưa từng thay đổi.
+
+MutedInfoReason
+
+Chrome 46 trở lên
+
+browser.* kể từ Chrome 148
+
+Một sự kiện khiến trạng thái tắt tiếng thay đổi.
+
+Enum
+
+"user"
+Thao tác của người dùng đã đặt trạng thái tắt tiếng.
+
+"capture"
+Đã bắt đầu chụp thẻ, buộc thay đổi trạng thái tắt tiếng.
+
+"extension"
+Một tiện ích, được xác định bằng trường extensionId, đặt trạng thái tắt tiếng.
+
+Tab
+
+Thuộc tính
+
+hoạt động
+
+boolean
+
+Liệu thẻ có đang hoạt động trong cửa sổ của thẻ hay không. Không nhất thiết có nghĩa là cửa sổ được lấy tiêu điểm.
+
+audible
+
+boolean không bắt buộc
+
+Chrome 45 trở lên
+
+trình duyệt.* kể từ Chrome 148
+
+Liệu thẻ có phát ra âm thanh trong vài giây qua hay không (nhưng có thể không nghe được nếu cũng bị tắt tiếng). Tương đương với việc chỉ báo "âm thanh của người nói" có đang hiển thị hay không.
+
+autoDiscardable
+
+boolean
+
+Chrome 54 trở lên
+
+browser.* kể từ Chrome 148
+
+Liệu trình duyệt có thể tự động loại bỏ thẻ khi tài nguyên sắp hết hay không.
+
+đã hủy
+
+boolean
+
+Chrome 54 trở lên
+
+browser.* kể từ Chrome 148
+
+Thẻ có bị loại bỏ hay không. Thẻ bị loại bỏ là thẻ có nội dung đã được dỡ bỏ khỏi bộ nhớ nhưng vẫn hiển thị trong dải thẻ. Nội dung của thẻ sẽ được tải lại vào lần tiếp theo thẻ được kích hoạt.
+
+favIconUrl
+
+chuỗi không bắt buộc
+
+URL của biểu tượng trang web của thẻ. Thuộc tính này chỉ xuất hiện nếu tiện ích có quyền "tabs" hoặc có quyền của máy chủ lưu trữ đối với trang. Chuỗi này cũng có thể trống nếu thẻ đang tải.
+
+đóng băng
+
+boolean
+
+Chrome 132 trở lên
+
+browser.* kể từ Chrome 148
+
+Liệu thẻ có bị treo hay không. Thẻ bị đóng băng không thể thực thi các tác vụ, bao gồm cả trình xử lý sự kiện hoặc bộ tính giờ. Thẻ này xuất hiện trong dải thẻ và nội dung của thẻ được tải trong bộ nhớ. Nó sẽ được huỷ đóng băng khi kích hoạt.
+
+groupId
+
+số
+
+Chrome 88 trở lên
+
+browser.* kể từ Chrome 148
+
+Mã của nhóm chứa thẻ.
+
+chiều cao
+
+number không bắt buộc
+
+Chiều cao của thẻ tính bằng pixel.
+
+được làm nổi bật
+
+boolean
+
+Thẻ có được làm nổi bật hay không.
+
+id
+
+number không bắt buộc
+
+Mã của thẻ. Mã thẻ là duy nhất trong một phiên trình duyệt. Trong một số trường hợp, thẻ có thể không được chỉ định mã nhận dạng; ví dụ: khi truy vấn các thẻ bên ngoài bằng API sessions , trong trường hợp đó, mã phiên có thể xuất hiện. Bạn cũng có thể đặt mã nhận dạng thẻ thành chrome.tabs.TAB_ID_NONE cho các ứng dụng và cửa sổ công cụ cho nhà phát triển.
+
+ẩn danh
+
+boolean
+
+Liệu thẻ có nằm trong cửa sổ ẩn danh hay không.
+
+index
+
+số
+
+Chỉ mục bắt đầu từ 0 của thẻ trong cửa sổ.
+
+lastAccessed
+
+số
+
+Chrome 121 trở lên
+
+browser.* kể từ Chrome 148
+
+Lần gần đây nhất thẻ này hoạt động trong cửa sổ của nó, tính bằng số mili giây kể từ thời gian bắt đầu của hệ thống.
+
+mutedInfo
+
+MutedInfo không bắt buộc
+
+Chrome 46 trở lên
+
+browser.* kể từ Chrome 148
+
+Trạng thái tắt tiếng của thẻ và lý do thay đổi trạng thái gần đây nhất.
+
+openerTabId
+
+number không bắt buộc
+
+Mã nhận dạng của thẻ đã mở thẻ này (nếu có). Thuộc tính này chỉ xuất hiện nếu thẻ mở vẫn tồn tại.
+
+pendingUrl
+
+chuỗi không bắt buộc
+
+Chrome 79 trở lên
+
+browser.* kể từ Chrome 148
+
+URL mà thẻ đang chuyển đến, trước khi thẻ được xác nhận. Thuộc tính này chỉ xuất hiện nếu tiện ích có quyền "tabs" hoặc có quyền của máy chủ lưu trữ đối với trang và có một thao tác điều hướng đang chờ xử lý.
+
+được ghim
+
+boolean
+
+Liệu thẻ có được ghim hay không.
+
+đã chọn
+
+boolean
+
+Không dùng nữa
+
+Vui lòng sử dụng tabs.Tab.highlighted .
+
+Liệu thẻ có được chọn hay không.
+
+sessionId
+
+chuỗi không bắt buộc
+
+Mã phiên dùng để xác định riêng một thẻ lấy từ API sessions .
+
+splitViewId
+
+number không bắt buộc
+
+Chrome 140 trở lên
+
+trình duyệt.* kể từ Chrome 148
+
+Mã của Chế độ xem phân tách chứa thẻ.
+
+trạng thái
+
+TabStatus không bắt buộc
+
+Trạng thái tải của thẻ.
+
+tiêu đề
+
+chuỗi không bắt buộc
+
+Tiêu đề của thẻ. Thuộc tính này chỉ xuất hiện nếu tiện ích có quyền "tabs" hoặc có quyền của máy chủ lưu trữ đối với trang.
+
+url
+
+chuỗi không bắt buộc
+
+URL được cam kết gần đây nhất của khung chính của thẻ. Thuộc tính này chỉ xuất hiện nếu tiện ích có quyền "tabs" hoặc có quyền của máy chủ lưu trữ đối với trang. Có thể là một chuỗi trống nếu thẻ chưa được xác nhận. Xem thêm Tab.pendingUrl .
+
+chiều rộng
+
+number không bắt buộc
+
+Chiều rộng của thẻ, tính bằng pixel.
+
+windowId
+
+số
+
+Mã nhận dạng của cửa sổ chứa thẻ.
+
+TabStatus
+
+Chrome 44 trở lên
+
+trình duyệt.* kể từ Chrome 148
+
+Trạng thái tải của thẻ.
+
+Enum
+
+"unloaded"
+
+"loading"
+
+"complete"
+
+WindowType
+
+Chrome 44 trở lên
+
+trình duyệt.* kể từ Chrome 148
+
+Loại cửa sổ.
+
+Enum
+
+"normal"
+
+"popup"
+
+"panel"
+
+"app"
+
+"devtools"
+
+ZoomSettings
+
+Xác định cách xử lý các thay đổi về mức thu phóng trong một thẻ và phạm vi áp dụng.
+
+Thuộc tính
+
+defaultZoomFactor
+
+number không bắt buộc
+
+Chrome 43 trở lên
+
+trình duyệt.* kể từ Chrome 148
+
+Dùng để trả về mức thu phóng mặc định cho thẻ hiện tại trong các lệnh gọi đến tabs.getZoomSettings.
+
+chế độ
+
+ZoomSettingsMode không bắt buộc
+
+Xác định cách xử lý các thay đổi về mức thu phóng, tức là thực thể nào chịu trách nhiệm điều chỉnh tỷ lệ thực tế của trang; mặc định là automatic .
+
+phạm vi
+
+ZoomSettingsScope không bắt buộc
+
+Xác định xem các thay đổi về mức thu phóng có được duy trì cho nguồn gốc của trang hay chỉ có hiệu lực trong thẻ này; mặc định là per-origin khi ở chế độ automatic và per-tab nếu không.
+
+ZoomSettingsMode
+
+Chrome 44 trở lên
+
+trình duyệt.* kể từ Chrome 148
+
+Xác định cách xử lý các thay đổi về mức thu phóng, tức là thực thể nào chịu trách nhiệm điều chỉnh tỷ lệ thực tế của trang; mặc định là automatic .
+
+Enum
+
+"automatic"
+Các thay đổi về mức thu phóng được trình duyệt xử lý tự động.
+
+"manual"
+Ghi đè chế độ xử lý tự động các thay đổi về mức thu phóng. Sự kiện onZoomChange vẫn sẽ được gửi đi và tiện ích có trách nhiệm lắng nghe sự kiện này và điều chỉnh tỷ lệ trang theo cách thủ công. Chế độ này không hỗ trợ tính năng thu phóng per-origin , do đó sẽ bỏ qua chế độ cài đặt thu phóng scope và giả định per-tab .
+
+"disabled"
+Tắt tất cả tính năng thu phóng trong thẻ. Thẻ sẽ quay lại mức thu phóng mặc định và mọi thay đổi về mức thu phóng đều bị bỏ qua.
+
+ZoomSettingsScope
+
+Chrome 44 trở lên
+
+trình duyệt.* kể từ Chrome 148
+
+Xác định xem các thay đổi về mức thu phóng có được duy trì cho nguồn gốc của trang hay chỉ có hiệu lực trong thẻ này; mặc định là per-origin khi ở chế độ automatic và per-tab nếu không.
+
+Enum
+
+"per-origin"
+Các thay đổi về mức thu phóng vẫn được giữ nguyên trong nguồn gốc của trang được thu phóng, tức là tất cả các thẻ khác được điều hướng đến cùng một nguồn gốc đó cũng được thu phóng. Hơn nữa, các thay đổi về mức thu phóng per-origin sẽ được lưu cùng với nguồn gốc, nghĩa là khi chuyển đến các trang khác trong cùng một nguồn gốc, tất cả các trang đó đều được thu phóng theo cùng một hệ số thu phóng. Phạm vi per-origin chỉ có trong chế độ automatic .
+
+"per-tab"
+Các thay đổi về mức thu phóng chỉ có hiệu lực trong thẻ này và các thay đổi về mức thu phóng trong các thẻ khác không ảnh hưởng đến mức thu phóng của thẻ này. Ngoài ra, per-tab các thay đổi về mức thu phóng sẽ được đặt lại khi điều hướng; việc điều hướng một thẻ luôn tải các trang có hệ số thu phóng per-origin .
+
+Thuộc tính
+
+MAX_CAPTURE_VISIBLE_TAB_CALLS_PER_SECOND
+
+Chrome 92 trở lên
+
+trình duyệt.* kể từ Chrome 148
+
+Số lần tối đa mà captureVisibleTab có thể được gọi mỗi giây. captureVisibleTab là một thao tác tốn kém và không nên được gọi quá thường xuyên.
+
+Giá trị
+
+2
+
+SPLIT_VIEW_ID_NONE
+
+Chrome 140 trở lên
+
+trình duyệt.* kể từ Chrome 148
+
+Mã nhận dạng cho biết không có thẻ phân tách.
+
+Giá trị
+
+-1
+
+TAB_ID_NONE
+
+Chrome 46 trở lên
+
+browser.* kể từ Chrome 148
+
+Mã nhận dạng cho biết không có thẻ trình duyệt.
+
+Giá trị
+
+-1
+
+TAB_INDEX_NONE
+
+Chrome 123 trở lên
+
+browser.* kể từ Chrome 148
+
+Một chỉ mục thể hiện việc không có chỉ mục thẻ trong dải thẻ.
+
+Giá trị
+
+-1
+
+Phương thức
+
+captureVisibleTab()
+
+browser . tabs . captureVisibleTab (
+windowId? : number ,
+options? : ImageDetails ,
+) : Promise<string>
+
+Chụp vùng hiển thị của thẻ đang hoạt động trong cửa sổ được chỉ định. Để gọi phương thức này, tiện ích phải có quyền <all_urls> hoặc quyền activeTab . Ngoài các trang web mà tiện ích thường có thể truy cập, phương thức này cho phép tiện ích chụp ảnh màn hình các trang web nhạy cảm bị hạn chế, bao gồm cả các trang chrome:-scheme, trang của tiện ích khác và URL data:. Bạn chỉ có thể chụp ảnh màn hình các trang web nhạy cảm này bằng quyền activeTab. URL của tệp chỉ có thể được ghi lại nếu tiện ích đã được cấp quyền truy cập vào tệp.
+
+Thông số
+
+windowId
+
+number không bắt buộc
+
+Cửa sổ mục tiêu. Mặc định là cửa sổ hiện tại .
+
+tùy chọn
+
+ImageDetails không bắt buộc
+
+Giá trị trả về
+
+Promise<string>
+
+Chrome 88 trở lên
+
+browser.* kể từ Chrome 148
+
+connect()
+
+browser . tabs . connect (
+tabId : number ,
+connectInfo? : object ,
+) : runtime . Port
+
+Kết nối với (các) tập lệnh nội dung trong thẻ được chỉ định. Sự kiện runtime.onConnect được kích hoạt trong mỗi tập lệnh nội dung chạy trong thẻ được chỉ định cho tiện ích hiện tại. Để biết thêm thông tin, hãy xem phần Nhắn tin bằng tập lệnh nội dung .
+
+Thông số
+
+tabId
+
+số
+
+connectInfo
+
+đối tượng không bắt buộc
+
+documentId
+
+chuỗi không bắt buộc
+
+Chrome 106 trở lên
+
+browser.* kể từ Chrome 148
+
+Mở một cổng đến một tài liệu cụ thể được xác định bằng documentId thay vì tất cả khung trong thẻ.
+
+frameId
+
+number không bắt buộc
+
+Mở một cổng đến một khung cụ thể được xác định bằng frameId thay vì tất cả khung trong thẻ.
+
+tên
+
+chuỗi không bắt buộc
+
+Được truyền vào onConnect cho các tập lệnh nội dung đang theo dõi sự kiện kết nối.
+
+Giá trị trả về
+
+runtime.Port
+
+Một cổng có thể dùng để giao tiếp với các tập lệnh nội dung đang chạy trong thẻ được chỉ định. Sự kiện runtime.Port của cổng sẽ được kích hoạt nếu thẻ đóng hoặc không tồn tại.
+
+create()
+
+browser . tabs . create (
+createProperties : object ,
+) : Promise< Tab >
+
+Tạo một thẻ mới.
+
+Thông số
+
+createProperties
+
+đối tượng
+
+hoạt động
+
+boolean không bắt buộc
+
+Liệu thẻ có nên trở thành thẻ đang hoạt động trong cửa sổ hay không. Không ảnh hưởng đến việc cửa sổ có được lấy tiêu điểm hay không (xem windows.update ). Giá trị mặc định là true .
+
+index
+
+number không bắt buộc
+
+Vị trí mà thẻ sẽ chiếm trong cửa sổ. Giá trị được cung cấp bị giới hạn trong khoảng từ 0 đến số lượng thẻ trong cửa sổ.
+
+openerTabId
+
+number không bắt buộc
+
+Mã của thẻ đã mở thẻ này. Nếu được chỉ định, thẻ mở phải nằm trong cùng cửa sổ với thẻ mới tạo.
+
+được ghim
+
+boolean không bắt buộc
+
+Liệu có nên ghim thẻ hay không. Mặc định là false .
+
+đã chọn
+
+boolean không bắt buộc
+
+Không dùng nữa
+
+Vui lòng sử dụng active .
+
+Liệu thẻ có trở thành thẻ được chọn trong cửa sổ hay không. Mặc định là true .
+
+splitWithTabId
+
+number không bắt buộc
+
+Chrome 155 trở lên
+
+Mã nhận dạng của một thẻ hiện có để tạo chế độ xem phân tách. Nếu được chỉ định, thẻ chia sẻ phải đáp ứng các điều kiện sau:
+
+Thẻ này không được là thẻ đã tách.
+
+Thẻ này phải nằm trong cùng một cửa sổ với thẻ mới tạo.
+
+Nếu được chỉ định, windowId phải giống với mã cửa sổ của thẻ chia đôi.
+
+Nếu được chỉ định, index phải là một chỉ mục liền kề với thẻ được tách và sẽ ảnh hưởng đến vị trí tương đối của thẻ mới tạo.
+
+url
+
+chuỗi không bắt buộc
+
+URL để chuyển đến thẻ ban đầu. URL đủ điều kiện phải bao gồm một lược đồ (tức là "http://www.google.com", chứ không phải "www.google.com"). URL tương đối là URL tương đối với trang hiện tại trong tiện ích. Trang mặc định là trang Thẻ mới.
+
+windowId
+
+number không bắt buộc
+
+Cửa sổ để tạo thẻ mới. Mặc định là cửa sổ hiện tại .
+
+Giá trị trả về
+
+Promise< Tab >
+
+Chrome 88 trở lên
+
+browser.* kể từ Chrome 148
+
+createSplit()
+
+Chrome 155 trở lên
+
+browser . tabs . createSplit (
+tabIds : [ number , number ],
+) : Promise<number>
+
+Tách hai thẻ hiện có thành Chế độ xem phân tách.
+
+Thông số
+
+tabIds
+
+[number, number]
+
+Một mảng gồm đúng hai mã thẻ để ghép nối vào Chế độ xem phân tách. Tất cả các thẻ phải đáp ứng những điều kiện sau:
+
+Các ô này phải liền kề nhau.
+Các ứng dụng này không được ở chế độ xem phân tách.
+Các trạng thái windowId , pinned và groupId của các thành phần này phải khớp với nhau.
+
+Giá trị trả về
+
+Promise<number>
+
+detectLanguage()
+
+browser . tabs . detectLanguage (
+tabId? : number ,
+) : Promise<string>
+
+Phát hiện ngôn ngữ chính của nội dung trong một thẻ.
+
+Thông số
+
+tabId
+
+number không bắt buộc
+
+Mặc định là thẻ đang hoạt động của cửa sổ hiện tại .
+
+Giá trị trả về
+
+Promise<string>
+
+Chrome 88 trở lên
+
+browser.* kể từ Chrome 148
+
+discard()
+
+Chrome 54 trở lên
+
+browser.* kể từ Chrome 148
+
+browser . tabs . discard (
+tabId? : number ,
+) : Promise< Tab | undefined >
+
+Loại bỏ một thẻ khỏi bộ nhớ. Các thẻ bị loại bỏ vẫn xuất hiện trên dải thẻ và được tải lại khi được kích hoạt.
+
+Thông số
+
+tabId
+
+number không bắt buộc
+
+Mã nhận dạng của thẻ cần loại bỏ. Nếu được chỉ định, thẻ sẽ bị loại bỏ trừ phi thẻ đang hoạt động hoặc đã bị loại bỏ. Nếu bạn bỏ qua, trình duyệt sẽ loại bỏ thẻ ít quan trọng nhất. Thao tác này có thể không thành công nếu không có thẻ nào có thể loại bỏ.
+
+Giá trị trả về
+
+Promise< Tab | undefined>
+
+Chrome 88 trở lên
+
+browser.* kể từ Chrome 148
+
+Phân giải sau khi thao tác hoàn tất.
+
+duplicate()
+
+browser . tabs . duplicate (
+tabId : number ,
+) : Promise< Tab | undefined >
+
+Sao chép thẻ.
+
+Thông số
+
+tabId
+
+số
+
+Mã của thẻ cần sao chép.
+
+Giá trị trả về
+
+Promise< Tab | undefined>
+
+Chrome 88 trở lên
+
+browser.* kể từ Chrome 148
+
+get()
+
+browser . tabs . get (
+tabId : number ,
+) : Promise< Tab >
+
+Truy xuất thông tin chi tiết về thẻ được chỉ định.
+
+Thông số
+
+tabId
+
+số
+
+Giá trị trả về
+
+Promise< Tab >
+
+Chrome 88 trở lên
+
+browser.* kể từ Chrome 148
+
+getCurrent()
+
+browser . tabs . getCurrent () : Promise< Tab | undefined >
+
+Lấy thẻ mà lệnh gọi tập lệnh này đang được thực hiện. Trả về undefined nếu được gọi từ ngữ cảnh không phải thẻ (ví dụ: trang nền hoặc chế độ xem bật lên).
+
+Giá trị trả về
+
+Promise< Tab | undefined>
+
+Chrome 88 trở lên
+
+browser.* kể từ Chrome 148
+
+getZoom()
+
+browser . tabs . getZoom (
+tabId? : number ,
+) : Promise<number>
+
+Lấy hệ số thu phóng hiện tại của một thẻ được chỉ định.
+
+Thông số
+
+tabId
+
+number không bắt buộc
+
+Mã của thẻ để lấy hệ số thu phóng hiện tại; mặc định là thẻ đang hoạt động của cửa sổ hiện tại.
+
+Giá trị trả về
+
+Promise<number>
+
+Chrome 88 trở lên
+
+browser.* kể từ Chrome 148
+
+Giải quyết bằng hệ số thu phóng hiện tại của thẻ sau khi hệ số này được tìm nạp.
+
+getZoomSettings()
+
+browser . tabs . getZoomSettings (
+tabId? : number ,
+) : Promise< ZoomSettings >
+
+Lấy chế độ cài đặt thu phóng hiện tại của một thẻ được chỉ định.
+
+Thông số
+
+tabId
+
+number không bắt buộc
+
+Mã của thẻ để lấy chế độ cài đặt thu phóng hiện tại; mặc định là thẻ đang hoạt động của cửa sổ hiện tại.
+
+Giá trị trả về
+
+Promise< ZoomSettings >
+
+Chrome 88 trở lên
+
+browser.* kể từ Chrome 148
+
+Phân giải bằng chế độ cài đặt thu phóng hiện tại của thẻ.
+
+goBack()
+
+Chrome 72 trở lên
+
+browser.* kể từ Chrome 148
+
+browser . tabs . goBack (
+tabId? : number ,
+) : Promise<void>
+
+Quay lại trang trước, nếu có.
+
+Thông số
+
+tabId
+
+number không bắt buộc
+
+Mã nhận dạng của thẻ cần quay lại; mặc định là thẻ đã chọn của cửa sổ hiện tại.
+
+Giá trị trả về
+
+Promise<void>
+
+Chrome 88 trở lên
+
+browser.* kể từ Chrome 148
+
+goForward()
+
+Chrome 72 trở lên
+
+browser.* kể từ Chrome 148
+
+browser . tabs . goForward (
+tabId? : number ,
+) : Promise<void>
+
+Chuyển đến trang tiếp theo (nếu có).
+
+Thông số
+
+tabId
+
+number không bắt buộc
+
+Mã của thẻ để chuyển tiếp; mặc định là thẻ đã chọn của cửa sổ hiện tại.
+
+Giá trị trả về
+
+Promise<void>
+
+Chrome 88 trở lên
+
+trình duyệt.* kể từ Chrome 148
+
+group()
+
+Chrome 88 trở lên
+
+browser.* kể từ Chrome 148
+
+browser . tabs . group (
+options : object ,
+) : Promise<number>
+
+Thêm một hoặc nhiều thẻ vào một nhóm được chỉ định hoặc nếu không có nhóm nào được chỉ định, hãy thêm các thẻ đã cho vào một nhóm mới tạo.
+
+Thông số
+
+tùy chọn
+
+đối tượng
+
+createProperties
+
+đối tượng không bắt buộc
+
+Cấu hình để tạo nhóm. Không thể sử dụng nếu groupId đã được chỉ định.
+
+windowId
+
+number không bắt buộc
+
+Cửa sổ của nhóm mới. Giá trị mặc định là cửa sổ hiện tại.
+
+groupId
+
+number không bắt buộc
+
+Mã của nhóm mà bạn muốn thêm thẻ vào. Nếu bạn không chỉ định, một nhóm mới sẽ được tạo.
+
+tabIds
+
+number | [number, ...number[]]
+
+Mã thẻ hoặc danh sách mã thẻ để thêm vào nhóm được chỉ định.
+
+Giá trị trả về
+
+Promise<number>
+
+highlight()
+
+browser . tabs . highlight (
+highlightInfo : object ,
+) : Promise< windows . Window >
+
+Làm nổi bật các thẻ đã cho và tập trung vào thẻ đầu tiên của nhóm. Sẽ không có gì xảy ra nếu thẻ được chỉ định đang hoạt động.
+
+Thông số
+
+highlightInfo
+
+đối tượng
+
+Thẻ
+
+number | number[]
+
+Một hoặc nhiều chỉ mục thẻ cần làm nổi bật.
+
+windowId
+
+number không bắt buộc
+
+Cửa sổ chứa các thẻ.
+
+Giá trị trả về
+
+Promise< windows.Window >
+
+Chrome 88 trở lên
+
+browser.* kể từ Chrome 148
+
+move()
+
+browser . tabs . move (
+tabIds : number | number [],
+moveProperties : object ,
+) : Promise< Tab | Tab [] >
+
+Di chuyển một hoặc nhiều thẻ đến vị trí mới trong cửa sổ của thẻ đó hoặc đến một cửa sổ mới. Xin lưu ý rằng bạn chỉ có thể di chuyển thẻ đến và đi từ cửa sổ thông thường (window.type === "normal").
+
+Thông số
+
+tabIds
+
+number | number[]
+
+Mã thẻ hoặc danh sách mã thẻ cần di chuyển.
+
+moveProperties
+
+đối tượng
+
+index
+
+số
+
+Vị trí để di chuyển cửa sổ đến. Sử dụng -1 để đặt thẻ ở cuối cửa sổ.
+
+windowId
+
+number không bắt buộc
+
+Giá trị mặc định là cửa sổ mà thẻ hiện đang mở.
+
+Giá trị trả về
+
+< Tab | Tab []> hứa hẹn
+
+Chrome 88 trở lên
+
+browser.* kể từ Chrome 148
+
+query()
+
+browser . tabs . query (
+queryInfo : object ,
+) : Promise< Tab []>
+
+Lấy tất cả các thẻ có thuộc tính được chỉ định hoặc tất cả các thẻ nếu không có thuộc tính nào được chỉ định.
+
+Thông số
+
+queryInfo
+
+đối tượng
+
+hoạt động
+
+boolean không bắt buộc
+
+Liệu các thẻ có đang hoạt động trong cửa sổ của chúng hay không.
+
+audible
+
+boolean không bắt buộc
+
+Chrome 45 trở lên
+
+trình duyệt.* kể từ Chrome 148
+
+Liệu các thẻ có phát ra âm thanh hay không.
+
+autoDiscardable
+
+boolean không bắt buộc
+
+Chrome 54 trở lên
+
+browser.* kể từ Chrome 148
+
+Liệu trình duyệt có thể tự động loại bỏ các thẻ khi tài nguyên sắp hết hay không.
+
+currentWindow
+
+boolean không bắt buộc
+
+Liệu các thẻ có nằm trong cửa sổ hiện tại hay không.
+
+đã hủy
+
+boolean không bắt buộc
+
+Chrome 54 trở lên
+
+browser.* kể từ Chrome 148
+
+Liệu các thẻ có bị loại bỏ hay không. Thẻ bị loại bỏ là thẻ có nội dung đã được dỡ bỏ khỏi bộ nhớ nhưng vẫn hiển thị trong dải thẻ. Nội dung của thẻ sẽ được tải lại vào lần tiếp theo thẻ được kích hoạt.
+
+đóng băng
+
+boolean không bắt buộc
+
+Chrome 132 trở lên
+
+browser.* kể từ Chrome 148
+
+Liệu các thẻ có bị treo hay không. Thẻ bị đóng băng không thể thực thi các tác vụ, bao gồm cả trình xử lý sự kiện hoặc bộ tính giờ. Thẻ này xuất hiện trong dải thẻ và nội dung của thẻ được tải trong bộ nhớ. Nó sẽ được huỷ đóng băng khi kích hoạt.
+
+groupId
+
+number không bắt buộc
+
+Chrome 88 trở lên
+
+browser.* kể từ Chrome 148
+
+Mã nhận dạng của nhóm chứa các thẻ hoặc tabGroups.TAB_GROUP_ID_NONE cho các thẻ chưa được nhóm.
+
+được làm nổi bật
+
+boolean không bắt buộc
+
+Liệu các thẻ có được làm nổi bật hay không.
+
+index
+
+number không bắt buộc
+
+Vị trí của các thẻ trong cửa sổ.
+
+lastFocusedWindow
+
+boolean không bắt buộc
+
+Liệu các thẻ có nằm trong cửa sổ được lấy tiêu điểm gần đây nhất hay không.
+
+đã tắt tiếng
+
+boolean không bắt buộc
+
+Chrome 45 trở lên
+
+trình duyệt.* kể từ Chrome 148
+
+Các thẻ có bị tắt tiếng hay không.
+
+được ghim
+
+boolean không bắt buộc
+
+Các thẻ có được ghim hay không.
+
+splitViewId
+
+number không bắt buộc
+
+Chrome 140 trở lên
+
+trình duyệt.* kể từ Chrome 148
+
+Mã nhận dạng của Chế độ xem phân tách chứa các thẻ hoặc tabs.SPLIT_VIEW_ID_NONE cho các thẻ không nằm trong Chế độ xem phân tách.
+
+trạng thái
+
+TabStatus không bắt buộc
+
+Trạng thái tải thẻ.
+
+tiêu đề
+
+chuỗi không bắt buộc
+
+So khớp tiêu đề trang với một mẫu. Thuộc tính này sẽ bị bỏ qua nếu tiện ích không có quyền "tabs" hoặc quyền của máy chủ lưu trữ cho trang.
+
+url
+
+string | string[] không bắt buộc
+
+So khớp các thẻ với một hoặc nhiều mẫu URL . Giá trị nhận dạng theo đoạn không khớp. Thuộc tính này sẽ bị bỏ qua nếu tiện ích không có quyền "tabs" hoặc quyền của máy chủ lưu trữ cho trang.
+
+windowId
+
+number không bắt buộc
+
+Mã nhận dạng của cửa sổ mẹ hoặc windows.WINDOW_ID_CURRENT cho cửa sổ hiện tại .
+
+windowType
+
+WindowType không bắt buộc
+
+Loại cửa sổ chứa các thẻ.
+
+Giá trị trả về
+
+Promise< Tab []>
+
+Chrome 88 trở lên
+
+browser.* kể từ Chrome 148
+
+reload()
+
+browser . tabs . reload (
+tabId? : number ,
+reloadProperties? : object ,
+) : Promise<void>
+
+Tải lại thẻ.
+
+Thông số
+
+tabId
+
+number không bắt buộc
+
+Mã nhận dạng của thẻ cần tải lại; mặc định là thẻ đã chọn của cửa sổ hiện tại.
+
+reloadProperties
+
+đối tượng không bắt buộc
+
+bypassCache
+
+boolean không bắt buộc
+
+Có bỏ qua việc lưu vào bộ nhớ đệm cục bộ hay không. Giá trị mặc định là false .
+
+Giá trị trả về
+
+Promise<void>
+
+Chrome 88 trở lên
+
+browser.* kể từ Chrome 148
+
+remove()
+
+browser . tabs . remove (
+tabIds : number | number [],
+) : Promise<void>
+
+Đóng một hoặc nhiều thẻ.
+
+Thông số
+
+tabIds
+
+number | number[]
+
+Mã thẻ hoặc danh sách mã thẻ cần đóng.
+
+Giá trị trả về
+
+Promise<void>
+
+Chrome 88 trở lên
+
+browser.* kể từ Chrome 148
+
+sendMessage()
+
+browser . tabs . sendMessage (
+tabId : number ,
+message : any ,
+options? : object ,
+) : Promise<any>
+
+Gửi một thông báo đến (các) tập lệnh nội dung trong thẻ được chỉ định. Sự kiện runtime.onMessage được kích hoạt trong mỗi tập lệnh nội dung chạy trong thẻ được chỉ định cho tiện ích hiện tại.
+
+Thông số
+
+tabId
+
+số
+
+tin nhắn
+
+bất kỳ
+
+Tin nhắn cần gửi. Thông báo này phải là một đối tượng có thể chuyển đổi thành JSON.
+
+tùy chọn
+
+đối tượng không bắt buộc
+
+documentId
+
+chuỗi không bắt buộc
+
+Chrome 106 trở lên
+
+browser.* kể từ Chrome 148
+
+Gửi thông báo đến một tài liệu cụ thể được xác định bằng documentId thay vì tất cả khung trong thẻ.
+
+frameId
+
+number không bắt buộc
+
+Gửi thông báo đến một khung cụ thể được xác định bằng frameId thay vì tất cả các khung trong thẻ.
+
+Giá trị trả về
+
+Promise<any>
+
+Chrome 99 trở lên
+
+browser.* kể từ Chrome 148
+
+Lời hứa sẽ giải quyết bằng phản hồi từ tập lệnh nội dung. Nếu xảy ra lỗi khi kết nối với thẻ được chỉ định, thì lời hứa sẽ bị từ chối.
+
+setZoom()
+
+browser . tabs . setZoom (
+tabId? : number ,
+zoomFactor : number ,
+) : Promise<void>
+
+Phóng to một thẻ được chỉ định.
+
+Thông số
+
+tabId
+
+number không bắt buộc
+
+Mã của thẻ cần thu phóng; mặc định là thẻ đang hoạt động của cửa sổ hiện tại.
+
+zoomFactor
+
+số
+
+Hệ số thu phóng mới. Giá trị 0 sẽ đặt thẻ thành hệ số thu phóng mặc định hiện tại. Giá trị lớn hơn 0 chỉ định hệ số thu phóng (có thể không phải là mặc định) cho thẻ.
+
+Giá trị trả về
+
+Promise<void>
+
+Chrome 88 trở lên
+
+browser.* kể từ Chrome 148
+
+Giải quyết sau khi hệ số thu phóng thay đổi.
+
+setZoomSettings()
+
+browser . tabs . setZoomSettings (
+tabId? : number ,
+zoomSettings : ZoomSettings ,
+) : Promise<void>
+
+Đặt chế độ cài đặt thu phóng cho một thẻ được chỉ định, xác định cách xử lý các thay đổi về thu phóng. Các chế độ cài đặt này sẽ được đặt lại về giá trị mặc định khi bạn di chuyển khỏi thẻ.
+
+Thông số
+
+tabId
+
+number không bắt buộc
+
+Mã của thẻ để thay đổi chế độ cài đặt thu phóng; mặc định là thẻ đang hoạt động của cửa sổ hiện tại.
+
+zoomSettings
+
+ZoomSettings
+
+Xác định cách xử lý các thay đổi về mức thu phóng và phạm vi áp dụng.
+
+Giá trị trả về
+
+Promise<void>
+
+Chrome 88 trở lên
+
+browser.* kể từ Chrome 148
+
+Giải quyết sau khi thay đổi chế độ cài đặt thu phóng.
+
+ungroup()
+
+Chrome 88 trở lên
+
+browser.* kể từ Chrome 148
+
+browser . tabs . ungroup (
+tabIds : number | [ number , ... number []],
+) : Promise<void>
+
+Xoá một hoặc nhiều thẻ khỏi nhóm tương ứng. Nếu có nhóm nào trống, nhóm đó sẽ bị xoá.
+
+Thông số
+
+tabIds
+
+number | [number, ...number[]]
+
+Mã thẻ hoặc danh sách mã thẻ cần xoá khỏi các nhóm tương ứng.
+
+Giá trị trả về
+
+Promise<void>
+
+unsplit()
+
+Chrome 155 trở lên
+
+browser . tabs . unsplit (
+splitViewId : number ,
+) : Promise<void>
+
+Tách các thẻ trong Chế độ xem phân tách thành các thẻ độc lập.
+
+Thông số
+
+splitViewId
+
+số
+
+Mã nhận dạng của Chế độ xem phân tách cần tách riêng.
+
+Giá trị trả về
+
+Promise<void>
+
+update()
+
+browser . tabs . update (
+tabId? : number ,
+updateProperties : object ,
+) : Promise< Tab | undefined >
+
+Sửa đổi các thuộc tính của một thẻ. Các thuộc tính không được chỉ định trong updateProperties sẽ không được sửa đổi.
+
+Thông số
+
+tabId
+
+number không bắt buộc
+
+Mặc định là thẻ đã chọn của cửa sổ hiện tại .
+
+updateProperties
+
+đối tượng
+
+hoạt động
+
+boolean không bắt buộc
+
+Liệu thẻ có nên hoạt động hay không. Không ảnh hưởng đến việc cửa sổ có được lấy tiêu điểm hay không (xem windows.update ).
+
+autoDiscardable
+
+boolean không bắt buộc
+
+Chrome 54 trở lên
+
+browser.* kể từ Chrome 148
+
+Liệu trình duyệt có nên tự động loại bỏ thẻ khi tài nguyên sắp hết hay không.
+
+được làm nổi bật
+
+boolean không bắt buộc
+
+Thêm hoặc xoá thẻ khỏi lựa chọn hiện tại.
+
+đã tắt tiếng
+
+boolean không bắt buộc
+
+Chrome 45 trở lên
+
+trình duyệt.* kể từ Chrome 148
+
+Liệu có nên tắt tiếng thẻ hay không.
+
+openerTabId
+
+number không bắt buộc
+
+Mã của thẻ đã mở thẻ này. Nếu được chỉ định, thẻ mở phải nằm trong cùng cửa sổ với thẻ này.
+
+được ghim
+
+boolean không bắt buộc
+
+Liệu có nên ghim thẻ hay không.
+
+đã chọn
+
+boolean không bắt buộc
+
+Không dùng nữa
+
+Vui lòng sử dụng highlighted .
+
+Thẻ có nên được chọn hay không.
+
+url
+
+chuỗi không bắt buộc
+
+URL để chuyển thẻ đến. URL JavaScript không được hỗ trợ; hãy sử dụng scripting.executeScript .
+
+Giá trị trả về
+
+Promise< Tab | undefined>
+
+Chrome 88 trở lên
+
+browser.* kể từ Chrome 148
+
+Sự kiện
+
+onActivated
+
+browser . tabs . onActivated . addListener (
+callback : function ,
+)
+
+Kích hoạt khi thẻ đang hoạt động trong một cửa sổ thay đổi. Xin lưu ý rằng URL của thẻ có thể không được đặt tại thời điểm sự kiện này kích hoạt, nhưng bạn có thể nghe các sự kiện onUpdated để được thông báo khi URL được đặt.
+
+Thông số
+
+callback
+
+hàm
+
+Tham số callback có dạng như sau:
+
+( activeInfo : object ) => void
+
+activeInfo
+
+đối tượng
+
+tabId
+
+số
+
+Mã của thẻ đã hoạt động.
+
+windowId
+
+số
+
+Mã nhận dạng của cửa sổ mà thẻ đang hoạt động đã thay đổi bên trong.
+
+onAttached
+
+browser . tabs . onAttached . addListener (
+callback : function ,
+)
+
+Được kích hoạt khi một thẻ được đính kèm vào cửa sổ; ví dụ: vì thẻ đó được di chuyển giữa các cửa sổ.
+
+Thông số
+
+callback
+
+hàm
+
+Tham số callback có dạng như sau:
+
+( tabId : number , attachInfo : object ) => void
+
+tabId
+
+số
+
+attachInfo
+
+đối tượng
+
+newPosition
+
+số
+
+newWindowId
+
+số
+
+onCreated
+
+browser . tabs . onCreated . addListener (
+callback : function ,
+)
+
+Được kích hoạt khi một thẻ được tạo. Xin lưu ý rằng URL của thẻ, tư cách thành viên nhóm thẻ và tư cách thành viên chế độ xem phân tách có thể không được đặt tại thời điểm sự kiện này được kích hoạt, nhưng bạn có thể nghe các sự kiện onUpdated để được thông báo khi URL được đặt hoặc thẻ được thêm vào nhóm thẻ hoặc chế độ xem phân tách.
+
+Thông số
+
+callback
+
+hàm
+
+Tham số callback có dạng như sau:
+
+( tab : Tab ) => void
+
+thẻ
+
+Tab
+
+onDetached
+
+browser . tabs . onDetached . addListener (
+callback : function ,
+)
+
+Được kích hoạt khi một thẻ bị tách khỏi cửa sổ; ví dụ: vì thẻ đó đã được di chuyển giữa các cửa sổ.
+
+Thông số
+
+callback
+
+hàm
+
+Tham số callback có dạng như sau:
+
+( tabId : number , detachInfo : object ) => void
+
+tabId
+
+số
+
+detachInfo
+
+đối tượng
+
+oldPosition
+
+số
+
+oldWindowId
+
+số
+
+onHighlighted
+
+browser . tabs . onHighlighted . addListener (
+callback : function ,
+)
+
+Được kích hoạt khi các thẻ được đánh dấu hoặc chọn trong một cửa sổ thay đổi.
+
+Thông số
+
+callback
+
+hàm
+
+Tham số callback có dạng như sau:
+
+( highlightInfo : object ) => void
+
+highlightInfo
+
+đối tượng
+
+tabIds
+
+number[]
+
+Tất cả các thẻ được đánh dấu trong cửa sổ.
+
+windowId
+
+số
+
+Cửa sổ có các thẻ đã thay đổi.
+
+onMoved
+
+browser . tabs . onMoved . addListener (
+callback : function ,
+)
+
+Được kích hoạt khi một thẻ được di chuyển trong cửa sổ. Chỉ có một sự kiện di chuyển được kích hoạt, đại diện cho thẻ mà người dùng đã di chuyển trực tiếp. Sự kiện di chuyển không được kích hoạt cho các thẻ khác phải di chuyển để phản hồi thẻ được di chuyển theo cách thủ công. Sự kiện này không được kích hoạt khi một thẻ được di chuyển giữa các cửa sổ; để biết thông tin chi tiết, hãy xem tabs.onDetached .
+
+Thông số
+
+callback
+
+hàm
+
+Tham số callback có dạng như sau:
+
+( tabId : number , moveInfo : object ) => void
+
+tabId
+
+số
+
+moveInfo
+
+đối tượng
+
+fromIndex
+
+số
+
+toIndex
+
+số
+
+windowId
+
+số
+
+onRemoved
+
+browser . tabs . onRemoved . addListener (
+callback : function ,
+)
+
+Được kích hoạt khi một thẻ bị đóng.
+
+Thông số
+
+callback
+
+hàm
+
+Tham số callback có dạng như sau:
+
+( tabId : number , removeInfo : object ) => void
+
+tabId
+
+số
+
+removeInfo
+
+đối tượng
+
+isWindowClosing
+
+boolean
+
+Đúng khi thẻ bị đóng vì cửa sổ mẹ của thẻ bị đóng.
+
+windowId
+
+số
+
+Cửa sổ có thẻ bị đóng.
+
+onReplaced
+
+browser . tabs . onReplaced . addListener (
+callback : function ,
+)
+
+Được kích hoạt khi một thẻ được thay thế bằng một thẻ khác do kết xuất trước hoặc tức thì.
+
+Thông số
+
+callback
+
+hàm
+
+Tham số callback có dạng như sau:
+
+( addedTabId : number , removedTabId : number ) => void
+
+addedTabId
+
+số
+
+removedTabId
+
+số
+
+onUpdated
+
+browser . tabs . onUpdated . addListener (
+callback : function ,
+)
+
+Được kích hoạt khi một thẻ được cập nhật.
+
+Thông số
+
+callback
+
+hàm
+
+Tham số callback có dạng như sau:
+
+( tabId : number , changeInfo : object , tab : Tab ) => void
+
+tabId
+
+số
+
+changeInfo
+
+đối tượng
+
+audible
+
+boolean không bắt buộc
+
+Chrome 45 trở lên
+
+trình duyệt.* kể từ Chrome 148
+
+Trạng thái âm thanh mới của thẻ.
+
+autoDiscardable
+
+boolean không bắt buộc
+
+Chrome 54 trở lên
+
+browser.* kể từ Chrome 148
+
+Trạng thái tự động loại bỏ mới của thẻ.
+
+đã hủy
+
+boolean không bắt buộc
+
+Chrome 54 trở lên
+
+browser.* kể từ Chrome 148
+
+Trạng thái bị loại bỏ mới của thẻ.
+
+favIconUrl
+
+chuỗi không bắt buộc
+
+URL biểu tượng trang web mới của thẻ.
+
+đóng băng
+
+boolean không bắt buộc
+
+Chrome 132 trở lên
+
+browser.* kể từ Chrome 148
+
+Trạng thái bị đóng băng mới của thẻ.
+
+groupId
+
+number không bắt buộc
+
+Chrome 88 trở lên
+
+browser.* kể từ Chrome 148
+
+Nhóm mới của thẻ.
+
+mutedInfo
+
+MutedInfo không bắt buộc
+
+Chrome 46 trở lên
+
+browser.* kể từ Chrome 148
+
+Trạng thái tắt tiếng mới của thẻ và lý do thay đổi.
+
+được ghim
+
+boolean không bắt buộc
+
+Trạng thái ghim mới của thẻ.
+
+splitViewId
+
+number không bắt buộc
+
+Chrome 140 trở lên
+
+trình duyệt.* kể từ Chrome 148
+
+Chế độ xem phân tách mới của thẻ.
+
+trạng thái
+
+TabStatus không bắt buộc
+
+Trạng thái tải của thẻ.
+
+tiêu đề
+
+chuỗi không bắt buộc
+
+Chrome 48 trở lên
+
+browser.* kể từ Chrome 148
+
+Tiêu đề mới của thẻ.
+
+url
+
+chuỗi không bắt buộc
+
+URL của thẻ nếu URL đó đã thay đổi.
+
+thẻ
+
+Tab
+
+onZoomChange
+
+browser . tabs . onZoomChange . addListener (
+callback : function ,
+)
+
+Được kích hoạt khi một thẻ được thu phóng.
+
+Thông số
+
+callback
+
+hàm
+
+Tham số callback có dạng như sau:
+
+( ZoomChangeInfo : object ) => void
+
+ZoomChangeInfo
+
+đối tượng
+
+newZoomFactor
+
+số
+
+oldZoomFactor
+
+số
+
+tabId
+
+số
+
+zoomSettings
+
+ZoomSettings

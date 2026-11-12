@@ -1,0 +1,484 @@
+Google sử dụng công nghệ AI để dịch nội dung sang ngôn ngữ bạn ưu tiên. Bản dịch bằng AI có thể có lỗi.
+
+browser.contextMenus
+
+Mô tả
+
+Sử dụng API chrome.contextMenus để thêm các mục vào trình đơn theo bối cảnh của Google Chrome. Bạn có thể chọn loại đối tượng mà các mục bổ sung trong trình đơn theo bối cảnh áp dụng, chẳng hạn như hình ảnh, siêu liên kết và trang.
+
+Quyền
+
+contextMenus
+
+Bạn phải khai báo quyền "contextMenus" trong tệp kê khai của tiện ích để sử dụng API. Ngoài ra, bạn nên chỉ định một biểu tượng 16 x 16 pixel để hiển thị bên cạnh mục trong trình đơn. Ví dụ:
+
+{
+"name" : "My extension" ,
+...
+"permissions" : [
+"contextMenus"
+],
+"icons" : {
+"16" : "icon-bitty.png" ,
+"48" : "icon-small.png" ,
+"128" : "icon-large.png"
+},
+...
+}
+
+Khái niệm và cách sử dụng
+
+Các mục trong trình đơn theo bối cảnh có thể xuất hiện trong bất kỳ tài liệu nào (hoặc khung trong tài liệu), ngay cả những tài liệu có URL file:// hoặc chrome://. Để kiểm soát những tài liệu mà các mục của bạn có thể xuất hiện, hãy chỉ định trường documentUrlPatterns khi bạn gọi phương thức create() hoặc update() .
+
+Bạn có thể tạo bao nhiêu mục trong trình đơn theo bối cảnh tuỳ ý, nhưng nếu có nhiều mục trong tiện ích của bạn xuất hiện cùng một lúc, thì Google Chrome sẽ tự động thu gọn các mục đó thành một trình đơn mẹ duy nhất.
+
+Phần lớn trang này chứa thông tin tham khảo cho các thành viên của API này.
+Để biết hướng dẫn về cách sử dụng API, hãy xem phần Tạo trình đơn theo bối cảnh .
+
+Ví dụ
+
+Để dùng thử API này, hãy cài đặt ví dụ về contextMenus API từ kho lưu trữ chrome-extension-samples .
+
+Loại
+
+ContextType
+
+Trình duyệt Chrome 44 trở lên
+
+.* kể từ Chrome 148
+
+Các bối cảnh khác nhau mà trình đơn có thể xuất hiện. Việc chỉ định "all" tương đương với việc kết hợp tất cả các bối cảnh khác, ngoại trừ "launcher" và "tab". Bối cảnh "trình chạy" chỉ được các ứng dụng hỗ trợ và được dùng để thêm các mục vào trình đơn theo bối cảnh xuất hiện khi nhấp vào biểu tượng ứng dụng trong trình chạy/thanh tác vụ/thanh công cụ/v.v. Các nền tảng khác nhau có thể đặt ra giới hạn về những gì thực sự được hỗ trợ trong trình đơn theo bối cảnh của trình chạy.
+
+Enum
+
+"all"
+
+"page"
+
+"frame"
+
+"selection"
+
+"link"
+
+"editable"
+
+"image"
+
+"video"
+
+"audio"
+
+"launcher"
+
+"action"
+Áp dụng cho trình đơn theo bối cảnh của hành động của tiện ích (biểu tượng thanh công cụ của tiện ích).
+
+"tab"
+Áp dụng cho trình đơn theo bối cảnh của một thẻ trong dải thẻ.
+
+CreateProperties
+
+Chrome 123 trở lên
+
+browser.* kể từ Chrome 148
+
+Các thuộc tính của mục mới trong trình đơn theo bối cảnh.
+
+Thuộc tính
+
+đã chọn
+
+boolean không bắt buộc
+
+Trạng thái ban đầu của hộp đánh dấu hoặc nút chọn: true cho trạng thái đã chọn, false cho trạng thái chưa chọn. Mỗi lần, bạn chỉ có thể chọn một nút chọn trong một nhóm nhất định.
+
+bối cảnh
+
+[ ContextType , ... ContextType []] không bắt buộc
+
+Danh sách bối cảnh mà mục trong trình đơn này sẽ xuất hiện. Giá trị mặc định là ['page'] .
+
+documentUrlPatterns
+
+string[] không bắt buộc
+
+Hạn chế mục chỉ áp dụng cho các tài liệu hoặc khung có URL khớp với một trong các mẫu đã cho. Để biết thông tin chi tiết về định dạng mẫu, hãy xem phần Mẫu khớp .
+
+đang bật
+
+boolean không bắt buộc
+
+Cho biết mục này trong trình đơn theo bối cảnh đang bật hay tắt. Giá trị mặc định là true .
+
+id
+
+chuỗi không bắt buộc
+
+Mã nhận dạng duy nhất để gán cho mục này. Bắt buộc đối với trang sự kiện. Không được trùng với một mã nhận dạng khác của tiện ích này.
+
+parentId
+
+string | number không bắt buộc
+
+Mã của mục trình đơn mẹ; mã này giúp mục này trở thành mục con của một mục đã thêm trước đó.
+
+targetUrlPatterns
+
+string[] không bắt buộc
+
+Tương tự như documentUrlPatterns , bộ lọc dựa trên thuộc tính src của thẻ img , audio và video cũng như thuộc tính href của thẻ a .
+
+tiêu đề
+
+chuỗi không bắt buộc
+
+Văn bản hiển thị trong mục; đây là trường bắt buộc , trừ phi type là separator . Khi ngữ cảnh là selection , hãy sử dụng %s trong chuỗi để hiển thị văn bản đã chọn. Ví dụ: nếu giá trị của tham số này là "Dịch '%s' sang Pig Latin" và người dùng chọn từ "cool", thì mục trong trình đơn theo bối cảnh cho lựa chọn này là "Dịch 'cool' sang Pig Latin".
+
+loại
+
+ItemType không bắt buộc
+
+Loại mục trong trình đơn. Giá trị mặc định là normal .
+
+hiển thị
+
+boolean không bắt buộc
+
+Liệu mục đó có xuất hiện trong trình đơn hay không.
+
+onclick
+
+không bắt buộc
+
+Một hàm được gọi lại khi người dùng nhấp vào mục trong trình đơn. Tính năng này không dùng được trong trình chạy dịch vụ; thay vào đó, bạn nên đăng ký trình nghe cho contextMenus.onClicked .
+
+Hàm onclick có dạng như sau:
+
+( info : OnClickData , tab : Tab ) => {...}
+
+info
+
+OnClickData
+
+Thông tin về mục được nhấp và bối cảnh xảy ra lượt nhấp.
+
+thẻ
+
+Tab
+
+Thông tin chi tiết về thẻ nơi xảy ra lượt nhấp. Tham số này không có trong các ứng dụng nền tảng.
+
+ItemType
+
+Trình duyệt Chrome 44 trở lên
+
+.* kể từ Chrome 148
+
+Loại mục trong trình đơn.
+
+Enum
+
+"normal"
+
+"checkbox"
+
+"radio"
+
+"separator"
+
+OnClickData
+
+Thông tin được gửi khi người dùng nhấp vào một mục trong trình đơn theo bối cảnh.
+
+Thuộc tính
+
+đã chọn
+
+boolean không bắt buộc
+
+Cờ cho biết trạng thái của hộp đánh dấu hoặc mục nút chọn sau khi được nhấp vào.
+
+có thể chỉnh sửa
+
+boolean
+
+Cờ cho biết liệu phần tử có thể chỉnh sửa được hay không (nhập văn bản, vùng văn bản, v.v.).
+
+frameId
+
+number không bắt buộc
+
+Chrome 51 trở lên
+
+browser.* kể từ Chrome 148
+
+Mã nhận dạng của khung của phần tử nơi người dùng nhấp vào trình đơn theo bối cảnh, nếu phần tử đó nằm trong một khung.
+
+frameUrl
+
+chuỗi không bắt buộc
+
+URL của khung của phần tử nơi trình đơn theo bối cảnh được nhấp vào, nếu phần tử đó nằm trong một khung.
+
+linkUrl
+
+chuỗi không bắt buộc
+
+Nếu phần tử là một đường liên kết, thì đây là URL mà đường liên kết đó trỏ đến.
+
+mediaType
+
+chuỗi không bắt buộc
+
+Một trong các giá trị "image", "video" hoặc "audio" nếu trình đơn theo bối cảnh được kích hoạt trên một trong các loại phần tử này.
+
+menuItemId
+
+chuỗi | số
+
+Mã của mục trong trình đơn được nhấp vào.
+
+pageUrl
+
+chuỗi không bắt buộc
+
+URL của trang nơi người dùng nhấp vào mục trong trình đơn. Thuộc tính này không được đặt nếu lượt nhấp xảy ra trong bối cảnh không có trang hiện tại, chẳng hạn như trong trình đơn theo bối cảnh của trình chạy.
+
+parentMenuItemId
+
+string | number không bắt buộc
+
+Mã nhận dạng gốc (nếu có) của mặt hàng được nhấp vào.
+
+selectionText
+
+chuỗi không bắt buộc
+
+Văn bản cho lựa chọn bối cảnh (nếu có).
+
+srcUrl
+
+chuỗi không bắt buộc
+
+Sẽ xuất hiện cho các phần tử có URL "src".
+
+wasChecked
+
+boolean không bắt buộc
+
+Cờ cho biết trạng thái của hộp đánh dấu hoặc mục nút chọn trước khi được nhấp vào.
+
+Thuộc tính
+
+ACTION_MENU_TOP_LEVEL_LIMIT
+
+Số lượng mục tiện ích cấp cao nhất tối đa có thể thêm vào trình đơn theo bối cảnh của một hành động tiện ích. Mọi mục vượt quá giới hạn này sẽ bị bỏ qua.
+
+Giá trị
+
+6
+
+Phương thức
+
+create()
+
+browser . contextMenus . create (
+createProperties : CreateProperties ,
+callback? : function ,
+) : number | string
+
+Tạo một mục mới trong trình đơn theo bối cảnh. Nếu xảy ra lỗi trong quá trình tạo, thì lỗi đó có thể không được phát hiện cho đến khi lệnh gọi lại tạo kích hoạt; thông tin chi tiết sẽ có trong runtime.lastError .
+
+Thông số
+
+createProperties
+
+CreateProperties
+
+callback
+
+hàm không bắt buộc
+
+Tham số callback có dạng như sau:
+
+() => void
+
+Giá trị trả về
+
+number | string
+
+Mã của mục mới tạo.
+
+remove()
+
+browser . contextMenus . remove (
+menuItemId : string | number ,
+) : Promise<void>
+
+Xoá một mục trong trình đơn theo bối cảnh.
+
+Thông số
+
+menuItemId
+
+chuỗi | số
+
+Mã của mục trong trình đơn theo bối cảnh cần xoá.
+
+Giá trị trả về
+
+Promise<void>
+
+Chrome 123 trở lên
+
+browser.* kể từ Chrome 148
+
+Giải quyết khi trình đơn theo bối cảnh đã bị xoá.
+
+removeAll()
+
+browser . contextMenus . removeAll () : Promise<void>
+
+Xoá tất cả các mục trong trình đơn theo bối cảnh do tiện ích này thêm vào.
+
+Giá trị trả về
+
+Promise<void>
+
+Chrome 123 trở lên
+
+browser.* kể từ Chrome 148
+
+Được giải quyết khi quá trình xoá hoàn tất.
+
+update()
+
+browser . contextMenus . update (
+id : string | number ,
+updateProperties : object ,
+) : Promise<void>
+
+Cập nhật một mục trong trình đơn theo bối cảnh đã tạo trước đó.
+
+Thông số
+
+id
+
+chuỗi | số
+
+Mã của mặt hàng cần cập nhật.
+
+updateProperties
+
+đối tượng
+
+Các thuộc tính cần cập nhật. Chấp nhận các giá trị giống như hàm contextMenus.create .
+
+đã chọn
+
+boolean không bắt buộc
+
+bối cảnh
+
+[ ContextType , ... ContextType []] không bắt buộc
+
+documentUrlPatterns
+
+string[] không bắt buộc
+
+đang bật
+
+boolean không bắt buộc
+
+parentId
+
+string | number không bắt buộc
+
+Mã của mục sẽ được đặt làm mục mẹ của mục này. Lưu ý: Bạn không thể đặt một mục làm mục con của mục con của chính nó.
+
+targetUrlPatterns
+
+string[] không bắt buộc
+
+tiêu đề
+
+chuỗi không bắt buộc
+
+loại
+
+ItemType không bắt buộc
+
+hiển thị
+
+boolean không bắt buộc
+
+Chrome 62 trở lên
+
+browser.* kể từ Chrome 148
+
+Liệu mục đó có xuất hiện trong trình đơn hay không.
+
+onclick
+
+không bắt buộc
+
+Hàm onclick có dạng như sau:
+
+( info : OnClickData , tab : Tab ) => {...}
+
+info
+
+OnClickData
+
+Trình duyệt Chrome 44 trở lên
+
+.* kể từ Chrome 148
+
+thẻ
+
+Tab
+
+Trình duyệt Chrome 44 trở lên
+
+.* kể từ Chrome 148
+
+Thông tin chi tiết về thẻ nơi xảy ra lượt nhấp. Tham số này không có trong các ứng dụng nền tảng.
+
+Giá trị trả về
+
+Promise<void>
+
+Chrome 123 trở lên
+
+browser.* kể từ Chrome 148
+
+Giải quyết khi trình đơn theo bối cảnh đã được cập nhật.
+
+Sự kiện
+
+onClicked
+
+browser . contextMenus . onClicked . addListener (
+callback : function ,
+)
+
+Được kích hoạt khi người dùng nhấp vào một mục trong trình đơn theo bối cảnh.
+
+Thông số
+
+callback
+
+hàm
+
+Tham số callback có dạng như sau:
+
+( info : OnClickData , tab? : tabs.Tab ) => void
+
+info
+
+OnClickData
+
+thẻ
+
+tabs.Tab không bắt buộc

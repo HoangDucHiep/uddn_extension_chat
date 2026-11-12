@@ -1,0 +1,595 @@
+Google sử dụng công nghệ AI để dịch nội dung sang ngôn ngữ bạn ưu tiên. Bản dịch bằng AI có thể có lỗi.
+
+browser.sidePanel
+
+Mô tả
+
+Sử dụng API chrome.sidePanel để lưu trữ nội dung trong bảng điều khiển bên của trình duyệt cùng với nội dung chính của trang web.
+
+Quyền
+
+sidePanel
+
+Để sử dụng Side Panel API, hãy thêm quyền "sidePanel" trong tệp manifest của tiện ích:
+
+manifest.json:
+
+{
+"name" : "My side panel extension" ,
+...
+"permissions" : [
+"sidePanel"
+]
+}
+
+Phạm vi cung cấp
+
+Chrome 114 trở lên
+
+browser.* kể từ Chrome 148
+MV3 trở lên
+
+Khái niệm và cách sử dụng
+
+API Bảng điều khiển bên cho phép các tiện ích hiển thị giao diện người dùng của riêng chúng trong bảng điều khiển bên, mang lại trải nghiệm nhất quán, bổ sung cho hành trình duyệt web của người dùng.
+
+Giao diện người dùng của bảng điều khiển bên trong trình duyệt Chrome.
+
+Một số tính năng bao gồm:
+
+Bảng điều khiển bên vẫn mở khi bạn di chuyển giữa các thẻ (nếu được thiết lập để làm như vậy).
+
+Tính năng này có thể chỉ hoạt động trên một số trang web cụ thể.
+
+Là một trang tiện ích, bảng điều khiển bên có quyền truy cập vào tất cả API Chrome.
+
+Trong phần cài đặt của Chrome, người dùng có thể chỉ định bên hiển thị bảng điều khiển.
+
+Trường hợp sử dụng
+
+Các phần sau đây minh hoạ một số trường hợp sử dụng phổ biến cho Side Panel API. Hãy xem phần Mẫu tiện ích để biết các ví dụ đầy đủ về tiện ích.
+
+Hiển thị cùng một bảng điều khiển bên trên mọi trang web
+
+Bạn có thể đặt bảng điều khiển bên ban đầu từ thuộc tính "default_path" trong khoá "side_panel" của tệp kê khai để hiển thị cùng một bảng điều khiển bên trên mọi trang web. Đường dẫn này phải trỏ đến một đường dẫn tương đối trong thư mục tiện ích.
+
+manifest.json:
+
+{
+"name" : "My side panel extension" ,
+...
+"side_panel" : {
+"default_path" : "sidepanel.html"
+}
+...
+}
+
+sidepanel.html:
+
+<!DOCTYPE html>
+<html>
+<head>
+<title>My Sidepanel</title>
+</head>
+<body>
+<h1>All sites sidepanel extension</h1>
+<p>This side panel is enabled on all sites</p>
+</body>
+</html>
+
+Bật bảng điều khiển bên trên một trang web cụ thể
+
+Tiện ích có thể sử dụng sidepanel.setOptions() để bật bảng điều khiển bên trên một thẻ cụ thể. Ví dụ này sử dụng browser.tabs.onUpdated() để theo dõi mọi nội dung cập nhật được thực hiện cho thẻ. Hàm này kiểm tra xem URL có phải là www.google.com hay không và bật bảng điều khiển bên. Nếu không, hàm này sẽ tắt tính năng đó.
+
+service-worker.js:
+
+const GOOGLE_ORIGIN = 'https://www.google.com' ;
+
+browser . tabs . onUpdated . addListener ( async ( tabId , info , tab ) = > {
+if ( ! tab . url ) return ;
+const url = new URL ( tab . url );
+// Enables the side panel on google.com
+if ( url . origin === GOOGLE_ORIGIN ) {
+await browser . sidePanel . setOptions ({
+tabId ,
+path : 'sidepanel.html' ,
+enabled : true
+});
+} else {
+// Disables the side panel on all other sites
+await browser . sidePanel . setOptions ({
+tabId ,
+enabled : false
+});
+}
+});
+
+Khi người dùng tạm thời chuyển sang một thẻ không bật bảng điều khiển bên, bảng điều khiển bên sẽ bị ẩn. Bảng điều khiển bên sẽ tự động xuất hiện lại khi người dùng chuyển sang một thẻ mà bảng điều khiển bên đã mở trước đó.
+
+Khi người dùng chuyển đến một trang web không bật bảng điều khiển bên, bảng điều khiển bên sẽ đóng và tiện ích sẽ không xuất hiện trong trình đơn thả xuống của bảng điều khiển bên.
+
+Để xem ví dụ hoàn chỉnh, hãy xem mẫu Bảng điều khiển bên dành riêng cho thẻ .
+
+Mở bảng điều khiển bên bằng cách nhấp vào biểu tượng trên thanh công cụ
+
+Nhà phát triển có thể cho phép người dùng mở bảng điều khiển bên khi họ nhấp vào biểu tượng thanh công cụ hành động bằng sidePanel.setPanelBehavior() . Trước tiên, hãy khai báo khoá "action" trong tệp kê khai:
+
+manifest.json:
+
+{
+"name": "My side panel extension",
+...
+"action": {
+"default_title": "Click to open panel"
+},
+...
+}
+
+Bây giờ, hãy thêm mã này vào ví dụ trước:
+
+service-worker.js:
+
+const GOOGLE_ORIGIN = 'https://www.google.com' ;
+
+// Allows users to open the side panel by clicking on the action toolbar icon
+browser . sidePanel
+. setPanelBehavior ({ openPanelOnActionClick : true })
+. catch (( error ) = > console . error ( error ));
+...
+
+Mở bảng điều khiển bên theo lập trình khi người dùng tương tác
+
+Chrome 116 ra mắt sidePanel.open() . API này cho phép tiện ích mở bảng điều khiển bên thông qua cử chỉ của người dùng tiện ích, chẳng hạn như nhấp vào biểu tượng hành động . Hoặc hoạt động tương tác của người dùng trên trang tiện ích hoặc tập lệnh nội dung , chẳng hạn như nhấp vào một nút. Để xem bản minh hoạ đầy đủ, hãy xem tiện ích mẫu Mở bảng điều khiển bên .
+
+Mã sau đây cho biết cách mở bảng điều khiển bên chung trên cửa sổ hiện tại khi người dùng nhấp vào trình đơn theo bối cảnh. Khi sử dụng sidePanel.open() , bạn phải chọn bối cảnh để mở. Sử dụng windowId để mở bảng điều khiển bên chung. Ngoài ra, hãy đặt tabId để chỉ mở bảng điều khiển bên trên một thẻ cụ thể.
+
+service-worker.js:
+
+browser . runtime . onInstalled . addListener (() = > {
+browser.contextMenus.create({
+id : 'openSidePanel' ,
+title : 'Open side panel' ,
+contexts : [ 'all' ]
+} );
+} );
+
+browser . contextMenus . onClicked . addListener (( info , tab ) = > {
+if (info.menuItemId === 'openSidePanel') {
+// This will open the panel in all the pages on the current window.
+browser.sidePanel.open({ windowId : tab . windowId } );
+}
+} );
+
+Chuyển sang một bảng điều khiển khác
+
+Tiện ích có thể sử dụng sidepanel.getOptions() để truy xuất bảng điều khiển bên hiện tại. Ví dụ sau đây đặt một bảng điều khiển bên chào mừng trên runtime.onInstalled() . Sau đó, khi người dùng chuyển đến một thẻ khác, bảng điều khiển bên chính sẽ thay thế bảng điều khiển bên này.
+
+service-worker.js:
+
+const welcomePage = 'sidepanels/welcome-sp.html' ;
+const mainPage = 'sidepanels/main-sp.html' ;
+
+browser . runtime . onInstalled . addListener (() = > {
+browser . sidePanel . setOptions ({ path : welcomePage });
+browser . sidePanel . setPanelBehavior ({ openPanelOnActionClick : true });
+});
+
+browser . tabs . onActivated . addListener ( async ({ tabId }) = > {
+const { path } = await browser . sidePanel . getOptions ({ tabId });
+if ( path === welcomePage ) {
+browser . sidePanel . setOptions ({ path : mainPage });
+}
+});
+
+Hãy xem mẫu Nhiều bảng điều khiển bên để biết mã đầy đủ.
+
+Trải nghiệm người dùng trên bảng điều khiển bên
+
+Người dùng sẽ thấy bảng điều khiển bên tích hợp sẵn của Chrome trước tiên. Mỗi bảng điều khiển bên sẽ hiển thị biểu tượng của tiện ích trong trình đơn bảng điều khiển bên. Nếu không có biểu tượng nào, thì biểu tượng phần giữ chỗ sẽ xuất hiện cùng với chữ cái đầu tiên trong tên của tiện ích.
+
+Mở bảng điều khiển bên
+
+Để cho phép người dùng mở bảng điều khiển bên, hãy sử dụng biểu tượng hành động kết hợp với sidePanel.setPanelBehavior() . Ngoài ra, hãy gọi sidePanel.open() sau khi người dùng tương tác, chẳng hạn như:
+
+Lượt nhấp dẫn đến hành động
+
+Phím tắt
+
+Trình đơn theo bối cảnh
+
+Cử chỉ của người dùng trên trang tiện ích hoặc tập lệnh nội dung.
+
+Ghim bảng điều khiển bên
+
+Biểu tượng ghim trong giao diện người dùng của bảng điều khiển bên.
+
+Thanh công cụ của bảng điều khiển bên sẽ hiển thị biểu tượng ghim khi bảng điều khiển bên đang mở.
+Khi nhấp vào biểu tượng này, bạn sẽ ghim biểu tượng hành động của tiện ích. Khi bạn nhấp vào biểu tượng hành động sau khi ghim, thao tác này sẽ thực hiện hành động mặc định cho biểu tượng hành động và chỉ mở bảng điều khiển bên nếu bạn đã định cấu hình rõ ràng.
+
+Ví dụ
+
+Để xem thêm bản minh hoạ về tiện ích API của bảng điều khiển bên, hãy khám phá bất kỳ tiện ích nào sau đây:
+
+Bảng điều khiển bên của từ điển .
+
+Bảng điều khiển bên chung .
+
+Nhiều bảng điều khiển bên .
+
+Mở Bảng điều khiển bên .
+
+Bảng điều khiển bên dành riêng cho trang web .
+
+Loại
+
+CloseOptions
+
+Chrome 141 trở lên
+
+browser.* kể từ Chrome 148
+
+Thuộc tính
+
+tabId
+
+number không bắt buộc
+
+Thẻ để đóng bảng điều khiển bên. Nếu một bảng điều khiển bên dành riêng cho thẻ đang mở trong thẻ được chỉ định, thì bảng điều khiển đó sẽ bị đóng cho thẻ đó. Nếu chỉ có bảng điều khiển bên chung đang mở, thì lời hứa do lệnh gọi đến close() trả về sẽ từ chối kèm theo lỗi. Hành vi này đã thay đổi trong Chrome 145, còn các phiên bản trước đó sẽ quay lại đóng bảng điều khiển chung. Bạn phải cung cấp ít nhất một trong hai thuộc tính này hoặc windowId .
+
+windowId
+
+number không bắt buộc
+
+Cửa sổ để đóng bảng điều khiển bên. Nếu một bảng điều khiển bên chung đang mở trong cửa sổ được chỉ định, thì bảng điều khiển đó sẽ đóng cho tất cả các thẻ trong cửa sổ đó, nơi không có bảng điều khiển dành riêng cho thẻ nào đang hoạt động. Bạn phải cung cấp ít nhất một trong hai thuộc tính này hoặc tabId .
+
+GetPanelOptions
+
+Thuộc tính
+
+tabId
+
+number không bắt buộc
+
+Nếu được chỉ định, các tuỳ chọn bảng điều khiển bên cho thẻ đã cho sẽ được trả về. Nếu không, hàm này sẽ trả về các lựa chọn mặc định cho bảng điều khiển bên (được dùng cho mọi thẻ không có chế độ cài đặt cụ thể).
+
+OpenOptions
+
+Chrome 116 trở lên
+
+browser.* kể từ Chrome 148
+
+Thuộc tính
+
+tabId
+
+number không bắt buộc
+
+Thẻ để mở bảng điều khiển bên. Nếu thẻ tương ứng có bảng điều khiển bên dành riêng cho thẻ, thì bảng điều khiển đó sẽ chỉ mở cho thẻ đó. Nếu không có bảng điều khiển dành riêng cho thẻ, thì bảng điều khiển chung sẽ mở trong thẻ được chỉ định và mọi thẻ khác không có bảng điều khiển dành riêng cho thẻ hiện đang mở. Thao tác này sẽ ghi đè mọi bảng điều khiển bên hiện đang hoạt động (chung hoặc dành riêng cho thẻ) trong thẻ tương ứng. Bạn phải cung cấp ít nhất một trong hai thuộc tính này hoặc windowId .
+
+windowId
+
+number không bắt buộc
+
+Cửa sổ để mở bảng điều khiển bên. Điều này chỉ áp dụng nếu tiện ích có bảng điều khiển bên chung (không dành riêng cho thẻ) hoặc tabId cũng được chỉ định. Thao tác này sẽ ghi đè mọi bảng điều khiển bên chung đang hoạt động mà người dùng đã mở trong cửa sổ nhất định. Bạn phải cung cấp ít nhất một trong hai thuộc tính này hoặc tabId .
+
+PanelBehavior
+
+Thuộc tính
+
+openPanelOnActionClick
+
+boolean không bắt buộc
+
+Liệu việc nhấp vào biểu tượng của tiện ích có bật/tắt chế độ hiển thị mục nhập của tiện ích trong bảng điều khiển bên hay không. Giá trị mặc định là false.
+
+PanelClosedInfo
+
+Chrome 142 trở lên
+
+browser.* kể từ Chrome 148
+
+Thuộc tính
+
+đường dẫn
+
+chuỗi
+
+Đường dẫn của tài nguyên cục bộ trong gói tiện ích có nội dung hiển thị trong bảng điều khiển.
+
+tabId
+
+number không bắt buộc
+
+Mã nhận dạng không bắt buộc của thẻ nơi bảng điều khiển bên đã đóng. Thông tin này chỉ được cung cấp khi bảng điều khiển dành riêng cho thẻ.
+
+windowId
+
+số
+
+Mã nhận dạng của cửa sổ nơi bảng điều khiển bên bị đóng. Tính năng này có trong cả bảng điều khiển chung và bảng điều khiển theo thẻ.
+
+PanelLayout
+
+Chrome 140 trở lên
+
+trình duyệt.* kể từ Chrome 148
+
+Thuộc tính
+
+bên
+
+Bên
+
+PanelOpenedInfo
+
+Chrome 141 trở lên
+
+browser.* kể từ Chrome 148
+
+Thuộc tính
+
+đường dẫn
+
+chuỗi
+
+Đường dẫn của tài nguyên cục bộ trong gói tiện ích có nội dung hiển thị trong bảng điều khiển.
+
+tabId
+
+number không bắt buộc
+
+Mã không bắt buộc của thẻ nơi bảng điều khiển bên được mở. Thông tin này chỉ được cung cấp khi bảng điều khiển dành riêng cho thẻ.
+
+windowId
+
+số
+
+Mã của cửa sổ nơi bảng điều khiển bên được mở. Tính năng này có trong cả bảng điều khiển chung và bảng điều khiển theo thẻ.
+
+PanelOptions
+
+Thuộc tính
+
+đang bật
+
+boolean không bắt buộc
+
+Liệu có nên bật bảng điều khiển bên hay không. Việc này là không bắt buộc. Giá trị mặc định là true.
+
+đường dẫn
+
+chuỗi không bắt buộc
+
+Đường dẫn đến tệp HTML của bảng điều khiển bên cần sử dụng. Đây phải là tài nguyên cục bộ trong gói tiện ích.
+
+tabId
+
+number không bắt buộc
+
+Nếu được chỉ định, các tuỳ chọn của bảng điều khiển bên sẽ chỉ áp dụng cho thẻ có mã nhận dạng này. Nếu bị bỏ qua, các tuỳ chọn này sẽ đặt hành vi mặc định (được dùng cho mọi thẻ không có chế độ cài đặt cụ thể). Lưu ý: nếu cùng một đường dẫn được đặt cho tabId này và tabId mặc định, thì bảng điều khiển cho tabId này sẽ là một thực thể khác với bảng điều khiển cho tabId mặc định.
+
+Side
+
+Chrome 140 trở lên
+
+trình duyệt.* kể từ Chrome 148
+
+Xác định cách căn chỉnh có thể áp dụng cho bảng điều khiển bên trong giao diện người dùng của trình duyệt.
+
+Enum
+
+"left"
+
+"right"
+
+SidePanel
+
+Thuộc tính
+
+default_path
+
+chuỗi
+
+Đường dẫn do nhà phát triển chỉ định để hiển thị bảng điều khiển bên.
+
+Phương thức
+
+close()
+
+Chrome 141 trở lên
+
+browser.* kể từ Chrome 148
+
+browser . sidePanel . close (
+options : CloseOptions ,
+) : Promise<void>
+
+Đóng bảng điều khiển bên của tiện ích. Thao tác này sẽ không có hiệu lực nếu bảng điều khiển đã đóng.
+
+Thông số
+
+tùy chọn
+
+CloseOptions
+
+Chỉ định bối cảnh để đóng bảng điều khiển bên.
+
+Giá trị trả về
+
+Promise<void>
+
+Trả về một Lời hứa sẽ phân giải khi bảng điều khiển bên đã đóng.
+
+getLayout()
+
+Chrome 140 trở lên
+
+trình duyệt.* kể từ Chrome 148
+
+browser . sidePanel . getLayout () : Promise< PanelLayout >
+
+Trả về bố cục hiện tại của bảng điều khiển bên.
+
+Giá trị trả về
+
+Promise< PanelLayout >
+
+Trả về một Lời hứa (Promise) phân giải bằng PanelLayout .
+
+getOptions()
+
+browser . sidePanel . getOptions (
+options : GetPanelOptions ,
+) : Promise< PanelOptions >
+
+Trả về cấu hình bảng điều khiển đang hoạt động.
+
+Thông số
+
+tùy chọn
+
+GetPanelOptions
+
+Chỉ định bối cảnh để trả về cấu hình.
+
+Giá trị trả về
+
+Promise< PanelOptions >
+
+Trả về một Lời hứa sẽ phân giải bằng cấu hình bảng điều khiển đang hoạt động.
+
+getPanelBehavior()
+
+browser . sidePanel . getPanelBehavior () : Promise< PanelBehavior >
+
+Trả về hành vi hiện tại của bảng điều khiển bên của tiện ích.
+
+Giá trị trả về
+
+Promise< PanelBehavior >
+
+Trả về một Lời hứa sẽ phân giải bằng hành vi của bảng điều khiển bên của tiện ích.
+
+open()
+
+Chrome 116 trở lên
+
+browser.* kể từ Chrome 148
+
+browser . sidePanel . open (
+options : OpenOptions ,
+) : Promise<void>
+
+Mở bảng điều khiển bên cho tiện ích. Bạn chỉ có thể gọi phương thức này để phản hồi hành động của người dùng.
+
+Thông số
+
+tùy chọn
+
+OpenOptions
+
+Chỉ định bối cảnh để mở bảng điều khiển bên.
+
+Giá trị trả về
+
+Promise<void>
+
+Trả về một Lời hứa sẽ được giải quyết khi bảng điều khiển bên đã được mở.
+
+setOptions()
+
+browser . sidePanel . setOptions (
+options : PanelOptions ,
+) : Promise<void>
+
+Định cấu hình bảng điều khiển bên.
+
+Thông số
+
+tùy chọn
+
+PanelOptions
+
+Các tuỳ chọn cấu hình để áp dụng cho bảng điều khiển.
+
+Giá trị trả về
+
+Promise<void>
+
+Trả về một Lời hứa sẽ phân giải khi các tuỳ chọn đã được đặt.
+
+setPanelBehavior()
+
+browser . sidePanel . setPanelBehavior (
+behavior : PanelBehavior ,
+) : Promise<void>
+
+Định cấu hình hành vi của bảng điều khiển bên của tiện ích. Đây là thao tác cập nhật và chèn.
+
+Thông số
+
+lợi dụng
+
+PanelBehavior
+
+Hành vi mới cần đặt.
+
+Giá trị trả về
+
+Promise<void>
+
+Trả về một Lời hứa sẽ được thực hiện khi hành vi mới được thiết lập.
+
+Sự kiện
+
+onClosed
+
+Chrome 142 trở lên
+
+browser.* kể từ Chrome 148
+
+browser . sidePanel . onClosed . addListener (
+callback : function ,
+)
+
+Được kích hoạt khi bảng điều khiển bên của tiện ích bị đóng.
+
+Thông số
+
+callback
+
+hàm
+
+Tham số callback có dạng như sau:
+
+( info : PanelClosedInfo ) => void
+
+info
+
+PanelClosedInfo
+
+onOpened
+
+Chrome 141 trở lên
+
+browser.* kể từ Chrome 148
+
+browser . sidePanel . onOpened . addListener (
+callback : function ,
+)
+
+Được kích hoạt khi bảng điều khiển bên của tiện ích được mở.
+
+Thông số
+
+callback
+
+hàm
+
+Tham số callback có dạng như sau:
+
+( info : PanelOpenedInfo ) => void
+
+info
+
+PanelOpenedInfo

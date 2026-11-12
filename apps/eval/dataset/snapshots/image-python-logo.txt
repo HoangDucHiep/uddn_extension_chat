@@ -1,0 +1,2 @@
+[IMAGE] Python logo (python.org)
+Logo chính thức của Python.

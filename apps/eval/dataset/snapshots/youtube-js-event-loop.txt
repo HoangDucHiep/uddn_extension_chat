@@ -1,0 +1,247 @@
+[00:18] Chào các bạn, thật tuyệt khi thấy các bạn
+[00:20] tham giá rất đông ở đây. Các bạn cho tôi tập thể dục tí nhé. Tôi cần làm vầy
+[00:27] Trông tôi sẽ bớt kinh dị. Hôm nay tôi sẽ nói về Event Loop, nó là cái đệch gì
+[00:35] bên trong JavaScript. Đầu tiên, như đã nói, tôi làm việc cho AndYet
+[00:43] một công ty lập trình nhỏ nhưng rất tuyệt vời ở Mỹ, nếu bạn có nhu cầu làm việc với ứng dụng thời gian thực thì liên hệ nhé
+[00:50] Chúng tôi khá rành ứng dụng thời gian thực. OK. Cách đây 18 tháng thì tôi là một lập trình viên JavaScript.
+[00:58] Tôi tự hỏi, thực sự thì JavaScript hoạt động như thế nào? và tối không hoàn toàn
+[01:05] chắc chắn là nó hoạt động thế nào. Tôi nghe nói về V8, trình thực thi Chrome, nhưng cũng chẳng hiểu nó là cái gì.
+[01:11] và nó làm gì. Tôi cũng nghe nói JavaScript là "single threaded" và chúng ta sử dụng "call-back" trong JavaScript
+[01:16] Thế thì call-back là cái giống gì? và tối bắt đầu khám phá bằng cách đọc tài liệu, nghiên cứu và thử nghiệm.
+[01:22] Trong trình duyệt, về cơ bản nó bắt đầu như thế này
+[01:25] Tôi xem mình chính là JavaScript và tôi tự hỏi tôi là ai?.Tôi là ngôn ngữ chỉ có 1 "threaded"
+[01:33] thú vị rồi đây. Tôi có 1 call-stack, 1 event loop, 1 callback queue
+[01:39] và tôi có một vài APIs cùng một tá các thứ khác nữa. Nghe như một giáo phái mới vậy. Tôi không có học đại học.
+[01:45] Ý tôi là, những cái từ đó (callback, eventloop) thì tôi chả hiểu gì cả. Tôi nghe chém gió về V8 và các Runtimes khác nhau
+[01:51] nên tôi bắt đầu điều tra trong V8, xem nó có call stack, event loop, callback queue và
+[01:55] các APIs không? tôi có "Stack" và "Heap", tối không biết chúng là cái giống gì.
+[02:00] Tôi khá thấy tò mò và thú vị nên 18 tháng qua. Tôi nghĩ là tôi đã hiểu nó rồi.
+[02:12] (bà con cười) do đó, tôi sẽ chia sẻ với các bạn hôm nay. Hy vọng là
+[02:16] nó hữu ích, nếu bạn chưa biết gì về JS, nó sẽ giúp bạn hiểu tại sao JS lại kỳ cục
+[02:22] khi so với các ngôn ngữ khác. Bạn có thể tự hỏi tại sao callback chuối thế
+[02:27] nhưng lại bắt buộc phải có. và nếu bạn có kinh nghiệm JS rồi thì hy vọng
+[02:32] tôi sẽ cho một cái nhìn khác về việc Runtime hoạt động thế nào để bạn có thể
+[02:38] có cái nhìn sâu tốt hơn nữa. Nếu chúng ta nhìn vào JavaScript Runtime như là V8 của trình duyệt Google Chrome.
+[02:46] Đây là bức tranh đơn giản mô tả JavaScript Runtime là gì. "Heap", nơi
+[02:57] nơi bộ nhớ được cấp phát và sau đó là "call stack",
+[03:04] nơi lưu trữ stack frame và nhiều thứ khác. nhưng nếu bạn đọc mã nguồn của V8 và tìm
+[03:11] mấy thứ như setTimeout hoặc là DOM hoặc là HTTP Request, nó không hề có trong đó. Đệch, nó
+[03:17] không tồn tại trong V8. Không thể tin được. Đó là những thứ đầu tiên bạn nghĩ đến về "Async"
+[03:24] và mấy thứ đó lại không hề có trong mã nguồn của V8. chà chà, thú vị đây. 18 tháng qua, tôi
+[03:32] đã khám phá và tôi nhận ra là đây là một bức tranh tổng thể đây là
+[03:36] cái mà tôi muốn cho bạn thấy ngày hôm nay để hiểu mấy cái phần này là gì?
+[03:41] Chúng ta có V8 Runtime, và chúng ta có mấy thứ gọi là Web APIs bổ sung
+[03:46] trong trình duyệt. DOM, AJAX, Timeout, chúng ta có Event Loop và Callback Queue.
+[03:53] Tôi chắc là các bạn đã nghe máy từ này trước đây
+[03:58] Nếu bạn không hiểu mấy thứ đó thì chúng ta sẽ bắt đầu từ đầu
+[04:03] Có một số thuật ngữ sẽ lạ với một số bạn, một số bạn thì biết nó rồi
+[04:07] nên ta sẽ đi nhanh qua nó nhé, các bạn biết rồi thì chờ chút
+[04:13] Tôi nghĩ là nhiều người không biết đâu. Vậy thì, JavaScript là ngôn ngữ chỉ có 1 thread
+[04:18] Khi chạy thì chỉ có 1 thread, và nó chỉ có 1 call stack. Và nó chỉ làm có 1 thứ tại 1 thời điểm.
+[04:24] Đó là ý nghĩa của từ "Single Thread", chương trình chỉ có thể chạy một đoạn mã tại một thời điểm mà thôi.
+[04:30] Hãy xem minh hoạ để hiểu rõ hơn
+[04:35] Nếu tôi có một đoạn mã như bên trái, chúng ta có vài hàm, một hàm nhân
+[04:40] 2 số, một hàm tính bình phương
+[04:46] Một hàm in kết quả của phép toán bình phương và in kết quả
+[04:50] Dòng cuối cùng là gọi hàm printSquare(4). Mã này đơn giản đúng không?
+[04:55] Khá rõ ràng. Ngon lành, néu chúng ta chạy cái này, à, tôi sẽ quay lại một chút. cái Call Stack về cơ bản thì
+[05:04] Nó là một cấu trúc dữ liệu, ghi nhận nơi chương trình của chúng ta đang chạy ở đâu, nếu chúng ta gọi
+[05:08] vào một hàm, thì chúng ta sẽ đặt vài thứ lên đỉnh Stack, nếu chúng ta gọi xong hàm, chúng ta sẽ lấy mấy thứ chúng ta đã đặt,
+[05:12] ra khỏi Stack. Đó là tất cả những gì Stack sẽ làm. Như vậy nếu bạn chạy cái file này
+[05:18] thì sẽ gọi một cái như là hàm main vậy, do đó, nó sẽ để lên stack như bạn thấy
+[05:23] Tiếp theo chúng ta khai báo vài cái hàm
+[05:28] và cuối cùng ta có hàm in bình phương. Bởi vì PrintSquare là một lời gọi hàm cho nên
+[05:32] nó sẽ đẩy vào Stack hàm PrintSquare, và ngay lập tức đẩy lên Stack
+[05:37] hàm nhân 2 số. Tại hàm nhân, có trả về kết quả nhân A và B
+[05:43] Khi trả về kết quả hàm nhân, thì hàm này sẽ bị lấy ra khỏi Stack
+[05:48] , đến hàm Square, trả về hàm in kết quả, ở đây không có return, tuy nhiên ngầm định là có bởi vì hàm này đã thực hiện xong.
+[05:57] Ta đến cuối hàm rồi. và như vậy chúng ta xong, như minh hoạ Stack ở bên phải,
+[06:01] Bạn hiểu rồi chứ? (Yes, nhẹ nhọm thiệt) Cho dù bạn chưa hề nghĩ về stack
+[06:09] trước đây thì bạn cũng đã vô tình sử dụng nó khi bạn viết mã JavaScript rồi.
+[06:15] Vậy nếu chúng có đoạn mã như thế này, một hàm baz gọi hàm bar trong hàm bar gọi hàm Foo trong đó
+[06:20] hàm này sẽ bắn ra một lỗi. Nếu chúng ta chạy thử trong Chrome, và in Stack Trace thì
+[06:29] Trạng thái của Stack khi lõi xảy ra như bạn thấy, foo > bar > baz và anonymous function
+[06:38] đó là hàm main mà ta nói đó các bạn. Nếu chúng ta nghe thuật ngữ giống như tràn Stack,
+[06:45] Đây là một ví dụ, Ta có mọt hàm foo gọi hàm foo luôn, điều gì sẽ xảy ra?
+[06:51] Ta sẽ có một hàm main trong đó gọi hàm foo và lại gọi chính hàm foo nữa. cứ vậy gọi vào thăm thẵm luôn.
+[06:58] Rồi Chrome nói là, tào lao quá, tao chắc là mày không có ý định gọi hàm foo đệ quay 16 ngàn lần
+[07:05] Chrome sẽ ném lỗi ra cho bạn để bạn có thể điều tra nguyên nhân. Ngon lành.
+[07:11] Mặc dù tôi đưa ra một góc nhìn khác về Call Stack, nhưng có thể bạn cũng đã có một chút hình dùng về nó
+[07:16] khi viết mã JavaScript. Một câu hỏi lớn là điều gì sẽ xảy ra
+[07:22] khi một hành động nào đó bị chậm? chúng ta nói về "Blocking" và hành vi "Blocking", ta
+[07:30] không có định nghĩa cụ thể nó là gì. Thực ra, nó chỉ là đoạn mã chạy chậm.
+[07:35] vây console.log không chậm, chạy một vòng lặp từ 1 đến 10 tỉ thì sẽ chậm, gửi network request thì chậm
+[07:41] Thử hình dung request chậm và trên Stack
+[07:49] thì blocking sẽ ra sao?. Xem một ví dụ nhỏ ở đây
+[07:57] hàm getSynchronous, như của jQuery. Điều gì sẽ xảy ra nếu
+[08:04] các request này là Sync, xem như ta chưa từng nghe async và callback nhé
+[08:10] Nếu chúng ta duyệt qua đoạn mã như đã làm lúc này, chúng ta gọi hàm getSync và chờ, bởi vì
+[08:16] chúng ta đang gửi request, những thứ liên quan đến network thì chậm rồi. Hy vọng là
+[08:21] request có thể hoàn thành, chúng ta có thể tiếp tục, chờ và lại tiép tục. Khoan đã, request
+[08:32] có thể không bao giờ hoàn thành. Ngon, chắc là tôi sẽ về nhà.. Cuối cùng thì 3 cái đó,
+[08:39] hoàn thành và Stack sẽ được dọn dẹp. Như vậy, trong ngôn ngữ lập trình Single Thread
+[08:45] Thread sẽ không giống như ngôn ngữ Ruby. Chúng ta gửi một request,
+[08:50] Chúng ta phải chờ cho nó hoàn thành
+[08:56] Đây thực sự là một vấn đề, bởi vì chúng ta đang chạy trên Browsers.
+[09:04] đây rồi, ok. đây là Chrome, đây là đoạn mã
+[09:13] tôi đã chạy, trình duyệt treo luôn, nó đang gửi Sync Ajax Request.
+[09:19] Tôi đang giả lập với một vòng lặp. Vì nó là Sync, nên tôi phải chờ
+[09:24] 5s trước khi có tiếp tục chạy. Nếu tôi mở Console ra, chúng ta có thể thấy
+[09:34] điều gì đang xảy ra. Tôi không thể làm bất cứ thứ gì khác.
+[09:40] Thâm chí là nút Run không thể hiển thị bình thường mặc dù tôi đã click nó rồi. Trình duyệt
+[09:45] cứng đơ, treo luôn, chẳng làm gì được nữa cho đến khi các request đó hoàn thành.
+[09:51] Tôi thấy là cho tới khi mấy cái request hoàn thành, tôi không thể
+[09:56] thấy trình duyệt hiển thị gì cả. Lý do là nếu Call Stack có vài thứ trong nó ở đây,
+[10:03] và ở đây nó có mấy thứ, thì nó vẫn sẽ chạy. Chúng ta có các request Sync
+[10:10] trình duyệt thì cứng đơ, nó không thể hiển thị được gì, cũng không thể chạy được các đoạn mã khác.
+[10:15] Nó treo luôn. Cái này tệ quá, nếu chúng ta muốn người dùng có giao diện mướt mát, chúng ta không thể ngăn
+[10:20] Stack. Thế thì chúng ta phải làm thế nào? Giải pháp dơn giản nhất là chúng ta cung cấp Asynchronous Callbacks
+[10:27] Chúng sẽ không Block các hàm trong trình duyệt, chúng sẽ là các hàm
+[10:35] asynchronous, cơ bản là chúng chạy các đoạn mã, đưa cho nó một call-back và chạy
+[10:40] nó sau, nếu bạn đã dùng JavaScript sẽ sẽ thấy asynchronous callbacks, nó hoạt động
+[10:45] giống như thế này, Ví dụ đơn giản để nhắc mọi người chúng ta đang ở đâu. Đoạn mã giống thế này, console.log
+[10:52] quá dễ, chúng ta gọi hàm setTimeout, nhưng
+[11:00] sẽ chờ 5s sau chúng ta in ra "there", đoạn mã khá rõ ràng và dễ hiểu đúng không? cơ bản là
+[11:07] hàm setTimeout sẽ làm gì đó. Như vậy, Asynchronous callbacks liên quan tới
+[11:13] Stack mà chúng ta đã thấy lúc nãy... Thế cái đoạn mã này nó chạy thế nào? Chạy thử nó xem. In ra Hi, setTimeout
+[11:22] Chúng ta thấy là nó không chạy liền, mà sẽ chạy sau 5s, chúng ta
+[11:28] không thể đẩy nó lên Stack, bằng cách nào đó nó không xuất hiện trên Stack, tạm thời bỏ qua cái vụ này
+[11:34] nhưng ta sẽ tìm hiểu nó. Tiếp theo, in ra JSConfEU, quá rõ ràng, 5s sau,
+[11:41] làm thế "éo" nào đó, "there" xuất hiện trên Stack. Đệch, nó đã làm điều dó như thế nào?
+[11:49] và đây là nơi Event Loop xuất hiện để chạy các đoạn mã đồng thời.Nếu vậy,
+[11:56] nãy chờ tôi đang lừa các bạn khi nói rằng JS chỉ có thể làm 1 việc 1 lúc.
+[12:00] Éc, sự thực là thế, JavaScript Runtime chỉ có thể làm 1 thứ 1 lúc thôi. Nó không thể gửi một
+[12:04] Ajax Request trong khi nó đang chạy một đoạn mã khác. Nó không thể chạy setTimeout trong khi đang chạy một đoạn mã khác.
+[12:08] Lý do chúng ta có thể chạy song song được là vì trình duyệt không đơn giản
+[12:13] chỉ là Runtime, vậy, hãy nhớ điều này, JavaScript Runtime chỉ làm mỗi lúc 1 việc
+[12:18] nhưng trình duyệt cho chúng ta nhiều thứ khác, các APIs
+[12:22] làm việc hiệu quả với Threads, bạn chỉ cần gọi nó
+[12:29] phần còn lại thì trình duyệt sẽ lo hết. Nếu bạn viết JavaScript cho server,
+[12:35] node.js chẳng hạn, thì thay vì Web APIs, chúng ta có một tập các C++API và
+[12:42] Threads sẽ bị che đi trong mã C++. Giờ thì các bạn hình dung được bức tranh tổng thể rồi, giờ ta sẽ "giải ngố" đoạn mã lúc nãy
+[12:51] để có một bức tranh đầy đủ về trình duyệt. Ok, giống như lúc nãy, chạy đoạn mã, in ra
+[12:57] chữ "hi", quá đơn giản. Bây giờ, chúng ta thấy điều gì xảy ra khi gọi hàm setTimeout.
+[13:05] Chúng ta đưa một hàm và thời gian chờ để setTimeout gọi. Bây giờ, setTimeou
+[13:12] là mộtAPI, ccung cấp bởi trình duyệt, nó không có trong JavaScript Runtime V8 đâu nhé
+[13:17] Nó bổ sung thêm cho JavaScript Runtime.
+[13:22] Lúc này, trình duyệt khởi tạo một Timer cho chúng ta. và bây giờ, nó sẽ đếm countdown cho ta luôn,
+[13:29] có nghĩa là khi hàm setTimeout gọi, bản thân nó đã chạy xong luôn rồi nên nó sẽ được lấy ra khỏi Stack.
+[13:35] chữ "JSConfEU" được in ra, rõ ràng rồi nhé. bây giờ tới phiên timer trong Web API
+[13:44] 5s sau sẽ hoàn tất. Web API sẽ không thể thay đổi mã nguồn của ta.
+[13:50] nó cũng không thể chọt chẹt vô Stack
+[13:55] vì nếu nó làm vậy thì Stack sẽ loạn lên. Đây là lúc Task Queue/Callback Queue xuất hiện.
+[14:00] Bất kỳ Web API nào cũng sẽ đưa callbacks vào Task Queue khi nó hoàn thành, cuối cùng
+[14:08] chúng ta có Event Loop, tiêu đề của bài trình bày này, event loop là một phần
+[14:13] khá đơn giản trong toàn thể bức tranh, nó chỉ có một nhiệm vụ đơn giản.
+[14:19] Công việc của nó là dòm Stack và ngó qua Task Queue, nếu stack
+[14:23] hẻm có gì, thì lấy máy thứ trên Task Queue và đẩy vào Stack.
+[14:27] Như vậy, ở đây, ta thấy là stack đang chẳng có gì, nhưng lại có 1 callback trên Task Queue
+[14:34] Event Loop chạy, nó sẽ nói là, ồ, tôi cần làm gì đó, và nó đẩy callback vào stack
+[14:39] Cần nhớ, stack là của JavaScript, bên trong V8, hàm callback xuất hiện trên Stack
+[14:45] , thực thi và in ra "there", và hoàn tất. Mọi người hiểu rồi chứ?
+[14:52] Tôi tới đâu rồi? OK, Tuyệt vời, vậy giờ bạn có thể thấy nó hoạt động thế nào.
+[14:59] Có một số thứ khá lạ lẫm khi làm việc với Async, như khi ai đó mói rằng
+[15:04] bạn phải gọi hàm setTimeout với 0. Okay, bạn muốn tôi chạy một hàm với timeout là 0?
+[15:11] Tại sao tôi lại phải để trong hàm setTimeout với 0? lần đầu tiên khi bạn gặp đoạn mã như vậy, nếu
+[15:14] bạn là tôi, tôi thấy nó đang làm thứ gì đó nhưng tôi không biết tại sao lại vậy. Lý do là, nói chung là,,
+[15:21] Nếu bạn muốn trì hoãn một hành xử lý nào đó cho đến khi Stack rỗng. Như vậy, chúng ta nhìn
+[15:26] vào cái này, nếu bạn đã viết JavaScript, đây, chúng ta sẽ thấy kết quả tương tự, chúng ta sẽ
+[15:29] thấy "hi" "JSConf", và "there" sẽ xuất hiện ở cuối. Chúng ta hiểu
+[15:36] tại sao nó lại như vậy. Hàm setTimeout 0, bây giờ sẽ hoàn thành ngay lập tức
+[15:41] và đẩy callback lên Task Queue, như đã nói, Event loop sẽ chờ cho đến khi stack rỗng
+[15:46] trước khi nó đẩy callback vào Stack, như vậy Stack sẽ tiếp tục
+[15:51] chạy, in ra "hi", "JSConfUE" và trở nên rỗng,
+[15:58] bây giờ event loop chạy và gọi callback. Giống như ví dụ của setTimeout 0, nó trì hoãn việc thực thi mã
+[16:06] mã nguồn, vì bất cứ lý do đến cuối Stack. Hoặc chờ cho đến khi Stack rỗng. Ngon lành
+[16:14] Như vậy, tất cả web APIs hoạt động đều theo cách này. nếu chúng ta có Ajax Request, chúng ta tạo một Ajax Request
+[16:21] đến một URL cùng với calback, hoạt động y chang như vậy, oop xin lỗi, in ra "hi", tạo
+[16:28] một Ajax Request, đoạn mã để chạy Ajax Request thì không nằm trong JavaScript Runtime
+[16:32] mà nằm trong trình duyệt, như vậy chúng ta gắn nó với 1 callback sau URL, mã nguồn
+[16:40] có thể tiếp tục thực thi, Cho đến khi XHR Request hoàn thành, hoặc thậm chí không thể hoàn thành, nó
+[16:45] không có vấn đề gì cả. Stack có thể tiếp tục chạy, giả sử nó hoàn thành, nó sẽ lấy từ Task Quêu, đặt
+[16:51] lên Stack bởi Event loop và chạy. Đó là tất cả những gì xảy ra với một lời gọi Async
+[16:58] Hãy thử một ví dụ phức tạp hơn. Tôi hy vọng nó sẽ hoạt động, nếu bạn không nhận ra
+[17:05] tất cả cái này trong slide thì ở đây có hơn 500 bước lận.
+[17:12] (Èo.....)
+[17:35] Cho mọt liên kết, chà...này quá lớn rồi, mọi người thấy hết chứ? Okay, về cơ bản tôi viết
+[17:44] bài này cho Scotland JS, sau bài nói, tôi bị đã rút gọn phân nữa slides vì không thể
+[17:52] chạy hết các bước ở đây.
+[17:57] nên cách dễ nhất là viết cái tool để mô phỏng nó (mọi người cười)
+[18:06] Runtime at Runtime, và nó gọi là lặp. Hãy chạy ví dụ như chúng ta đã làm ở slide trước, tôi vẫn chưa để XHR vô
+[18:20] nó hoàn toàn ổn, chỉ là tối chưa làm nó. Như bạn thấy đoạn mã, chúng ta sẽ ghi vài thứ
+[18:25] đây là một đoạn đăng ký sự kiện, setTimeout và sẽ in ra bằng console.log
+[18:33] tôi sẽ chạy và xem chuyện gì xảy ra....thêm DOM API, thêm timeout, mã nguồn sẽ
+[18:40] tiếp tục chạy, đẩy callback vào Queue và hoàn thành
+[18:49] Nếu click vào đây thì sẽ tiếp tục gọi web API, đẩy vào callback vào hàng đợi khi click
+[18:54] và chạy nó, nếu tôi bấm cả trăm lần chúng ta có thể thấy nó xảy ra ở đây, tôi bấm, việc tôi bấm
+[19:01] sẽ không được xử lý ngay mà được đẩy vào Queue ngay lập tức.
+[19:06] Chúng ta có thêm một số ví dụ nữa
+[19:12] Tôi sẽ chạy qua đây, ok tiếp tục, như
+[19:24] vậy tôi sẽ chạy qua vài ví dụ để đư ra vài thứ có thể chạy vào
+[19:31] và không qua Async APIs, trong ví dụ này, chúng ta gọi setTimeout 4 lần
+[19:37] với thời gian chờ 1s. và in ra "hi", Trước khi callback bị đưa vào Task Queue...
+[19:49] 4 callback được yêu cầu trì hoãn 1s, và nó vẫn đang chờ, hàm callback
+[19:54] chưa chạy, đúng không các bạn?
+[19:56] Minh hoạ ở đây, là thời gian chờ thực sự để làm, nó không đảm bảo
+[20:02] thời gian để thực thi, nó chỉ là thời gian tối thiểu để thực thi. giống như setTimeout 0 không có nghĩa là
+[20:06] chạy ngay lập tức mà nó sẽ được gọi chạy khi Stack rỗng, bạn hiểu chứ? vậy... trong
+[20:17] ví dụ này tôi muốn nói về callback, tuỳ vào ngữ cảnh
+[20:25] callbacks có thể là 1 trong 2 thứ, callback có thể là bất kỳ hàm trong đó
+[20:30] gọi một hàm khác, hoặc callbacks có thể là một async callback
+[20:35] để đặt vào Task Queue. Đoạn mã này minh hoạ sự khác nhau
+[20:41] Hàm forEach trên mảng, nó không chạy, nó nhận một hàm,
+[20:48] mà bạn có thể gọi là một callback nhưng nó không chạy giống như async callback, mà nó được gọi bên trong nó và đặt lên Stack,
+[20:52] Chúng ta có thể định nghĩa một async forEach để nó có thể lấy một mảng, một callback
+[21:01] và mỗi phần tử mãng sẽ gọi hàm setTimeout 0 với hàm callback
+[21:07] Tôi nghĩ nên đưa vào một giá trị, nhưng dù sao, tôi sẽ chạy nó và chúng ta có thể
+[21:13] thấy sự khác biệt, khối lệnh đầu tiên chạy, nó sẽ đặt
+[21:18] và giữ Stack, đúng không nào? cho đến khi nó hoàn thành, với phiên bản dùng async,
+[21:25] nó sẽ chậm dần, nhưng cơ bản là nó sẽ đặt vào queue một mớ các hàm callbacks và nó sẽ chạy hết
+[21:31] và in ra bằng hàm console.log. Trong ví dụ console.log
+[21:36] chạy khá nhanh, lợi ích của việc dùng async không dễ thấy lắm nhưng giả sử bạn đang
+[21:41] xử lý gì đó nặng lắm trên mỗi vòng lặp. Tôi nghĩ là tôi đã làm cái này ở đâu đó
+[21:52] à à, chắc là tôi chưa. Okay, giả sử...ái chà... vậy tôi trì hoãn một hàm vì nó chậm,
+[22:01] nó chỉ làm chậm đi thôi, vậy...hãy giả sử là xử lý Async và ở đây là xử lý Sync
+[22:15] Ok, bây giờ, tôi sẽ bật 1 thứ tôi đã chot chẹt sáng nay trong đó
+[22:23] giả lập việc vẽ lại hoặc là tạo hình trong trình duyệt, vài thứ tôi chưa có thử
+[22:27] là tất cả mấy thứ này tương tác với việc vẽ ra trình duyệt, tôi đã thử cái này nhưng lại chưa
+[22:34] giả thích nó, , cơ bản trình duyệt có một số ràng buộc khi chúng ta viết JavaScript
+[22:41] trình duyệt muốn vẽ lại màn hình mỗi 16.6mili giây, 60 khung hình mỗi giây
+[22:47] là lý tưởng, nó sẽ làm nhanh nhất có thể, nhưng nó bị giới hạn bởi mã nguồn của chúng ta viết
+[22:53] vì một số lý do, nên nó không thực sự vẽ nếu như có
+[22:59] gì đó trên Stack. Việc vẽ là một dạng như callback
+[23:04] Nó phải chờ Stack rỗng. Điểm khác là có
+[23:10] độ ưu tiên cao hơn hàm callback của bạn viết, mỗi 16 mili giây nó sẽ đặt vào Queue
+[23:18] chờ cho đến khi Stack rỗng trước khi nó sẵn sàng vẽ. Như vậy
+[23:24] việc đặt chúng vào queue chỉ giả lập việc vẽ, cứ mỗi giây nó có thể vẽ không? Có
+[23:28] Tôi có thể vẽ? Có. ở đâu, bởi vì mã của chúng ta không làm bất cứ thứ gì hiện tại. Nếu tôi chạy đoạn mã
+[23:33] Bạn có thể thấy trong khi chúng ta đang từ từ lặp qua mảng, thì bộ vẽ sẽ bị
+[23:40] dừng lại, nếu bộ vẽ bị dừng, bạn không thể chọn chữ trên trang web, bạn không
+[23:45] thể click bất cứ thứ gì, giống như ví dụ trước đây toi cho bạn thấy. Trong ví dụ
+[23:51] , ok nó bị ngưng trong khi chúng ta đặt vào queue nhưng nó lại rất ngắn
+[24:00] mỗi phần tử mảng, chúng ta chừa chỗ cho việc vẽ của trình duyệt
+[24:04] chúng ta đặt nó vào queue để việc vẽ có thể xảy ra, bạn hiểu rõ chứ?
+[24:13] Ok..
+[24:15] Tôi chỉ giả lập việc trình duyệt vẽ giao diện như thế nào, nhưng bạn chỉ thấy giao diện được vẽ
+[24:20] khi không có ai làm ngưng Event Loop, đây chính là cái chúng ta đang nói tới
+[24:24] Chúng ta nói rằng, đừng có viết mấy cái đoạn mã làm ngưng cả chương trình trên Stack bởi vì khi bạn làm thế
+[24:27] trình duyệt sẽ cứng đơ luôn. Đây là lý do tại sao bạn
+[24:33] làm mấy thứ như xử lý hình ảnh hoặc chuyên động thì trình duyệt bị giựt giựt khi bạn
+[24:39] không chịu đặt các đoạn mã của bạn vào Queue, thử xem một ví dụ, chúng ta có thể thấy
+[24:48] scroll handler -- scroll handle giống như sự kiện cuộn chuột sẽ được kích hoạt rất nhiều
+[24:56] giả sử là chúng kích hoạt mỗi frame trong 16 mili giây,
+[25:01] nếu mã của tôi giống thế này, document.scroll, làm hoạt hoạ vài thứ,
+[25:08] hoặc làm cái gì đó, nếu tôi có đoạn mã này, cứ mỗi lần cuôn chuột, nó sẽ đặt vào hàng đống callback vào queue,
+[25:15] sau đó nó đi qua và xử lý tất cả cái đống đó và mỗi
+[25:20] xử lý chiếm một khoảng thời gian thì, từ từ bạn làm cho stack đầy luôn.
+[25:26] ở đây giúp bạn dễ hình dung hơn, tôi đoán
+[25:34] điều xảy ra khi bạn thực sự kích hoạt tất cả các callbacks, có một cách là bạn có thể "debounce" nó
+[25:38] cơ bản thì vẫn xử lý được, chúng ta sẽ đặt vào queue mỗi sự kiện, nhưng hay xử lý
+[25:44] chậm lại vài giây hoặc cho đến khi user ngưng cuộn thì xử lý luôn
+[25:54] Tôi nghĩ nó đơn giản. Có rất nhiều bài nói về mấy thứ như vầy. Bởi vì
+[26:03] cơ bản trong việc run code ở runtime, đúng vậy, nó làm chậm trình duyệt
+[26:09] vì tôi chạy nó thông qua Esprima JS. Tôi chèn vào 1 vòng lặp lớn
+[26:18] 1 nửa giây,nó chỉ làm code trông chậm lại. Vài thứ có thể đưa vào web worker để xử lý và làm 1 bộ
+[26:25] các công cụ để hình dung những gì đang xảy ra trong khi thực hiện nó trong thời gian chạy có ý nghĩa
+[26:31] Trên đây là bài thuyết trình của tôi. tôi rất phấn khích sau khi nói về nó
+[26:38] bới vì tôi nghĩ nó dễ hiểu. Cám ơn tất cả mọi người. (vỗ tay...)

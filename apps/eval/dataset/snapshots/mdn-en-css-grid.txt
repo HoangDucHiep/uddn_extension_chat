@@ -1,0 +1,309 @@
+CSS grid layout
+
+The CSS grid layout module excels at dividing a page into major regions or defining the relationship in terms of size, position, and layering between parts of a control built from HTML primitives.
+
+Like tables, grid layout enables an author to align elements into columns and rows. However, many more layouts are either possible or easier with CSS grid than they were with tables. For example, a grid container's child elements could position themselves so they actually overlap and layer, similar to CSS positioned elements.
+
+Grid layout in action
+
+The example shows a three-column track grid with new rows created at a minimum of 100 pixels and a maximum of auto. Items have been placed onto the grid using line-based placement.
+
+<div class="wrapper">
+<div class="one">One</div>
+<div class="two">Two</div>
+<div class="three">Three</div>
+<div class="four">Four</div>
+<div class="five">Five</div>
+<div class="six">Six</div>
+</div>
+
+* {
+box-sizing: border-box;
+}
+.wrapper {
+max-width: 940px;
+margin: 0 auto;
+}
+.wrapper > div {
+border: 2px solid rgb(233 171 88);
+border-radius: 5px;
+background-color: rgb(233 171 88 / 50%);
+padding: 1em;
+color: #d9480f;
+}
+.wrapper {
+display: grid;
+grid-template-columns: repeat(3, 1fr);
+gap: 10px;
+grid-auto-rows: minmax(100px, auto);
+}
+.one {
+grid-column: 1 / 3;
+grid-row: 1;
+}
+.two {
+grid-column: 2 / 4;
+grid-row: 1 / 3;
+}
+.three {
+grid-column: 1;
+grid-row: 2 / 5;
+}
+.four {
+grid-column: 3;
+grid-row: 3;
+}
+.five {
+grid-column: 2;
+grid-row: 4;
+}
+.six {
+grid-column: 3;
+grid-row: 4;
+}
+
+This sample animation uses display , grid-template-columns , grid-template-rows , and gap to create the grid, and grid-column and grid-row to position items within the grid. To view and edit the HTML and CSS used, click the 'Play' at the top right of the example.
+
+Reference
+
+Properties
+
+grid-auto-columns
+
+grid-auto-flow
+
+grid-auto-rows
+
+grid-template-columns
+
+grid-template-rows
+
+grid-template-areas
+
+grid-template shorthand
+
+grid shorthand
+
+grid-column-start
+
+grid-column-end
+
+grid-column shorthand
+
+grid-row-start
+
+grid-row-end
+
+grid-row shorthand
+
+grid-area shorthand
+
+Functions
+
+repeat()
+
+minmax()
+
+fit-content()
+
+Data types and values
+
+<flex> ( fr unit)
+
+Terms and glossary definitions
+
+Grid
+
+Grid areas
+
+Grid axis
+
+Grid cell
+
+Grid column
+
+Grid container
+
+Grid lines
+
+Grid row
+
+Grid tracks
+
+Gutters
+
+Guides
+
+Basic concepts of grid layout
+
+An overview of the various features provided in the CSS grid layout module.
+
+Relationship of grid layout with other layout methods
+
+How grid layout fits together with other CSS features including flexbox, absolutely positioned elements, and display: contents .
+
+Grid layout using line-based placement
+
+Grid lines and how to position items against those lines, including the grid-area properties, negative line numbers, spanning multiple cells, and creating grid gutters.
+
+Grid template areas
+
+Placing grid items using named template areas.
+
+Grid layout using named grid lines
+
+Combining names and track sizes; placing grid items by defining named grid lines and template areas.
+
+Auto-placement in grid layout
+
+How grid positions items that don't have any placement properties declared.
+
+Aligning items in CSS grid layout
+
+Aligning, justifying, and centering grid items along the two axes of a grid layout.
+
+Grids, logical values, and writing modes
+
+A look at the interaction between CSS grid layout, box alignment and writing modes, along with CSS logical and physical properties and values.
+
+Grid layout and accessibility
+
+A look at how CSS grid layout can both help and harm accessibility.
+
+Realizing common layouts using grids
+
+A few different layouts demonstrating different techniques you can use when designing with CSS grid layouts, including using grid-template-areas , a 12-column flexible grid system, and a product listing using auto-placement.
+
+Subgrid
+
+What subgrid does with use cases and design patterns that subgrid solves.
+
+Grid lanes layout
+
+Details what grid lanes layout is and how to use it.
+
+Box alignment in CSS grid layout
+
+How box alignment works in the context of grid layout.
+
+Defining CSS gaps
+
+Understanding and defining gaps in grid, flexbox, and multi-column layouts, including how percentage values are resolved.
+
+Related features
+
+CSS display module
+
+display
+
+order
+
+CSS box alignment module
+
+align-content
+
+align-items
+
+align-self
+
+justify-content
+
+justify-items
+
+justify-self
+
+place-content
+
+place-items
+
+place-self
+
+CSS gaps module
+
+gap shorthand
+
+column-gap
+
+row-gap
+
+rule shorthand
+
+column-rule
+
+row-rule
+
+rule-break
+
+rule-color
+
+rule-inset
+
+rule-overlap
+
+rule-style
+
+rule-visibility-items
+
+rule-width
+
+CSS box sizing module
+
+aspect-ratio
+
+box-sizing
+
+height
+
+max-height
+
+max-width
+
+min-height
+
+min-width
+
+width
+
+<ratio> data type
+
+min-content value
+
+max-content value
+
+fit-content value
+
+fit-content() function
+
+Specifications
+
+Specification
+
+CSS Grid Layout Module Level 2
+
+See also
+
+CSS flexible box layout module
+
+CSS display module
+
+Grid by example
+
+CSS grid reference via Codrops
+
+Firefox DevTools: grid inspector
+
+CSS grid playground
+
+CSS grid garden - A game for learning CSS grid
+
+Help improve MDN
+
+Yes
+
+No
+
+Learn how to contribute
+
+This page was last modified on Oct 5, 2026 by MDN contributors .
+
+View this page on GitHub • Report a problem with this content

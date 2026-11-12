@@ -1,0 +1,9 @@
+Google sử dụng công nghệ AI để dịch nội dung sang ngôn ngữ bạn ưu tiên. Bản dịch bằng AI có thể có lỗi.
+
+Giới thiệu về trình chạy dịch vụ tiện ích
+
+Phần này giải thích những điều bạn cần biết để sử dụng trình chạy dịch vụ trong tiện ích. Bạn nên đọc phần này cho dù bạn có quen thuộc với trình chạy dịch vụ hay không. Trình chạy dịch vụ tiện ích là trình xử lý sự kiện trung tâm của một tiện ích. Điều đó làm cho chúng đủ khác biệt so với trình chạy dịch vụ web mà các bài viết của trình chạy dịch vụ trên web có thể hữu ích hoặc không hữu ích.
+
+Trình chạy dịch vụ mở rộng có một số điểm chung với các trình chạy web tương ứng. Trình chạy dịch vụ tiện ích được tải khi cần thiết và huỷ tải khi không hoạt động. Sau khi tải, một trình chạy dịch vụ tiện ích thường chạy miễn là trình chạy này đang chủ động nhận các sự kiện, mặc dù trình chạy này có thể tắt . Giống như đối tác trên web, một trình chạy dịch vụ tiện ích không thể truy cập vào DOM, mặc dù bạn có thể sử dụng nó nếu cần với tài liệu ngoài màn hình .
+
+Trình chạy dịch vụ mở rộng không chỉ là proxy mạng (vì trình chạy dịch vụ web thường được mô tả). Ngoài các sự kiện của trình chạy dịch vụ chuẩn , các sự kiện này cũng phản hồi với các sự kiện tiện ích như di chuyển đến một trang mới, nhấp vào thông báo hoặc đóng một thẻ. Các trình chạy này cũng được đăng ký và cập nhật khác với trình chạy dịch vụ web.

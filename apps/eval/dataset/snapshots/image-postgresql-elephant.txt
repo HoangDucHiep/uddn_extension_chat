@@ -1,0 +1,2 @@
+[IMAGE] PostgreSQL elephant logo (postgresql.org)
+Logo hình con voi của PostgreSQL.

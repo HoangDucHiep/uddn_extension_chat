@@ -1,0 +1,399 @@
+Google sử dụng công nghệ AI để dịch nội dung sang ngôn ngữ bạn ưu tiên. Bản dịch bằng AI có thể có lỗi.
+
+browser.storage
+
+Mô tả
+
+Sử dụng API chrome.storage để lưu trữ, truy xuất và theo dõi các thay đổi đối với dữ liệu người dùng.
+
+Quyền
+
+storage
+
+Để sử dụng API bộ nhớ, hãy khai báo quyền "storage" trong manifest của tiện ích. Ví dụ:
+
+{
+"name" : "My extension" ,
+...
+"permissions" : [
+"storage"
+],
+...
+}
+
+Ví dụ
+
+Các mẫu sau đây minh hoạ các vùng lưu trữ local , sync và session :
+
+Để xem các bản minh hoạ khác về Storage API, hãy khám phá bất kỳ mẫu nào sau đây:
+
+Tiện ích tìm kiếm chung .
+
+Tiện ích cảnh báo nước .
+
+Khái niệm và cách sử dụng
+
+Storage API cung cấp một cách thức dành riêng cho tiện ích để lưu trữ dữ liệu và trạng thái của người dùng. API này tương tự như các API lưu trữ của nền tảng web ( IndexedDB và Storage ), nhưng được thiết kế để đáp ứng nhu cầu lưu trữ của tiện ích. Sau đây là một số tính năng chính:
+
+Tất cả bối cảnh của tiện ích, bao gồm cả trình chạy dịch vụ của tiện ích và tập lệnh nội dung, đều có quyền truy cập vào Storage API.
+
+Các giá trị có thể chuyển đổi tuần tự JSON được lưu trữ dưới dạng thuộc tính đối tượng.
+
+Storage API không đồng bộ với các thao tác đọc và ghi hàng loạt.
+
+Ngay cả khi người dùng xoá bộ nhớ đệm và nhật ký duyệt web, dữ liệu vẫn được lưu giữ.
+
+Chế độ cài đặt đã lưu vẫn được giữ nguyên ngay cả khi sử dụng chế độ ẩn danh phân tách .
+
+Bao gồm một vùng lưu trữ được quản lý chỉ có thể đọc dành riêng cho các chính sách của doanh nghiệp.
+
+Tiện ích có thể sử dụng API lưu trữ web không?
+
+Mặc dù tiện ích có thể sử dụng giao diện Storage (có thể truy cập từ window.localStorage ) trong một số bối cảnh (cửa sổ bật lên và các trang HTML khác), nhưng bạn không nên sử dụng giao diện này vì những lý do sau:
+
+Trình chạy dịch vụ của tiện ích không thể sử dụng API Lưu trữ web.
+
+Tập lệnh nội dung dùng chung bộ nhớ với trang lưu trữ.
+
+Dữ liệu được lưu bằng Web Storage API sẽ bị mất khi người dùng xoá nhật ký duyệt web.
+
+Cách di chuyển dữ liệu từ API bộ nhớ web sang API bộ nhớ tiện ích từ một trình chạy dịch vụ:
+
+Chuẩn bị một trang html và tệp tập lệnh của tài liệu ngoài màn hình. Tệp tập lệnh phải chứa một quy trình chuyển đổi và một trình xử lý onMessage .
+
+Trong trình chạy dịch vụ của tiện ích, hãy kiểm tra browser.storage để tìm dữ liệu của bạn.
+
+Nếu không tìm thấy dữ liệu, hãy gọi createDocument() .
+
+Sau khi Promise được trả về, hãy gọi sendMessage() để bắt đầu quy trình chuyển đổi.
+
+Bên trong trình xử lý onMessage của tài liệu ngoài màn hình, hãy gọi quy trình chuyển đổi.
+
+Ngoài ra, còn có một số điểm khác biệt về cách hoạt động của API lưu trữ web trong tiện ích. Tìm hiểu thêm trong bài viết
+Bộ nhớ và cookie .
+
+Giới hạn về bộ nhớ và điều tiết
+
+Storage API có các giới hạn sử dụng sau:
+
+Việc lưu trữ dữ liệu ảnh hưởng đến hiệu suất và API này có hạn mức bộ nhớ. Lên kế hoạch cho dữ liệu bạn định lưu trữ để duy trì dung lượng lưu trữ.
+
+Quá trình lưu trữ có thể mất thời gian để hoàn tất. Hãy cấu trúc mã của bạn để tính đến thời gian đó.
+
+Để biết thông tin chi tiết về các giới hạn của vùng lưu trữ và những việc xảy ra khi vượt quá giới hạn, hãy xem thông tin về hạn mức cho sync , local và session .
+
+Khu vực lưu trữ
+
+Storage API được chia thành các khu vực lưu trữ sau:
+
+Địa phương
+
+Dữ liệu được lưu trữ trên thiết bị và bị xoá khi tiện ích bị xoá. Giới hạn bộ nhớ là 10 MB (5 MB trong Chrome 113 trở xuống), nhưng có thể tăng lên bằng cách yêu cầu quyền "unlimitedStorage" . Bạn nên sử dụng storage.local để lưu trữ lượng dữ liệu lớn hơn. Theo mặc định, API này được hiển thị cho tập lệnh nội dung, nhưng bạn có thể thay đổi hành vi này bằng cách gọi browser.storage.local.setAccessLevel() .
+
+Được quản lý
+
+Bộ nhớ được quản lý ở chế độ chỉ đọc đối với các tiện ích được cài đặt theo chính sách. Dữ liệu này do quản trị viên hệ thống quản lý, sử dụng giản đồ do nhà phát triển xác định và chính sách doanh nghiệp. Chính sách tương tự như các lựa chọn nhưng do quản trị viên hệ thống thiết lập thay vì người dùng. Điều này cho phép tiện ích được định cấu hình trước cho tất cả người dùng của một tổ chức.
+
+Theo mặc định, storage.managed được hiển thị cho tập lệnh nội dung, nhưng bạn có thể thay đổi hành vi này bằng cách gọi browser.storage.managed.setAccessLevel() . Để biết thông tin về các chính sách, hãy xem Tài liệu dành cho quản trị viên . Để tìm hiểu thêm về khu vực lưu trữ managed , hãy xem phần Khai báo cho khu vực lưu trữ .
+
+Phiên
+
+Bộ nhớ phiên lưu giữ dữ liệu trong bộ nhớ trong khi tiện ích được tải. Bộ nhớ sẽ bị xoá nếu tiện ích bị tắt, tải lại, cập nhật và khi trình duyệt khởi động lại. Theo mặc định, API này không được hiển thị cho tập lệnh nội dung, nhưng bạn có thể thay đổi hành vi này bằng cách gọi browser.storage.session.setAccessLevel() . Giới hạn bộ nhớ là 10 MB (1 MB trong Chrome 111 trở xuống).
+
+Giao diện storage.session là một trong số giao diện mà chúng tôi đề xuất cho trình chạy dịch vụ .
+
+Đồng bộ hoá
+
+Nếu người dùng bật tính năng đồng bộ hoá, thì dữ liệu sẽ đồng bộ hoá với mọi trình duyệt Chrome mà người dùng đã đăng nhập. Nếu bị tắt, chính sách này sẽ hoạt động như storage.local . Chrome lưu trữ dữ liệu trên thiết bị khi trình duyệt không có mạng và tiếp tục đồng bộ hoá khi có mạng trở lại. Hạn mức là khoảng 100 KB, 8 KB cho mỗi mục.
+
+Bạn nên sử dụng storage.sync để lưu giữ chế độ cài đặt của người dùng trên các trình duyệt đã đồng bộ hoá. Nếu bạn đang làm việc với dữ liệu nhạy cảm của người dùng, hãy sử dụng storage.session . Theo mặc định, storage.sync được hiển thị cho tập lệnh nội dung, nhưng bạn có thể thay đổi hành vi này bằng cách gọi browser.storage.sync.setAccessLevel() .
+
+Phương thức và sự kiện
+
+Tất cả các vùng lưu trữ đều triển khai giao diện StorageArea .
+
+get()
+
+Phương thức get() cho phép bạn đọc một hoặc nhiều khoá từ StorageArea .
+
+getBytesInUse()
+
+Phương thức getBytesInUse() cho phép bạn xem hạn mức mà một StorageArea sử dụng.
+
+getKeys()
+
+Phương thức getKeys() cho phép bạn lấy tất cả khoá được lưu trữ trong StorageArea .
+
+remove()
+
+Phương thức remove() cho phép bạn xoá một mục khỏi StorageArea .
+
+set()
+
+Phương thức set() cho phép bạn đặt một mục trong StorageArea .
+
+setAccessLevel()
+
+Phương thức setAccessLevel() cho phép bạn kiểm soát quyền truy cập vào StorageArea .
+
+clear()
+
+Phương thức clear() cho phép bạn xoá tất cả dữ liệu khỏi StorageArea .
+
+onChanged
+
+Sự kiện onChanged cho phép bạn theo dõi các thay đổi đối với StorageArea .
+
+Trường hợp sử dụng
+
+Các phần sau đây minh hoạ các trường hợp sử dụng phổ biến cho Storage API.
+
+Phản hồi thông tin cập nhật về bộ nhớ
+
+Để theo dõi các thay đổi đối với bộ nhớ, hãy thêm trình nghe vào sự kiện onChanged của bộ nhớ. Khi có bất kỳ thay đổi nào trong bộ nhớ, sự kiện đó sẽ kích hoạt. Mã mẫu sẽ theo dõi những thay đổi sau:
+
+background.js:
+
+browser . storage . onChanged . addListener (( changes , namespace ) = > {
+for ( let [ key , { oldValue , newValue }] of Object . entries ( changes )) {
+console . log (
+`Storage key " ${ key } " in namespace " ${ namespace } " changed.` ,
+`Old value was " ${ oldValue } ", new value is " ${ newValue } ".`
+);
+}
+});
+
+Chúng ta có thể phát triển ý tưởng này hơn nữa. Trong ví dụ này, chúng ta có một trang tuỳ chọn cho phép người dùng bật/tắt "chế độ gỡ lỗi" (không hiển thị cách triển khai ở đây). Trang tuỳ chọn sẽ lưu ngay các chế độ cài đặt mới vào storage.sync và trình chạy dịch vụ sẽ sử dụng storage.onChanged để áp dụng chế độ cài đặt đó sớm nhất có thể.
+
+options.html:
+
+<!-- type="module" allows you to use top level await -->
+<script defer src="options.js" type="module"></script>
+<form id="optionsForm">
+<label for="debug">
+<input type="checkbox" name="debug" id="debug">
+Enable debug mode
+</label>
+</form>
+
+options.js:
+
+// In-page cache of the user's options
+const options = {};
+const optionsForm = document . getElementById ( "optionsForm" );
+
+// Immediately persist options changes
+optionsForm . debug . addEventListener ( "change" , ( event ) = > {
+options . debug = event . target . checked ;
+browser . storage . sync . set ({ options });
+});
+
+// Initialize the form with the user's option settings
+const data = await browser . storage . sync . get ( "options" );
+Object . assign ( options , data . options );
+optionsForm . debug . checked = Boolean ( options . debug );
+
+background.js:
+
+function setDebugMode () { /* ... */ }
+
+// Watch for changes to the user's options & apply them
+browser . storage . onChanged . addListener (( changes , area ) = > {
+if ( area === 'sync' && changes . options ? . newValue ) {
+const debugMode = Boolean ( changes . options . newValue . debug );
+console . log ( 'enable debug mode?' , debugMode );
+setDebugMode ( debugMode );
+}
+});
+
+Tải trước không đồng bộ từ bộ nhớ
+
+Vì trình chạy dịch vụ không chạy liên tục, nên đôi khi các tiện ích Manifest V3 cần tải dữ liệu không đồng bộ từ bộ nhớ trước khi thực thi trình xử lý sự kiện. Để thực hiện việc này, đoạn mã sau đây sử dụng trình xử lý sự kiện action.onClicked không đồng bộ, chờ biến toàn cục storageCache được điền sẵn trước khi thực thi logic của biến đó.
+
+background.js:
+
+// Where we will expose all the data we retrieve from storage.sync.
+const storageCache = { count : 0 };
+// Asynchronously retrieve data from storage.sync, then cache it.
+const initStorageCache = browser . storage . sync . get (). then (( items ) = > {
+// Copy the data retrieved from storage into storageCache.
+Object . assign ( storageCache , items );
+});
+
+browser . action . onClicked . addListener ( async ( tab ) = > {
+try {
+await initStorageCache ;
+} catch ( e ) {
+// Handle error that occurred during storage initialization.
+}
+
+// Normal action handler logic.
+storageCache . count ++ ;
+storageCache . lastTabId = tab . id ;
+browser . storage . sync . set ( storageCache );
+});
+
+Công cụ cho nhà phát triển
+
+Bạn có thể xem và chỉnh sửa dữ liệu được lưu trữ bằng API trong Công cụ cho nhà phát triển. Để tìm hiểu thêm, hãy xem trang Xem và chỉnh sửa bộ nhớ của tiện ích trong tài liệu về Công cụ cho nhà phát triển.
+
+Loại
+
+AccessLevel
+
+Chrome 102 trở lên
+
+browser.* kể từ Chrome 148
+
+Cấp truy cập của khu vực kho hàng.
+
+Enum
+
+"TRUSTED_CONTEXTS"
+Chỉ định bối cảnh bắt nguồn từ chính tiện ích.
+
+"TRUSTED_AND_UNTRUSTED_CONTEXTS"
+Chỉ định các bối cảnh bắt nguồn từ bên ngoài tiện ích.
+
+StorageChange
+
+Thuộc tính
+
+newValue
+
+bất kỳ không bắt buộc
+
+Giá trị mới của mục, nếu có giá trị mới.
+
+oldValue
+
+bất kỳ không bắt buộc
+
+Giá trị cũ của mục, nếu có giá trị cũ.
+
+Thuộc tính
+
+local
+
+Các mục trong vùng lưu trữ local là cục bộ cho mỗi máy.
+
+Loại
+
+StorageArea và đối tượng
+
+Thuộc tính
+
+QUOTA_BYTES
+
+10485760
+
+Lượng dữ liệu tối đa (tính bằng byte) có thể lưu trữ trong bộ nhớ cục bộ, được đo bằng chuỗi JSON của mọi giá trị cộng với độ dài của mỗi khoá. Giá trị này sẽ bị bỏ qua nếu tiện ích có quyền unlimitedStorage . Các bản cập nhật khiến giới hạn này bị vượt quá sẽ không thành công ngay lập tức và đặt runtime.lastError khi sử dụng lệnh gọi lại hoặc Lời hứa bị từ chối nếu sử dụng async/await.
+
+managed
+
+Các mục trong vùng lưu trữ managed do chính sách doanh nghiệp mà quản trị viên miền định cấu hình đặt và là mục chỉ có thể đọc đối với tiện ích; việc cố gắng sửa đổi không gian tên này sẽ dẫn đến lỗi. Để biết thông tin về cách định cấu hình chính sách, hãy xem phần Tệp kê khai cho vùng lưu trữ .
+
+Loại
+
+StorageArea
+
+session
+
+Chrome 102 trở lên
+
+browser.* kể từ Chrome 148
+MV3 trở lên
+
+Các mục trong vùng lưu trữ session được lưu trữ trong bộ nhớ và sẽ không được lưu trữ vào ổ đĩa.
+
+Loại
+
+StorageArea và đối tượng
+
+Thuộc tính
+
+QUOTA_BYTES
+
+10485760
+
+Lượng dữ liệu tối đa (tính bằng byte) có thể lưu trữ trong bộ nhớ, được đo lường bằng cách ước tính mức sử dụng bộ nhớ được phân bổ động của mỗi giá trị và khoá. Các bản cập nhật khiến giới hạn này bị vượt quá sẽ không thành công ngay lập tức và đặt runtime.lastError khi sử dụng lệnh gọi lại hoặc khi Lời hứa bị từ chối.
+
+sync
+
+Các mục trong vùng lưu trữ sync được đồng bộ hoá bằng tính năng Đồng bộ hoá Chrome.
+
+Loại
+
+StorageArea và đối tượng
+
+Thuộc tính
+
+MAX_ITEMS
+
+512
+
+Số lượng mục tối đa có thể lưu trữ trong bộ nhớ đồng bộ hoá. Các bản cập nhật khiến giới hạn này bị vượt quá sẽ không thành công ngay lập tức và đặt runtime.lastError khi sử dụng lệnh gọi lại hoặc khi Lời hứa bị từ chối.
+
+MAX_SUSTAINED_WRITE_OPERATIONS_PER_MINUTE
+
+1000000
+
+Không dùng nữa
+
+API storage.sync không còn hạn mức hoạt động ghi liên tục nữa.
+
+MAX_WRITE_OPERATIONS_PER_HOUR
+
+1800
+
+Số lượng thao tác set , remove hoặc clear tối đa có thể thực hiện mỗi giờ. Tức là 1 lần mỗi 2 giây, mức trần thấp hơn giới hạn số lượt ghi mỗi phút cao hơn trong thời gian ngắn.
+
+Các bản cập nhật khiến giới hạn này bị vượt quá sẽ không thành công ngay lập tức và đặt runtime.lastError khi sử dụng lệnh gọi lại hoặc khi Lời hứa bị từ chối.
+
+MAX_WRITE_OPERATIONS_PER_MINUTE
+
+120
+
+Số lượng thao tác set , remove hoặc clear tối đa có thể thực hiện mỗi phút. Tức là 2 lượt ghi mỗi giây, mang lại thông lượng cao hơn so với số lượt ghi mỗi giờ trong một khoảng thời gian ngắn hơn.
+
+Các bản cập nhật khiến giới hạn này bị vượt quá sẽ không thành công ngay lập tức và đặt runtime.lastError khi sử dụng lệnh gọi lại hoặc khi Lời hứa bị từ chối.
+
+QUOTA_BYTES
+
+102400
+
+Tổng lượng dữ liệu tối đa (tính bằng byte) có thể được lưu trữ trong bộ nhớ đồng bộ hoá, được đo bằng chuỗi JSON của mọi giá trị cộng với độ dài của mỗi khoá. Các bản cập nhật khiến giới hạn này bị vượt quá sẽ không thành công ngay lập tức và đặt runtime.lastError khi sử dụng lệnh gọi lại hoặc khi Lời hứa bị từ chối.
+
+QUOTA_BYTES_PER_ITEM
+
+8192
+
+Kích thước tối đa (tính bằng byte) của từng mục riêng lẻ trong bộ nhớ đồng bộ hoá, được đo bằng chuỗi JSON của giá trị cộng với độ dài khoá. Các bản cập nhật chứa các mục lớn hơn giới hạn này sẽ không thành công ngay lập tức và đặt runtime.lastError khi sử dụng lệnh gọi lại hoặc khi Lời hứa bị từ chối.
+
+Sự kiện
+
+onChanged
+
+browser . storage . onChanged . addListener (
+callback : function ,
+)
+
+Được kích hoạt khi một hoặc nhiều mục thay đổi.
+
+Thông số
+
+callback
+
+hàm
+
+Tham số callback có dạng như sau:
+
+( changes : object , areaName : string ) => void
+
+các thay đổi
+
+đối tượng
+
+areaName
+
+chuỗi

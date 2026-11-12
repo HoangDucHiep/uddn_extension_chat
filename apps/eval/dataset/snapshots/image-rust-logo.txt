@@ -1,0 +1,2 @@
+[IMAGE] Rust logo (rust-lang.org)
+Logo chính thức của ngôn ngữ Rust.

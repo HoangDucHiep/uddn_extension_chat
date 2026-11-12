@@ -16,9 +16,17 @@ out/
 secrets.json
 
 # ===== Eval: giữ kết quả đã xử lý, bỏ dữ liệu thô =====
+# T-M2-13/14: transcript thô (cau tra loi day du cua he thong + diem judge)
+# la du lieu tho → KHONG commit (chi commit bang tong hop trong apps/eval/reports/).
 apps/eval/results/raw/
+apps/eval/results/ours/
+apps/eval/results/judged/
+apps/eval/results/*/blind_map.json
 apps/eval/results/**/*.tmp
 !apps/eval/results/.gitkeep
+# Script tam de doi chieu khi tinh chinh (khong commit)
+apps/eval/scripts/probe-*.mts
+apps/eval/scripts/_dbg.ts
 
 # ===== Logs =====
 *.log
@@ -69,3 +77,5 @@ desktop.ini
 # ===== Log tạm của dev server =====
 .tmp-*.log
 .tmp-*.err
+.server-dev.out
+eval-judge.err

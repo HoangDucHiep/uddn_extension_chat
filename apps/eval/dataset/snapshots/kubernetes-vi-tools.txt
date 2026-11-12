@@ -1,0 +1,73 @@
+Thông tin trong tài liệu này có thể đã lỗi thời
+
+Tài liệu này có ngày cập nhật cũ hơn so với bản gốc, vì vậy thông tin mà nó chứa có thể đã lỗi thời. Nếu bạn có thể đọc tiếng Anh, hãy xem phiên bản tiếng Anh để có thông tin mới nhất: Install Tools
+
+Cài đặt các công cụ
+
+Thiết lập các công cụ Kubernetes trên máy tính của bạn.
+
+kubectl
+
+Công cụ dòng lệnh Kubernetes, kubectl , cho phép
+bạn chạy các câu lệnh tương tác tới các cụm Kubernetes.
+Bạn có thể sử dụng kubectl để triển khai các ứng dụng, kiểm tra và quản lý các tài nguyên của cụm,
+và xem log. Để biết thêm thông tin bao gồm một danh sách đầy đủ các lệnh của kubectl, xem
+tài liệu tham khảo kubectl .
+
+kubectl có thể cài đặt trên nhiều nền tảng Linux, macOS và Windows.
+Chọn hệ điều hành ưa thích của bạn bên dưới.
+
+Cài đặt kubectl trên Linux
+
+Cài đặt kubectl trên macOS
+
+Cài đặt kubectl trên Windows
+
+kind
+
+kind cho phép bạn chạy Kubernetes trên
+máy tính cục bộ của bạn. Công cụ này yêu cầu bạn phải có hoặc
+Docker hoăc Podman được cài đặt sẵn.
+
+Trang Bắt đầu nhanh của kind
+cho bạn biết cần phải làm những gì để bắt đầu và chạy với kind.
+
+Xem Hướng dẫn Bắt đầu nhanh của kind
+
+minikube
+
+Giống kind , minikube là một công cụ cho phép bạn chạy Kubernetes
+cục bộ. minikube chạy một cụm Kubernetes cục bộ tất-cả-trong-một hoặc nhiều-node trên máy tính cá nhân (bao gồm Windows, macOS và Linux) vì vậy bạn có thể thử
+Kubernetes, hoặc cho công việc phát triển hàng ngày.
+
+Bạn có thể theo dõi hướng dẫn chính thức
+Bắt đầu! nếu bạn tập trung vào
+việc cài đặt công cụ.
+
+Xem Hướng dẫn Bắt đầu! của minikube
+
+Một khi bạn có minikube đang chạy, bạn có thể dùng nó để
+chạy một ứng dụng mẫu .
+
+kubeadm
+
+Bạn có thể dùng công cụ kubeadm để tạo và quản lý các cụm Kubernetes.
+Nó thực hiện các hành động cần thiết để có được sự khả thi tối thiểu, đảm bảo cụm khởi động và chạy theo một cách thân thiện với người dùng.
+
+Cài đặt kubeadm hướng dẫn bạn cách để cài đặt kubeadm.
+Một khi được cài đặt, bạn có thể dùng nó để tạo một cụm .
+
+Xem Hướng dẫn Cài đặt kubeadm
+
+Phản hồi
+
+Trang này có hữu ích không?
+
+Cảm ơn bạn đã phản hồi. Nếu bạn có một câu hỏi cụ thể và có thể trả lời về cách sử dụng Kubernetes, hãy đặt nó trên
+Stack Overflow .
+Mở một vấn đề trong Kho GitHub nếu bạn muốn
+báo cáo một vấn đề
+hoặc
+đề xuất một cải tiến .
+
+Last modified April 23, 2025 at 1:47 AM PST: [vi] add index page tasks/tool (cd57cc42f2)

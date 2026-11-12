@@ -1,0 +1,383 @@
+[00:00] In this course, I'm going to teach you everything you need to know to get started programming
+[00:04] in Python. Now, Python is one of the most popular programming languages out there. And it's by far
+[00:10] one of the most sought after for jobs. And so if you're trying to get a job or you're trying to,
+[00:15] you know, automate your life, or you're trying to write awesome scripts to do a bunch of different
+[00:19] things, then Python's for you. Honestly, more and more developers every day are moving their
+[00:24] projects over to Python because it's such a powerful and it's such an easy to use language. A lot
+[00:30] of programming languages out there just aren't very beginner friendly. There's a lot of syntax.
+[00:34] There's a lot of like little things that if you get wrong, the program will yell at you. Python
+[00:38] is the complete opposite of that. You basically just type out what you want to do and Python does
+[00:43] it. It's that simple. There's not a whole lot of syntax to learn. The learning curve is literally
+[00:49] zero. You jump in, you can start writing your first program in seconds. In this course, I'm
+[00:54] going to teach you guys everything you need to know to get started in Python. I designed this
+[00:58] course, especially for Python. And each lesson has been specially designed with examples that
+[01:03] will help you along the way with so many people starting to learn Python. The question isn't,
+[01:07] why should you learn Python? The question is, why shouldn't you? And I think for a lot of people,
+[01:12] the reason they might not want to learn Python is because they're intimidated or they're afraid
+[01:16] that it's going to be too hard. Trust me, I am going to hold your hand through this entire course.
+[01:21] We're going to talk about all the core concepts in Python. We're going to look at everything you
+[01:25] need to know to start programming in Python and start being confident and start writing scripts
+[01:30] and start writing programs that are awesome and doing cool things in your life. Anyway,
+[01:34] I'm super pumped to be teaching you guys Python. I can't wait to get started in this course. And
+[01:38] I hope you guys stick around and follow along with the course and learn this amazing programming
+[01:43] language. In this tutorial, I'm going to show you guys how to install Python onto your computer.
+[01:52] And we're also going to install a text editor that we can use to write our Python programs in.
+[01:58] So the first order of business is to actually install Python on your computer. So what we want
+[02:04] to do is head over to our web browser. And you want to go over here to this page, it's just
+[02:09] www.python.org forward slash downloads. And on this page, there's going to be two buttons down here.
+[02:17] And it's just going to say download Python 3.6.3. And at least that's the version that I have right
+[02:23] now or download Python 2.7.1.4. So here's the thing about Python, there's actually two major versions
+[02:30] of Python that are in use currently. There's Python two, and there's Python three. So you can see over
+[02:37] here, this is like 2.7.1.4. Basically, any Python two version we would just refer to as like Python
+[02:45] two. And here's like the latest Python three version. And so there's these two versions that you can
+[02:51] download. And the first thing we have to decide is which version do we want to download. And here's
+[02:55] the basic difference, Python two is a legacy version of Python, which basically means that
+[03:02] it's like an old version, and it's not being like actively maintained or supported like officially
+[03:08] by Python anymore. Python three is like the future of Python. It's like the newest version. It's the
+[03:14] one that's getting actively maintained and supported. And so there's pros and cons to picking either
+[03:19] one. A lot of people will say like Python two has been around longer. And so there's more like
+[03:25] libraries, there's basically just more Python code written in Python two. So therefore, like
+[03:31] there's a few more things that you can do in Python two, then you can do in Python three. But
+[03:35] then again, Python two is not supported. And you know, five or 10 years from now, probably no one's
+[03:41] going to be using it. Python three, like I said, is like the future of Python. It's the newest
+[03:45] version. It's the one that, you know, is sort of being maintained going forward. So for the
+[03:50] purposes of this tutorial, I'm going to be teaching you guys Python three. So we're going to want
+[03:55] to download Python three. Now here's the thing, like, if you learn Python three, or you learn Python
+[04:01] two, the differences aren't very big. There are a few differences in like some syntax and just some,
+[04:06] you know, little things here and there. But if you learn Python three, you'll be able to jump right
+[04:11] in and code in Python two as well. Don't let anyone, you know, tell you that you have to learn one
+[04:16] or the other, we're going to learn Python three just because it's I think probably the best for a
+[04:20] beginner to learn. And so that's the one that we want to download. So I'm just going to click
+[04:24] download Python three. And we're going to go ahead and download this version. And when that's done
+[04:29] downloading, I'm just going to head down to my downloads folder. And you'll see here, we just
+[04:34] have this file, I'm just going to double click. And we get this like Python installer. So I'm just
+[04:40] going to click through here. And we'll be able to install Python three on our computer. All right,
+[04:45] when that's done installing, we can just close out of this and we should be good to go. So now we
+[04:49] have Python three installed on our computer. The next step is we need to choose a text editor. So
+[04:57] we're going to be writing a bunch of code. So we're going to need some, you know,
+[05:01] environment or some program that we can write all that code in. And really, you can write Python
+[05:06] in any text editor, you could write it in like notepad or text edit, it doesn't really matter.
+[05:11] But there are special text editors that are designed just for writing Python code. And these are called
+[05:18] IDEs. And that stands for integrated development environment. It's basically just a special
+[05:23] environment where we can, you know, run and execute our Python code. And it'll, you know,
+[05:28] basically, like tell us how we're doing. So if we're, you know, if we write something that's wrong,
+[05:32] or we have errors, it'll kind of point us in the right direction of what we need to do to fix that
+[05:36] stuff. So in this course, we're going to be using an IDE. And one of my favorites, and one of the
+[05:41] most popular IDEs for Python is called pie charm. So I'm over here on this website, it's called
+[05:47] jetbrains.com forward slash pie charm. And this is the IDE that we're going to be using in this
+[05:54] course. So I'm just going to come over here and click this big download now button. And we'll go
+[05:58] ahead and download this pie charm program. Alright, so I'm getting this page over here. You can see
+[06:04] there's two versions of pie charm. One is a professional version, and that one's like paid,
+[06:08] so you have to pay for it. But then there's this community version down here, and that's
+[06:12] free and open source. So I'm just going to download this one. And this should have everything we need
+[06:16] to get started using Python. Alright, when that finishes downloading, I'm just going to pull that
+[06:22] up in my downloads folder. And again, we can just sort of run this guy. And I'm on a Mac. So I'm
+[06:28] going to have to drag it over to my applications folder. Alright, so we now have pie charm. And we
+[06:33] have Python three installed on our computer. So we're ready to start programming in Python.
+[06:39] And this tutorial, we're going to create our first Python program. And we're going to be able to run
+[06:48] it and see how everything works. The first thing I want to do is open up pie charm. So pie charm was
+[06:54] the IDE, the integrated development environment that we downloaded in the last tutorial. So I'm
+[07:00] just going to go ahead and search for it on my computer. And I can just open it up. And when we
+[07:05] first open up pie charm, we should basically just get a window prompting us to create a project. So
+[07:10] you can see that down here. Actually, the first thing I want to do though is come over here to
+[07:14] configure. And I'm just going to click on preferences. And I actually want to change the appearance. So
+[07:23] I'm going to go ahead and give this a theme. So I just went over here to appearance and behavior,
+[07:28] appearance. And I'm going to change the theme to dark. Just because I think it's a little bit
+[07:32] easier to use and look at. But you don't have to do that if you don't want to. And so down here,
+[07:38] I'm just going to click create new project. And it's going to give us this little window right here.
+[07:43] So I can just name my project. And I'm just going to name this draft. And then there's this other
+[07:49] option down here where it says interpreter. Now, what we want to select is Python version three.
+[07:57] So if I click down here, you'll notice that there's a couple different options. So I'm on a Mac
+[08:02] computer. And by default, Mac has Python version two installed on it. If you're on a Windows machine,
+[08:09] I'm not sure if it does. But in this tutorial, we're going to be using Python three. So you want
+[08:14] to make sure that you have Python three selected as the interpreter. Otherwise, you might not be
+[08:20] able to fully follow along with what we're doing in this video. So now I'm just going to come down
+[08:24] here and click create. And this is going to go ahead and create our project for us. All right,
+[08:29] so now we have our Python project up and running. And I want to show you guys how we can create our
+[08:35] first Python program. So over here in this draft folder, and this is just that project that we
+[08:41] created, I'm just going to right click and I'm going to say new. And I'm going to come down and
+[08:46] click Python file. So we want to create a new Python file, this will be our first Python program.
+[08:52] And I can just give this a name. So why don't we just call this app? And I'm just going to click
+[08:56] okay. All right, so now we have our first Python file open. And we can just start typing in some
+[09:02] Python. So I want to show you guys just a very basic Python program. And this is just going to be
+[09:08] a hello world program. So we're just going to print something out onto the screen. So what I
+[09:12] want to do is I want to type out PRINT print. And I want to type in open and closed parentheses.
+[09:18] Now inside of this parentheses, we can make some quotation marks. And inside of the quotation
+[09:24] marks, I'm just going to type out hello world. So this is like a very basic Python program. And
+[09:30] what this is going to do is it's just going to print out hello world onto the screen. And so now
+[09:35] what I can do is I can actually run this file and we're actually getting a little error here.
+[09:39] It wants us to create a new line at the end of the file. And so now in order to run our Python
+[09:45] program, I'm just going to come up here to the top. And I'm just going to click run. And we'll
+[09:49] click this run button right here. And now we'll see what happens. So it's asking me what I want
+[09:54] to run. I can just click app. And down here at the bottom, you'll notice that we have this text
+[10:00] that just got printed out hello world. And so whatever I print, or whatever I put inside of
+[10:06] this print statement is going to get printed out down below in the console. So as long as you're
+[10:10] getting that print statement to work, then you've actually written your first Python program. And
+[10:15] as we go through forward in the course, we're going to be writing all sorts of awesome Python
+[10:19] programs. And we're going to be doing all sorts of cool stuff.
+[10:26] In this tutorial, I want to talk to you about writing a basic Python program. So we're going to
+[10:30] write just a very simple Python program. We're going to look at how we can go ahead and write
+[10:35] our programs, we're going to talk about how our programs are getting executed by Python.
+[10:40] And we're also going to draw out a little shape onto the screen. So this is going to be pretty
+[10:44] cool. I'm excited to talk to you guys about just the bare basics of Python, and really just sort of
+[10:50] give you an introduction. So over here, we have our basic text editor. And so any of the Python code
+[10:57] that I write inside of this file is actually going to get executed by Python. So this Python file
+[11:04] has a bunch of Python code inside of it. And basically what we're doing when we're programming
+[11:10] in Python is we're just giving the computer a set of instructions. Right, that's really what
+[11:14] programming is, it's just like we're specifying a set of instructions. And the computer is going
+[11:19] to go off and execute those instructions that we give it. And so the more complex the instructions
+[11:24] we give to the computer, the more complex the tasks the computer can carry out. So I want to
+[11:30] show you guys how we can use some Python instructions or some Python code in order to draw out a shape
+[11:36] onto the screen. So I'm actually going to draw out a little triangle. So over here, we can actually
+[11:42] print something out onto the screen and Python using something called print statements. So I can
+[11:47] just type out print. And inside of these parentheses, I can just type some quotation marks and inside
+[11:54] the quotation marks, we can put whatever we want to print out onto the screen. So I'm going to
+[11:58] copy this and I'm actually going to make a few of these little print statements. And we're going
+[12:03] to actually draw a shape. So we're going to draw like a triangle type shape. So down here, I'm just
+[12:08] going to draw a forward slash. And then up here, I'll make a space and we'll do another forward slash.
+[12:14] Here, we'll make two spaces, we'll do another forward slash. And over here, we're going to make
+[12:19] three spaces and a forward slash. And now I'm going to draw like vertical bars going all the way down.
+[12:27] And actually, we can do some underscores here as well. That'd be kind of cool.
+[12:30] All right, so now we have our triangle looking shape and you can see it looks kind of like a
+[12:36] right triangle. So I can save my file. And I can either come up here to run and click run app.
+[12:43] Or if you're using PyCharm, you can also just come over here and click this play button.
+[12:47] And when I click the play button, I want you to notice what happens down here. So down here,
+[12:52] we have this little window and this is called the console. And basically, the console is just a
+[12:58] place where Python is going to output some information. So when we use this print statement,
+[13:03] we're basically telling Python like, Hey, can you print something out onto the console? So there's a
+[13:08] lot of situations where we're going to want to see what's going on in our code. And we can use
+[13:13] that print statement and print things out to the console. And we can basically like have a little
+[13:18] window into what our program is doing. In our case, we're just going to be printing out this
+[13:22] triangle onto the console. So I'm going to come over here and click this play button. And you'll
+[13:27] see down here, we're actually printing out that triangle. So mission accomplished, we were able to
+[13:33] print out our shape. So I could really draw any shape I wanted as long as I was able to specify
+[13:38] it inside of these print statements. So essentially, what Python's doing when I click that play button,
+[13:44] is it's going into this file and it's looking at all of these instructions in order. So the first
+[13:50] thing it does is it goes to this instruction, and it says, okay, they want me to draw out these
+[13:54] like little forward slash in this vertical bar onto the screen. Once it does that, it goes down
+[13:59] to this instruction, it says, okay, they want me to print something out again. When it prints that
+[14:03] out, it goes down to this instruction, etc. So Python is actually going to execute the lines of
+[14:10] code that we write in order. So the order in which I write the instructions matters a lot. So for
+[14:16] example, if I was to take this last line here, and put it up here at the top. Now when I save the file,
+[14:23] instead of just drawing out that triangle, it's going to draw out this little upside down bottom
+[14:28] thing at the top, and then the rest of the triangle down here. So the order of the instructions
+[14:34] actually matters a lot. So this is basically how your Python programs are going to go. As we go
+[14:39] through this course, we're going to learn more and more of these little lines. So here, we're
+[14:44] just using this little print function, basically, it just prints something out onto the screen. There's
+[14:48] a bunch of little things like this that we can learn as we go through, we'll learn more and more
+[14:53] instructions that we can give to the computer. But in this lesson, I just want to kind of show you
+[14:57] guys the basics, right? We can essentially just define these little instructions for the computer,
+[15:04] and the computer will execute them in order. In this tutorial, I want to talk to you guys about
+[15:12] using variables in Python. Now in Python, you're going to be dealing with a lot of data. So a lot
+[15:19] of times in our program, we're going to be working with all types of information and data and values.
+[15:25] And sometimes that data can be difficult to manage. So in Python, we have this thing called a variable.
+[15:32] And it's basically just a container, where we can store certain data values. And when we use a
+[15:38] variable, when we put those data values inside containers, it makes it a lot easier for us to
+[15:44] work with and manage all of the different data inside of our programs. So variables are extremely
+[15:50] helpful. And it's sort of like a core topic in Python that you're really going to want to know
+[15:55] in master. So in this tutorial, I'm going to teach you guys everything you need to know to get started
+[16:00] with variables, we're going to look at what they are, why they're useful, and we'll look at the
+[16:04] different types of variables and the different types of data that we can store inside of variables.
+[16:09] But over here in my Python file, I just have a very simple program. And it's basically just
+[16:15] printing some text out onto the screen. And so this is actually a little story that I wrote. It
+[16:20] says there once was a man named George, he was 70 years old. He really liked the name George,
+[16:26] but didn't like being 70. So this is a valid Python program. I could go ahead and run this program.
+[16:33] And you'll see down here in the console, everything prints out and it looks great. So
+[16:38] we have an awesome little Python program here. But let's say that inside of our story, I wanted
+[16:43] to change the character's name. So instead of naming the character George, let's say I wanted
+[16:48] to name the character John. Well, I'm going to have to go through and I'm going to have to manually
+[16:54] change the name George to the name John at every place inside of this story where it's mentioned.
+[16:59] So I'm going to have to go over here and I'll say, okay, John, I'm going to have to manually
+[17:03] change that. And then, okay, down here, we're gonna have to again, manually type in John and
+[17:08] change it to John. So in order to change the character's name, I had to manually go in and
+[17:13] change it in both places. And now let's say, okay, maybe we want to change the character's name age
+[17:20] also. So in addition to changing the name, we also want to change the age, let's make
+[17:24] them a little bit younger. So why don't we say John is going to be 35. And so you'll see here,
+[17:30] I had to come here and manually change the age and then come down here and manually change it
+[17:36] again. Right. And now that we changed it, like it's going to work, it's going to be updated in
+[17:40] our program. But you'll notice that in order to make that change, like I had to look through the
+[17:45] entire program, find it where that value was and change it. And this was only with four lines of
+[17:52] the story. Imagine if I had a story that was like, thousands of lines long. And we mentioned the
+[17:58] character's name and age, like hundreds of times. I mean, I'd have to look through each one of those
+[18:02] lines and manually change the character's name. And that is not a very good way for us to do this.
+[18:09] And it's really not a good way for us to manage the data in our program, right, the character's
+[18:14] name and the age. And so we can actually use a variable in order to store the character's name
+[18:20] and the character's age. And when we use that variable, it'll make it a lot easier for us to
+[18:25] put the character's name and age inside of our little program here. So I'm going to show you guys
+[18:30] how we can create a variable for the character's name and age. And I'm just going to go up here
+[18:35] above this print statement. And up here, I want to create a variable. So when we create a variable
+[18:42] in Python, we actually need to give Python a couple pieces of information. The first piece of
+[18:48] information we need to give Python is the name of the variable. So I need to actually assign a name
+[18:54] to this container where we're going to be storing information. And so all I have to do is just type
+[18:59] out the name of the variable that I want to create. So I'm going to create a variable called
+[19:03] character name. So I'm just going to say character. And I'm going to say underscore name. And so
+[19:10] generally, when you're creating a name for a variable in Python, you want to separate different
+[19:16] words with an underscore. So I have two words here, and I'm separating them with an underscore.
+[19:22] And now what I need to do is I need to put a value inside of this variable. So basically,
+[19:27] what I can do is I can just say equals, and over here, I can type a value. So I'm just going to type
+[19:33] out the character's name inside of quotation marks. So we're just going to type out john.
+[19:38] So now we have a variable for the character's name. And below this character name variable,
+[19:44] I want to create another variable called character age. So we're just going to type out character
+[19:50] underscore age. And I'm going to set this equal to the character's age, which is 35.
+[19:58] So we now have two variables, one representing the character's name and one representing the
+[20:02] character's age. So what I can do now is I can replace the character's name inside of the story
+[20:08] with this variable. And I'm going to show you guys how to do that. So if we want to put a variable
+[20:13] inside of this print statement, I'm actually going to have to do a couple of things. The first thing
+[20:18] I'm going to have to do is end off this text in here. So I'm going to have to put a quotation marks
+[20:25] here at the end. And you can see I'm basically wrapping this whole thing into a single like quoted
+[20:31] line. And now I also have this text over here at the end. So I'm going to have to put a quotation
+[20:36] mark here. So now I have a bunch of text here in quotation marks. And then I also have text over
+[20:42] here in quotation marks. Now inside of here, instead of saying the character's name, I want to refer
+[20:48] to that character name variable. So I'm just going to say plus character underscore name.
+[20:57] And I want to say another plus sign. So I basically am saying I want to print out all of this text,
+[21:03] plus the value that's stored inside of character name, plus all of this text. And what this will
+[21:10] do is actually print out the character's name. We print this. So I'm going to go ahead and run
+[21:15] this program. And you'll see down here, and actually let me put a space over here. And we'll run it
+[21:21] again. So you can see down here, we still are printing out there once was a man named John.
+[21:27] And so what Python is doing is when it executes this line of code, it's coming over here and it's
+[21:32] seeing, okay, they want to print out the value inside of character name. So it Python is going
+[21:38] to go up here, it's going to get the value. And it's going to insert it inside of there. So I can
+[21:44] basically do this for every instance of the character name in my file. So I can, you know,
+[21:49] I'll just copy this guy right here. And I can just paste it down here where the character's name is.
+[21:55] So I'll paste this. And you can see now we're doing exactly the same thing that we did up there.
+[22:01] I can also do this for the character's age. So I'm going to come down here and I'll paste in what
+[22:06] we just paste it in. And I'm going to change this instead of character name, we'll change it to character
+[22:12] age. And I'm going to do this in one more spot. So we're going to do this over here where we're
+[22:18] mentioning the age. And again, I'll just change this to character age. And so now when I run this
+[22:24] program, it's going to print out the same story that we were printing out before. But now I don't
+[22:30] actually have to type in the character's name and the character's age. I can just refer to this
+[22:36] variable. And the cool thing about variables is if I wanted to change the character's name,
+[22:41] now all I have to do is change it up here. So I could change the character's name to like Tom
+[22:46] or something. And we could also change their age. So I could change the age to be like 50.
+[22:51] And now that's going to automatically update throughout our entire story. So when I click this
+[22:56] play button, you'll see now we're using the name Tom. And he's 50 years old. So that's where variables
+[23:03] can come in handy. And this can be a really awesome way to control and manage the data that's inside
+[23:10] of our programs. With variables, you can also modify their values. So for example, let's say that
+[23:16] halfway through the story, I wanted to change the character's name. Well, I can just make some new
+[23:20] lines over here. And down here, I can actually assign a new value to one of these variables.
+[23:27] So I could say like character underscore name. And in order to give it a different value,
+[23:33] all I have to do is just say equals, and we'll give it a different value. So let's say halfway
+[23:38] through the story, we want to change the character's name to Mike. Well, now when I run on my program,
+[23:44] you'll see here in the first part of the story, it says there once was a man named Tom. And in
+[23:49] the second part of the story, it's referring to the name as Mike. So I actually updated the
+[23:55] variable inside of my program over here. And that's a really awesome way. You know, a lot of times
+[24:01] in these programs, you're going to want to be modifying the values of variables. So you can do
+[24:06] it just like that. So finally, I want to talk to you guys about the different types of data that we
+[24:11] can store inside of these variables. So over here, I have the character name and the character age.
+[24:18] And I'm actually storing what are called strings. So a string is basically just plain text,
+[24:25] right? So the name Tom, that's just plain text. Down here, these guys are strings as well. So
+[24:31] there's a data type in Python called a string, and it's just basically going to store plain text. So,
+[24:39] you know, any text that you would have like in a story, or you know, someone's name, you can store
+[24:44] inside of a string. There's also another type of data that we can store inside of Python,
+[24:49] which is numbers. So in addition to storing text, we can also store numbers. So if I wanted to store
+[24:55] a number, for example, let's say we want to store the character age instead of inside of a string,
+[25:00] we could store it inside of a number. So I could just type out 50. And when we're storing a number,
+[25:07] we don't need these quotation marks, you only need that quotation mark when you're storing a
+[25:12] string. So if I want to store a number, I can just write it out like this. And in addition to
+[25:17] using whole numbers, I could also use decimal numbers. So I could say like 50.5678213. And
+[25:24] Python's going to be able to store that number as well. So you can store all different types of
+[25:29] numbers. And we can also store what's called a Boolean value. And a Boolean value is essentially
+[25:36] a true or a false value. And there's a lot of instances in programming where we're going to
+[25:42] want to represent true or false data. For example, I could have a variable called like is mail. And
+[25:49] this would tell me whether or not someone was a male. And in my case, it would be true because
+[25:54] I'm a guy, right? So I can actually this needs to be capital. So I could sort of value of either
+[26:01] true or false. And actually, if we were naming this in Python, we want to use an underscore. So I
+[26:08] would say is underscore mail. And this can be either true or false. So true or false values is
+[26:14] maybe not something that you're used to dealing with like in the real world. But in programming,
+[26:19] we're going to be using true or false values all the time. They're super important. So like I
+[26:25] said, there's three basic types of data that we can work with in Python. There's strings,
+[26:30] which is just like plain text numbers, which would be like either decimal numbers or whole
+[26:35] numbers like this. And there's true or false values. And these are the basic types of data. I mean,
+[26:41] there's a bunch of other types of data that we can use. But I would say 99% of the time as a new
+[26:46] user and a new programmer to Python, you're just going to be dealing with these three types of data.
+[26:52] So those are the basics of the data and also with variables. And you're going to be using
+[26:57] variables all the time in Python. So you definitely want to practice up and get comfortable using them.
+[27:06] In this tutorial, I want to talk to you guys about working with strings in Python. Now one of
+[27:12] the most common types of data that we're going to be working with in Python is going to be strings.
+[27:17] And strings are basically just plain text. So any text that we want to have inside of our program,
+[27:23] we can store inside of a string. So I want to talk to you guys about all the cool things we can do
+[27:28] with strings. And we're basically just going to get a full introduction into why strings are
+[27:32] awesome. So over here, I'm just going to actually print out a string. So I'm just going to say print
+[27:39] and inside of these parentheses, I can type out a string. In order to create a string, I need to
+[27:45] use quotation marks. So I can make an open and close quotation marks just like that. Now inside
+[27:50] of the quotation mark, I can put whatever text I want the string to have. So we could say like,
+[27:56] draft Academy. And so now we have a string with the text draft Academy inside of it. So if I run
+[28:03] my program, now down here, we're going to print out draft Academy, as you can see. And when we have
+[28:08] these strings, there's actually a bunch of cool things that we can do with them. So one thing I
+[28:12] could do would be to create a new line inside of the string. So if I want it, I can come over here,
+[28:18] and I could say backslash n. And you can see it got highlighted in a different color. And what this
+[28:24] is going to do is it's actually going to insert a new line into the string. So now it's going to say
+[28:28] draft on one line and Academy on another line. So I'm going to click play. And you'll see down
+[28:35] here, we just get draft Academy. In addition to the backslash n, I could also use a backslash
+[28:42] quotation mark. So if I wanted to put a quotation mark inside of my string, I can't just put a
+[28:48] quotation mark like that, because Python is going to think that I'm trying to end this string. So if
+[28:53] I want to include a quotation mark, I can just use this special backslash character. And that's
+[28:58] called the escape character. And it basically just tells Python that whatever character comes
+[29:03] after it, we want to render literally. So when I say backslash quotation mark, it basically means
+[29:10] like, Hey, Python, I want to print out a quotation mark. And so now we'll be able to print out a
+[29:15] quotation mark right there. I can also use this to print out a backslash. So if I needed to print
+[29:19] out a backslash, I could say backslash. And it'll just print out a normal backslash now. So you can
+[29:26] see just like that. So if you want, you can use that backslash to make new lines or print out
+[29:30] quotation marks, or you can just use it as a normal backslash. In addition to just typing out a string
+[29:37] here, I could also create a string variable. So I could come down here up here, and we can create
+[29:42] a variable and we'll just call it phrase. And I'm going to set it equal to draft academy. So I can
+[29:49] store this string value inside of a variable called phrase. And then when I want to print out that
+[29:55] variable, or I want to access that string variable, I can just type the name of the variable. And
+[30:02] you'll see that it's going to print out the value that was stored inside of it. I can also use
+[30:07] something called concatenation. And concatenation is basically the process of taking a string and
+[30:13] appending another string onto it. So I could come over here and I could say phrase, and I can say
+[30:18] plus. And now I can add in another string. So I could say like, is cool. And now this is going to say
+[30:25] draft academy is cool. So I'm basically appending another string onto another one, they call that
+[30:32] concatenation. And so in addition to doing all that stuff, we can also use special things called
+[30:38] functions. And a function is basically just a little block of code that we can run. And it will
+[30:44] perform a specific operation for us. So we can use functions to modify our strings. And we can
+[30:51] also use functions to get information about our strings. So I'm going to show you guys a couple
+[30:57] common functions we can use with these strings. And they're actually going to do awesome stuff. So
+[31:02] in order to access one of these functions, I can just say phrase, and then I can say dot. And I'm
+[31:07] going to show you guys a function that we can use to convert this string entirely into lower case.
+[31:12] So I could just say phrase dot lower. And I'm going to want to type an open and close parentheses.
+[31:17] And this will take this phrase, it'll take my string and it'll convert it to lowercase. So you
+[31:22] can see now we just have draft academy down here, but it's entirely in lowercase. I could also do
+[31:27] the same thing for uppercase. So I could say phrase dot upper. And this will convert the entire string
+[31:34] into uppercase. You can see now it's entirely uppercase. So in addition to converting the string
+[31:39] into uppercase and lowercase, I could also check to see if a string is entirely uppercase or
+[31:45] entirely lowercase. So for example, I could say phrase dot is upper. And this is going to give me
+[31:51] back a true or a false value. So it's going to be true. If the string is entirely uppercase,
+[31:56] or false, if it's not. And you can see here, we're getting a false value because this is an
+[32:02] uppercase. I can also use these functions in combination with each other. So for example,
+[32:08] I could say phrase dot upper, and then parentheses. And then after this, I could say dot is upper.
+[32:17] And now what it's going to do is it's going to run this upper function, it's going to convert it
+[32:22] into uppercase. And then it's going to run this is upper function right after that. And you'll see
+[32:27] now we're going to get a true value back because it will have converted the whole thing into uppercase.
+[32:33] So you can see now we're getting a true value. So you can use these functions one after another,
+[32:38] it can be really useful. And there's a few other ones that I want to show you. So we can also
+[32:43] figure out the length of this string. So if I wanted to figure out how many characters were
+[32:49] inside of this string, I could just say LEN. And I'm actually going to make an open parentheses.
+[32:54] And I'm going to make a closed parentheses. So I'm essentially saying LEN. And this is another
+[33:00] function, it's the length function. And inside of this LEN function, I'm actually passing this
+[33:06] phrase variable, I'm basically giving the length function this, and it's going to spit out a number.
+[33:11] So it'll tell me how many characters are inside of this string. And so you can see here we get 15
+[33:16] because there's 15 characters inside of draft academy. So that's how we can get the length of
+[33:22] a string. And that's going to be really useful as we go forward and Python, we can also get
+[33:26] individual characters inside of a string. So imagine if I wanted to just grab one of these
+[33:32] characters, like imagine if I wanted to figure out what the first character in this string is,
+[33:37] we can actually use an open and closed square bracket, just like that. And in here, I can
+[33:43] specify the index of the character that I want to grab. So if I wanted to grab the first character
+[33:49] in this string, I can put in a zero. So if I say phrase square bracket zero, this is going to give
+[33:55] me that capital G. And you can see down here, that's what gets printed out. Now I want to point
+[34:01] something out in Python, when we're working with strings, a string gets indexed starting with zero.
+[34:08] So you'll notice that in order to access this G, I had to put a zero in here. And that's because
+[34:14] in Python, when we use indexes on a string, we start with zero. So if Python is counting the
+[34:20] characters, or it's indexing the characters in a string, it's going to start with zero. So it's
+[34:25] going to say G is zero, i is one, r is two, a is three. So we would say that G is at position zero
+[34:33] in the string, i is at position one, r is at position two, a is at position three, etc. So we start
+[34:39] counting at zero. So if I wanted to access the first character in the string, this G, I have to say
+[34:48] phrase zero, and that's just a special thing in Python, and actually most programming languages
+[34:53] do that. So they'll start with zero. So for example, if I wanted to access this a, I'm going to have
+[34:59] to put zero 123. So if I put three inside of here, now we'll be able to access that first a,
+[35:09] as you can see, we get an a right here. So this is actually really useful being able to grab a
+[35:14] specific character inside of a string, and you're going to be using that a lot as we go forward
+[35:19] in Python, there's also another really awesome function that we can use and it's called the index
+[35:24] function. And basically what the index function will do is it'll tell us where a specific character
+[35:31] or string is located inside of our string. So I could say phrase dot index. And I can actually
+[35:38] give this a value. So sometime

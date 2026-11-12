@@ -1,0 +1,89 @@
+Google sử dụng công nghệ AI để dịch nội dung sang ngôn ngữ bạn ưu tiên. Bản dịch bằng AI có thể có lỗi.
+
+Không phải tất cả bộ nhớ đều được tạo như nhau: giới thiệu Bộ chứa bộ nhớ
+
+Thomas Steiner
+
+Storage Standard (Tiêu chuẩn bộ nhớ) xác định một API cho bộ nhớ cố định và số liệu ước tính về hạn mức cũng như cấu trúc bộ nhớ của nền tảng.
+Chúng tôi sẽ ra mắt một API để giúp việc loại bỏ bộ nhớ đệm khi bộ nhớ bị áp lực lớn trở nên dễ dự đoán hơn. Tính năng này có sẵn từ Chromium 122.
+
+Tiêu chuẩn bộ nhớ giải quyết vấn đề gì?
+
+Theo truyền thống, khi người dùng hết dung lượng lưu trữ trên thiết bị, dữ liệu được lưu trữ bằng các API như IndexedDB hoặc localStorage sẽ bị mất mà người dùng không thể can thiệp. Một cách để lưu trữ liên tục là gọi phương thức persist() của giao diện StorageManager . Phương thức này đồng thời yêu cầu người dùng cấp quyền và thay đổi bộ nhớ để lưu trữ vĩnh viễn sau khi được cấp:
+
+const persisted = await navigator . storage . persist ();
+if ( persisted ) {
+/* Storage will not be cleared except by explicit user action. */
+}
+
+Phương thức yêu cầu lưu trữ liên tục này là tất cả hoặc không có gì. Không có cách nào để thể hiện nhu cầu lưu trữ chi tiết hơn. Tất cả đều là một bộ nhớ.
+
+Storage Buckets API
+
+Ý tưởng cốt lõi của Storage Buckets API là cấp cho các trang web khả năng tạo nhiều bộ nhớ, trong đó trình duyệt có thể chọn xoá từng bộ nhớ một cách độc lập với các bộ nhớ khác. Điều này cho phép nhà phát triển chỉ định mức độ ưu tiên xoá để đảm bảo dữ liệu có giá trị nhất không bị xoá.
+
+Ví dụ về trường hợp sử dụng
+
+Để minh hoạ trường hợp sử dụng hữu ích của bộ chứa bộ nhớ, hãy tưởng tượng một ứng dụng email. Sẽ là điều không thể tha thứ nếu ứng dụng bị mất các thư nháp chưa gửi của người dùng chỉ tồn tại trên ứng dụng khách. Ngược lại, nếu các email được lưu trữ trên máy chủ, người dùng có thể chấp nhận việc một số email cũ nhất trong hộp thư đến bị xoá khỏi ứng dụng nếu trình duyệt của họ đang chịu áp lực lưu trữ lớn.
+
+Ứng dụng email có các bộ chứa bộ nhớ riêng biệt cho hộp thư đến và thư nháp. (Chỉ nhằm mục đích minh hoạ, hình ảnh này không nhất thiết phản ánh cách hoạt động của Gmail.)
+
+Sử dụng API Bộ chứa bộ nhớ
+
+Tạo bộ nhớ khối xếp mới
+
+Bạn có thể tạo một bộ nhớ mới bằng phương thức open() trên giao diện StorageBucketManager .
+
+// Create a storage bucket for emails that are synchronized with the
+// server.
+const inboxBucket = await navigator . storageBuckets . open ( 'inbox' );
+
+Tạo một bộ nhớ mới ổn định
+
+Để đảm bảo bộ chứa bộ nhớ được duy trì, bạn có thể truyền đối số tuỳ chọn durability và persisted vào phương thức open() :
+
+persisted xác định xem có nên duy trì bộ chứa bộ nhớ hay không. Các giá trị được phép là false (mặc định) hoặc true .
+
+durability cung cấp gợi ý cho trình duyệt để giúp trình duyệt đánh đổi hiệu suất ghi với việc giảm nguy cơ mất dữ liệu trong trường hợp mất điện. Các giá trị được phép là 'relaxed' (mặc định) hoặc 'strict' :
+
+Các bộ chứa 'strict' cố gắng giảm thiểu nguy cơ mất dữ liệu khi mất điện. Điều này có thể làm giảm hiệu suất, nghĩa là quá trình ghi có thể mất nhiều thời gian hơn để hoàn tất, có thể ảnh hưởng đến hiệu suất tổng thể của hệ thống, có thể tiêu thụ nhiều pin hơn và có thể làm hỏng thiết bị lưu trữ nhanh hơn.
+
+Các bộ chứa 'relaxed' có thể "quên" các hoạt động ghi đã hoàn tất trong vài giây qua khi xảy ra sự cố mất nguồn. Đổi lại, việc ghi dữ liệu vào các bộ chứa này có thể có các đặc điểm hiệu suất tốt hơn, cho phép sạc pin lâu hơn và có thể kéo dài thời gian hoạt động của thiết bị lưu trữ. Ngoài ra, sự cố mất điện sẽ không dẫn đến tình trạng hỏng dữ liệu ở mức cao hơn so với các bộ chứa 'strict' .
+
+// Create a storage bucket for email drafts that only exist on the client.
+const draftsBucket = await navigator . storageBuckets . open ( 'drafts' , {
+durability : 'strict' , // Or `'relaxed'`.
+persisted : true , // Or `false`.
+});
+
+Truy cập vào các API bộ nhớ từ một bộ chứa bộ nhớ
+
+Mỗi bộ chứa bộ nhớ được liên kết với các API bộ nhớ, ví dụ: IndexedDB , giao diện Bộ nhớ đệm hoặc giao diện Tệp . Các API bộ nhớ này hoạt động như bình thường, chỉ khác là điểm truy cập là từ giao diện StorageBucket , ví dụ: StorageBucket.indexedDB .
+
+const inboxDb = await new Promise ( resolve = > {
+const request = inboxBucket . indexedDB . open ( 'messages' );
+request . onupgradeneeded = () = > { /* migration code */ };
+request . onsuccess = () = > resolve ( request . result );
+request . onerror = () = > reject ( request . error );
+});
+
+Gỡ lỗi bộ chứa bộ nhớ trong DevTools
+
+Kiểm tra các bộ chứa bộ nhớ trong một cây chuyên dụng trong phần Application (Ứng dụng) > Storage (Bộ nhớ).
+
+Tài nguyên hữu ích
+
+Video giải thích về Bộ chứa bộ nhớ
+
+Kho lưu trữ Bộ chứa bộ nhớ
+
+Mục ChromeStatus
+
+Lỗi Chromium
+
+Thành phần Blink
+Blink > Storage > Buckets
+
+Quan điểm của Mozilla về tiêu chuẩn
+
+Bài đánh giá về thẻ

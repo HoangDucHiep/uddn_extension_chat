@@ -1,0 +1,865 @@
+From Wikipedia, the free encyclopedia
+
+Relational database programming language
+
+This article is about the database language. For other uses, see SQL (disambiguation) .
+
+"SEQUEL" redirects here. For the topic of the word, see sequel . For other uses, see Sequel (disambiguation) .
+
+[[Raymond F. Boyce]]"},"developer":{"wt":"[[ISO/IEC JTC 1/SC 32|ISO/IEC JTC&nbsp;1 (Joint Technical Committee&nbsp;1) / SC&nbsp;32 (Subcommittee&nbsp;32)]] / WG&nbsp;3 (Working Group&nbsp;3)"},"typing":{"wt":"[[Static typing|Static]], [[Strong typing|strong]]"},"implementations":{"wt":"[[List of relational database management systems|Many]]"},"dialects":{"wt":"{{flatlist|\n* SQL-86\n* SQL-89\n* [[SQL-92]]\n* [[SQL:1999]]\n* [[SQL:2003]]\n* [[SQL:2006]]\n* [[SQL:2008]]\n* [[SQL:2011]]\n* [[SQL:2016]]\n* [[SQL:2023]]\n}}"},"influenced":{"wt":"[[Contextual Query Language|CQL]], [[Language Integrated Query|LINQ]], [[SPARQL]], SOQL, [[PowerShell]],<ref name=\"ars\" /> [[Java Persistence Query Language|JPQL]], [[Java Object Oriented Querying|jOOQ]], [[N1QL]], [[Graph Query Language|GQL]]"},"website":{"wt":"{{URL|https://www.iso.org/standard/76583.html}}"},"latest_release_version":{"wt":"[[SQL:2023]]"},"latest_release_date":{"wt":"{{Start date and age|2023|06|df=yes}}"},"influenced_by":{"wt":"[[Datalog]]"},"operating_system":{"wt":"[[Cross-platform]]"},"fileformat":{"wt":""},"wikibooks":{"wt":"Structured Query Language"}},"i":0}}]}'>
+
+SQL (Structured Query Language)
+
+Paradigm
+
+Declarative
+
+Family
+
+Query language
+
+Designed by
+
+Donald D. Chamberlin
+Raymond F. Boyce
+
+Developer
+
+ISO/IEC JTC 1 (Joint Technical Committee 1) / SC 32 (Subcommittee 32) / WG 3 (Working Group 3)
+
+First appeared
+
+1973 ; 53 years ago ( 1973 )
+
+Stable release
+
+SQL:2023
+/ June 2023 ; 3 years ago ( 2023-06 )
+
+Typing discipline
+
+Static , strong
+
+OS
+
+Cross-platform
+
+Website
+
+www .iso .org /standard /76583 .html
+
+Major implementations
+
+Many
+
+Dialects
+
+SQL-86
+
+SQL-89
+
+SQL-92
+
+SQL:1999
+
+SQL:2003
+
+SQL:2006
+
+SQL:2008
+
+SQL:2011
+
+SQL:2016
+
+SQL:2023
+
+Influenced by
+
+Datalog
+
+Influenced
+
+CQL , LINQ , SPARQL , SOQL, PowerShell , [ 1 ] JPQL , jOOQ , N1QL , GQL
+
+Structured Query Language at Wikibooks
+
+<ref name=\"application/sql\" />"},"uniform type":{"wt":""},"owner":{"wt":"[[ISO]]/[[International Electrotechnical Commission|IEC]]"},"released":{"wt":"{{Start date and age|1986|df=yes}}"},"latest release version":{"wt":""},"latest release date":{"wt":""},"genre":{"wt":"Database"},"standard":{"wt":"[[ISO/IEC 9075]]"},"open":{"wt":"Yes"},"url":{"wt":"{{URL|https://www.iso.org/standard/76583.html}}"}},"i":0}}]}'>
+
+SQL (file format)
+
+Filename extension
+
+.sql
+
+Internet media type
+
+application/sql [ 2 ] [ 3 ]
+
+Developed by
+
+ISO / IEC
+
+Initial release
+
+1986 ; 40 years ago ( 1986 )
+
+Type of format
+
+Database
+
+Standard
+
+ISO/IEC 9075
+
+Open format ?
+
+Yes
+
+Website
+
+www .iso .org /standard /76583 .html
+
+This article is part of a series on the
+Structured Query Language
+
+List of RDBMSs
+
+4th Dimension
+
+Access Database Engine
+
+Actian Zen
+
+Adabas D
+
+SAP Advantage Database Server
+
+Airtable
+
+Altibase
+
+Amazon Aurora
+
+Amazon Redshift
+
+Apache Derby
+
+Apache Ignite
+
+Aster Data Systems
+
+CA Datacom
+
+Clarion
+
+ClickHouse
+
+Clustrix
+
+CockroachDB
+
+CUBRID
+
+DataEase
+
+DataFlex
+
+Dataphor
+
+dBase
+
+DuckDB
+
+Empress Embedded Database
+
+EnterpriseDB
+
+eXtremeDB
+
+Exasol
+
+Extensible Storage Engine
+
+FileMaker Pro
+
+Firebird
+
+FoundationDB
+
+FrontBase
+
+Google BigQuery
+
+Greenplum
+
+H2
+
+Helix
+
+HSQLDB
+
+IBM Db2
+
+IBM Lotus Approach
+
+CA IDMS
+
+Infobright
+
+Informix
+
+Ingres
+
+InterBase
+
+InterSystems Caché
+
+InterSystems IRIS
+
+Linter SQL RDBMS
+
+MariaDB
+
+MaxDB
+
+Microsoft Azure SQL Database
+
+Microsoft SQL Server
+
+Microsoft SQL Server Express
+
+Microsoft Visual FoxPro
+
+Mimer SQL
+
+MonetDB
+
+mSQL
+
+MySQL
+
+Netezza
+
+NexusDB
+
+NonStop SQL
+
+NuoDB
+
+Omnis Studio
+
+Virtuoso Universal Server
+
+Oracle database
+
+Oracle Rdb
+
+Panorama
+
+Paradox
+
+Percona Server for MySQL
+
+Percona XtraDB
+
+Polyhedra
+
+PostgreSQL
+
+Postgres Plus Advanced Server
+
+Progress Software
+
+R:Base
+
+RethinkDB
+
+SAND CDBMS
+
+SAP Adaptive Server Enterprise
+
+SAP HANA
+
+SAP IQ
+
+SingleStore
+
+Snowflake Cloud Data Warehouse
+
+solidDB
+
+Google Cloud Spanner
+
+SQL Anywhere
+
+SQL Azure
+
+SQLBase
+
+SQLite
+
+SQream DB
+
+Teradata
+
+TiDB
+
+TimescaleDB
+
+TimesTen
+
+Trafodion
+
+Transbase
+
+Unisys OS 2200 databases
+
+UniData
+
+UniVerse
+
+Vectorwise
+
+Vertica
+
+VoltDB
+
+YDB
+
+YugabyteDB
+
+Database administration tools
+
+Adminer
+
+Apache OpenOffice Base
+
+Database Workbench
+
+DatabaseSpy
+
+DbVisualizer
+
+DBeaver
+
+HeidiSQL
+
+LibreOffice Base
+
+Microsoft Access
+
+MySQL Workbench
+
+Navicat
+
+Oracle Enterprise Manager
+
+pgAdmin
+
+phpLiteAdmin
+
+PhpSQLiteAdmin
+
+phpMyAdmin
+
+SQL Database Studio
+
+SQL Server Management Studio
+
+sqsh
+
+Toad Data Modeler
+
+TOra
+
+IDEs
+
+Application Development System Online
+
+DataGrip
+
+dbForge Studio
+
+Oracle SQL Developer
+
+PL/SQL Developer
+
+SQLyog
+
+SQuirreL SQL Client
+
+Toad
+
+Database drivers and ORMs
+
+ActiveRecord
+
+Doctrine
+
+Entity Framework
+
+Hibernate
+
+JDBC
+
+ODBC
+
+SQLAlchemy
+
+See also
+
+Comparison of RDBMSs
+
+Comparison of object–RDBMSs
+
+DB-Engine Ranking list
+
+List of data science software
+
+List of SQL software and tools
+
+List of NoSQL software and tools
+
+Computer programming portal
+
+SQL (Wikibooks)
+
+v
+
+t
+
+e
+
+Structured Query Language ( SQL ) ( pronounced / ˌ ɛ s ˌ k j u ˈ ɛ l / S-Q-L ; or alternatively as / ˈ s iː k w ə l / ⓘ "sequel") [ 4 ] [ 5 ] is a domain-specific language used to manage data, especially in a relational database management system (RDBMS). It is particularly useful in handling structured data , i.e., data incorporating relations among entities and variables. [ 6 ]
+
+Introduced in the 1970s, SQL offered two main advantages over older read – write APIs such as ISAM or VSAM . Firstly, it introduced the concept of accessing many records with one single command . Secondly, it eliminates the need to specify how to reach a record, i.e., with or without an index .
+
+Originally based upon relational algebra and tuple relational calculus , SQL consists of many types of statements, [ 7 ] which may be informally classed as sublanguages , commonly: data query language (DQL), data definition language (DDL), data control language (DCL), and data manipulation language (DML). [ 8 ]
+
+The scope of SQL includes data query, data manipulation (insert, update, and delete), data definition ( schema creation and modification), and data access control. Although SQL is essentially a declarative language ( 4GL ), it also includes procedural elements.
+
+SQL was one of the first commercial languages to use Edgar F. Codd 's relational model . The model was described in his influential 1970 paper, "A Relational Model of Data for Large Shared Data Banks". [ 9 ] Despite not entirely adhering to the relational model as described by Codd , SQL became the most widely used database language. [ 10 ] [ 11 ]
+
+SQL became a standard of the American National Standards Institute (ANSI) in 1986 and of the International Organization for Standardization (ISO) in 1987. [ 12 ] Since then, the standard has been revised multiple times to include a larger set of features and incorporate common extensions. Despite the existence of standards, virtually no implementations in existence adhere to it fully, and most SQL code requires at least some changes before being ported to different database systems.
+
+History
+[ edit ]
+
+SQL was initially developed at IBM by Donald D. Chamberlin and Raymond F. Boyce after learning about the relational model from Edgar F. Codd [ 13 ] in the early 1970s. [ 14 ] This version, initially called SEQUEL (Structured English Query Language), was designed to manipulate and retrieve data stored in IBM's original quasirelational database management system, System R , which a group at IBM San Jose Research Laboratory had developed during the 1970s. [ 14 ]
+
+Chamberlin and Boyce's first attempt at a relational database language was SQUARE (Specifying Queries in A Relational Environment), but it was difficult to use due to subscript/superscript notation. After moving to the San Jose Research Laboratory in 1973, they began work on a sequel to SQUARE. [ 13 ] The original name SEQUEL, which is widely regarded as a pun on QUEL , the query language of Ingres , [ 15 ] was later changed to SQL (dropping the vowels) because "SEQUEL" was a trademark of the UK-based Hawker Siddeley Dynamics Engineering Limited company. [ 16 ] The label SQL later became the acronym for Structured Query Language. [ 17 ]
+
+After testing SQL at customer test sites to determine the usefulness and practicality of the system, IBM began developing commercial products based on their System R prototype, including System/38 , SQL/DS , and IBM Db2 , which were commercially available in 1979, 1981, and 1983, respectively. [ 18 ] IBM's endorsement caused the industry to move to SQL from alternatives like QUEL. [ 19 ]
+
+In the late 1970s, Relational Software, Inc. (now Oracle Corporation ) saw the potential of the concepts described by Codd, Chamberlin, and Boyce, and developed their own SQL-based RDBMS with aspirations of selling it to the U.S. Navy , Central Intelligence Agency , and other U.S. government agencies. In June 1979, Relational Software introduced one of the first commercially available implementations of SQL, Oracle V2 (Version2) for VAX computers.
+
+By 1986, ANSI and ISO standard groups officially adopted the standard "Database Language SQL" language definition. New versions of the standard were published in 1989, 1992 , 1996, 1999 , 2003 , 2006 , 2008 , 2011 , [ 13 ] 2016 and, most recently, 2023 . [ 20 ]
+
+Interoperability and standardization
+[ edit ]
+
+SQL language revisions
+
+SQL-86
+
+SQL-89
+
+SQL-92
+
+SQL:1999
+
+SQL:2003
+
+SQL:2006
+
+SQL:2008
+
+SQL:2011
+
+SQL:2016
+
+SQL:2023
+
+v
+
+t
+
+e
+
+Overview
+[ edit ]
+
+SQL implementations are incompatible between vendors and do not necessarily completely follow standards. In particular, date and time syntax, string concatenation, NULL s, and comparison case sensitivity vary from vendor to vendor. PostgreSQL [ 21 ] and Mimer SQL [ 22 ] strive for standards compliance, though PostgreSQL does not adhere to the standard in all cases. For example, the folding of unquoted names to lower case in PostgreSQL is incompatible with the SQL standard, [ 23 ] which says that unquoted names should be folded to upper case. [ 24 ] Thus, according to the standard, Foo should be equivalent to FOO , not foo .
+
+Popular implementations of SQL commonly omit support for basic features of Standard SQL, such as the DATE or TIME data types. The most obvious such examples, and incidentally the most popular commercial and proprietary SQL DBMSs, are Oracle (whose DATE behaves as DATETIME , [ 25 ] [ 26 ] and lacks a TIME type) [ 27 ] and MS SQL Server (before the 2008 version). As a result, SQL code can rarely be ported between database systems without modifications.
+
+Reasons for incompatibility
+[ edit ]
+
+Several reasons for the lack of portability between database systems include:
+
+The complexity and size of the SQL standard means that most implementers do not support the entire standard.
+
+The SQL standard does not specify the database behavior in some important areas (e.g., indices , file storage), leaving implementations to decide how to behave.
+
+The SQL standard defers some decisions to individual implementations, such as how to name a results column that was not named explicitly. [ 28 ] :   207  
+
+The SQL standard precisely specifies the syntax that a conforming database system must implement. However, the standard's specification of the semantics of language constructs is less well-defined, leading to ambiguity.
+
+Many database vendors have large existing customer bases; where the newer version of the SQL standard conflicts with the prior behavior of the vendor's database, the vendor may be unwilling to break backward compatibility .
+
+Little commercial incentive exists for vendors to make changing database suppliers easier (see vendor lock-in ).
+
+Users evaluating database software tend to place other factors such as performance higher in their priorities than standards conformance.
+
+Standardization history
+[ edit ]
+
+SQL was adopted as a standard by the ANSI in 1986 as SQL-86 [ 29 ] and the ISO in 1987. [ 12 ] It is maintained by ISO/IEC JTC 1, Information technology, Subcommittee SC 32, Data management and interchange .
+
+Until 1996, the National Institute of Standards and Technology (NIST) data-management standards program certified SQL DBMS compliance with the SQL standard. Vendors now self-certify the compliance of their products. [ 30 ]
+
+The original standard declared that the official pronunciation for "SQL" was an initialism : / ˌ ɛ s ˌ k juː ˈ ɛ l / ("ess cue el"). [ 10 ] Regardless, many English-speaking database professionals (including Donald Chamberlin himself [ 31 ] ) use the acronym -like pronunciation of / ˈ s iː k w əl / ("sequel"), [ 32 ] mirroring the language's prerelease development name, "SEQUEL". [ 14 ] [ 16 ] [ 31 ]
+The SQL standard has gone through a number of revisions:
+
+Timeline of SQL language
+
+Year
+
+Official standard
+
+Informal
+name
+
+Comments
+
+1986
+1987
+
+ANSI X3.135:1986
+ISO/IEC 9075 :1987
+FIPS PUB 127
+
+SQL-86
+SQL-87
+
+First formalized by ANSI, adopted as FIPS PUB 127
+
+1989
+
+ANSI X3.135-1989
+ISO/IEC 9075:1989
+FIPS PUB 127-1
+
+SQL-89
+
+Minor revision that added integrity constraints, adopted as FIPS PUB 127-1
+
+1992
+
+ANSI X3.135-1992
+ISO/IEC 9075:1992
+FIPS PUB 127-2
+
+SQL-92
+SQL2
+
+Major revision (ISO 9075), Entry Level SQL-92, adopted as FIPS PUB 127-2
+
+1999
+
+ISO/IEC 9075:1999
+
+SQL:1999
+SQL3
+
+Added regular expression matching, recursive queries (e.g., transitive closure ), triggers , support for procedural and control-of-flow statements, nonscalar types (arrays), and some object-oriented features (e.g., structured types ), support for embedding SQL in Java ( SQL/OLB ) and vice versa ( SQL/JRT )
+
+2003
+
+ISO/IEC 9075:2003
+
+SQL:2003
+
+Introduced XML -related features ( SQL/XML ), window functions , standardized sequences, and columns with autogenerated values (including identity columns)
+
+2006
+
+ISO/IEC 9075-14:2006
+
+SQL:2006
+
+Adds Part 14, defines ways that SQL can be used with XML. It defines ways of importing and storing XML data in an SQL database, manipulating it within the database, and publishing both XML and conventional SQL data in XML form. In addition, it lets applications integrate queries into their SQL code with XQuery , the XML Query Language published by the World Wide Web Consortium ( W3C ), to concurrently access ordinary SQL-data and XML documents. [ 33 ]
+
+2008
+
+ISO/IEC 9075:2008
+
+SQL:2008
+
+Legalizes ORDER BY outside cursor definitions. Adds INSTEAD OF triggers, TRUNCATE statement, [ 34 ] FETCH clause
+
+2011
+
+ISO/IEC 9075:2011
+
+SQL:2011
+
+Adds temporal data (PERIOD FOR) [ 35 ] (more information at Temporal database#History ). Enhancements for window functions and FETCH clause. [ 36 ]
+
+2016
+
+ISO/IEC 9075:2016
+
+SQL:2016
+
+Adds row pattern matching, polymorphic table functions, operations on JSON data stored in character string fields
+
+2019
+
+ISO/IEC 9075-15:2019
+
+SQL:2019
+
+Adds Part 15, multidimensional arrays (MDarray type and operators)
+
+2023
+
+ISO/IEC 9075:2023
+
+SQL:2023
+
+Adds data type JSON (SQL/Foundation); Adds Part 16, Property Graph Queries (SQL/PGQ)
+
+Current standard
+[ edit ]
+
+The standard is commonly denoted by the pattern: ISO/IEC 9075-n:yyyy Part n: title , or, as a shortcut, ISO/IEC 9075 . Interested parties may purchase the standards documents from ISO, [ 37 ] IEC, or ANSI. Some old drafts are freely available. [ 24 ] [ 38 ]
+
+ISO/IEC 9075 is complemented by ISO/IEC 13249: SQL Multimedia and Application Packages and some Technical reports .
+
+Syntax
+[ edit ]
+
+Main article: SQL syntax
+
+\n\\underbrace{\\left. \\begin{array}{rl} \\textstyle\\mathtt{UPDATE~clause\\mathtt{:}} & \\{ \\mathtt{UPDATE\\ \\overbrace{\\mathtt{countries}}^\\mathtt{table}} \\} \\\\ \n \\textstyle\\mathtt{SET~clause:} & \\{ {\\mathtt{SET\\ \\overbrace{\\mathtt{population}}^\\mathtt{column} =~} \\overbrace{\\mathtt{{population} + \\underbrace{\\mathtt{1}}_\\mathtt{literal}}}^\\mathtt{expression}} \\} \\\\ \n \\textstyle\\mathtt{WHERE~clause:} & \\{ {\\mathtt{WHERE\\ \\underbrace{\\overbrace{\\mathtt{name}}^\\mathtt{column} \\mathtt{=} \\overbrace{{\\overbrace{\\mathtt{'USA'}}^\\mathtt{literal}}}^\\mathtt{expression}}_\\mathtt{predicate}}\\}{\\texttt{;}}}\n\\end{array}\n\\right \\}{\\textstyle\\texttt{statement}}}_{\\textstyle\\mathtt{SQL~query}}\n</math>"},"width":{"wt":"500"},"caption":{"wt":"A chart showing several of the SQL language elements comprising a single statement"}},"i":0}}]}'>
+
+𝚄 𝙿 𝙳 𝙰 𝚃 𝙴 𝚌 𝚕 𝚊 𝚞 𝚜 𝚎 : { 𝚄 𝙿 𝙳 𝙰 𝚃 𝙴 𝚌 𝚘 𝚞 𝚗 𝚝 𝚛 𝚒 𝚎 𝚜 ⏞ 𝚝 𝚊 𝚋 𝚕 𝚎 } 𝚂 𝙴 𝚃 𝚌 𝚕 𝚊 𝚞 𝚜 𝚎 : { 𝚂 𝙴 𝚃 𝚙 𝚘 𝚙 𝚞 𝚕 𝚊 𝚝 𝚒 𝚘 𝚗 ⏞ 𝚌 𝚘 𝚕 𝚞 𝚖 𝚗 = 𝚙 𝚘 𝚙 𝚞 𝚕 𝚊 𝚝 𝚒 𝚘 𝚗 + 𝟷 ⏟ 𝚕 𝚒 𝚝 𝚎 𝚛 𝚊 𝚕 ⏞ 𝚎 𝚡 𝚙 𝚛 𝚎 𝚜 𝚜 𝚒 𝚘 𝚗 } 𝚆 𝙷 𝙴 𝚁 𝙴 𝚌 𝚕 𝚊 𝚞 𝚜 𝚎 : { 𝚆 𝙷 𝙴 𝚁 𝙴 𝚗 𝚊 𝚖 𝚎 ⏞ 𝚌 𝚘 𝚕 𝚞 𝚖 𝚗 = ' 𝚄 𝚂 𝙰 ′ ⏞ 𝚕 𝚒 𝚝 𝚎 𝚛 𝚊 𝚕 ⏞ 𝚎 𝚡 𝚙 𝚛 𝚎 𝚜 𝚜 𝚒 𝚘 𝚗 ⏟ 𝚙 𝚛 𝚎 𝚍 𝚒 𝚌 𝚊 𝚝 𝚎 } ; } 𝚜𝚝𝚊𝚝𝚎𝚖𝚎𝚗𝚝 ⏟ 𝚂 𝚀 𝙻 𝚚 𝚞 𝚎 𝚛 𝚢
+
+A chart showing several of the SQL language elements comprising a single statement
+
+The SQL language is subdivided into several language elements, including:
+
+Clauses , which are constituent components of statements and queries. (In some cases, these are optional.) [ 39 ]
+
+Expressions , which can produce either scalar values, or tables consisting of columns and rows of data
+
+Predicates , which specify conditions that can be evaluated to SQL three-valued logic (3VL) (true/false/unknown) or Boolean truth values and are used to limit the effects of statements and queries, or to change program flow.
+
+Queries , which retrieve the data based on specific criteria. This is an important element of SQL .
+
+Statements , which may have a persistent effect on schemata and data, or may control transactions , program flow, connections, sessions, or diagnostics.
+
+SQL statements also include the semicolon (";") statement terminator. Though not required on every platform, it is defined as a standard part of the SQL grammar.
+
+Insignificant whitespace is generally ignored in SQL statements and queries, making it easier to format SQL code for readability.
+
+Procedural extensions
+[ edit ]
+
+SQL is designed for a specific purpose: to query data contained in a relational database . SQL is a set -based, declarative programming language , not an imperative programming language like C or BASIC . However, extensions to Standard SQL add procedural programming language functionality, such as control-of-flow constructs.
+
+In addition to the standard SQL/PSM extensions and proprietary SQL extensions, procedural and object-oriented programmability is available on many SQL platforms via DBMS integration with other languages. The SQL standard defines SQL/JRT extensions (SQL Routines and Types for the Java Programming Language) to support Java code in SQL databases. Microsoft SQL Server 2005 uses the SQLCLR (SQL Server Common Language Runtime) to host managed .NET assemblies in the database , while prior versions of SQL Server were restricted to unmanaged extended stored procedures primarily written in C. PostgreSQL lets users write functions in a wide variety of languages—including Perl , Python , Tcl , JavaScript (PL/V8) and C. [ 40 ]
+
+Alternatives
+[ edit ]
+
+A distinction should be made between alternatives to SQL as a language, and alternatives to the relational model itself. Below are proposed relational alternatives to the SQL language. See navigational database and NoSQL for alternatives to the relational model.
+
+\n* [[HTSQL]]: URL based query method\n* [[IBM Business System 12]] (IBM BS12): one of the first fully relational database management systems, introduced in 1982\n* [[ISBL]]\n* [[Java Object Oriented Querying|jOOQ]]: SQL implemented in Java as an [[Domain-specific language|internal domain-specific language]]\n* [[Java Persistence Query Language]] (JPQL): The query language used by the Java Persistence API and [[Hibernate (Java)|Hibernate]] persistence library\n* [[JavaScript]]: [[MongoDB]] implements its query language in a JavaScript API.\n* [[Language Integrated Query|LINQ]]: Runs SQL statements written like language constructs to query collections directly from inside [[.NET Framework|.Net]] code\n* [[Object Query Language]]\n* QBE ([[Query By Example]]) created by Moshè Zloof, IBM 1977\n* [[QUEL query languages|QUEL]] introduced in 1974 by the U.C. Berkeley Ingres project, closer to [[tuple relational calculus]] than SQL\n* [[XQuery]]\n",{"template":{"target":{"wt":"Div col end","href":"./Template:Div_col_end"},"params":{},"i":1}}]}'>
+
+.QL : object-oriented Datalog
+
+4D Query Language (4D QL)
+
+Datalog : critics suggest that Datalog has two advantages over SQL: it has cleaner semantics, which facilitates program understanding and maintenance, and it is more expressive, in particular for recursive queries. [ 41 ]
+
+HTSQL : URL based query method
+
+IBM Business System 12 (IBM BS12): one of the first fully relational database management systems, introduced in 1982
+
+ISBL
+
+jOOQ : SQL implemented in Java as an internal domain-specific language
+
+Java Persistence Query Language (JPQL): The query language used by the Java Persistence API and Hibernate persistence library
+
+JavaScript : MongoDB implements its query language in a JavaScript API.
+
+LINQ : Runs SQL statements written like language constructs to query collections directly from inside .Net code
+
+Object Query Language
+
+QBE ( Query By Example ) created by Moshè Zloof, IBM 1977
+
+QUEL introduced in 1974 by the U.C. Berkeley Ingres project, closer to tuple relational calculus than SQL
+
+XQuery
+
+Distributed SQL processing
+[ edit ]
+
+Distributed Relational Database Architecture (DRDA) was designed by a workgroup within IBM from 1988 to 1994. DRDA enables network-connected relational databases to cooperate to fulfill SQL requests. [ 42 ] [ 43 ]
+
+An interactive user or program can issue SQL statements to a local RDB and receive tables of data and status indicators in reply from remote RDBs. SQL statements can also be compiled and stored in remote RDBs as packages and then invoked by package name. This is important for the efficient operation of application programs that issue complex, high-frequency queries. It is especially important when the tables to be accessed are located in remote systems.
+
+The messages, protocols, and structural components of DRDA are defined by the Distributed Data Management Architecture . Distributed SQL processing ala DRDA is distinctive from contemporary distributed SQL databases.
+
+Criticisms
+[ edit ]
+
+Design
+[ edit ]
+
+SQL deviates in several ways from its theoretical foundation, the relational model and its tuple calculus. In that model, a table is a set of tuples, while in SQL, tables and query results are lists of rows; the same row may occur multiple times, and the order of rows can be employed in queries (e.g., in the LIMIT clause).
+Critics argue that SQL should be replaced with a language that returns strictly to the original foundation: for example, see The Third Manifesto by Hugh Darwen and C.J. Date (2006, ISBN 0-321-39942-0 ).
+
+Orthogonality and completeness
+[ edit ]
+
+Early specifications did not support major features, such as primary keys. Result sets could not be named, and subqueries had not been defined. These were added in 1992. [ 13 ]
+
+The lack of sum types has been described as a roadblock to full use of SQL's user-defined types. JSON support, for example, needed to be added by a new standard in 2016. [ 44 ]
+
+Null
+[ edit ]
+
+The concept of Null is the subject of some debate . The Null marker indicates the absence of a value, and is distinct from a value of 0 for an integer column or an empty string for a text column. The concept of Nulls enforces the 3-valued-logic in SQL , which is a concrete implementation of the general 3-valued logic . [ 13 ]
+
+Duplicates
+[ edit ]
+
+Another popular criticism is that it allows duplicate rows, making integration with languages such as Python , whose data types might make accurately representing the data difficult, [ 13 ] in terms of parsing and by the absence of modularity. This is usually avoided by declaring a primary key, or a unique constraint, with one or more columns that uniquely identify a row in the table.
+
+Impedance mismatch
+[ edit ]
+
+In a sense similar to object–relational impedance mismatch , a mismatch occurs between the declarative SQL language and the procedural languages in which SQL is typically embedded. [ 45 ]
+
+SQL data types
+[ edit ]
+
+The SQL standard defines three kinds of data types (chapter 4.1.1 of SQL/Foundation):
+
+predefined data types
+
+constructed types
+
+user-defined types.
+
+Constructed types are one of ARRAY , MULTISET , REF (reference), or ROW . User-defined types are comparable to classes in object-oriented language with their own constructors, observers, mutators, methods, inheritance, overloading, overwriting, interfaces, and so on. Predefined data types are intrinsically supported by the implementation.
+
+Predefined data types
+[ edit ]
+
+Character types
+
+Character ( CHAR )
+
+Character varying ( VARCHAR )
+
+Character large object ( CLOB )
+
+National character types
+
+National character ( NCHAR )
+
+National character varying ( NCHAR VARYING )
+
+National character large object ( NCLOB )
+
+Binary types
+
+Binary ( BINARY )
+
+Binary varying ( VARBINARY )
+
+Binary large object ( BLOB )
+
+Numeric types
+
+Exact numeric types ( NUMERIC , DECIMAL , SMALLINT , INTEGER , BIGINT )
+
+Approximate numeric types ( FLOAT , REAL , DOUBLE PRECISION )
+
+Decimal floating-point type ( DECFLOAT )
+
+Datetime types ( DATE , TIME , TIMESTAMP )
+
+Interval type ( INTERVAL )
+
+Boolean
+
+XML (see SQL/XML ) [ 46 ]
+
+JSON
+
+See also
+[ edit ]
+
+Comparison of object–relational database management systems
+
+Comparison of relational database management systems
+
+Data warehouse
+
+Hierarchical database model
+
+List of NoSQL software and tools
+
+List of relational database management systems
+
+List of SQL programming books
+
+List of SQL software and tools
+
+Microsoft Transact-SQL (T-SQL)
+
+MUMPS
+
+NoSQL
+
+Object database
+
+Online analytical processing (OLAP)
+
+Online transaction processing (OLTP)
+
+Oracle PL/SQL
+
+Query by Example
+
+Relational data stream management system
+
+Snowflake schema
+
+SQL reserved words
+
+SQL syntax
+
+SQL state: Return values of SQL statements
+
+Star schema
+
+References
+[ edit ]
+
+{{cite web | last = Paul | first = Ryan | title = A guided tour of the Microsoft Command Shell | url = https://arstechnica.com/information-technology/2005/10/msh/ | website = Ars Technica | date = 24 October 2005 | access-date = 10 April 2011 }}</ref>\n<ref name=\"iana\">{{cite web | url = https://www.iana.org/assignments/media-types/application/sql | title = Media Type registration for application/sql | publisher = [[Internet Assigned Numbers Authority]] | date = 10 April 2013 | access-date = 10 April 2013 | archive-date = 7 May 2013 | archive-url = https://web.archive.org/web/20130507140101/http://www.iana.org/assignments/media-types/application/sql | url-status = live }}</ref>\n<ref name=\"application/sql\">{{cite web | url = http://tools.ietf.org/html/rfc6922 | title = The application/sql Media Type, RFC 6922 | page = 3 | publisher = [[Internet Engineering Task Force]] | date = April 2013 | doi = 10.17487/RFC6922 | access-date = 10 April 2013 | last1 = Shafranovich | first1 = Y. | archive-date = 13 October 2014 | archive-url = https://web.archive.org/web/20141013172428/http://tools.ietf.org/html/rfc6922 | url-status = live }}</ref>\n<ref name=\"learningSQL\">{{ cite book | last = Beaulieu | first = Alan | title = Learning SQL | editor = Mary E Treseler | publisher = O'Reilly | location = Sebastopol, CA, USA | date = April 2009 | edition = 2nd | isbn = 978-0-596-52083-0 }}</ref>\n\n<ref name=\"codd-relational-model\">{{ cite journal | last = Codd | first = Edgar F. | title = A Relational Model of Data for Large Shared Data Banks | journal = Communications of the ACM | volume = 13 | issue = 6 | pages = 377–87 | date = June 1970 | doi = 10.1145/362384.362685 | s2cid = 207549016 }}</ref>\n<ref name=\"SQL-Fundamentals\">{{cite news | last = Chapple | first = Mike | title = SQL Fundamentals | work = Databases | publisher = About.com | url = http://databases.about.com/od/sql/a/sqlfundamentals.htm | access-date = 28 January 2009 | archive-date = 22 February 2009 | archive-url = https://web.archive.org/web/20090222225300/http://databases.about.com/od/sql/a/sqlfundamentals.htm }}</ref>\n<ref name=\"IBM-sql\">{{cite web | title = Structured Query Language (SQL) | publisher = International Business Machines | url = http://publib.boulder.ibm.com/infocenter/db2luw/v9/index.jsp?topic=com.ibm.db2.udb.admin.doc/doc/c0004100.htm | date = 27 October 2006 | access-date = 10 June 2007 }}</ref>\n<ref name=\"ISO 9075:1987\">{{cite web | url = https://www.iso.org/standard/76583.html | title = ISO 9075:1987: Information technology&nbsp;– Database languages&nbsp;– SQL&nbsp;– Part 1: Framework (SQL/Framework) | date = 1 June 2023 | access-date = 24 June 2025 }}</ref>\n<ref name=\"chamberlin-boyce-sequel\">{{ cite journal | last1 = Chamberlin | first1 = Donald D | last2 = Boyce | first2 = Raymond F | title = SEQUEL: A Structured English Query Language | journal = Proceedings of the 1974 ACM SIGFIDET Workshop on Data Description, Access and Control | pages = 249–64 | publisher = Association for Computing Machinery | year = 1974 | url = http://www.almaden.ibm.com/cs/people/chamberlin/sequel-1974.pdf | access-date = 9 June 2007 | archive-url=https://web.archive.org/web/20070926212100/http://www.almaden.ibm.com/cs/people/chamberlin/sequel-1974.pdf |archive-date=26 September 2007 }}</ref>\n<ref name=\"oppel-databases\">{{cite book | last = Oppel | first = Andy | title = Databases Demystified | publisher = McGraw-Hill Osborne Media | date = 27 February 2004 | location = [[San Francisco, CA]] | pages = 90–1 | url = http://www.mhprofessional.com/product.php?cat=112&isbn=0071469605 | isbn = 978-0-07-146960-9 | archive-date = 14 January 2012 | access-date = 12 May 2011 | archive-url = https://web.archive.org/web/20120114180544/http://www.mhprofessional.com/product.php?cat=112&isbn=0071469605 | url-status = live }}</ref>\n<ref name=\"IBM-history\">{{cite web | title = History of IBM, 1978 | work = IBM Archives | date = 23 January 2003 | publisher = IBM | url = http://www-03.ibm.com/ibm/history/history/year_1978.html | archive-url = https://web.archive.org/web/20050117192541/http://www-03.ibm.com/ibm/history/history/year_1978.html | archive-date = 17 January 2005 | access-date = 9 June 2007 }}</ref>\n<ref name=\"ANSI/ISO/IEC\">ANSI/ISO/IEC International Standard (IS). Database Language SQL—Part 2: Foundation (SQL/Foundation). 1999.</ref>\n<ref name=\"PostgreSQL server programming\">{{cite web | title = PostgreSQL server programming | work = PostgreSQL 9.1 official documentation | publisher = postgresql.org | year = 2011 | url = http://www.postgresql.org/docs/9.1/static/server-programming.html | access-date = 9 March 2012 | archive-date = 2 March 2012 | archive-url = https://web.archive.org/web/20120302074948/http://www.postgresql.org/docs/9.1/static/server-programming.html | url-status = live }}</ref>\n<ref name=\"PROLE\">{{cite web |url=http://lbd.udc.es/jornadas2011/actas/PROLE/PROLE/S5/13_article.pdf |title=Outer Joins in a Deductive Database System |author=Fernando Saenz-Perez |website=Lbd.udc.es |access-date=16 January 2017 |archive-date=9 August 2016 |archive-url=https://web.archive.org/web/20160809225439/http://lbd.udc.es/jornadas2011/actas/PROLE/PROLE/S5/13_article.pdf |url-status=live }}</ref>\n<ref name=\"About PostgreSQL\">{{cite web | title = About PostgreSQL | work = PostgreSQL 9.1 official website | publisher = PostgreSQL Global Development Group | year = 2012 | url = http://www.postgresql.org/about/ | quote = PostgreSQL prides itself in standards compliance. Its SQL implementation strongly conforms to the ANSI-SQL:2008 standard | access-date = 9 March 2012 | archive-date = 9 March 2012 | archive-url = https://web.archive.org/web/20120309174528/http://www.postgresql.org/about/ | url-status = live }}</ref>\n<ref name=\"Mimer SQL, Built on Standards\">{{cite web | title = Mimer SQL, Built on Standards | work = Mimer SQL official website | publisher = Mimer Information Technology | year = 2009 | url = http://developer.mimer.com/features/feature_6.htm | access-date = 11 December 2018 | archive-date = 3 May 2016 | archive-url = https://web.archive.org/web/20160503020216/http://developer.mimer.com/features/feature_6.htm | url-status = live }}</ref>\n<ref name=\"Ora DATE\">{{cite book | first1 = Diana | last1 = Lorentz | first2 = Mary Beth | last2 = Roeser | first3 = Sundeep | last3 = Abraham | first4 = Angela | last4 = Amor | first5 = Geeta | last5 = Arora | first6 = Vikas | last6 = Arora | first7 = Lance | last7 = Ashdown | first8 = Hermann | last8 = Baer | first9 = Shrikanth | last9 = Bellamkonda | series = Oracle Database Documentation Library | publisher = Oracle USA, Inc | place = Redwood City, CA | title = Oracle Database SQL Language Reference 11g Release 2 (11.2) | chapter = Basic Elements of Oracle SQL: Data Types | orig-date = 1996 | date = October 2010 | access-date = 29 December 2010 | chapter-url = http://download.oracle.com/docs/cd/E11882_01/server.112/e17118/sql_elements001.htm#sthref154 | quote = For each <code>DATE</code> value, Oracle stores the following information: century, year, month, date, hour, minute, and second | archive-date = 20 November 2010 | archive-url = https://web.archive.org/web/20101120055711/http://download.oracle.com/docs/cd/E11882_01/server.112/e17118/sql_elements001.htm#sthref154 | url-status = live }}</ref>\n<ref name=\"Ora DATETIME\">{{cite book | first1 = Diana | last1 = Lorentz | first2 = Mary Beth | last2 = Roeser | first3 = Sundeep | last3 = Abraham | first4 = Angela | last4 = Amor | first5 = Geeta | last5 = Arora | first6 = Vikas | last6 = Arora | first7 = Lance | last7 = Ashdown | first8 = Hermann | last8 = Baer | first9 = Shrikanth | last9 = Bellamkonda | series = Oracle Database Documentation Library | publisher = Oracle USA, Inc | place = Redwood City, CA | title = Oracle Database SQL Language Reference 11g Release 2 (11.2) | chapter = Basic Elements of Oracle SQL: Data Types | orig-date = 1996 | date = October 2010 | access-date = 29 December 2010 | chapter-url = http://download.oracle.com/docs/cd/E11882_01/server.112/e17118/sql_elements001.htm#sthref154 | quote = The datetime data types are <code>DATE</code>... | archive-date = 20 November 2010 | archive-url = https://web.archive.org/web/20101120055711/http://download.oracle.com/docs/cd/E11882_01/server.112/e17118/sql_elements001.htm#sthref154 | url-status = live }}</ref>\n<ref name=\"Ora TIME\">{{cite book | first1 = Diana | last1 = Lorentz | first2 = Mary Beth | last2 = Roeser | first3 = Sundeep | last3 = Abraham | first4 = Angela | last4 = Amor | first5 = Geeta | last5 = Arora | first6 = Vikas | last6 = Arora | first7 = Lance | last7 = Ashdown | first8 = Hermann | last8 = Baer | first9 = Shrikanth | last9 = Bellamkonda | series = Oracle Database Documentation Library | publisher = Oracle USA, Inc | place = Redwood City, CA | title = Oracle Database SQL Language Reference 11g Release 2 (11.2) | chapter = Basic Elements of Oracle SQL: Data Types | orig-date = 1996 | date = October 2010 | access-date = 29 December 2010 | chapter-url = http://download.oracle.com/docs/cd/E11882_01/server.112/e17118/sql_elements001.htm#i54335 | quote = Do not define columns with the following SQL/DS and DB2 data types, because they have no corresponding Oracle data type:... <code>TIME</code> | archive-date = 20 November 2010 | archive-url = https://web.archive.org/web/20101120055711/http://download.oracle.com/docs/cd/E11882_01/server.112/e17118/sql_elements001.htm#i54335 | url-status = live }}</ref>\n<ref name=\"X3H2\">{{cite book | chapter-url = http://special.lib.umn.edu/findaid/xml/cbi00168.xml | publisher = American National Standards Institute | title = X3H2 Records, 1978–95 | chapter = Finding Aid | archive-date = 19 June 2010 | access-date = 26 April 2008 | archive-url = https://web.archive.org/web/20100619143221/http://special.lib.umn.edu/findaid/xml/cbi00168.xml | url-status = live }}</ref>\n<ref name=\"Doll\">{{cite web | last = Doll | first = Shelley | title = Is SQL a Standard Anymore? | work = TechRepublic's Builder.com | publisher = TechRepublic | date = 19 June 2002 | url = http://articles.techrepublic.com.com/5100-10878_11-1046268.html | access-date = 12 April 2016 | archive-url = https://web.archive.org/web/20120705163024/http://www.techrepublic.com/article/is-sql-a-standard-anymore/1046268 | archive-date = 5 July 2012 }}</ref>\n<ref name=\"Gillespie\">{{cite web | last = Gillespie | first = Patrick | url = http://patorjk.com/blog/2012/01/26/pronouncing-sql-s-q-l-or-sequel/ | title = Pronouncing SQL: S-Q-L or Sequel? | access-date = 12 February 2012 | archive-date = 27 May 2012 | archive-url = https://web.archive.org/web/20120527131959/http://patorjk.com/blog/2012/01/26/pronouncing-sql-s-q-l-or-sequel/ | url-status = live }}</ref>\n<ref name=\"Melton\">{{cite book | title = Understanding the New SQL: A Complete Guide | last = Melton | first = Jim | author2 = Alan R Simon | year = 1993 | publisher = Morgan Kaufmann | isbn = 978-1-55860-245-8 | page = [https://archive.org/details/understandingnew00melt/page/536 536] | chapter = 1.2. What is SQL? | quote = SQL (correctly pronounced \"ess cue ell,\" instead of the somewhat common \"sequel\")... | chapter-url-access = registration | chapter-url = https://archive.org/details/understandingnew00melt | url = https://archive.org/details/understandingnew00melt/page/536 }}</ref>\n<ref name=\"SQLXML2006\">{{ cite book | title = SQL/XML:2006 - Evaluierung der Standardkonformität ausgewählter Datenbanksysteme | last = Wagner | first = Michael | year = 2010 | publisher = Diplomica Verlag | isbn = 978-3-8366-9609-8 | page = 100 }}</ref>\n<ref name=\"iablog.sybase.com-paulley\">{{ cite web |date=July 2008 |title=SQL:2008 now an approved ISO international standard |publisher=Sybase |url=http://iablog.sybase.com/paulley/2008/07/sql2008-now-an-approved-iso-international-standard/ |archive-url=https://web.archive.org/web/20110628130925/http://iablog.sybase.com/paulley/2008/07/sql2008-now-an-approved-iso-international-standard/ |archive-date=28 June 2011 }}</ref>\n<ref name=\"Andrew\">{{citation | url = http://www.contrib.andrew.cmu.edu/~shadow/sql/sql1992.txt | format = text | title = SQL:1992 draft | access-date = 8 October 2009 | archive-date = 21 June 2006 | archive-url = https://web.archive.org/web/20060621035823/http://www.contrib.andrew.cmu.edu/%7Eshadow/sql/sql1992.txt | url-status = live }}</ref>\n<ref name=\"Whitemarsh2\">{{ citation | url = https://www.wiscorp.com/sql20nn.zip | format = Zip | title = SQL:2011 draft | publisher = Whitemarsh Information Systems Corporation | archive-url = https://web.archive.org/web/20230525220603/https://www.wiscorp.com/sql20nn.zip | archive-date = 25 May 2023 }}</ref>\n<ref name=\"features_2011\">{{ cite web | title = What's new in SQL:2011 | url = https://sigmodrecord.org/publications/sigmodRecord/1203/pdfs/10.industry.zemke.pdf | author = Fred Zemke |publisher=Oracle Corporation | year = 2012 }}</ref>\n\n<ref name=\"feature_temporal\">{{ cite journal | title = Temporal features in SQL:2011 | url = http://cs.ulb.ac.be/public/_media/teaching/infoh415/tempfeaturessql2011.pdf | author = Krishna Kulkarni, Jan-Eike Michels |journal=SIGMOD Record | date = September 2012 |volume=41 |number=3 }}</ref>"}},"i":0}}]}'>
+
+↑ Paul, Ryan (24 October 2005). "A guided tour of the Microsoft Command Shell" . Ars Technica . Retrieved 10 April 2011 .
+
+↑ "Media Type registration for application/sql" . Internet Assigned Numbers Authority . 10 April 2013. Archived from the original on 7 May 2013 . Retrieved 10 April 2013 .
+
+↑ Shafranovich,

@@ -1,0 +1,31 @@
+Google sử dụng công nghệ AI để dịch nội dung sang ngôn ngữ bạn ưu tiên. Bản dịch bằng AI có thể có lỗi.
+
+Di chuyển sang Manifest V3
+
+Hướng dẫn chuyển đổi tiện ích Manifest V2 sang tiện ích Manifest V3.
+
+Phần này giúp bạn nâng cấp một tiện ích từ Manifest V2 lên Manifest V3, phiên bản mới nhất của nền tảng Tiện ích của Chrome. Công việc di chuyển được chia thành các danh mục sau. Để giúp bạn theo dõi tiến độ công việc, chúng tôi đã cung cấp một danh sách kiểm tra tóm tắt nội dung của các tài liệu này. Bạn có thể truy cập vào nội dung bằng danh sách kiểm tra hoặc xem chi tiết nội dung. Cả hai đường dẫn đều kết thúc bằng một phần mở rộng đã nâng cấp.
+
+Cập nhật tệp kê khai – manifest.json phải dành riêng cho V3. Những thay đổi có thể thực hiện riêng được mô tả trong phần này. Các thay đổi về tệp kê khai liên quan đến mã được mô tả cùng với các thay đổi về mã mà chúng hỗ trợ.
+
+Di chuyển sang trình chạy dịch vụ – Trình chạy dịch vụ sẽ thay thế trang nền hoặc trang sự kiện của tiện ích để đảm bảo mã nền không nằm trên luồng chính, nơi có thể làm giảm hiệu suất. Thay đổi này cũng yêu cầu di chuyển DOM, cửa sổ và một số lệnh gọi API tiện ích sang tài liệu ngoài màn hình.
+
+Cập nhật lệnh gọi API – Bạn cần thay thế một số lệnh gọi API bằng các lệnh gọi tương đương hiện đại hơn.
+
+Thay thế các trình nghe yêu cầu chặn trên web – Việc chặn hoặc sửa đổi các yêu cầu mạng trong Manifest V2 có thể làm giảm đáng kể hiệu suất và yêu cầu quyền truy cập quá mức vào dữ liệu nhạy cảm của người dùng. Declarative Net Request API cho phép các tiện ích chặn hoặc sửa đổi nội dung trên web mà không cần nhiều quyền và không làm giảm hiệu suất.
+
+Cải thiện tính bảo mật của tiện ích – Manifest V3 cải thiện tính bảo mật của tiện ích theo nhiều cách. Ngoài chính sách bảo mật nội dung nâng cao, chúng tôi sẽ ngừng hỗ trợ mã được lưu trữ từ xa và việc thực thi các chuỗi tuỳ ý.
+
+Xuất bản tiện ích – Phần này mô tả cách phát hành tiện ích Manifest V3 theo từng giai đoạn để đảm bảo tiện ích hoạt động như mong đợi bằng cách kiểm thử với một nhóm đối tượng hạn chế trước.
+
+Chúng tôi cũng có Trình chuyển đổi tệp kê khai tiện ích . Công cụ này không làm mọi thứ cho bạn, nhưng sẽ giúp bạn bắt đầu. Tệp README của trình chuyển đổi mô tả những thay đổi mà công cụ này thực hiện.
+
+Giữ nguyên bộ tính năng hiện tại
+
+Để giảm nguy cơ gặp phải các vấn đề hoặc lỗi không mong muốn, bạn không nên thêm chức năng mới khi di chuyển. Ví dụ: việc thêm một tính năng yêu cầu quyền mới có thể kích hoạt cảnh báo về quyền . Cảnh báo này sẽ vô hiệu hoá tiện ích cho đến khi người dùng chấp nhận các quyền mới. Hãy xem bài viết Các phương pháp hay nhất về cảnh báo cấp quyền để tìm hiểu những cách khác để thêm quyền mà không hiển thị cảnh báo.
+
+Manifest V3 thường được hỗ trợ trong Chrome 88 trở lên. Khi cập nhật các lệnh gọi API, bạn có thể thấy rằng các tính năng thay thế có thể chưa xuất hiện trong Chrome cho đến sau phiên bản 88. Các trang tài liệu tham khảo API chứa thông tin hỗ trợ cho từng thành phần API. Nếu phát hiện thấy mình cần một trong những tính năng này, bạn có thể chỉ định phiên bản Chrome tối thiểu trong tệp kê khai.
+
+Các tính năng mới của nền tảng tiện ích
+
+Kể từ khi phát hành Manifest V3, chúng tôi đã tiếp tục thêm các tính năng mới . Nhiều tính năng trong số đó có thể dùng được cả trong Manifest V2 và Manifest V3. Bạn không bắt buộc phải sử dụng các tính năng này khi chuyển đổi; tuy nhiên, khi các tính năng này thay thế các tính năng cũ, bạn nên ưu tiên sử dụng các tính năng này thay vì các tính năng mà chúng thay thế và dự kiến các tính năng bị thay thế sẽ ngừng hoạt động và bị xoá.

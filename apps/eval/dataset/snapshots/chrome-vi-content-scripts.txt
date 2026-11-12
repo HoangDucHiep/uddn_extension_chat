@@ -1,0 +1,638 @@
+Google sử dụng công nghệ AI để dịch nội dung sang ngôn ngữ bạn ưu tiên. Bản dịch bằng AI có thể có lỗi.
+
+Tập lệnh nội dung
+
+Tập lệnh nội dung là những tệp chạy trong bối cảnh của các trang web. Bằng cách sử dụng Mô hình đối tượng tài liệu (DOM) tiêu chuẩn, các tập lệnh này có thể đọc thông tin chi tiết về các trang web mà trình duyệt truy cập, thực hiện các thay đổi đối với các trang web đó và truyền thông tin đến tiện ích mẹ của chúng.
+
+Tìm hiểu các chức năng của tập lệnh nội dung
+
+Tập lệnh nội dung có thể truy cập trực tiếp vào các API tiện ích sau:
+
+dom
+
+i18n
+
+storage
+
+runtime.connect()
+
+runtime.getManifest()
+
+runtime.getURL()
+
+runtime.id
+
+runtime.onConnect
+
+runtime.onMessage
+
+runtime.sendMessage()
+
+Tập lệnh nội dung không thể truy cập trực tiếp vào các API khác. Tuy nhiên, chúng có thể truy cập gián tiếp bằng cách trao đổi thông báo với các phần khác của tiện ích.
+
+Bạn cũng có thể truy cập vào các tệp khác trong tiện ích của mình từ một tập lệnh nội dung, bằng cách sử dụng các API như fetch() . Để làm việc này, bạn cần khai báo chúng dưới dạng tài nguyên có thể truy cập qua web . Xin lưu ý rằng điều này cũng cho phép mọi tập lệnh của bên thứ nhất hoặc bên thứ ba đang chạy trên cùng một trang web truy cập vào các tài nguyên.
+
+Làm việc trong các thế giới biệt lập
+
+Tập lệnh nội dung nằm trong một môi trường biệt lập, cho phép tập lệnh nội dung thực hiện các thay đổi đối với môi trường JavaScript mà không xung đột với trang hoặc tập lệnh nội dung của các tiện ích khác.
+
+Tiện ích có thể chạy trong một trang web có mã tương tự như ví dụ sau.
+
+webPage.html
+
+<html>
+<button id="mybutton">click me</button>
+<script>
+var greeting = "hello, ";
+var button = document.getElementById("mybutton");
+button.person_name = "Bob";
+button.addEventListener(
+"click", () => alert(greeting + button.person_name + "."), false);
+</script>
+</html>
+
+Tiện ích đó có thể chèn tập lệnh nội dung sau bằng một trong các kỹ thuật được nêu trong phần Chèn tập lệnh .
+
+content-script.js
+
+var greeting = "hola, " ;
+var button = document . getElementById ( "mybutton" );
+button . person_name = "Roberto" ;
+button . addEventListener (
+"click" , () = > alert ( greeting + button . person_name + "." ), false );
+
+Với thay đổi này, cả hai cảnh báo sẽ xuất hiện lần lượt khi người dùng nhấp vào nút.
+
+Chèn tập lệnh
+
+Bạn có thể khai báo tĩnh , khai báo động hoặc chèn theo cách lập trình các tập lệnh nội dung.
+
+Chèn bằng các khai báo tĩnh
+
+Sử dụng các khai báo tập lệnh nội dung tĩnh trong manifest.json cho những tập lệnh sẽ tự động chạy trên một nhóm trang đã biết.
+
+Các tập lệnh được khai báo tĩnh sẽ được đăng ký trong tệp kê khai theo khoá "content_scripts" .
+Chúng có thể bao gồm tệp JavaScript, tệp CSS hoặc cả hai. Tất cả tập lệnh nội dung tự động chạy đều phải chỉ định mẫu so khớp .
+
+manifest.json
+
+{
+"name": "My extension",
+...
+"content_scripts": [
+{
+"matches": ["https://*.nytimes.com/*"],
+"css": ["my-styles.css"],
+"js": ["content-script.js"]
+}
+],
+...
+}
+
+Tên
+
+Loại
+
+Mô tả
+
+matches
+
+mảng chuỗi
+
+Bắt buộc. Chỉ định những trang mà tập lệnh nội dung này sẽ được chèn vào. Hãy xem phần Mẫu khớp để biết thông tin chi tiết về cú pháp của các chuỗi này và phần Mẫu khớp và mẫu chung để biết thông tin về cách loại trừ URL.
+
+css
+
+mảng chuỗi
+
+Không bắt buộc. Danh sách các tệp CSS sẽ được chèn vào các trang phù hợp. Các tệp này được chèn theo thứ tự xuất hiện trong mảng này, trước khi bất kỳ DOM nào được tạo hoặc hiển thị cho trang.
+
+js
+
+mảng chuỗi
+
+Không bắt buộc. Danh sách các tệp JavaScript sẽ được chèn vào các trang phù hợp. Các tệp được chèn theo thứ tự xuất hiện trong mảng này. Mỗi chuỗi trong danh sách này phải chứa một đường dẫn tương đối đến một tài nguyên trong thư mục gốc của tiện ích. Dấu gạch chéo lên ("/") sẽ tự động bị cắt.
+
+run_at
+
+RunAt
+
+Không bắt buộc. Chỉ định thời điểm tập lệnh phải được chèn vào trang. Giá trị mặc định là document_idle .
+
+match_about_blank
+
+boolean
+
+Không bắt buộc. Tập lệnh có nên chèn vào khung about:blank hay không, trong đó khung mẹ hoặc khung mở khớp với một trong các mẫu được khai báo trong matches . Giá trị mặc định là false.
+
+match_origin_as_fallback
+
+boolean
+
+Không bắt buộc. Liệu tập lệnh có nên chèn vào các khung do một nguồn gốc khớp tạo ra hay không, nhưng URL hoặc nguồn gốc của khung đó có thể không khớp trực tiếp với mẫu. Các khung này bao gồm những khung có nhiều lược đồ, chẳng hạn như about: , data: , blob: và filesystem: . Xem thêm phần Chèn vào các khung liên quan .
+
+world
+
+ExecutionWorld
+
+Không bắt buộc. Thế giới JavaScript để một tập lệnh thực thi trong đó. Giá trị mặc định là ISOLATED . Xem thêm
+Làm việc trong các thế giới biệt lập .
+
+Trong một giai đoạn nhất định của vòng đời tài liệu, tập lệnh nội dung được khai báo tĩnh trong tệp kê khai là tập lệnh đầu tiên được chèn, trước khi tập lệnh nội dung được đăng ký theo bất kỳ cách nào khác. Chúng được chèn theo thứ tự được chỉ định trong tệp kê khai.
+
+Chèn bằng các khai báo động
+
+Các tập lệnh nội dung động rất hữu ích khi các mẫu so khớp cho tập lệnh nội dung không được biết rõ hoặc khi tập lệnh nội dung không phải lúc nào cũng được chèn vào các máy chủ lưu trữ đã biết.
+
+Được giới thiệu trong Chrome 96, các khai báo động tương tự như các khai báo tĩnh , nhưng đối tượng tập lệnh nội dung được đăng ký với Chrome bằng các phương thức trong không gian tên browser.scripting thay vì trong manifest.json . Scripting API cũng cho phép nhà phát triển tiện ích:
+
+Đăng ký tập lệnh nội dung.
+
+Lấy danh sách các tập lệnh nội dung đã đăng ký.
+
+Cập nhật danh sách các tập lệnh nội dung đã đăng ký.
+
+Xoá tập lệnh nội dung đã đăng ký.
+
+Giống như các khai báo tĩnh, khai báo động có thể bao gồm tệp JavaScript, tệp CSS hoặc cả hai.
+
+service-worker.js
+
+browser . scripting
+. registerContentScripts ([{
+id : "session-script" ,
+js : [ "content.js" ],
+persistAcrossSessions : false ,
+matches : [ "*://example.com/*" ],
+runAt : "document_start" ,
+}])
+. then (() = > console . log ( "registration complete" ))
+. catch (( err ) = > console . warn ( "unexpected error" , err ))
+
+service-worker.js
+
+browser . scripting
+. updateContentScripts ([{
+id : "session-script" ,
+excludeMatches : [ "*://admin.example.com/*" ],
+}])
+. then (() = > console . log ( "registration updated" ));
+
+service-worker.js
+
+browser . scripting
+. getRegisteredContentScripts ()
+. then ( scripts = > console . log ( "registered content scripts" , scripts ));
+
+service-worker.js
+
+browser . scripting
+. unregisterContentScripts ({ ids : [ "session-script" ] })
+. then (() = > console . log ( "un-registration complete" ));
+
+Nhúng theo phương thức lập trình
+
+Sử dụng tính năng chèn có lập trình cho các tập lệnh nội dung cần chạy để phản hồi các sự kiện hoặc trong những trường hợp cụ thể.
+
+Để chèn một tập lệnh nội dung theo phương thức lập trình, tiện ích của bạn cần có quyền truy cập vào máy chủ lưu trữ cho trang mà tiện ích đang cố gắng chèn tập lệnh vào. Bạn có thể cấp quyền truy cập vào máy chủ lưu trữ bằng cách yêu cầu cấp quyền này trong tệp kê khai của tiện ích hoặc tạm thời sử dụng "activeTab" .
+
+Sau đây là các phiên bản khác nhau của tiện ích dựa trên activeTab.
+
+manifest.json:
+
+{
+"name": "My extension",
+...
+"permissions": [
+"activeTab",
+"scripting"
+],
+"background": {
+"service_worker": "background.js"
+},
+"action": {
+"default_title": "Action Button"
+}
+}
+
+Bạn có thể chèn tập lệnh nội dung dưới dạng tệp.
+
+content-script.js
+
+document . body . style . backgroundColor = "orange" ;
+
+service-worker.js:
+
+browser . action . onClicked . addListener (( tab ) = > {
+browser . scripting . executeScript ({
+target : { tabId : tab . id },
+files : [ "content-script.js" ]
+});
+});
+
+Hoặc, phần nội dung của hàm có thể được chèn và thực thi dưới dạng một tập lệnh nội dung.
+
+service-worker.js:
+
+function injectedFunction () {
+document . body . style . backgroundColor = "orange" ;
+}
+
+browser . action . onClicked . addListener (( tab ) = > {
+browser . scripting . executeScript ({
+target : { tabId : tab . id },
+func : injectedFunction ,
+});
+});
+
+Xin lưu ý rằng hàm được chèn là bản sao của hàm được tham chiếu trong lệnh gọi browser.scripting.executeScript() chứ không phải chính hàm ban đầu. Do đó, phần nội dung của hàm phải độc lập; các tham chiếu đến biến bên ngoài hàm sẽ khiến tập lệnh nội dung gửi ReferenceError .
+
+Khi chèn dưới dạng một hàm, bạn cũng có thể truyền đối số đến hàm đó.
+
+service-worker.js
+
+function injectedFunction ( color ) {
+document . body . style . backgroundColor = color ;
+}
+
+browser . action . onClicked . addListener (( tab ) = > {
+browser . scripting . executeScript ({
+target : { tabId : tab . id },
+func : injectedFunction ,
+args : [ "orange" ],
+});
+});
+
+Loại trừ các mẫu khớp và mẫu chung
+
+Để tuỳ chỉnh tiêu chí so khớp trang đã chỉ định, hãy thêm các trường sau vào một quy trình đăng ký khai báo.
+
+Tên
+
+Loại
+
+Mô tả
+
+exclude_matches
+
+mảng chuỗi
+
+Không bắt buộc. Loại trừ những trang mà tập lệnh nội dung này sẽ được chèn vào. Hãy xem Mẫu khớp để biết thông tin chi tiết về cú pháp của các chuỗi này.
+
+include_globs
+
+mảng chuỗi
+
+Không bắt buộc. Được áp dụng sau matches để chỉ bao gồm những URL cũng khớp với mẫu chung này. Mục đích của việc này là mô phỏng từ khoá @include Greasemonkey.
+
+exclude_globs
+
+mảng chuỗi
+
+Không bắt buộc. Được áp dụng sau matches để loại trừ những URL khớp với mẫu này. Dự định mô phỏng từ khoá @exclude Greasemonkey.
+
+Tập lệnh nội dung sẽ được chèn vào một trang nếu cả hai điều kiện sau đều đúng:
+
+URL của trang này khớp với mọi mẫu matches và mọi mẫu include_globs .
+
+URL này cũng không khớp với mẫu exclude_matches hoặc exclude_globs .
+Vì thuộc tính matches là bắt buộc, nên bạn chỉ có thể dùng exclude_matches , include_globs và exclude_globs để giới hạn những trang sẽ bị ảnh hưởng.
+
+Tiện ích sau đây chèn tập lệnh nội dung vào https://www.nytimes.com/health nhưng không chèn vào https://www.nytimes.com/business .
+
+manifest.json
+
+{
+"name": "My extension",
+...
+"content_scripts": [
+{
+"matches": ["https://*.nytimes.com/*"],
+"exclude_matches": ["*://*/*business*"],
+"js": ["contentScript.js"]
+}
+],
+...
+}
+
+service-worker.js
+
+browser . scripting . registerContentScripts ([{
+id : "test" ,
+matches : [ "https://*.nytimes.com/*" ],
+excludeMatches : [ "*://*/*business*" ],
+js : [ "contentScript.js" ],
+}]);
+
+Các thuộc tính glob tuân theo một cú pháp khác, linh hoạt hơn so với mẫu so khớp . Các chuỗi glob được chấp nhận là những URL có thể chứa dấu hoa thị và dấu chấm hỏi "đại diện". Dấu hoa thị ( * ) khớp với mọi chuỗi có độ dài bất kỳ, kể cả chuỗi trống, trong khi dấu chấm hỏi ( ? ) khớp với mọi ký tự đơn.
+
+Ví dụ: glob https://???.example.com/foo/\* khớp với bất kỳ nội dung nào sau đây:
+
+https://www.example.com/foo/bar
+
+https://the.example.com/foo/
+
+Tuy nhiên, nó không khớp với những trường hợp sau:
+
+https://my.example.com/foo/bar
+
+https://example.com/foo/
+
+https://www.example.com/foo
+
+Tiện ích này chèn tập lệnh nội dung vào https://www.nytimes.com/arts/index.html và https://www.nytimes.com/jobs/index.htm* , nhưng không chèn vào https://www.nytimes.com/sports/index.html :
+
+manifest.json
+
+{
+"name": "My extension",
+...
+"content_scripts": [
+{
+"matches": ["https://*.nytimes.com/*"],
+"include_globs": ["*nytimes.com/???s/*"],
+"js": ["contentScript.js"]
+}
+],
+...
+}
+
+Tiện ích này chèn tập lệnh nội dung vào https://history.nytimes.com và https://.nytimes.com/history , nhưng không chèn vào https://science.nytimes.com hoặc https://www.nytimes.com/science :
+
+manifest.json
+
+{
+"name": "My extension",
+...
+"content_scripts": [
+{
+"matches": ["https://*.nytimes.com/*"],
+"exclude_globs": ["*science*"],
+"js": ["contentScript.js"]
+}
+],
+...
+}
+
+Bạn có thể thêm một, một số hoặc tất cả các điều kiện này để đạt được phạm vi phù hợp.
+
+manifest.json
+
+{
+"name": "My extension",
+...
+"content_scripts": [
+{
+"matches": ["https://*.nytimes.com/*"],
+"exclude_matches": ["*://*/*business*"],
+"include_globs": ["*nytimes.com/???s/*"],
+"exclude_globs": ["*science*"],
+"js": ["contentScript.js"]
+}
+],
+...
+}
+
+Thời gian chạy
+
+Trường run_at kiểm soát thời điểm các tệp JavaScript được chèn vào trang web. Giá trị ưu tiên và mặc định là "document_idle" . Hãy xem kiểu RunAt để biết các giá trị có thể có khác.
+
+manifest.json
+
+{
+"name": "My extension",
+...
+"content_scripts": [
+{
+"matches": ["https://*.nytimes.com/*"],
+"run_at": "document_idle",
+"js": ["contentScript.js"]
+}
+],
+...
+}
+
+service-worker.js
+
+browser . scripting . registerContentScripts ([{
+id : "test" ,
+matches : [ "https://*.nytimes.com/*" ],
+runAt : "document_idle" ,
+js : [ "contentScript.js" ],
+}]);
+
+Tên
+
+Loại
+
+Mô tả
+
+document_idle
+
+chuỗi
+
+Nên ưu tiên. Hãy sử dụng "document_idle" bất cứ khi nào có thể.
+
+Trình duyệt sẽ chọn thời gian để chèn tập lệnh giữa "document_end" và ngay sau khi sự kiện window.onload kích hoạt. Thời điểm chính xác để chèn phụ thuộc vào độ phức tạp của tài liệu và thời gian tải, đồng thời được tối ưu hoá cho tốc độ tải trang.
+
+Các tập lệnh nội dung chạy tại "document_idle" không cần theo dõi sự kiện window.onload , chúng chắc chắn sẽ chạy sau khi DOM hoàn tất. Nếu một tập lệnh chắc chắn cần chạy sau window.onload , thì tiện ích có thể kiểm tra xem onload đã kích hoạt hay chưa bằng cách sử dụng thuộc tính document.readyState .
+
+document_start
+
+chuỗi
+
+Các tập lệnh được chèn sau mọi tệp từ css , nhưng trước khi bất kỳ DOM nào khác được tạo hoặc bất kỳ tập lệnh nào khác được chạy.
+
+document_end
+
+chuỗi
+
+Các tập lệnh được chèn ngay sau khi DOM hoàn tất, nhưng trước khi các tài nguyên phụ như hình ảnh và khung hình được tải.
+
+Chỉ định khung
+
+Đối với các tập lệnh nội dung khai báo được chỉ định trong tệp kê khai, trường "all_frames" cho phép tiện ích chỉ định xem các tệp JavaScript và CSS có được chèn vào tất cả khung hình khớp với các yêu cầu về URL đã chỉ định hay chỉ được chèn vào khung hình trên cùng trong một thẻ:
+
+manifest.json
+
+{
+"name": "My extension",
+...
+"content_scripts": [
+{
+"matches": ["https://*.nytimes.com/*"],
+"all_frames": true,
+"js": ["contentScript.js"]
+}
+],
+...
+}
+
+Khi đăng ký tập lệnh nội dung theo chương trình bằng browser.scripting.registerContentScripts(...) , bạn có thể dùng tham số allFrames để chỉ định xem tập lệnh nội dung có được chèn vào tất cả các khung khớp với yêu cầu về URL đã chỉ định hay chỉ được chèn vào khung trên cùng trong một thẻ. Bạn chỉ có thể dùng tham số này với tabId và không thể dùng nếu bạn chỉ định frameIds hoặc documentIds:
+
+service-worker.js
+
+browser . scripting . registerContentScripts ([{
+id: "test" ,
+matches : [ "https://*.nytimes.com/*" ],
+allFrames : true ,
+js : [ "contentScript.js" ],
+}]);
+
+Chèn vào các khung hình có liên quan
+
+Các tiện ích có thể muốn chạy tập lệnh trong những khung liên quan đến một khung khớp, nhưng bản thân chúng không khớp. Một trường hợp phổ biến khi điều này xảy ra là đối với các khung có URL do một khung khớp tạo ra, nhưng bản thân URL của các khung đó không khớp với các mẫu được chỉ định của tập lệnh.
+
+Đây là trường hợp khi một tiện ích muốn chèn vào các khung có URL có các lược đồ about: , data: , blob: và filesystem: . Trong những trường hợp này, URL sẽ không khớp với mẫu của tập lệnh nội dung (và trong trường hợp about: và data: , thậm chí không bao gồm URL hoặc nguồn gốc mẹ trong URL, như trong about:blank hoặc data:text/html,<html>Hello, World!</html> ). Tuy nhiên, các khung này vẫn có thể được liên kết với khung tạo.
+
+Để chèn vào các khung này, tiện ích có thể chỉ định thuộc tính "match_origin_as_fallback" trên một quy cách tập lệnh nội dung trong tệp kê khai.
+
+manifest.json
+
+{
+"name" : "My extension" ,
+...
+"content_scripts" : [
+{
+"matches" : [ "https://*.google.com/*" ],
+"match_origin_as_fallback" : true ,
+"js" : [ "contentScript.js" ]
+}
+],
+...
+}
+
+Khi được chỉ định và đặt thành true , Chrome sẽ xem xét nguồn gốc của trình khởi tạo khung để xác định xem khung có khớp hay không, thay vì xem xét URL của chính khung đó. Xin lưu ý rằng điều này cũng có thể khác với nguồn gốc của khung hình đích (ví dụ: URL data: có nguồn gốc rỗng).
+
+Đối tượng khởi tạo của khung là khung đã tạo hoặc điều hướng khung mục tiêu. Mặc dù đây thường là đối tượng mẹ hoặc đối tượng mở trực tiếp, nhưng có thể không phải (như trong trường hợp khung điều hướng một iframe trong một iframe).
+
+Vì điều này so sánh nguồn gốc của khung khởi tạo, nên khung khởi tạo có thể nằm ở bất kỳ đường dẫn nào từ nguồn gốc đó. Để làm rõ hàm ý này, Chrome yêu cầu mọi tập lệnh nội dung được chỉ định bằng "match_origin_as_fallback" được đặt thành true cũng phải chỉ định một đường dẫn * .
+
+Khi bạn chỉ định cả "match_origin_as_fallback" và "match_about_blank" , "match_origin_as_fallback" sẽ được ưu tiên.
+
+Giao tiếp với trang nhúng
+
+Mặc dù môi trường thực thi của tập lệnh nội dung và các trang lưu trữ tập lệnh đó tách biệt với nhau, nhưng chúng có quyền truy cập vào DOM của trang. Nếu muốn giao tiếp với tập lệnh nội dung hoặc với tiện ích thông qua tập lệnh nội dung, trang phải thực hiện việc này thông qua DOM dùng chung.
+
+Bạn có thể thực hiện một ví dụ bằng cách sử dụng window.postMessage() :
+
+content-script.js
+
+var port = browser . runtime . connect ();
+
+window . addEventListener ( "message" , ( event ) = > {
+// We only accept messages from ourselves
+if ( event . source !== window ) {
+return ;
+}
+
+if ( event . data . type && ( event . data . type === "FROM_PAGE" )) {
+console . log ( "Content script received: " + event . data . text );
+port . postMessage ( event . data . text );
+}
+}, false );
+
+example.js
+
+document . getElementById ( "theButton" ). addEventListener ( "click" , () = > {
+window . postMessage (
+{ type : "FROM_PAGE" , text : "Hello from the webpage!" }, "*" );
+}, false );
+
+Trang không phải tiện ích (example.html) tự đăng thông báo. Thông báo này sẽ bị tập lệnh nội dung chặn và kiểm tra, sau đó được đăng lên quy trình tiện ích. Bằng cách này, trang sẽ thiết lập một đường truyền thông tin đến quy trình tiện ích. Bạn có thể làm ngược lại bằng các phương tiện tương tự.
+
+Truy cập vào các tệp mở rộng
+
+Để truy cập vào một tệp tiện ích từ tập lệnh nội dung, bạn có thể gọi browser.runtime.getURL() để lấy URL tuyệt đối của tài sản tiện ích như minh hoạ trong ví dụ sau ( content.js ):
+
+content-script.js
+
+let image = browser . runtime . getURL ( "images/my_image.png" )
+
+Để sử dụng phông chữ hoặc hình ảnh trong tệp CSS, bạn có thể dùng @@extension_id để tạo một URL như trong ví dụ sau ( content.css ):
+
+content.css
+
+body {
+background-image : url ( 'chrome-extension://__MSG_@@extension_id__/background.png' );
+}
+
+@ font-face {
+font-family : 'Stint Ultra Expanded' ;
+font-style : normal ;
+font-weight : 400 ;
+src : url ( 'chrome-extension://__MSG_@@extension_id__/fonts/Stint Ultra Expanded.woff' ) format ( 'woff' );
+}
+
+Bạn phải khai báo tất cả thành phần dưới dạng tài nguyên có thể truy cập trên web trong tệp manifest.json :
+
+manifest.json
+
+{
+...
+"web_accessible_resources" : [
+{
+"resources" : [ "images/*.png" ],
+"matches" : [ "https://example.com/*" ]
+},
+{
+"resources" : [ "fonts/*.woff" ],
+"matches" : [ "https://example.com/*" ]
+}
+],
+...
+}
+
+Chính sách bảo mật nội dung
+
+Tập lệnh nội dung chạy trong các thế giới riêng biệt có Chính sách bảo mật nội dung (CSP) sau đây:
+
+script-src 'self' 'wasm-unsafe-eval' 'inline-speculation-rules' chrome-extension://abcdefghijklmopqrstuvwxyz/; object-src 'self';
+
+Tương tự như các hạn chế áp dụng cho các bối cảnh tiện ích khác, điều này ngăn chặn việc sử dụng eval() cũng như tải các tập lệnh bên ngoài.
+
+Đối với các tiện ích chưa đóng gói, CSP cũng bao gồm localhost:
+
+script-src 'self' 'wasm-unsafe-eval' 'inline-speculation-rules' http://localhost:* http://127.0.0.1:* chrome-extension://abcdefghijklmopqrstuvwxyz/; object-src 'self';
+
+Khi một tập lệnh nội dung được chèn vào thế giới chính, CSP của trang sẽ áp dụng.
+
+Giữ an toàn
+
+Mặc dù các thế giới riêng biệt cung cấp một lớp bảo vệ, nhưng việc sử dụng tập lệnh nội dung có thể tạo ra các lỗ hổng trong tiện ích và trang web. Nếu tập lệnh nội dung nhận nội dung từ một trang web riêng biệt, chẳng hạn như bằng cách gọi fetch() , hãy cẩn thận lọc nội dung để chống lại các cuộc tấn công tập lệnh trên nhiều trang web trước khi chèn nội dung đó. Chỉ giao tiếp qua HTTPS để tránh các cuộc tấn công "man-in-the-middle" .
+
+Hãy nhớ lọc các trang web độc hại. Ví dụ: các mẫu sau đây là nguy hiểm và không được phép trong Manifest V3:
+
+Không nên
+
+content-script.js
+
+const data = document . getElementById ( "json-data" );
+// WARNING! Might be evaluating an evil script!
+const parsed = eval ( "(" + data + ")" );
+
+Không nên
+
+content-script.js
+
+const elmt_id = ...
+// WARNING! elmt_id might be '); ... evil script ... //'!
+window . setTimeout ( "animate(" + elmt_id + ")" , 200 );
+
+Thay vào đó, hãy ưu tiên các API an toàn hơn không chạy tập lệnh:
+
+Nên
+
+content-script.js
+
+const data = document . getElementById ( "json-data" )
+// JSON.parse does not evaluate the attacker's scripts.
+const parsed = JSON . parse ( data );
+
+Nên
+
+content-script.js
+
+const elmt_id = ...
+// The closure form of setTimeout does not evaluate scripts.
+window . setTimeout (() => animate ( elmt_id ), 200 );
