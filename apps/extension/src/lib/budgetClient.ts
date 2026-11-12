@@ -23,7 +23,7 @@ export async function fetchBudgetStatus(): Promise<BudgetStatus> {
   const response = await fetchJson<unknown>(API_ROUTES.budget)
   const parsed = budgetStatusSchema.safeParse(response)
   if (!parsed.success) {
-    throw new Error('Phan hoi budget khong hop le')
+    throw new Error('Phản hồi budget không hợp lệ')
   }
   return parsed.data
 }
@@ -42,7 +42,7 @@ export async function updateBudgetSettings(
   })
   const parsed = budgetStatusSchema.safeParse(response)
   if (!parsed.success) {
-    throw new Error('Phan hoi budget khong hop le')
+    throw new Error('Phản hồi budget không hợp lệ')
   }
   return parsed.data
 }

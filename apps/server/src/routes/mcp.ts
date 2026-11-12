@@ -59,7 +59,7 @@ export function createMcpRouter(deps: McpDeps): Router {
       res.status(400).json({
         error: {
           code: ERROR_CODES.VALIDATION_ERROR,
-          message: 'Body MCP server khong hop le',
+          message: 'Body MCP server không hợp lệ',
           details: { issues: parsed.error.issues },
         },
       })
@@ -77,7 +77,7 @@ export function createMcpRouter(deps: McpDeps): Router {
       res.status(400).json({
         error: {
           code: ERROR_CODES.VALIDATION_ERROR,
-          message: 'Body MCP server khong hop le',
+          message: 'Body MCP server không hợp lệ',
           details: { issues: parsed.error.issues },
         },
       })
@@ -106,7 +106,7 @@ export function createMcpRouter(deps: McpDeps): Router {
       res.status(404).json({
         error: {
           code: ERROR_CODES.NOT_FOUND,
-          message: 'Khong tim thay MCP server',
+          message: 'Không tìm thấy MCP server',
         },
       })
       return

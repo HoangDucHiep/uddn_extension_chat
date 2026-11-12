@@ -168,7 +168,7 @@ export function buildJudgeUserMessage(input: JudgeInput): string {
   // BFF gioi han `messages[].content` <= 32 000 ky tu → cat theo ranh gioi doan.
   if (message.length <= MAX_TOTAL_CHARS) return message
 
-  const note = `\n\n[...noi dung bi cat do gioi han do dai...]`
+  const note = `\n\n[...nội dung bị cắt do giới hạn độ dài...]`
   const safe = truncateAtBoundary(message, MAX_TOTAL_CHARS - note.length)
   return `${safe}${note}`.slice(0, MAX_TOTAL_CHARS)
 }
@@ -194,7 +194,7 @@ function renderCitations(citations: readonly JudgeCitation[]): string {
   return citations
     .map((citation) => {
       const snippet = citation.snippet.replace(/\s+/g, ' ').trim().slice(0, 400)
-      return `- [${citation.index}] ${citation.title} — ${citation.url}\n  - trich: ${snippet}`
+      return `- [${citation.index}] ${citation.title} — ${citation.url}\n  - trích: ${snippet}`
     })
     .join('\n')
 }
@@ -211,10 +211,10 @@ export function truncateAtBoundary(text: string, maxChars: number): string {
   const slice = text.slice(0, maxChars)
   const lastBreak = slice.lastIndexOf('\n\n')
   if (lastBreak > maxChars * 0.5) {
-    return `${slice.slice(0, lastBreak).trimEnd()}\n\n[...noi dung bi cat do gioi han do dai...]`
+    return `${slice.slice(0, lastBreak).trimEnd()}\n\n[...nội dung bị cắt do giới hạn độ dài...]`
   }
 
   const lastSpace = slice.lastIndexOf(' ')
   const safe = lastSpace > maxChars * 0.5 ? slice.slice(0, lastSpace) : slice
-  return `${safe.trimEnd()}\n\n[...noi dung bi cat do gioi han do dai...]`
+  return `${safe.trimEnd()}\n\n[...nội dung bị cắt do giới hạn độ dài...]`
 }

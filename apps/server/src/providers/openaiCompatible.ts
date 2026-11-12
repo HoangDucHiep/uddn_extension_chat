@@ -135,7 +135,7 @@ export class OpenAiCompatibleProvider implements ProviderAdapter {
    * Discovery danh sach model + phan biet that/fallback (T-M2-02).
    *
    * Provider goi `GET /models` **co xac thuc** → danh sach that.
-   * Provider loi (401/500/network) → danh sach uu tien mac dinh (`fallback`).
+   * Provider lỗi (401/500/network) → danh sach uu tien mac dinh (`fallback`).
    *
    * @param apiKey - API key (optional).
    */
@@ -208,13 +208,13 @@ export class OpenAiCompatibleProvider implements ProviderAdapter {
         ok: false,
         error:
           response.status === 401 || response.status === 403
-            ? `Key bi tu choi (${response.status}). Kiem tra lai key cua ban.`
+            ? `Key bị từ chối (${response.status}). Kiểm tra lại key của bạn.`
             : `Provider tra loi ${response.status}${detail.length > 0 ? `: ${detail}` : ''}`,
       }
     } catch (error) {
       return {
         ok: false,
-        error: `Khong ket noi duoc provider: ${error instanceof Error ? error.message : String(error)}`,
+        error: `Không kết nối được provider: ${error instanceof Error ? error.message : String(error)}`,
       }
     }
   }
@@ -251,7 +251,7 @@ export class OpenAiCompatibleProvider implements ProviderAdapter {
       }
     }
 
-    yield lastError ?? errorChunk('PROVIDER_ERROR', 'Khong nao duoc provider tra ve')
+    yield lastError ?? errorChunk('PROVIDER_ERROR', 'Không nạo được provider trả về')
   }
 
   /** Thu model theo thu tu: model yeu cau -> cac model uu tien -> model mac dinh. */
@@ -357,7 +357,7 @@ export class OpenAiCompatibleProvider implements ProviderAdapter {
       if (!response.body) {
         return {
           ok: false,
-          error: errorChunk('STREAM_ERROR', `Provider ${this.id} khong tra ve body`),
+          error: errorChunk('STREAM_ERROR', `Provider ${this.id} không trả về body`),
           retryable: true,
         }
       }
@@ -378,8 +378,8 @@ export class OpenAiCompatibleProvider implements ProviderAdapter {
         error: errorChunk(
           isAbort ? 'TIMEOUT' : 'PROVIDER_ERROR',
           isAbort
-            ? `Provider ${this.id} qua thoi gian cho`
-            : `Provider ${this.id} loi: ${error instanceof Error ? error.message : String(error)}`,
+            ? `Provider ${this.id} quá thời gian chờ`
+            : `Provider ${this.id} lỗi: ${error instanceof Error ? error.message : String(error)}`,
         ),
         // Timeout co the la do tam thoi -> cho fallback.
         retryable: true,
@@ -418,7 +418,7 @@ export class OpenAiCompatibleProvider implements ProviderAdapter {
       chunks.push(
         errorChunk(
           payload.error.code ?? 'PROVIDER_ERROR',
-          payload.error.message ?? `Provider ${this.id} tra loi loi`,
+          payload.error.message ?? `Provider ${this.id} trả lời lỗi`,
         ),
       )
       return

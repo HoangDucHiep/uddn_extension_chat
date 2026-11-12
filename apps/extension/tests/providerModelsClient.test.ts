@@ -80,6 +80,6 @@ describe('listProviderModels', () => {
   it('nem loi khi response sai schema (khong lam UI crash)', async () => {
     stubOk({ items: [] })
 
-    await expect(listProviderModels('mock')).rejects.toThrow('khong dung schema')
+    await expect(listProviderModels('mock')).rejects.toThrow('không đúng schema')
   })
 })

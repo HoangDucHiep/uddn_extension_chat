@@ -145,7 +145,7 @@ export async function assertPublicHost(hostname: string): Promise<void> {
   ) {
     throw new SafeFetchError(
       ERROR_CODES.CONTEXT_EXTRACT_FAILED,
-      `Host noi bo bi chan: ${hostname}`,
+      `Host nội bộ bị chặn: ${hostname}`,
       400,
     )
   }
@@ -154,7 +154,7 @@ export async function assertPublicHost(hostname: string): Promise<void> {
     if (isBlockedAddress(literal)) {
       throw new SafeFetchError(
         ERROR_CODES.CONTEXT_EXTRACT_FAILED,
-        `Dia chi IP noi bi chan: ${literal}`,
+        `Địa chỉ IP nội bị chặn: ${literal}`,
         400,
       )
     }
@@ -167,7 +167,7 @@ export async function assertPublicHost(hostname: string): Promise<void> {
   } catch {
     throw new SafeFetchError(
       ERROR_CODES.CONTEXT_EXTRACT_FAILED,
-      `Khong phan giai duoc host: ${hostname}`,
+      `Không phân giải được host: ${hostname}`,
       502,
     )
   }
@@ -175,7 +175,7 @@ export async function assertPublicHost(hostname: string): Promise<void> {
   if (addresses.length === 0) {
     throw new SafeFetchError(
       ERROR_CODES.CONTEXT_EXTRACT_FAILED,
-      `Khong phan giai duoc host: ${hostname}`,
+      `Không phân giải được host: ${hostname}`,
       502,
     )
   }
@@ -184,7 +184,7 @@ export async function assertPublicHost(hostname: string): Promise<void> {
   if (blocked !== undefined) {
     throw new SafeFetchError(
       ERROR_CODES.CONTEXT_EXTRACT_FAILED,
-      `Host tro toi dia chi noi bi chan: ${hostname} (${blocked.address})`,
+      `Host trỏ tới địa chỉ nội bị chặn: ${hostname} (${blocked.address})`,
       400,
     )
   }
@@ -211,7 +211,7 @@ export async function safeFetch(url: string, options: SafeFetchOptions = {}): Pr
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
       throw new SafeFetchError(
         ERROR_CODES.CONTEXT_EXTRACT_FAILED,
-        `Protocol khong ho tro: ${parsed.protocol}`,
+        `Protocol không hỗ trợ: ${parsed.protocol}`,
         400,
       )
     }
@@ -238,7 +238,7 @@ export async function safeFetch(url: string, options: SafeFetchOptions = {}): Pr
       const isAbort = error instanceof Error && error.name === 'AbortError'
       throw new SafeFetchError(
         isAbort ? ERROR_CODES.TIMEOUT : ERROR_CODES.CONTEXT_EXTRACT_FAILED,
-        isAbort ? `Timeout sau ${timeoutMs}ms` : `Fetch that bai: ${String(error)}`,
+        isAbort ? `Timeout sau ${timeoutMs}ms` : `Fetch thất bại: ${String(error)}`,
         isAbort ? 504 : 502,
       )
     }
@@ -252,7 +252,7 @@ export async function safeFetch(url: string, options: SafeFetchOptions = {}): Pr
       if (location === null) {
         throw new SafeFetchError(
           ERROR_CODES.CONTEXT_EXTRACT_FAILED,
-          'Redirect khong co Location header',
+          'Redirect không có Location header',
           502,
         )
       }
@@ -267,7 +267,7 @@ export async function safeFetch(url: string, options: SafeFetchOptions = {}): Pr
     if (!response.ok) {
       throw new SafeFetchError(
         ERROR_CODES.CONTEXT_EXTRACT_FAILED,
-        `HTTP ${response.status} khi tai ${currentUrl}`,
+        `HTTP ${response.status} khi tải ${currentUrl}`,
         502,
       )
     }
@@ -277,7 +277,7 @@ export async function safeFetch(url: string, options: SafeFetchOptions = {}): Pr
     if (Number.isFinite(contentLength) && contentLength > maxBytes) {
       throw new SafeFetchError(
         ERROR_CODES.PAYLOAD_TOO_LARGE,
-        `Response vuot gioi han ${maxBytes} byte`,
+        `Response vượt giới hạn ${maxBytes} byte`,
         413,
       )
     }
@@ -292,7 +292,7 @@ export async function safeFetch(url: string, options: SafeFetchOptions = {}): Pr
 
   throw new SafeFetchError(
     ERROR_CODES.CONTEXT_EXTRACT_FAILED,
-    `Vuot qua so hop redirect cho phep (${maxRedirects})`,
+    `Vượt quá số hop redirect cho phép (${maxRedirects})`,
     502,
   )
 }
@@ -323,7 +323,7 @@ function limitStream(
           controller.error(
             new SafeFetchError(
               ERROR_CODES.PAYLOAD_TOO_LARGE,
-              `Response vuot gioi han ${maxBytes} byte`,
+              `Response vượt giới hạn ${maxBytes} byte`,
               413,
             ),
           )
@@ -355,7 +355,7 @@ export async function readText(result: SafeFetchResult): Promise<string> {
     if (error instanceof SafeFetchError) throw error
     throw new SafeFetchError(
       ERROR_CODES.CONTEXT_EXTRACT_FAILED,
-      `Doc body that bai: ${String(error)}`,
+      `Đọc body thất bại: ${String(error)}`,
       502,
     )
   }
@@ -387,7 +387,7 @@ export async function readBuffer(result: SafeFetchResult): Promise<Uint8Array> {
     if (error instanceof SafeFetchError) throw error
     throw new SafeFetchError(
       ERROR_CODES.CONTEXT_EXTRACT_FAILED,
-      `Doc body that bai: ${String(error)}`,
+      `Đọc body thất bại: ${String(error)}`,
       502,
     )
   }

@@ -96,7 +96,7 @@ export async function readPreferredProvider(): Promise<ProviderId | undefined> {
  */
 export async function writePreferredProvider(providerId: ProviderId): Promise<void> {
   if (!isProviderId(providerId)) {
-    throw new Error(`Provider khong hop le: "${providerId}"`)
+    throw new Error(`Provider không hợp lệ: "${providerId}"`)
   }
   await chrome.storage.local.set({ [PREFERRED_PROVIDER_KEY]: providerId })
 }

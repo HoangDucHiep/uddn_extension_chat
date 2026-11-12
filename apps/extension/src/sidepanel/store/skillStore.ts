@@ -127,7 +127,7 @@ export const useSkillStore = create<SkillState>((set, get) => ({
   duplicate: async (id) => {
     const source = get().items.find((item) => item.id === id)
     if (source === undefined) {
-      throw new Error('Khong tim thay skill de nhan ban')
+      throw new Error('Không tìm thấy skill để nhân bản')
     }
 
     const created = await createSkillApi({

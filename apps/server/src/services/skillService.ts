@@ -237,7 +237,7 @@ export async function createSkill(
   if (await nameExists(db, input.name)) {
     throw new AppError(
       ERROR_CODES.CONFLICT,
-      `Skill "${input.name}" da ton tai`,
+      `Skill "${input.name}" đã tồn tại`,
     )
   }
 
@@ -259,7 +259,7 @@ export async function createSkill(
 
   const row = rows[0]
   if (row === undefined) {
-    throw new AppError(ERROR_CODES.INTERNAL_ERROR, 'Khong tao duoc skill')
+    throw new AppError(ERROR_CODES.INTERNAL_ERROR, 'Không tạo được skill')
   }
   return toSkill(row)
 }
@@ -288,14 +288,14 @@ export async function updateSkill(
   if (findBuiltinSkillById(id) !== undefined) {
     throw new AppError(
       ERROR_CODES.FORBIDDEN,
-      'Khong the sua skill co san',
+      'Không thể sửa skill có sẵn',
     )
   }
 
   if (patch.name !== undefined && (await nameExists(db, patch.name, id))) {
     throw new AppError(
       ERROR_CODES.CONFLICT,
-      `Skill "${patch.name}" da ton tai`,
+      `Skill "${patch.name}" đã tồn tại`,
     )
   }
 
@@ -318,7 +318,7 @@ export async function updateSkill(
 
   const row = rows[0]
   if (row === undefined) {
-    throw new AppError(ERROR_CODES.NOT_FOUND, 'Khong tim thay skill')
+    throw new AppError(ERROR_CODES.NOT_FOUND, 'Không tìm thấy skill')
   }
   return toSkill(row)
 }
@@ -333,7 +333,7 @@ export async function deleteSkill(db: Database, id: string): Promise<void> {
   if (findBuiltinSkillById(id) !== undefined) {
     throw new AppError(
       ERROR_CODES.FORBIDDEN,
-      'Khong the xoa skill co san',
+      'Không thể xoá skill có sẵn',
     )
   }
 
@@ -343,7 +343,7 @@ export async function deleteSkill(db: Database, id: string): Promise<void> {
     .returning()
 
   if (rows.length === 0) {
-    throw new AppError(ERROR_CODES.NOT_FOUND, 'Khong tim thay skill')
+    throw new AppError(ERROR_CODES.NOT_FOUND, 'Không tìm thấy skill')
   }
 }
 

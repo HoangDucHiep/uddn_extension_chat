@@ -78,7 +78,7 @@ export const imageAttachmentListSchema = z
     if (total > VISION.MAX_TOTAL_IMAGE_BYTES) {
       ctx.addIssue({
         code: 'custom',
-        message: `Tong kich thuoc anh vuot gioi han ${VISION.MAX_TOTAL_IMAGE_BYTES} byte`,
+        message: `Tổng kích thước ảnh vượt giới hạn ${VISION.MAX_TOTAL_IMAGE_BYTES} byte`,
       })
     }
   })

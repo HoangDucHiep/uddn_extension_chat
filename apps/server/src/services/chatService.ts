@@ -285,8 +285,8 @@ export function createChatStream(
         type: 'error',
         code: ERROR_CODES.BUDGET_EXCEEDED,
         message:
-          'Da vuot han muc chi phi trong ky hien tai. Luot chat moi bi chan. ' +
-          'Hay tang han muc hoac doi ky tinh trong cai dat.',
+          'Đã vượt hạn mức chi phí trong kỳ hiện tại. Lượt chat mới bị chặn. ' +
+          'Hãy tăng hạn mức hoặc đổi kỳ tính trong cài đặt.',
         retryable: false,
       }
       yield { type: 'done', finishReason: 'error', messageId }
@@ -423,15 +423,15 @@ export function createChatStream(
           type: 'error',
           code: ERROR_CODES.PROVIDER_VISION_UNSUPPORTED,
           message:
-            'Provider/model hien tai khong ho tro xu ly anh. Hay chon model khac (vi du Gemini) ' +
-            'hoac go bo anh dinh kem.',
+            'Provider/model hiện tại không hỗ trợ xử lý ảnh. Hãy chọn model khác (ví dụ Gemini) ' +
+            'hoặc gỡ bỏ ảnh đính kèm.',
           retryable: false,
         }
       } else {
         yield {
           type: 'error',
           code: ERROR_CODES.MISSING_API_KEY,
-          message: 'Khong tim thay API key cho bat ky provider nao. Hay cau hinh key trong settings.',
+          message: 'Không tìm thấy API key cho bất kỳ provider nào. Hãy cấu hình key trong settings.',
           retryable: false,
         }
       }
@@ -591,7 +591,7 @@ export function createChatStream(
         } catch (error: unknown) {
           // MCP loi khong duoc lam hong luot chat → log va bo qua.
           console.error(
-            '[mcp] khong refresh duoc MCP server:',
+            '[mcp] không refresh được MCP server:',
             error instanceof Error ? error.message : error,
           )
         }
@@ -692,7 +692,7 @@ export function createChatStream(
               chunk.errorRetryable ?? isRetryableKind(classifyChatError(errorCode))
             providerError = {
               code: errorCode,
-              message: chunk.errorMessage ?? 'Provider loi',
+              message: chunk.errorMessage ?? 'Provider lỗi',
               retryable,
               ...(chunk.retryAfterSeconds !== undefined
                 ? { retryAfterSeconds: chunk.retryAfterSeconds }
@@ -758,7 +758,7 @@ export function createChatStream(
           const approvalRequired = toolRegistry.requiresApproval(call.name)
           const approvalReason =
             toolRegistry.approvalReason(call.name) ??
-            `Tool "${call.name}" can ban duyet truoc khi chay.`
+            `Tool "${call.name}" cần bạn duyệt trước khi chạy.`
 
           // Tool can duyet → server KHONG chay (FR-TOOLS-04 — T-M2-09).
           // Luot chat tiep tuc: model nhan `tool_result` voi `ok: false`.
@@ -766,7 +766,7 @@ export function createChatStream(
             ? {
                 name: call.name,
                 ok: false,
-                output: `Tool "${call.name}" can nguoi dung duyet truoc khi chay.`,
+                output: `Tool "${call.name}" cần người dùng duyệt trước khi chạy.`,
                 error: 'TOOL_APPROVAL_REQUIRED',
                 durationMs: 0,
                 approvalRequired: true,
@@ -841,7 +841,7 @@ export function createChatStream(
         if (toolRound >= TOOL_LIMITS.MAX_TOOL_ROUNDS) {
           finishReason = 'stop'
           const warning =
-            '\n\n_[Da dung het so vong goi tool toi da. Cau tra loi co the chua day du.]_'
+            '\n\n_[Đã dùng hết số vòng gọi tool tối đa. Câu trả lời có thể chưa đầy đủ.]_'
           text += warning
           // Canh bao cung duoc stream cho client (token) → UI hien thi ngay.
           yield { type: 'token', delta: warning, index: tokenIndex }
@@ -1142,12 +1142,12 @@ async function prepareTurn(
   // `regenerate` / `continue` → can `assistantMessageId`.
   const assistantMessageId = request.assistantMessageId
   if (assistantMessageId === undefined) {
-    throw new Error('Thieu assistantMessageId cho thao tac nay')
+    throw new Error('Thiếu assistantMessageId cho thao tác này')
   }
 
   const target = await loadMessage(deps.db, assistantMessageId)
   if (target === undefined) {
-    throw new Error('Khong tim thay tin nhan can thao tac')
+    throw new Error('Không tìm thấy tin nhắn cần thao tác')
   }
 
   const normalized = await loadNormalizedMessages(deps.db, conversationId)
@@ -1392,7 +1392,7 @@ export function buildProviderMessages(
         turn.attachments = [...images]
       }
     } else {
-      result.push({ role: 'user', content: '(anh dinh kem)', attachments: [...images] })
+      result.push({ role: 'user', content: '(ảnh đính kèm)', attachments: [...images] })
     }
   }
 
@@ -1629,7 +1629,7 @@ async function persistRequestLog(deps: ChatServiceDeps, data: RequestLogData): P
     await insertRequestLog(deps.db, data, deps.logFullContent, deps.logContextSnapshot)
   } catch (error) {
     // Log that bai khong duoc lam fail chat.
-    console.error('[chat] khong ghi duoc request_logs:', error instanceof Error ? error.message : error)
+    console.error('[chat] không ghi được request_logs:', error instanceof Error ? error.message : error)
   }
 }
 

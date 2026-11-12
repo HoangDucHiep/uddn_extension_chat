@@ -147,13 +147,13 @@ export async function streamChat(
   if (!response.ok) {
     const body = await response.text().catch(() => '')
     throw new EvalChatError(
-      `POST /api/chat that bai: HTTP ${response.status} ${body.slice(0, 200)}`,
+      `POST /api/chat thất bại: HTTP ${response.status} ${body.slice(0, 200)}`,
       response.status,
     )
   }
 
   if (response.body === null) {
-    throw new EvalChatError('POST /api/chat tra ve body rong', 500)
+    throw new EvalChatError('POST /api/chat trả về body rỗng', 500)
   }
 
   const result: ChatStreamResult = { answer: '', latencyMs: 0, citations: [], fallbackChain: [] }

@@ -43,7 +43,7 @@ export function createSkillsRouter(deps: SkillsDeps): Router {
       res.status(400).json({
         error: {
           code: ERROR_CODES.VALIDATION_ERROR,
-          message: 'Query skill khong hop le',
+          message: 'Query skill không hợp lệ',
           details: { issues: parsed.error.issues },
         },
       })
@@ -61,7 +61,7 @@ export function createSkillsRouter(deps: SkillsDeps): Router {
       res.status(400).json({
         error: {
           code: ERROR_CODES.VALIDATION_ERROR,
-          message: 'Body skill khong hop le',
+          message: 'Body skill không hợp lệ',
           details: { issues: parsed.error.issues },
         },
       })
@@ -79,7 +79,7 @@ export function createSkillsRouter(deps: SkillsDeps): Router {
       res.status(400).json({
         error: {
           code: ERROR_CODES.VALIDATION_ERROR,
-          message: 'Body skill khong hop le',
+          message: 'Body skill không hợp lệ',
           details: { issues: parsed.error.issues },
         },
       })

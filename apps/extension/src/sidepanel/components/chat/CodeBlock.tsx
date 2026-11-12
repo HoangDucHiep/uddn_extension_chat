@@ -54,7 +54,7 @@ export function CodeBlock({ code, language, children }: CodeBlockProps) {
   const handleCopy = async (): Promise<void> => {
     try {
       if (navigator.clipboard === undefined) {
-        throw new Error('Clipboard khong kha dung')
+        throw new Error('Clipboard không khả dụng')
       }
       await navigator.clipboard.writeText(code)
       setCopied(true)

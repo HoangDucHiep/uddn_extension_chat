@@ -111,7 +111,7 @@ describe('executeTool', () => {
 
     const outcome = await executeTool(registry, 'long', {}, CTX)
     expect(outcome.output.length).toBeLessThan(TOOL_LIMITS.MAX_TOOL_OUTPUT_CHARS + 100)
-    expect(outcome.output).toContain('da cat')
+    expect(outcome.output).toContain('đã cắt')
   })
 })
 
@@ -122,6 +122,6 @@ describe('truncateOutput', () => {
 
   it('output dai → cat + them ghi chu', () => {
     const result = truncateOutput('x'.repeat(TOOL_LIMITS.MAX_TOOL_OUTPUT_CHARS + 10))
-    expect(result).toContain('da cat 10 ky tu')
+    expect(result).toContain('đã cắt 10 ký tự')
   })
 })

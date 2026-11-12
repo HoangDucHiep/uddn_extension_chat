@@ -96,7 +96,7 @@ export async function listProviderInfo(
         available = detection.available
         note = detection.available
           ? undefined
-          : `Ollama chua chay. Hay bat Ollama tai ${deps.ollamaBaseUrl ?? OLLAMA_DEFAULT_BASE_URL}.`
+          : `Ollama chưa chạy. Hãy bật Ollama tại ${deps.ollamaBaseUrl ?? OLLAMA_DEFAULT_BASE_URL}.`
       } else {
         available = true
       }
@@ -153,7 +153,7 @@ function hasEnvKeyFor(envKeys: EnvKeys, providerId: ProviderId): boolean {
  * Thu tu:
  *  1. Resolve key (K2 trong DB → K1 trong `.env`).
  *  2. `adapter.listModels(key)` → goi `GET /models` cua provider.
- *  3. Provider loi / tra rong → fallback sang model mac dinh cua registry.
+ *  3. Provider lỗi / tra rong → fallback sang model mac dinh cua registry.
  *
  * `source` cho UI biet danh sach la **discovery that** hay **dự phòng** —
  * UI canh bao "danh sach co the cu" khi `source === 'fallback'`.
@@ -167,7 +167,7 @@ export async function listProviderModels(
 ): Promise<ProviderModelsResponse> {
   const adapter = deps.registry.get(providerId)
   if (!adapter) {
-    throw new AppError(ERROR_CODES.NOT_FOUND, `Khong tim thay provider "${providerId}"`)
+    throw new AppError(ERROR_CODES.NOT_FOUND, `Không tìm thấy provider "${providerId}"`)
   }
 
   // Resolve key — provider khong can key (mock, ollama) → undefined.
@@ -203,7 +203,7 @@ export async function listProviderModels(
       }
     }
   } catch {
-    // Provider loi → fallback ve model mac dinh.
+    // Provider lỗi → fallback ve model mac dinh.
   }
 
   const fallbackModel = deps.registry.getDefaultModel(providerId)
@@ -230,7 +230,7 @@ export async function saveProviderKey(
   if (!deps.masterKey) {
     throw new AppError(
       ERROR_CODES.MASTER_KEY_NOT_CONFIGURED,
-      'BFF chua co MASTER_KEY → khong luu duoc API key. Hay dat MASTER_KEY trong file .env.',
+      'BFF chưa có MASTER_KEY → không lưu được API key. Hãy đặt MASTER_KEY trong file .env.',
     )
   }
 
@@ -262,7 +262,7 @@ export async function saveProviderKey(
 
   const row = rows[0]
   if (!row) {
-    throw new AppError(ERROR_CODES.DB_ERROR, 'Khong luu duoc API key')
+    throw new AppError(ERROR_CODES.DB_ERROR, 'Không lưu được API key')
   }
 
   return {
@@ -308,7 +308,7 @@ export async function deleteProviderKey(deps: ProviderServiceDeps, id: string): 
     .returning({ id: providerKeys.id })
 
   if (deleted.length === 0) {
-    throw new AppError(ERROR_CODES.NOT_FOUND, 'Khong tim thay API key')
+    throw new AppError(ERROR_CODES.NOT_FOUND, 'Không tìm thấy API key')
   }
 }
 
@@ -327,20 +327,20 @@ export async function testProviderKey(
   const rows = await deps.db.select().from(providerKeys).where(eq(providerKeys.id, id)).limit(1)
   const row = rows[0]
   if (!row) {
-    throw new AppError(ERROR_CODES.NOT_FOUND, 'Khong tim thay API key')
+    throw new AppError(ERROR_CODES.NOT_FOUND, 'Không tìm thấy API key')
   }
 
   if (!deps.masterKey) {
     throw new AppError(
       ERROR_CODES.MASTER_KEY_NOT_CONFIGURED,
-      'BFF chua co MASTER_KEY → khong giai ma duoc API key da luu.',
+      'BFF chưa có MASTER_KEY → không giải mã được API key đã lưu.',
     )
   }
 
   const providerId = row.providerId as ProviderId
   const adapter = deps.registry.get(providerId)
   if (!adapter) {
-    throw new AppError(ERROR_CODES.NOT_FOUND, `Khong tim thay provider "${providerId}"`)
+    throw new AppError(ERROR_CODES.NOT_FOUND, `Không tìm thấy provider "${providerId}"`)
   }
 
   let apiKey: string
@@ -352,7 +352,7 @@ export async function testProviderKey(
   } catch {
     throw new AppError(
       ERROR_CODES.INVALID_API_KEY,
-      'Khong giai ma duoc key da luu. MASTER_KEY co the da thay doi.',
+      'Không giải mã được key đã lưu. MASTER_KEY có thể đã thay đổi.',
     )
   }
 
@@ -367,7 +367,7 @@ export async function testProviderKey(
     return {
       ok: false,
       latencyMs,
-      error: check.error ?? 'Key khong hop le',
+      error: check.error ?? 'Key không hợp lệ',
     }
   } catch (error) {
     const latencyMs = Date.now() - startedAt

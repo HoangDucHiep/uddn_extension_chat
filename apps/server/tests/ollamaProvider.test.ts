@@ -89,7 +89,7 @@ describe('detectOllama', () => {
 
     expect(result.available).toBe(false)
     expect(result.models).toEqual([])
-    expect(result.error).toContain('Khong ket noi duoc Ollama')
+    expect(result.error).toContain('Không kết nối được Ollama')
   })
 
   it('available = false khi Ollama tra loi loi HTTP', async () => {

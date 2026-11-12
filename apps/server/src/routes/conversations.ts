@@ -48,7 +48,7 @@ export function createConversationsRouter(deps: ConversationsRouterDeps): Router
       res.status(400).json({
         error: {
           code: ERROR_CODES.VALIDATION_ERROR,
-          message: 'Query danh sach cuoc tro chuyen khong hop le',
+          message: 'Query danh sách cuộc trò chuyện không hợp lệ',
           details: { issues: parsed.error.issues },
         },
       })
@@ -75,7 +75,7 @@ export function createConversationsRouter(deps: ConversationsRouterDeps): Router
       res.status(400).json({
         error: {
           code: ERROR_CODES.VALIDATION_ERROR,
-          message: 'Body tao cuoc tro chuyen khong hop le',
+          message: 'Body tạo cuộc trò chuyện không hợp lệ',
           details: { issues: parsed.error.issues },
         },
       })
@@ -93,7 +93,7 @@ export function createConversationsRouter(deps: ConversationsRouterDeps): Router
       res.status(400).json({
         error: {
           code: ERROR_CODES.VALIDATION_ERROR,
-          message: 'Id cuoc tro chuyen khong hop le',
+          message: 'Id cuộc trò chuyện không hợp lệ',
         },
       })
       return
@@ -113,7 +113,7 @@ export function createConversationsRouter(deps: ConversationsRouterDeps): Router
         res.status(400).json({
           error: {
             code: ERROR_CODES.VALIDATION_ERROR,
-            message: 'Id cuoc tro chuyen khong hop le',
+            message: 'Id cuộc trò chuyện không hợp lệ',
           },
         })
         return
@@ -123,7 +123,7 @@ export function createConversationsRouter(deps: ConversationsRouterDeps): Router
         res.status(400).json({
           error: {
             code: ERROR_CODES.VALIDATION_ERROR,
-            message: 'Id luot hoi dap khong hop le',
+            message: 'Id lượt hỏi đáp không hợp lệ',
           },
         })
         return
@@ -134,7 +134,7 @@ export function createConversationsRouter(deps: ConversationsRouterDeps): Router
         res.status(400).json({
           error: {
             code: ERROR_CODES.VALIDATION_ERROR,
-            message: 'Body kich hoat bien the khong hop le',
+            message: 'Body kích hoạt biến thể không hợp lệ',
             details: { issues: parsed.error.issues },
           },
         })
@@ -153,7 +153,7 @@ export function createConversationsRouter(deps: ConversationsRouterDeps): Router
       res.status(400).json({
         error: {
           code: ERROR_CODES.VALIDATION_ERROR,
-          message: 'Id cuoc tro chuyen khong hop le',
+          message: 'Id cuộc trò chuyện không hợp lệ',
         },
       })
       return
@@ -164,7 +164,7 @@ export function createConversationsRouter(deps: ConversationsRouterDeps): Router
       res.status(400).json({
         error: {
           code: ERROR_CODES.VALIDATION_ERROR,
-          message: 'Body cap nhat cuoc tro chuyen khong hop le',
+          message: 'Body cập nhật cuộc trò chuyện không hợp lệ',
           details: { issues: parsed.error.issues },
         },
       })
@@ -182,7 +182,7 @@ export function createConversationsRouter(deps: ConversationsRouterDeps): Router
       res.status(400).json({
         error: {
           code: ERROR_CODES.VALIDATION_ERROR,
-          message: 'Id cuoc tro chuyen khong hop le',
+          message: 'Id cuộc trò chuyện không hợp lệ',
         },
       })
       return

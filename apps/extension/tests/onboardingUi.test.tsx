@@ -104,12 +104,12 @@ describe('Onboarding', () => {
 
     expect(screen.getByTestId('onboarding')).toBeDefined()
     expect(screen.getByTestId('onboarding-step-permissions')).toBeDefined()
-    expect(screen.getByText('Buoc 1/3 · Quyen')).toBeDefined()
+    expect(screen.getByText('Bước 1/3 · Quyền')).toBeDefined()
     expect(screen.getByText('sidePanel')).toBeDefined()
     expect(screen.getByText('<all_urls>')).toBeDefined()
   })
 
-  it('buoc 1 → buoc 2 khi bam "Tiep tuc"', async () => {
+  it('buoc 1 → buoc 2 khi bam "Tiếp tục"', async () => {
     render(
       <Onboarding
         preferredProvider={undefined}
@@ -121,7 +121,7 @@ describe('Onboarding', () => {
     fireEvent.click(screen.getByTestId('onboarding-next'))
 
     expect(screen.getByTestId('onboarding-step-provider')).toBeDefined()
-    expect(screen.getByText('Buoc 2/3 · Mo hinh AI')).toBeDefined()
+    expect(screen.getByText('Bước 2/3 · Mô hình AI')).toBeDefined()
   })
 
   it('buoc 2 tai danh sach provider tu API', async () => {
@@ -185,7 +185,7 @@ describe('Onboarding', () => {
     expect(screen.queryByTestId('onboarding-api-key')).toBeNull()
   })
 
-  it('buoc 2 → buoc 3 khi bam "Tiep tuc"', async () => {
+  it('buoc 2 → buoc 3 khi bam "Tiếp tục"', async () => {
     render(
       <Onboarding
         preferredProvider={undefined}
@@ -201,7 +201,7 @@ describe('Onboarding', () => {
     fireEvent.click(screen.getByTestId('onboarding-next'))
 
     expect(screen.getByTestId('onboarding-step-try')).toBeDefined()
-    expect(screen.getByText('Buoc 3/3 · Thu cau hoi')).toBeDefined()
+    expect(screen.getByText('Bước 3/3 · Thử câu hỏi')).toBeDefined()
   })
 
   it('buoc 3 goi SSE that va hien thi cau tra loi', async () => {
@@ -230,7 +230,7 @@ describe('Onboarding', () => {
     expect(screen.getByText('Xin chao ban!')).toBeDefined()
   })
 
-  it('bam "Bo qua" → goi onComplete (co completed = true)', () => {
+  it('bam "Bỏ qua" → goi onComplete (co completed = true)', () => {
     const onComplete = vi.fn()
     render(
       <Onboarding

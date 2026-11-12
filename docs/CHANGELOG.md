@@ -8,6 +8,17 @@
 
 ## [Unreleased]
 
+### Fixed
+- **Sửa toàn bộ text tiếng Việt thiếu dấu (rà soát toàn repo)** — trước đó nhiều chuỗi hiển thị ra UI lẫn message lỗi vẫn viết **không dấu** (`'Xem lich su cuoc tro chuyen'`, `'Bat context'`, `'Khong co tab nao de dinh kem.'`…). Đã sửa **mapping theo cả cụm** (không thay token rời rạc → tránh sai nghĩa như `dung` = *dừng* ≠ *đúng*) cho:
+  - **Extension (UI user nhìn thấy):** `apps/extension/src/i18n/vi.ts` (**89 cụm** — header, composer, chat, context, settings, onboarding, model picker, usage, budget, MCP, skill, tool call, toast) · `i18n/outsidePanel.vi.ts` (nút nổi content script + context menu) · `content/contentScript.ts` · `lib/documentUpload.ts` · `lib/settings.ts` · `lib/skillIO.ts` · `lib/onboarding.ts` · `lib/budgetClient.ts` · `lib/providerClient.ts` · `lib/sseClient.ts` · `sidepanel/main.tsx` · `sidepanel/store/skillStore.ts` · `sidepanel/components/chat/CodeBlock.tsx`.
+  - **Server:** `services/{chatService,citationService,conversationService,mcpService,providerService,skillService}.ts` · `tools/builtin/calculator.ts` · `tools/executor.ts` · `tools/mcp/{client,manager}.ts` · `lib/{documentExtractor,pdfExtractor,safeFetch,youtubeExtractor,crypto}.ts` · `middleware/{error,origin}.ts` · `routes/*.ts` · `providers/*.ts` · `config/env.ts` · `index.ts`.
+  - **Shared:** `constants.ts` (system prompt + `CONTINUE_INSTRUCTION` + `AUTO_CONTINUE_INSTRUCTION`) · `schemas/{chat,conversation,mcp,skill,vision}.ts`.
+  - **Eval:** `cli.ts` · `collect.ts` · `commands/{collect,judge,logs,report,run}.ts` · `judge/{prompt,run_judge}.ts` · `dataset.ts` · `logs.ts` · `sse.ts` · `runners/ours.ts`.
+  - **Vòng rà soát 2 (heuristic tự động):** quét toàn repo bằng script so khớp "từ có dấu" ↔ "từ không dấu" → bắt thêm `MCP server trả lời lỗi khi gọi tool.` (`apps/server/src/tools/mcp/manager.ts`) · `POST /api/chat trả về body rỗng` (`apps/eval/src/sse.ts`).
+  - **Test assert đồng bộ:** `apps/eval/tests/judge.test.ts` · `apps/server/tests/{toolExecutor,toolAgentLoop,toolExecutor,safeFetch,visionProviders,ollamaProvider,autoContinue,chatExcerptRegression}.test.ts` · `apps/extension/tests/{contextMenus,MentionPopover,providerModelsClient,onboarding,onboardingUi,messageActions,AttachmentTray}.test.ts*`.
+  - **Verify:** `pnpm typecheck` ✅ · `pnpm lint` ✅ (0 error) · `pnpm test` ✅ **2133 unit / 173 file** · `pnpm build:ext` ✅ (`dist/content.js` **17.79 kB**).
+  - **Không đổi:** API · schema DB · manifest · hành vi sản phẩm · parity §E giữ **34/35 = 97.1%**.
+
 ### Added
 - **T-M3-POLISH — UI/UX redesign: neutral flat palette + tab picker đa chọn + one-shot attachment + tooltip toàn diện + KaTeX (FR-UX-11, FR-CHAT-16, FR-CONTEXT-03)**
   - **Design tokens — `design/tokens.json` + `design/tokens.css` (nguồn sự thật duy nhất):**

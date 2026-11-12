@@ -109,7 +109,7 @@ export async function extractPdfText(
     if (text.length === 0) {
       throw new SafeFetchError(
         ERROR_CODES.CONTEXT_PDF_NOT_READABLE,
-        'PDF khong co text layer (ban scan) → can OCR hoac tai len anh',
+        'PDF không có text layer (bản scan) → cần OCR hoặc tải lên ảnh',
         422,
       )
     }

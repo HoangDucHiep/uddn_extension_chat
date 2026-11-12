@@ -77,7 +77,7 @@ describe('MentionPopover', () => {
       />,
     )
 
-    expect(screen.getByTestId('mention-popover').textContent).toContain('Khong co tab')
+    expect(screen.getByTestId('mention-popover').textContent).toContain('Không có tab')
   })
 
   it('hien thi trang thai dang tai khi loading', () => {
@@ -91,7 +91,7 @@ describe('MentionPopover', () => {
       />,
     )
 
-    expect(screen.getByTestId('mention-popover').textContent).toContain('Dang tai')
+    expect(screen.getByTestId('mention-popover').textContent).toContain('Đang tải')
   })
 
   it('co role listbox va nhan aria-label', () => {
@@ -105,7 +105,7 @@ describe('MentionPopover', () => {
     )
 
     const popover = screen.getByRole('listbox')
-    expect(popover.getAttribute('aria-label')).toBe('Chon tab de dinh kem')
+    expect(popover.getAttribute('aria-label')).toBe('Chọn tab để đính kèm')
   })
 
   it('hien thi favicon khi tab co favIconUrl', () => {

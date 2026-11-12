@@ -25,7 +25,7 @@ export function createAttachmentsRouter(deps: AttachmentsRouterDeps): Router {
       res.status(400).json({
         error: {
           code: ERROR_CODES.VALIDATION_ERROR,
-          message: 'Thieu id anh dinh kem',
+          message: 'Thiếu id ảnh đính kèm',
         },
       })
       return
@@ -38,7 +38,7 @@ export function createAttachmentsRouter(deps: AttachmentsRouterDeps): Router {
         res.status(404).json({
           error: {
             code: ERROR_CODES.NOT_FOUND,
-            message: 'Khong tim thay anh dinh kem',
+            message: 'Không tìm thấy ảnh đính kèm',
           },
         })
         return
@@ -53,7 +53,7 @@ export function createAttachmentsRouter(deps: AttachmentsRouterDeps): Router {
       res.status(500).json({
         error: {
           code: ERROR_CODES.INTERNAL_ERROR,
-          message: `Khong doc duoc anh dinh kem: ${message.slice(0, 200)}`,
+          message: `Không đọc được ảnh đính kèm: ${message.slice(0, 200)}`,
         },
       })
     }

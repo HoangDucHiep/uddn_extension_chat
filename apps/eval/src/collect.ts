@@ -491,7 +491,7 @@ async function extractViaBff(
   })
 
   if (!response.ok) {
-    throw new Error(`POST /api/extract/${kind} that bai: HTTP ${response.status}`)
+    throw new Error(`POST /api/extract/${kind} thất bại: HTTP ${response.status}`)
   }
 
   const payload = (await response.json()) as {
@@ -652,7 +652,7 @@ export async function collectAll(
           snapshotPath,
           contentHash: '',
           chars: 0,
-          error: 'Noi dung qua ngan hoac rong',
+          error: 'Nội dung quá ngắn hoặc rỗng',
         })
         continue
       }
@@ -688,7 +688,7 @@ export async function collectAll(
             snapshotPath,
             contentHash: existing.contentHash,
             chars: existing.chars,
-            error: 'Noi dung nguon da doi — giu snapshot cu (dung --force de ghi de)',
+            error: 'Nội dung nguồn đã đổi — giữ snapshot cũ (dùng --force để ghi đè)',
           })
           continue
         }
@@ -737,7 +737,7 @@ async function downloadImage(
 
   // Trang loi 404/redirect thuong tra ve HTML → phai loai, khong ghi file.
   if (!contentType.startsWith('image/')) {
-    throw new Error(`Khong phai anh (Content-Type: ${contentType || 'unknown'})`)
+    throw new Error(`Không phải ảnh (Content-Type: ${contentType || 'unknown'})`)
   }
 
   const relativePath = `${ASSET_DIR}/${source.assetFileName}`
@@ -789,8 +789,8 @@ export async function writeDatasetMeta(results: readonly CollectResult[]): Promi
     collectedAt: new Date().toISOString(),
     collector: 'apps/eval collect',
     note:
-      'Snapshot la noi dung trang tai thoi diem thu thap — harness doc snapshot ' +
-      'chứ KHONG doc trang live (FC-2 trong EVAL_PLAN.md §9).',
+      'Snapshot là nội dung trang tại thời điểm thu thập — harness đọc snapshot ' +
+      'chứ KHÔNG đọc trang live (FC-2 trong EVAL_PLAN.md §9).',
     datasetChecksum: createHash('sha256')
       .update(sources.map((item) => `${item.slug}:${item.content_hash}`).join('\n'))
       .digest('hex'),

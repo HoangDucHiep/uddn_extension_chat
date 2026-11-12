@@ -127,13 +127,13 @@ export class GeminiProvider implements ProviderAdapter {
         ok: false,
         error:
           response.status === 400 || response.status === 401 || response.status === 403
-            ? `Key bi tu choi (${response.status}). Kiem tra lai key cua ban.`
-            : `Gemini tra loi ${response.status}`,
+            ? `Key bị từ chối (${response.status}). Kiểm tra lại key của bạn.`
+            : `Gemini trả lời ${response.status}`,
       }
     } catch (error) {
       return {
         ok: false,
-        error: `Khong ket noi duoc Gemini: ${error instanceof Error ? error.message : String(error)}`,
+        error: `Không kết nối được Gemini: ${error instanceof Error ? error.message : String(error)}`,
       }
     }
   }
@@ -147,7 +147,7 @@ export class GeminiProvider implements ProviderAdapter {
    * Discovery danh sach model + phan biet that/fallback (T-M2-02).
    *
    * Gemini chi tra model ma key duoc xac thuc → goi `GET /models` co
-   * `x-goog-api-key`. Provider loi → danh sach uu tien mac dinh (`fallback`).
+   * `x-goog-api-key`. Provider lỗi → danh sach uu tien mac dinh (`fallback`).
    *
    * @param apiKey - API key (optional).
    */
@@ -204,7 +204,7 @@ export class GeminiProvider implements ProviderAdapter {
       }
     }
 
-    yield lastError ?? errorChunk('PROVIDER_ERROR', 'Khong nao duoc Gemini tra ve')
+    yield lastError ?? errorChunk('PROVIDER_ERROR', 'Không nạo được Gemini trả về')
   }
 
   private preferredModels(): string[] {
@@ -296,7 +296,7 @@ export class GeminiProvider implements ProviderAdapter {
           ok: false,
           error: errorChunk(
             mapStatusToCode(response.status),
-            `Gemini tra loi ${response.status}: ${errorText.slice(0, 300)}`,
+            `Gemini trả lời ${response.status}: ${errorText.slice(0, 300)}`,
             {
               retryable: isRetryableStatus(response.status),
               ...(retryAfterSeconds !== undefined ? { retryAfterSeconds } : {}),
@@ -309,7 +309,7 @@ export class GeminiProvider implements ProviderAdapter {
       if (!response.body) {
         return {
           ok: false,
-          error: errorChunk('STREAM_ERROR', 'Gemini khong tra ve body'),
+          error: errorChunk('STREAM_ERROR', 'Gemini không trả về body'),
           retryable: true,
         }
       }
@@ -326,8 +326,8 @@ export class GeminiProvider implements ProviderAdapter {
         error: errorChunk(
           isAbort ? 'TIMEOUT' : 'PROVIDER_ERROR',
           isAbort
-            ? 'Gemini qua thoi gian cho'
-            : `Gemini loi: ${error instanceof Error ? error.message : String(error)}`,
+            ? 'Gemini quá thời gian chờ'
+            : `Gemini lỗi: ${error instanceof Error ? error.message : String(error)}`,
         ),
         retryable: true,
       }
@@ -347,7 +347,7 @@ export class GeminiProvider implements ProviderAdapter {
 
     if (payload.error) {
       chunks.push(
-        errorChunk('PROVIDER_ERROR', payload.error.message ?? 'Gemini tra loi loi'),
+        errorChunk('PROVIDER_ERROR', payload.error.message ?? 'Gemini trả lời lỗi'),
       )
       return
     }

@@ -30,14 +30,14 @@ export async function runJudge(args: readonly string[]): Promise<void> {
   const delayMs = readNumberFlag(args, '--delay') ?? DEFAULT_DELAY_MS
 
   if (runId.length === 0) {
-    console.error('Thieu --run <run_id>.')
+    console.error('Thiếu --run <run_id>.')
     process.exitCode = 1
     return
   }
 
   const taskResults = await readRunResults(runId)
   if (taskResults.length === 0) {
-    console.error(`Khong tim thay ket qua cho run "${runId}".`)
+    console.error(`Không tìm thấy kết quả cho run "${runId}".`)
     process.exitCode = 1
     return
   }
@@ -56,7 +56,7 @@ export async function runJudge(args: readonly string[]): Promise<void> {
       .map((item) => `${item.taskId}__${item.label}__run${item.run}`),
   )
   if (done.size > 0) {
-    console.log(`Cham lai: ${done.size} luot da cham xong se bo qua.`)
+    console.log(`Chấm lại: ${done.size} lượt đã chấm xong sẽ bỏ qua.`)
   }
 
   const results: JudgeResult[] = []
@@ -105,11 +105,11 @@ export async function runJudge(args: readonly string[]): Promise<void> {
   if (!dryRun) {
     const dir = await writeJudgeResults(runId, results)
     console.log('')
-    console.log(`Ket qua judge: ${dir}`)
+    console.log(`Kết quả judge: ${dir}`)
   }
 
   const ok = results.filter((result) => result.status === 'ok').length
-  console.log(`Cham xong: ${ok}/${results.length} luot chay.`)
+  console.log(`Chấm xong: ${ok}/${results.length} lượt chạy.`)
 }
 
 /**

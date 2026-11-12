@@ -99,7 +99,7 @@ export async function clearCitations(db: Database, messageId: string): Promise<v
     await db.delete(citationsTable).where(eq(citationsTable.messageId, messageId))
   } catch {
     // Xoa that bai → citation cu van hien thi (khong hong luong chat).
-    console.warn('[citationService] khong xoa duoc citations cu')
+    console.warn('[citationService] không xoá được citations cũ')
   }
 }
 
@@ -133,6 +133,6 @@ export async function persistCitations(
     )
   } catch {
     // Ghi log that bai → citation chi con ton tai trong SSE (van hien thi du).
-    console.warn('[citationService] khong ghi duoc citations vao DB')
+    console.warn('[citationService] không ghi được citations vào DB')
   }
 }

@@ -54,7 +54,7 @@ export async function resolveKey(
 
   throw new AppError(
     ERROR_CODES.MISSING_API_KEY,
-    `Khong tim thay API key cho provider "${providerId}". Hay cau hinh key trong settings hoac .env.`,
+    `Không tìm thấy API key cho provider "${providerId}". Hãy cấu hình key trong settings hoặc .env.`,
     { providerId },
   )
 }
@@ -86,7 +86,7 @@ async function resolveFromDb(
     // MASTER_KEY doi -> key cu khong decrypt duoc.
     throw new AppError(
       ERROR_CODES.INVALID_API_KEY,
-      `Khong giai ma duoc key da luu cho provider "${providerId}". MASTER_KEY co the da thay doi.`,
+      `Không giải mã được key đã lưu cho provider "${providerId}". MASTER_KEY có thể đã thay đổi.`,
       { providerId },
     )
   }

@@ -59,10 +59,10 @@ describe('safeFetch', () => {
 
   it('tu choi IP noi bo (khong goi mang)', async () => {
     await expect(safeFetch('http://127.0.0.1:8787/api/health')).rejects.toThrow(
-      /dia chi noi bi chan|noi bi chan/i,
+      /địa chỉ nội bị chặn|nội bị chặn/i,
     )
     await expect(safeFetch('http://169.254.169.254/latest/meta-data/')).rejects.toThrow(
-      /noi bi chan/i,
+      /nội bị chặn/i,
     )
   })
 
@@ -74,10 +74,10 @@ describe('safeFetch', () => {
 
   it('chan hostname noi bo (localhost / .local / .internal)', async () => {
     await expect(safeFetch('http://localhost:8787/api/health')).rejects.toThrow(
-      /host noi bo bi chan/i,
+      /host nội bộ bị chặn/i,
     )
-    await expect(safeFetch('http://service.internal/data')).rejects.toThrow(/host noi bo bi chan/i)
-    await expect(safeFetch('http://printer.local/status')).rejects.toThrow(/host noi bo bi chan/i)
+    await expect(safeFetch('http://service.internal/data')).rejects.toThrow(/host nội bộ bị chặn/i)
+    await expect(safeFetch('http://printer.local/status')).rejects.toThrow(/host nội bộ bị chặn/i)
   })
 })
 

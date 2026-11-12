@@ -6,7 +6,7 @@
  * M1: trich noi dung chinh bang Readability-lite — `extractor.ts`).
  *
  * T-M1-02 bo sung: theo doi vung text user boi den → hien nut nobi
- * "Hoi Sidekick" → click gui doan text len service worker.
+ * "Hỏi Sidekick" → click gui doan text len service worker.
  *
  * Docs: docs/SYSTEM_DESIGN.md §8 (Content extraction), §7.3.4
  */
@@ -109,8 +109,8 @@ function startSelectionWatcher(): void {
   const button = createSelectionButton({
     // Nhan nut mac dinh (tieng Viet) — duoc cap nhat ngay sau khi doc
     // ngon ngu tu storage (T-M1-17).
-    label: 'Hoi Sidekick',
-    ariaLabel: 'Hoi Sidekick về đoạn văn bản đã bôi đen',
+    label: 'Hỏi Sidekick',
+    ariaLabel: 'Hỏi Sidekick về đoạn văn bản đã bôi đen',
     onSelect: () => {
       const snapshot = getSelectionSnapshot()
       if (snapshot === null) return
@@ -176,4 +176,4 @@ void localizeSelectionButton()
 // Shortcut tu do cua Sidekick (T-M1-18) → bam phim tren trang → mo panel.
 startShortcutListener()
 
-console.warn('[sidekick] content script da san sang')
+console.warn('[sidekick] content script đã sẵn sàng')

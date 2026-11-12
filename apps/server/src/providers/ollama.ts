@@ -101,7 +101,7 @@ export async function detectOllama(
       return {
         available: false,
         models: [],
-        error: `Ollama tra loi ${response.status}`,
+        error: `Ollama trả lời ${response.status}`,
       }
     }
 
@@ -115,8 +115,8 @@ export async function detectOllama(
       available: false,
       models: [],
       error: isAbort
-        ? 'Ollama khong phan hoi (timeout)'
-        : `Khong ket noi duoc Ollama tai ${root}`,
+        ? 'Ollama không phản hồi (timeout)'
+        : `Không kết nối được Ollama tại ${root}`,
     }
   } finally {
     clearTimeout(timer)

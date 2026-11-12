@@ -107,6 +107,6 @@ describe('truncateAtBoundary', () => {
     const source = `${'doan mot '.repeat(20)}\n\n${'doan hai '.repeat(20)}`
     const result = truncateAtBoundary(source, 200)
     expect(result.length).toBeLessThan(source.length)
-    expect(result).toContain('noi dung bi cat')
+    expect(result).toContain('nội dung bị cắt')
   })
 })

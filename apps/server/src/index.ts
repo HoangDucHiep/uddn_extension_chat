@@ -58,7 +58,7 @@ async function main(): Promise<void> {
   })
 
   const server = app.listen(env.PORT, env.HOST, () => {
-    console.log(`Sidekick BFF v${VERSION} lang nghe tai http://${env.HOST}:${env.PORT}`)
+    console.log(`Sidekick BFF v${VERSION} lắng nghe tại http://${env.HOST}:${env.PORT}`)
     console.log(`Allowed origins: ${allowedOrigins.join(', ')}`)
     console.log(`Provider chain: ${registry.getFallbackChain().join(' -> ')}`)
   })
@@ -71,13 +71,13 @@ async function main(): Promise<void> {
     void pruneRequestLogs(db, env.LOG_RETENTION_DAYS)
       .then((deleted) => {
         if (deleted > 0) {
-          console.log(`[retention] Da xoa ${deleted} dong request_logs qua han.`)
+          console.log(`[retention] Đã xoá ${deleted} dòng request_logs quá hạn.`)
         }
       })
       .catch((error: unknown) => {
         // Xoa that bai khong duoc lam server chet.
         console.error(
-          '[retention] khong xoa duoc request_logs cu:',
+          '[retention] không xoá được request_logs cũ:',
           error instanceof Error ? error.message : error,
         )
       })
@@ -90,13 +90,13 @@ async function main(): Promise<void> {
 
   // Tat sach: dong server truoc, dong pool sau.
   const shutdown = (signal: string): void => {
-    console.log(`\nNhan ${signal}, dang tat server...`)
+    console.log(`\nNhận ${signal}, đang tắt server...`)
     clearInterval(pruneTimer)
     // Dong process MCP server truoc khi tat (T-M2-08) → khong de treo process con.
     void mcpManager.disconnectAll().catch(() => undefined)
     server.close(() => {
       void pool.end().then(() => {
-        console.log('Da dong ket noi DB.')
+        console.log('Đã đóng kết nối DB.')
         process.exit(0)
       })
     })
@@ -107,6 +107,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((error: unknown) => {
-  console.error('Khong the khoi dong BFF:', error instanceof Error ? error.message : String(error))
+  console.error('Không thể khởi động BFF:', error instanceof Error ? error.message : String(error))
   process.exit(1)
 })

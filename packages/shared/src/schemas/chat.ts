@@ -87,7 +87,7 @@ export const contextItemSchema = z.object({
    *
    * **Tu cat** thay vi reject khi vuot gioi han (fix T-M2-23): truoc day nhieu
    * noi cat `slice(0, 500)` roi **them** `"..."` → 503 ky tu → schema reject
-   * → `POST /api/chat` tra 400 "Body chat khong hop le" → **panel khong chat
+   * → `POST /api/chat` tra 400 "Body chat không hợp lệ" → **panel khong chat
    * duoc** sau khi dinh kem tai lieu.
    *
    * `excerpt` chi dung de **preview** → cat bot khong lam mat thong tin quan

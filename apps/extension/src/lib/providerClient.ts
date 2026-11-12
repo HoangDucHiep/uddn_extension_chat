@@ -38,7 +38,7 @@ export async function listProviderModels(providerId: ProviderId): Promise<Provid
 
   const parsed = providerModelsResponseSchema.safeParse(response)
   if (!parsed.success) {
-    throw new Error('Response danh sach model khong dung schema')
+    throw new Error('Response danh sách model không đúng schema')
   }
   return parsed.data
 }

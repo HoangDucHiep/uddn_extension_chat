@@ -18,7 +18,7 @@ export async function runCollect(args: readonly string[]): Promise<void> {
   const baseUrl = readFlag(args, '--base-url', process.env['SIDECKICK_BFF_URL'] ?? 'http://127.0.0.1:8787')
   const force = readBoolFlag(args, '--force')
 
-  console.log(`Thu thap snapshot (BFF: ${baseUrl})...`)
+  console.log(`Thu thập snapshot (BFF: ${baseUrl})...`)
   const results = await collectAll({ force, baseUrl })
 
   let ok = 0
@@ -28,11 +28,11 @@ export async function runCollect(args: readonly string[]): Promise<void> {
       continue
     }
     ok += 1
-    console.log(`  [ OK ] ${result.slug} — ${result.chars} ky tu`)
+    console.log(`  [ OK ] ${result.slug} — ${result.chars} ký tự`)
   }
 
   await writeDatasetMeta(results)
   console.log('')
-  console.log(`Xong: ${ok}/${results.length} nguon thanh cong.`)
-  console.log('Da sinh apps/eval/dataset/dataset_meta.json')
+  console.log(`Xong: ${ok}/${results.length} nguồn thành công.`)
+  console.log('Đã sinh apps/eval/dataset/dataset_meta.json')
 }

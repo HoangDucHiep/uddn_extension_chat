@@ -24,7 +24,7 @@ export function createChatRouter(deps: ChatServiceDeps): Router {
       res.status(400).json({
         error: {
           code: ERROR_CODES.VALIDATION_ERROR,
-          message: 'Body chat khong hop le',
+          message: 'Body chat không hợp lệ',
           details: { issues: parsed.error.issues },
         },
       })

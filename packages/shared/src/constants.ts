@@ -312,8 +312,8 @@ export type OnboardingStep = (typeof ONBOARDING_STEPS)[number]
 
 /** Co loi bao gio phai dung. */
 export const DEFAULT_SYSTEM_PROMPT =
-  'Ban la Sidekick AI, tro ly ao trong sidebar cua trinh duyet. Tra loi ngan gon, dung nham hinh, ' +
-  'va uu tien thong tin mau dich chinh xac.'
+  'Bạn là Sidekick AI, trợ lý ảo trong sidebar của trình duyệt. Trả lời ngắn gọn, đúng ngữ nghĩa, ' +
+  'và ưu tiên thông tin mẫu dịch chính xác.'
 
 /**
  * Chi dan them cho provider khi tiep tuc cau tra loi da bi stop (FR-CHAT-07).
@@ -322,8 +322,8 @@ export const DEFAULT_SYSTEM_PROMPT =
  * cau tra loi da ngat de model chi viet phan con thieu.
  */
 export const CONTINUE_INSTRUCTION =
-  'Tiep tuc cau tra loi truoc do tu dung cho no bi ngat. Chi viet phan tiep theo, ' +
-  'khong lap lai phan da co.'
+  'Tiếp tục câu trả lời trước đó tự dừng cho nó bị ngắt. Chỉ viết phần tiếp theo, ' +
+  'không lặp lại phần đã có.'
 
 /**
  * Chi dan cho provider khi server **tu noi tiep** cau tra loi bi cat do
@@ -336,9 +336,9 @@ export const CONTINUE_INSTRUCTION =
  *    nhu mot lan ghi binh thuong.
  */
 export const AUTO_CONTINUE_INSTRUCTION =
-  'Tiep tuc viet phan con lai cua bai vua trich dan, theo dung ke hoach da so. ' +
-  'Viet truc tiep noi dung, khong viet loi giai thich, khong ngoi gi bi gioi han, ' +
-  'khong tom tat phan da viet.'
+  'Tiếp tục viết phần còn lại của bài vừa trích dẫn, theo đúng kế hoạch đã so. ' +
+  'Viết trực tiếp nội dung, không viết lời giải thích, không nói gì bị giới hạn, ' +
+  'không tóm tắt phần đã viết.'
 
 /**
  * Prompt tom tat trang 1-click (FR-UX-04 — T-M1-11).

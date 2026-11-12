@@ -217,6 +217,6 @@ describe('ScrollToBottomButton', () => {
   it('co aria-label tieng Viet', () => {
     render(<ScrollToBottomButton onScrollToBottom={vi.fn()} />)
 
-    expect(screen.getByLabelText('Cuon xuong cuoi hoi thoai')).toBeTruthy()
+    expect(screen.getByLabelText('Cuộn xuống cuối hội thoại')).toBeTruthy()
   })
 })

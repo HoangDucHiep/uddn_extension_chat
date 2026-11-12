@@ -38,7 +38,7 @@ export const mcpServerNameSchema = z
   .string()
   .min(1)
   .max(80)
-  .regex(/^[a-z0-9_-]+$/, 'Ten MCP server chi gom chu thuong, so, dau gach, gach duoi')
+  .regex(/^[a-z0-9_-]+$/, 'Tên MCP server chỉ gồm chữ thường, số, dấu gạch, gạch dưới')
 
 /** Du lieu tao MCP server moi. */
 export const createMcpServerSchema = z.object({

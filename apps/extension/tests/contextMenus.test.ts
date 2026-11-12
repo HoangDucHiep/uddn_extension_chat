@@ -50,9 +50,9 @@ describe('registerContextMenus', () => {
       (item) => item.id === CONTEXT_MENU_ASK_SELECTION_ID,
     )
 
-    expect(open?.title).toBe('Mo Sidekick AI')
+    expect(open?.title).toBe('Mở Sidekick AI')
     expect(open?.contexts).toEqual(['page'])
-    expect(ask?.title).toBe('Hoi Sidekick voi doan da chon')
+    expect(ask?.title).toBe('Hỏi Sidekick với đoạn đã chọn')
     expect(ask?.contexts).toEqual(['selection'])
   })
 

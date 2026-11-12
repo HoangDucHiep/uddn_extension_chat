@@ -49,7 +49,7 @@ export function createProvidersRouter(deps: ProviderServiceDeps): Router {
       res.status(500).json({
         error: {
           code: ERROR_CODES.INTERNAL_ERROR,
-          message: `Khong doc duoc danh sach provider: ${message.slice(0, 200)}`,
+          message: `Không đọc được danh sách provider: ${message.slice(0, 200)}`,
         },
       })
     }
@@ -66,7 +66,7 @@ export function createProvidersRouter(deps: ProviderServiceDeps): Router {
       res.status(400).json({
         error: {
           code: ERROR_CODES.VALIDATION_ERROR,
-          message: `Provider khong hop le: "${String(providerId)}"`,
+          message: `Provider không hợp lệ: "${String(providerId)}"`,
         },
       })
       return
@@ -81,7 +81,7 @@ export function createProvidersRouter(deps: ProviderServiceDeps): Router {
       res.status(500).json({
         error: {
           code: ERROR_CODES.INTERNAL_ERROR,
-          message: `Khong doc duoc danh sach model: ${message.slice(0, 200)}`,
+          message: `Không đọc được danh sách model: ${message.slice(0, 200)}`,
         },
       })
     }
@@ -97,7 +97,7 @@ export function createProvidersRouter(deps: ProviderServiceDeps): Router {
       res.status(500).json({
         error: {
           code: ERROR_CODES.INTERNAL_ERROR,
-          message: `Khong doc duoc danh sach API key: ${message.slice(0, 200)}`,
+          message: `Không đọc được danh sách API key: ${message.slice(0, 200)}`,
         },
       })
     }
@@ -110,7 +110,7 @@ export function createProvidersRouter(deps: ProviderServiceDeps): Router {
       res.status(400).json({
         error: {
           code: ERROR_CODES.VALIDATION_ERROR,
-          message: 'Du lieu API key khong hop le',
+          message: 'Dữ liệu API key không hợp lệ',
           details: { issues: parsed.error.issues },
         },
       })
@@ -126,7 +126,7 @@ export function createProvidersRouter(deps: ProviderServiceDeps): Router {
       res.status(500).json({
         error: {
           code: ERROR_CODES.INTERNAL_ERROR,
-          message: `Khong luu duoc API key: ${message.slice(0, 200)}`,
+          message: `Không lưu được API key: ${message.slice(0, 200)}`,
         },
       })
     }
@@ -139,7 +139,7 @@ export function createProvidersRouter(deps: ProviderServiceDeps): Router {
       res.status(400).json({
         error: {
           code: ERROR_CODES.VALIDATION_ERROR,
-          message: 'Thieu id API key',
+          message: 'Thiếu id API key',
         },
       })
       return
@@ -154,7 +154,7 @@ export function createProvidersRouter(deps: ProviderServiceDeps): Router {
       res.status(500).json({
         error: {
           code: ERROR_CODES.INTERNAL_ERROR,
-          message: `Khong xoa duoc API key: ${message.slice(0, 200)}`,
+          message: `Không xoá được API key: ${message.slice(0, 200)}`,
         },
       })
     }
@@ -167,7 +167,7 @@ export function createProvidersRouter(deps: ProviderServiceDeps): Router {
       res.status(400).json({
         error: {
           code: ERROR_CODES.VALIDATION_ERROR,
-          message: 'Thieu id API key',
+          message: 'Thiếu id API key',
         },
       })
       return
@@ -182,7 +182,7 @@ export function createProvidersRouter(deps: ProviderServiceDeps): Router {
       res.status(500).json({
         error: {
           code: ERROR_CODES.INTERNAL_ERROR,
-          message: `Khong kiem tra duoc API key: ${message.slice(0, 200)}`,
+          message: `Không kiểm tra được API key: ${message.slice(0, 200)}`,
         },
       })
     }

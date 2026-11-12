@@ -80,7 +80,7 @@ export function validateDocumentFile(file: File): DocumentValidationResult {
     return {
       ok: false,
       code: ERROR_CODES.DOCUMENT_UNSUPPORTED_TYPE,
-      message: `Dinh dang "${documentExtensionOf(file.name) || file.type || 'khong ro'}" khong duoc ho tro. Chi nhan PDF, DOCX, TXT, MD, CSV.`,
+      message: `Định dạng "${documentExtensionOf(file.name) || file.type || 'không rõ'}" không được hỗ trợ. Chỉ nhận PDF, DOCX, TXT, MD, CSV.`,
     }
   }
 
@@ -88,7 +88,7 @@ export function validateDocumentFile(file: File): DocumentValidationResult {
     return {
       ok: false,
       code: ERROR_CODES.DOCUMENT_TOO_LARGE,
-      message: `Tai lieu vuot qua ${Math.round(DOCUMENT.MAX_BYTES / 1_000_000)} MB. Hay chon tai lieu nho hon.`,
+      message: `Tài liệu vượt quá ${Math.round(DOCUMENT.MAX_BYTES / 1_000_000)} MB. Hãy chọn tài liệu nhỏ hơn.`,
     }
   }
 
@@ -96,7 +96,7 @@ export function validateDocumentFile(file: File): DocumentValidationResult {
     return {
       ok: false,
       code: ERROR_CODES.DOCUMENT_EMPTY,
-      message: 'Tai lieu rong — khong the dinh kem.',
+      message: 'Tài liệu rỗng — không thể đính kèm.',
     }
   }
 
@@ -113,13 +113,13 @@ export function readFileAsBase64(file: File): Promise<string> {
     const reader = new FileReader()
 
     reader.onerror = (): void => {
-      reject(new Error('Khong doc duoc tep.'))
+      reject(new Error('Không đọc được tệp.'))
     }
 
     reader.onload = (): void => {
       const result = reader.result
       if (typeof result !== 'string') {
-        reject(new Error('Khong doc duoc tep.'))
+        reject(new Error('Không đọc được tệp.'))
         return
       }
       resolve(stripDataUrlPrefix(result))

@@ -127,7 +127,7 @@ export function tokenize(source: string): Token[] {
       if (raw === '.') {
         throw new ToolExecutionError(
           TOOL_ERROR_CODES.INVALID_EXPRESSION,
-          'So thuc khong hop le',
+          'Số thực không hợp lệ',
         )
       }
       tokens.push({ type: 'number', value: raw })
@@ -169,7 +169,7 @@ export function tokenize(source: string): Token[] {
 
     throw new ToolExecutionError(
       TOOL_ERROR_CODES.INVALID_EXPRESSION,
-      `Ky tu khong hop le: "${char}"`,
+      `Ký tự không hợp lệ: "${char}"`,
     )
   }
 
@@ -199,7 +199,7 @@ export function toRpn(tokens: readonly Token[]): string[] {
       if (!expectOperand) {
         throw new ToolExecutionError(
           TOOL_ERROR_CODES.INVALID_EXPRESSION,
-          `Toan hang khong hop le: "${token.value}"`,
+          `Toán hạng không hợp lệ: "${token.value}"`,
         )
       }
       if (token.value in CONSTANTS) {
@@ -210,7 +210,7 @@ export function toRpn(tokens: readonly Token[]): string[] {
       if (!(token.value in FUNCTIONS)) {
         throw new ToolExecutionError(
           TOOL_ERROR_CODES.UNKNOWN_FUNCTION,
-          `Ham khong ton tai: "${token.value}"`,
+          `Hàm không tồn tại: "${token.value}"`,
         )
       }
       // Ten ham → danh dau de biet khi gap ')' day la ham.
@@ -232,7 +232,7 @@ export function toRpn(tokens: readonly Token[]): string[] {
       if (stack.length === 0) {
         throw new ToolExecutionError(
           TOOL_ERROR_CODES.INVALID_EXPRESSION,
-          'Dau phan thuoc khong hop le',
+          'Dấu phân thức không hợp lệ',
         )
       }
       expectOperand = true
@@ -246,7 +246,7 @@ export function toRpn(tokens: readonly Token[]): string[] {
       if (stack.length === 0) {
         throw new ToolExecutionError(
           TOOL_ERROR_CODES.INVALID_EXPRESSION,
-          'Thieu dau ngoac dong',
+          'Thiếu dấu ngoặc đóng',
         )
       }
       stack.pop() // bo '('
@@ -287,7 +287,7 @@ export function toRpn(tokens: readonly Token[]): string[] {
     if (top === '(') {
       throw new ToolExecutionError(
         TOOL_ERROR_CODES.INVALID_EXPRESSION,
-        'Thieu dau ngoac dong',
+        'Thiếu dấu ngoặc đóng',
       )
     }
     output.push(top)
@@ -325,7 +325,7 @@ export function evaluateRpn(rpn: readonly string[]): number {
       if (arity === undefined) {
         throw new ToolExecutionError(
           TOOL_ERROR_CODES.UNKNOWN_FUNCTION,
-          `Ham khong ton tai: "${name}"`,
+          `Hàm không tồn tại: "${name}"`,
         )
       }
       const args: number[] = []
@@ -344,7 +344,7 @@ export function evaluateRpn(rpn: readonly string[]): number {
   if (stack.length !== 1) {
     throw new ToolExecutionError(
       TOOL_ERROR_CODES.INVALID_EXPRESSION,
-      'Bieu thuc khong hop le',
+      'Biểu thức không hợp lệ',
     )
   }
 
@@ -352,13 +352,13 @@ export function evaluateRpn(rpn: readonly string[]): number {
   if (!Number.isFinite(result)) {
     throw new ToolExecutionError(
       TOOL_ERROR_CODES.OVERFLOW,
-      'Ket qua vuot gioi han so hoc',
+      'Kết quả vượt giới hạn số học',
     )
   }
   if (Math.abs(result) > MAX_RESULT_MAGNITUDE) {
     throw new ToolExecutionError(
       TOOL_ERROR_CODES.OVERFLOW,
-      'Ket qua vuot gioi han so hoc',
+      'Kết quả vượt giới hạn số học',
     )
   }
   return result
@@ -376,13 +376,13 @@ export function evaluateExpression(expression: string): number {
   if (trimmed.length === 0) {
     throw new ToolExecutionError(
       TOOL_ERROR_CODES.INVALID_EXPRESSION,
-      'Bieu thuc rong',
+      'Biểu thức rỗng',
     )
   }
   if (trimmed.length > MAX_EXPRESSION_LENGTH) {
     throw new ToolExecutionError(
       TOOL_ERROR_CODES.INVALID_EXPRESSION,
-      `Bieu thuc qua dai (toi da ${MAX_EXPRESSION_LENGTH} ky tu)`,
+      `Biểu thức quá dài (tối đa ${MAX_EXPRESSION_LENGTH} ký tự)`,
     )
   }
 
@@ -406,7 +406,7 @@ function popValue(stack: number[]): number {
   if (value === undefined) {
     throw new ToolExecutionError(
       TOOL_ERROR_CODES.INVALID_EXPRESSION,
-      'Bieu thuc khong hop le',
+      'Biểu thức không hợp lệ',
     )
   }
   return value
@@ -442,7 +442,7 @@ function applyBinaryOperator(operator: string, left: number, right: number): num
     default:
       throw new ToolExecutionError(
         TOOL_ERROR_CODES.INVALID_EXPRESSION,
-        `Toan tu khong ho tro: "${operator}"`,
+        `Toán tử không hỗ trợ: "${operator}"`,
       )
   }
 }
@@ -455,7 +455,7 @@ function applyFunction(name: string, args: readonly number[]): number {
       if (first < 0) {
         throw new ToolExecutionError(
           TOOL_ERROR_CODES.INVALID_EXPRESSION,
-          'Sqrt cua so am khong hop le',
+          'Sqrt của số âm không hợp lệ',
         )
       }
       return Math.sqrt(first)
@@ -476,7 +476,7 @@ function applyFunction(name: string, args: readonly number[]): number {
     default:
       throw new ToolExecutionError(
         TOOL_ERROR_CODES.UNKNOWN_FUNCTION,
-        `Ham khong ton tai: "${name}"`,
+        `Hàm không tồn tại: "${name}"`,
       )
   }
 }
@@ -505,15 +505,15 @@ function isLetter(char: string): boolean {
 export const calculatorTool: Tool = {
   name: 'calculator',
   description:
-    'Tinh mot bieu thuc so hoc. Ho tro toan tu + - * / % ^, ngoac, hang so pi/e ' +
-    'va ham sqrt, abs, round, floor, ceil, min, max, pow. Dung khi can tinh chinh xac ' +
-    'thay vi uoc luong bang model.',
+    'Tính một biểu thức số học. Hỗ trợ toán tử + - * / % ^, ngoặc, hằng số pi/e ' +
+    'và hàm sqrt, abs, round, floor, ceil, min, max, pow. Dùng khi cần tính chính xác ' +
+    'thay vì ước lượng bằng model.',
   parameters: {
     type: 'object',
     properties: {
       expression: {
         type: 'string',
-        description: 'Bieu thuc so hoc can tinh, vi du "2*(3+4)".',
+        description: 'Biểu thức số học cần tính, ví dụ "2*(3+4)".',
       },
     },
     required: ['expression'],
@@ -524,7 +524,7 @@ export const calculatorTool: Tool = {
     if (!parsed.success) {
       return {
         ok: false,
-        output: 'Tham so khong hop le: can `expression` la chuoi.',
+        output: 'Tham số không hợp lệ: cần `expression` là chuỗi.',
         error: 'VALIDATION_ERROR',
       }
     }
@@ -538,7 +538,7 @@ export const calculatorTool: Tool = {
       }
       return {
         ok: false,
-        output: 'Khong tinh duoc bieu thuc.',
+        output: 'Không tính được biểu thức.',
         error: 'TOOL_ERROR',
       }
     }

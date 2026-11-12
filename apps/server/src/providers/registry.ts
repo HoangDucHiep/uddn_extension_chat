@@ -99,7 +99,7 @@ export class ProviderRegistry {
   require(providerId: ProviderId): ProviderAdapter {
     const provider = this.providers.get(providerId)
     if (!provider) {
-      throw new Error(`Khong tim thay provider "${providerId}"`)
+      throw new Error(`Không tìm thấy provider "${providerId}"`)
     }
     return provider
   }

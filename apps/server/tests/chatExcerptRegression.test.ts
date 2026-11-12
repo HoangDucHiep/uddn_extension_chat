@@ -143,7 +143,7 @@ describe('POST /api/chat — context co excerpt vuot gioi han', () => {
 
     const body = await response.text()
     expect(body).toContain('event: token')
-    expect(body).not.toContain('Body chat khong hop le')
+    expect(body).not.toContain('Body chat không hợp lệ')
   })
 
   it('context hop le van hoat dong binh thuong (khong regression)', async () => {

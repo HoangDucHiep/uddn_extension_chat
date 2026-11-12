@@ -120,7 +120,7 @@ export async function extractDocumentText(
   if (kind === undefined) {
     throw new SafeFetchError(
       ERROR_CODES.DOCUMENT_UNSUPPORTED_TYPE,
-      `Dinh dang khong ho tro: "${options.fileName}". Chi ho tro PDF, DOCX, TXT, MD, CSV.`,
+      `Định dạng không hỗ trợ: "${options.fileName}". Chỉ hỗ trợ PDF, DOCX, TXT, MD, CSV.`,
       400,
     )
   }
@@ -131,7 +131,7 @@ export async function extractDocumentText(
   if (normalized.length === 0) {
     throw new SafeFetchError(
       ERROR_CODES.DOCUMENT_EMPTY,
-      `File "${options.fileName}" khong co noi dung text nao.`,
+      `File "${options.fileName}" không có nội dung text nào.`,
       422,
     )
   }
@@ -180,7 +180,7 @@ async function extractRawText(
       if (error instanceof SafeFetchError && error.code === ERROR_CODES.CONTEXT_PDF_NOT_READABLE) {
         throw new SafeFetchError(
           ERROR_CODES.DOCUMENT_NOT_READABLE,
-          'PDF khong co text layer (ban scan) → hay tai len anh thay the.',
+          'PDF không có text layer (bản scan) → hãy tải lên ảnh thay thế.',
           422,
         )
       }
@@ -211,7 +211,7 @@ async function extractDocxText(bytes: Uint8Array): Promise<string> {
     }
     const mammoth = imported.default
     if (mammoth === undefined) {
-      throw new Error('Khong tim thay module mammoth')
+      throw new Error('Không tìm thấy module mammoth')
     }
 
     const buffer = Buffer.from(bytes)
@@ -220,7 +220,7 @@ async function extractDocxText(bytes: Uint8Array): Promise<string> {
   } catch (error) {
     throw new SafeFetchError(
       ERROR_CODES.DOCUMENT_NOT_READABLE,
-      `Khong doc duoc file DOCX: ${error instanceof Error ? error.message : String(error)}`,
+      `Không đọc được file DOCX: ${error instanceof Error ? error.message : String(error)}`,
       422,
     )
   }
@@ -240,7 +240,7 @@ function extractPlainText(bytes: Uint8Array): string {
     if (byte === 0) {
       throw new SafeFetchError(
         ERROR_CODES.DOCUMENT_NOT_READABLE,
-        'File co du lieu binary — chi ho tro file text (TXT/MD/CSV).',
+        'File có dữ liệu binary — chỉ hỗ trợ file text (TXT/MD/CSV).',
         422,
       )
     }

@@ -301,7 +301,7 @@ async function runOnce(
       ...base,
       status: 'ok',
       finishedAt: new Date().toISOString(),
-      answer: '(dry-run — khong goi BFF)',
+      answer: '(dry-run — không gọi BFF)',
     }
   }
 

@@ -31,7 +31,7 @@ export function createLogsRouter(deps: LogsDeps): Router {
       res.status(400).json({
         error: {
           code: ERROR_CODES.VALIDATION_ERROR,
-          message: 'Query logs khong hop le',
+          message: 'Query logs không hợp lệ',
           details: { issues: parsed.error.issues },
         },
       })
@@ -59,7 +59,7 @@ export function createLogsRouter(deps: LogsDeps): Router {
       res.status(400).json({
         error: {
           code: ERROR_CODES.VALIDATION_ERROR,
-          message: 'Query usage khong hop le',
+          message: 'Query usage không hợp lệ',
           details: { issues: parsed.error.issues },
         },
       })

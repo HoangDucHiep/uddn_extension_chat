@@ -97,7 +97,7 @@ describe('AttachmentTray', () => {
       />,
     )
 
-    fireEvent.click(screen.getByLabelText('Xoa context bao-cao.pdf'))
+    fireEvent.click(screen.getByLabelText('Xoá context bao-cao.pdf'))
 
     expect(onRemoveDocument).toHaveBeenCalledWith('doc-1')
   })

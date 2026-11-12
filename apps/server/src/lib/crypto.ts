@@ -21,7 +21,7 @@ export interface EncryptedPayload {
 /** Chuyen hex string (64 ky tu) thanh Buffer 32 byte. */
 export function hexToKey(hex: string): Buffer {
   if (!/^[0-9a-f]{64}$/i.test(hex)) {
-    throw new Error('MASTER_KEY phai la hex 64 ky tu (32 byte)')
+    throw new Error('MASTER_KEY phải là hex 64 ký tự (32 byte)')
   }
   return Buffer.from(hex, 'hex')
 }

@@ -106,7 +106,7 @@ export async function extractYoutubeTranscript(
   if (segments.length === 0) {
     throw new SafeFetchError(
       ERROR_CODES.CONTEXT_TRANSCRIPT_UNAVAILABLE,
-      'Caption track rong',
+      'Caption track rỗng',
       422,
     )
   }
@@ -135,7 +135,7 @@ function resolveVideo(url: string): { videoId: string; watchUrl: string } {
   if (videoId.length === 0) {
     throw new SafeFetchError(
       ERROR_CODES.CONTEXT_TRANSCRIPT_UNAVAILABLE,
-      `Khong xac dinh duoc video id tu URL: ${url}`,
+      `Không xác định được video id từ URL: ${url}`,
       422,
     )
   }
@@ -208,7 +208,7 @@ async function fetchPlayerResponse(
   } catch {
     throw new SafeFetchError(
       ERROR_CODES.CONTEXT_TRANSCRIPT_UNAVAILABLE,
-      'Player response khong phai JSON hop le',
+      'Player response không phải JSON hợp lệ',
       422,
     )
   }
@@ -255,7 +255,7 @@ async function resolvePlayerResponse(
 
   throw new SafeFetchError(
     ERROR_CODES.CONTEXT_TRANSCRIPT_UNAVAILABLE,
-    'Khong lay duoc player response (InnerTube va HTML deu that bai)',
+    'Không lấy được player response (InnerTube và HTML đều thất bại)',
     422,
   )
 }
@@ -349,12 +349,12 @@ function selectCaptionTrack(player: PlayerResponse): CaptionTrack | undefined {
 function describeMissingCaptions(player: PlayerResponse): string {
   const status = player.playabilityStatus?.status
   if (status !== undefined && status !== 'OK') {
-    return `Video khong xem duoc (${status}): ${player.playabilityStatus?.reason ?? 'khong ro'}`
+    return `Video không xem được (${status}): ${player.playabilityStatus?.reason ?? 'không rõ'}`
   }
   if (player.videoDetails?.isLiveContent === true) {
-    return 'Video dang phat truc tiep → chua co transcript'
+    return 'Video đang phát trực tiếp → chưa có transcript'
   }
-  return 'Video khong co phu de (caption)'
+  return 'Video không có phụ đề (caption)'
 }
 
 /**

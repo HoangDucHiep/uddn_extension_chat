@@ -16,10 +16,10 @@
  * Docs: docs/SYSTEM_DESIGN.md §7.17
  */
 export const outsidePanelViDictionary = {
-  'content.selectionButton': 'Hoi Sidekick',
+  'content.selectionButton': 'Hỏi Sidekick',
   'content.selectionButtonLabel': '{label} về đoạn văn bản đã bôi đen',
-  'background.menu.open': 'Mo Sidekick AI',
-  'background.menu.askSelection': 'Hoi Sidekick voi doan da chon',
+  'background.menu.open': 'Mở Sidekick AI',
+  'background.menu.askSelection': 'Hỏi Sidekick với đoạn đã chọn',
 } as const
 
 /** Dictionary "ngoai panel" — kieu de `outsidePanel.en.ts` rang buoc key. */

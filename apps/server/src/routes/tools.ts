@@ -46,7 +46,7 @@ export function createToolsRouter(deps: ToolsDeps): Router {
       res.status(404).json({
         error: {
           code: ERROR_CODES.NOT_FOUND,
-          message: 'Khong tim thay tool call',
+          message: 'Không tìm thấy tool call',
         },
       })
       return
@@ -61,7 +61,7 @@ export function createToolsRouter(deps: ToolsDeps): Router {
       res.status(404).json({
         error: {
           code: ERROR_CODES.NOT_FOUND,
-          message: 'Khong tim thay tool call',
+          message: 'Không tìm thấy tool call',
         },
       })
       return

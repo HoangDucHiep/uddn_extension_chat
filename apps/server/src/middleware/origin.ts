@@ -63,7 +63,7 @@ export function createOriginGuard(allowedOrigins: string[]): RequestHandler {
     res.status(403).json({
       error: {
         code: ERROR_CODES.FORBIDDEN,
-        message: `Origin khong duoc phep: ${origin}`,
+        message: `Origin không được phép: ${origin}`,
       },
     })
   }

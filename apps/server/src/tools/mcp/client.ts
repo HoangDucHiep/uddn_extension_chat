@@ -132,11 +132,11 @@ export class McpClient {
       this.lastStderr = `${this.lastStderr}${chunk}`.slice(-500)
     })
     child.on('error', (error: Error) => {
-      this.rejectAll(new McpClientError('spawn', `Khong khoi dong duoc MCP server: ${error.message}`))
+      this.rejectAll(new McpClientError('spawn', `Không khởi động được MCP server: ${error.message}`))
     })
     child.on('exit', (code: number | null) => {
       this.rejectAll(
-        new McpClientError('closed', `MCP server da dung (ma ${code ?? 'null'})`),
+        new McpClientError('closed', `MCP server đã dừng (mã ${code ?? 'null'})`),
       )
       this.child = undefined
     })
@@ -148,14 +148,14 @@ export class McpClient {
         clientInfo: { name: 'sidekick', version: '0.1.0' },
       })
       if (!isRecord(result)) {
-        throw new McpClientError('protocol', 'MCP server tra ve ket qua initialize sai dinh dang')
+        throw new McpClientError('protocol', 'MCP server trả về kết quả initialize sai định dạng')
       }
       // Notification (khong co id) → server chuyen sang trang thai san sang.
       this.notify('notifications/initialized', {})
     } catch (error: unknown) {
       await this.disconnect()
       if (error instanceof McpClientError) throw error
-      throw new McpClientError('protocol', 'Khong khoi tao duoc MCP server')
+      throw new McpClientError('protocol', 'Không khởi tạo được MCP server')
     }
   }
 
@@ -168,7 +168,7 @@ export class McpClient {
   async listTools(): Promise<McpToolInfo[]> {
     const result = await this.request('tools/list', {})
     if (!isRecord(result) || !Array.isArray(result['tools'])) {
-      throw new McpClientError('protocol', 'MCP server tra ve danh sach tool sai dinh dang')
+      throw new McpClientError('protocol', 'MCP server trả về danh sách tool sai định dạng')
     }
 
     const tools: McpToolInfo[] = []
@@ -200,7 +200,7 @@ export class McpClient {
     })
 
     if (!isRecord(result)) {
-      return { ok: false, output: 'MCP server tra ve ket qua goi tool sai dinh dang' }
+      return { ok: false, output: 'MCP server trả về kết quả gọi tool sai định dạng' }
     }
 
     // MCP tra `isError: true` khi tool fail → `ok: false` (khong nem loi).
@@ -221,7 +221,7 @@ export class McpClient {
     this.child = undefined
     this.buffer = ''
 
-    this.rejectAll(new McpClientError('closed', 'MCP server da duoc dong'))
+    this.rejectAll(new McpClientError('closed', 'MCP server đã được đóng'))
 
     if (child === undefined) return
     child.stdout.removeAllListeners('data')
@@ -270,7 +270,7 @@ export class McpClient {
   private request(method: string, params: unknown): Promise<unknown> {
     const child = this.child
     if (child === undefined || child.stdin.destroyed) {
-      return Promise.reject(new McpClientError('closed', 'MCP server chua ket noi'))
+      return Promise.reject(new McpClientError('closed', 'MCP server chưa kết nối'))
     }
 
     const id = this.nextId
@@ -282,7 +282,7 @@ export class McpClient {
         reject(
           new McpClientError(
             'timeout',
-            `MCP server khong phan hoi "${method}" trong ${this.timeoutMs}ms`,
+            `MCP server không phản hồi "${method}" trong ${this.timeoutMs}ms`,
           ),
         )
       }, this.timeoutMs)

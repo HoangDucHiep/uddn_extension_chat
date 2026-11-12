@@ -290,7 +290,7 @@ describe('agent loop — gioi han vong (FR-TOOLS-02)', () => {
       .filter((event) => event.type === 'token')
       .map((event) => (event.type === 'token' ? event.delta : ''))
       .join('')
-    expect(tokens).toContain('Da dung het so vong goi tool')
+    expect(tokens).toContain('Đã dùng hết số vòng gọi tool')
   })
 })
 
@@ -372,7 +372,7 @@ describe('agent loop — approval gate (FR-TOOLS-04)', () => {
     expect(toolResult?.type).toBe('tool_result')
     if (toolResult?.type === 'tool_result') {
       expect(toolResult.ok).toBe(false)
-      expect(toolResult.output).toContain('duyet')
+      expect(toolResult.output).toContain('duyệt')
     }
   })
 })

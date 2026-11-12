@@ -22,14 +22,14 @@ export async function runReport(args: readonly string[]): Promise<void> {
   const outDir = readFlag(args, '--out-dir', 'apps/eval/reports')
 
   if (runId.length === 0) {
-    console.error('Thieu --run <run_id>.')
+    console.error('Thiếu --run <run_id>.')
     process.exitCode = 1
     return
   }
 
   const taskResults = await readRunResults(runId)
   if (taskResults.length === 0) {
-    console.error(`Khong tim thay ket qua cho run "${runId}".`)
+    console.error(`Không tìm thấy kết quả cho run "${runId}".`)
     process.exitCode = 1
     return
   }
@@ -71,10 +71,10 @@ export async function runReport(args: readonly string[]): Promise<void> {
   await writeJsonFile(`${outDir}/summary-${runId}.json`, payload)
 
   const slices = [
-    { label: 'Tat ca', slice: overall },
+    { label: 'Tất cả', slice: overall },
     ...Object.entries(byGroup).map(([group, slice]) => ({ label: group, slice })),
   ]
-  const markdown = renderMarkdownTable(slices, `Ket qua eval — run ${runId}`)
+  const markdown = renderMarkdownTable(slices, `Kết quả eval — run ${runId}`)
 
   console.log(markdown)
   console.log('')
@@ -85,9 +85,9 @@ export async function runReport(args: readonly string[]): Promise<void> {
     slice,
   }))
   if (providerSlices.length > 0) {
-    console.log(renderMarkdownTable(providerSlices, `Ket qua theo provider — run ${runId}`))
+    console.log(renderMarkdownTable(providerSlices, `Kết quả theo provider — run ${runId}`))
     console.log('')
   }
 
-  console.log(`Da ghi ${outDir}/summary-${runId}.json`)
+  console.log(`Đã ghi ${outDir}/summary-${runId}.json`)
 }

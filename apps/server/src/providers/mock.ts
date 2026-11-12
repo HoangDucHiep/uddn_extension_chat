@@ -35,12 +35,12 @@ export interface MockProviderOptions {
 }
 
 const DEFAULT_RESPONSE =
-  'Day la phan hoi mau tu MockProvider. Ban co the dung provider nay de kiem thu ' +
-  'luong chat ma khong can mang hay API key nao.'
+  'Đây là phản hồi mẫu từ MockProvider. Bạn có thể dùng provider này để kiểm thử ' +
+  'luồng chat mà không cần mạng hay API key nào.'
 
 /** Text tra ve sau khi tool da chay xong. */
 const DEFAULT_TOOL_FINAL_RESPONSE =
-  'Da chay xong tool va day la phan hoi cuoi cung tu MockProvider.'
+  'Đã chạy xong tool và đây là phản hồi cuối cùng từ MockProvider.'
 
 export class MockProvider implements ProviderAdapter {
   readonly id = 'mock'
@@ -113,7 +113,7 @@ export class MockProvider implements ProviderAdapter {
     )
     const imageNote =
       imageCount > 0
-        ? ` [mock] Nhan duoc ${imageCount} anh (${describeImages(request.messages)})`
+        ? ` [mock] Nhận được ${imageCount} ảnh (${describeImages(request.messages)})`
         : ''
 
     const words = `${text}${imageNote}`.match(/\S+\s*/g) ?? [text]

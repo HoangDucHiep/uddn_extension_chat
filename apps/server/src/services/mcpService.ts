@@ -183,14 +183,14 @@ export async function createMcpServer(
   manager: McpManager,
 ): Promise<McpServer> {
   if (await nameExists(db, input.name)) {
-    throw new AppError(ERROR_CODES.CONFLICT, `MCP server "${input.name}" da ton tai`)
+    throw new AppError(ERROR_CODES.CONFLICT, `MCP server "${input.name}" đã tồn tại`)
   }
 
   const existingCount = await db.select({ id: mcpServers.id }).from(mcpServers)
   if (existingCount.length >= MCP_LIMITS.MAX_SERVERS) {
     throw new AppError(
       ERROR_CODES.BAD_REQUEST,
-      `Chi toi da ${MCP_LIMITS.MAX_SERVERS} MCP server`,
+      `Chỉ tối đa ${MCP_LIMITS.MAX_SERVERS} MCP server`,
     )
   }
 
@@ -209,7 +209,7 @@ export async function createMcpServer(
 
   const row = rows[0]
   if (row === undefined) {
-    throw new AppError(ERROR_CODES.INTERNAL_ERROR, 'Khong tao duoc MCP server')
+    throw new AppError(ERROR_CODES.INTERNAL_ERROR, 'Không tạo được MCP server')
   }
 
   await manager.refresh([...(await listMcpServerConfigs(db))], { force: true })
@@ -217,7 +217,7 @@ export async function createMcpServer(
 
   const server = await getMcpServer(db, row.id)
   if (server === undefined) {
-    throw new AppError(ERROR_CODES.INTERNAL_ERROR, 'Khong tao duoc MCP server')
+    throw new AppError(ERROR_CODES.INTERNAL_ERROR, 'Không tạo được MCP server')
   }
   return server
 }
@@ -239,7 +239,7 @@ export async function updateMcpServer(
 ): Promise<McpServer> {
   const current = await getMcpServer(db, id)
   if (current === undefined) {
-    throw new AppError(ERROR_CODES.NOT_FOUND, 'Khong tim thay MCP server')
+    throw new AppError(ERROR_CODES.NOT_FOUND, 'Không tìm thấy MCP server')
   }
 
   const values: Record<string, unknown> = { updatedAt: new Date() }
@@ -256,7 +256,7 @@ export async function updateMcpServer(
     .returning()
 
   if (rows[0] === undefined) {
-    throw new AppError(ERROR_CODES.NOT_FOUND, 'Khong tim thay MCP server')
+    throw new AppError(ERROR_CODES.NOT_FOUND, 'Không tìm thấy MCP server')
   }
 
   await manager.refresh([...(await listMcpServerConfigs(db))], { force: true })
@@ -264,7 +264,7 @@ export async function updateMcpServer(
 
   const server = await getMcpServer(db, id)
   if (server === undefined) {
-    throw new AppError(ERROR_CODES.NOT_FOUND, 'Khong tim thay MCP server')
+    throw new AppError(ERROR_CODES.NOT_FOUND, 'Không tìm thấy MCP server')
   }
   return server
 }
@@ -287,7 +287,7 @@ export async function deleteMcpServer(
     .returning()
 
   if (rows.length === 0) {
-    throw new AppError(ERROR_CODES.NOT_FOUND, 'Khong tim thay MCP server')
+    throw new AppError(ERROR_CODES.NOT_FOUND, 'Không tìm thấy MCP server')
   }
 
   await manager.refresh([...(await listMcpServerConfigs(db))], { force: true })

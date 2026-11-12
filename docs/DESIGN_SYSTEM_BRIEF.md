@@ -712,7 +712,9 @@ Folder `apps/extension/src/sidepanel/components/states/` — **4 trạng thái**
 
 > **Không dịch:** gợi ý trang trong `packages/shared/src/pageProfile.ts` + `SUMMARY_PROMPT` (phải nhất quán cho eval) · thông điệp lỗi trả về từ server (thuộc phía BFF).
 
-> **Liên quan:** [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.17 · [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.8.1 (FR-SETTINGS-06)
+> **Quy tắc bắt buộc — chuỗi tiếng Việt phải CÓ DẤU:** mọi giá trị trong `vi.ts` / `outsidePanel.vi.ts` và mọi chuỗi user-facing trong component phải viết **đầy đủ dấu thanh** (`'Xem lịch sử cuộc trò chuyện'`, không phải `'Xem lich su cuoc tro chuyen'`). Chuỗi **không dấu** là lỗi — không chỉ sai chính tả mà còn làm giảm tín hiệu quả cho người đọc màn hình. Khi sửa hàng loạt, **mapping theo cả cụm** (không thay từng token rời rạc) vì cùng một từ không dấu có thể mang nghĩa khác nhau: `dung` = *dừng* (`Dừng tạo câu trả lời`) ≠ *đúng* (`đúng schema`).
+>
+> **Liên quan:** [`SYSTEM_DESIGN.md`](SYSTEM_DESIGN.md) §7.17 · [`REQUIREMENTS.md`](REQUIREMENTS.md) §4.8.1 (FR-SETTINGS-06) · [`CHANGELOG.md`](CHANGELOG.md) — mục "Sửa toàn bộ text tiếng Việt thiếu dấu".
 
 ---
 

@@ -37,7 +37,7 @@ export function createExtractRouter(): Router {
       res.status(400).json({
         error: {
           code: ERROR_CODES.VALIDATION_ERROR,
-          message: 'Body trich xuat PDF khong hop le',
+          message: 'Body trích xuất PDF không hợp lệ',
           details: { issues: parsed.success ? [] : parsed.error.issues },
         },
       })
@@ -61,7 +61,7 @@ export function createExtractRouter(): Router {
         if (error instanceof SafeFetchError) throw error
         throw new SafeFetchError(
           ERROR_CODES.CONTEXT_PDF_NOT_READABLE,
-          'Khong doc duoc file PDF (corrupt hoac khong phai PDF)',
+          'Không đọc được file PDF (corrupt hoặc không phải PDF)',
           422,
         )
       }
@@ -82,7 +82,7 @@ export function createExtractRouter(): Router {
       res.status(400).json({
         error: {
           code: ERROR_CODES.VALIDATION_ERROR,
-          message: 'Body trich xuat YouTube khong hop le',
+          message: 'Body trích xuất YouTube không hợp lệ',
           details: { issues: parsed.success ? [] : parsed.error.issues },
         },
       })
@@ -115,7 +115,7 @@ export function createExtractRouter(): Router {
       res.status(400).json({
         error: {
           code: ERROR_CODES.VALIDATION_ERROR,
-          message: 'Body trich xuat tai lieu khong hop le',
+          message: 'Body trích xuất tài liệu không hợp lệ',
           details: { issues: parsed.error.issues },
         },
       })
@@ -131,7 +131,7 @@ export function createExtractRouter(): Router {
       res.status(413).json({
         error: {
           code: ERROR_CODES.DOCUMENT_TOO_LARGE,
-          message: `File vuot gioi han ${DOCUMENT.MAX_BYTES} byte`,
+          message: `File vượt giới hạn ${DOCUMENT.MAX_BYTES} byte`,
         },
       })
       return
@@ -178,7 +178,7 @@ function respondDocumentError(res: Response, fileName: string, error: unknown): 
     text: '',
     truncated: false,
     error: code,
-    errorMessage: `Khong doc duoc "${fileName}": ${message}`,
+    errorMessage: `Không đọc được "${fileName}": ${message}`,
   })
 }
 

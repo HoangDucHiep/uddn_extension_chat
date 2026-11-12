@@ -24,10 +24,10 @@ export async function runLogs(args: readonly string[]): Promise<void> {
   })
 
   console.log(`BFF: ${baseUrl}`)
-  console.log(`Tong so dong khop bo loc: ${logs.total}`)
+  console.log(`Tổng số dòng khớp bộ lọc: ${logs.total}`)
 
   if (logs.items.length === 0) {
-    console.log('Khong co dong log nao.')
+    console.log('Không có dòng log nào.')
   } else {
     console.log('')
     console.log(
@@ -52,7 +52,7 @@ export async function runLogs(args: readonly string[]): Promise<void> {
 
   const summary = summarizeLogs(logs.items)
   console.log('')
-  console.log(`Tong hop (${summary.requests} dong trong page hien tai):`)
+  console.log(`Tổng hợp (${summary.requests} dòng trong page hiện tại):`)
   console.log(`  - requests: ${summary.requests} (${summary.errors} loi)`)
   console.log(`  - tokens:   ${summary.tokensIn} in / ${summary.tokensOut} out`)
   console.log(`  - cost:     $${summary.costUsd.toFixed(6)}`)
@@ -62,11 +62,11 @@ export async function runLogs(args: readonly string[]): Promise<void> {
   const usage = await fetchUsage(baseUrl)
   console.log('')
   console.log(
-    `Tong hop toan bo (GET /api/usage): ${usage.totalTokens} tokens, $${usage.totalCostUsd.toFixed(6)}`,
+    `Tổng hợp toàn bộ (GET /api/usage): ${usage.totalTokens} tokens, $${usage.totalCostUsd.toFixed(6)}`,
   )
   for (const day of usage.byDay) {
     console.log(
-      `  - ${day.date}: ${day.totalTokens} tokens, $${day.costUsd.toFixed(6)}, ${day.requests} luot`,
+      `  - ${day.date}: ${day.totalTokens} tokens, $${day.costUsd.toFixed(6)}, ${day.requests} lượt`,
     )
   }
 }

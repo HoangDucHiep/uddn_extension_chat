@@ -12,7 +12,7 @@ export const notFoundHandler: RequestHandler = (req, res) => {
   res.status(404).json({
     error: {
       code: ERROR_CODES.NOT_FOUND,
-      message: `Khong tim thay endpoint ${req.method} ${req.path}`,
+      message: `Không tìm thấy endpoint ${req.method} ${req.path}`,
     },
   })
 }
@@ -28,7 +28,7 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     res.status(400).json({
       error: {
         code: ERROR_CODES.VALIDATION_ERROR,
-        message: 'Du lieu gui len khong hop le',
+        message: 'Dữ liệu gửi lên không hợp lệ',
         details: { issues: err.issues },
       },
     })
@@ -40,7 +40,7 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     res.status(400).json({
       error: {
         code: ERROR_CODES.BAD_REQUEST,
-        message: 'Body JSON khong hop le',
+        message: 'Body JSON không hợp lệ',
       },
     })
     return
@@ -52,7 +52,7 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     res.status(413).json({
       error: {
         code: ERROR_CODES.PAYLOAD_TOO_LARGE,
-        message: 'Body qua gioi han kich thuoc cho phep',
+        message: 'Body quá giới hạn kích thước cho phép',
       },
     })
     return
@@ -67,7 +67,7 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   res.status(500).json({
     error: {
       code: ERROR_CODES.INTERNAL_ERROR,
-      message: 'Loi noi bo cua server',
+      message: 'Lỗi nội bộ của server',
     },
   })
 }

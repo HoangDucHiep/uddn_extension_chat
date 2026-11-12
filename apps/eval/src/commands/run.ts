@@ -57,7 +57,7 @@ export async function runOurs(args: readonly string[]): Promise<void> {
   const taskIds = readListFlag(args, '--tasks')
 
   if (tasks.length === 0) {
-    console.warn('Khong co task nao khop bo loc.')
+    console.warn('Không có task nào khớp bộ lọc.')
     return
   }
 
@@ -69,13 +69,13 @@ export async function runOurs(args: readonly string[]): Promise<void> {
   const retryFailedOnly = merge && existing.length > 0 && !force
 
   console.log(
-    `Chay ${tasks.length} task × ${runs} lan | provider=${provider} model=${model} | run_id=${effectiveRunId}`,
+    `Chạy ${tasks.length} task × ${runs} lần | provider=${provider} model=${model} | run_id=${effectiveRunId}`,
   )
   if (retryFailedOnly) {
-    console.log('Che do retry: chi chay lai cac luot chay bi loi truoc do.')
+    console.log('Chế độ retry: chỉ chạy lại các lượt chạy bị lỗi trước đó.')
   }
   if (force) {
-    console.log('Che do force: chay lai TAT CA luot chay (ke ca luot da thành công).')
+    console.log('Chế độ force: chạy lại TẤT CẢ lượt chạy (kể cả lượt đã thành công).')
   }
 
   const { results, runs: allRuns } = await runEval(tasks, {
@@ -95,9 +95,9 @@ export async function runOurs(args: readonly string[]): Promise<void> {
   if (!dryRun) {
     const dir = await writeRunResults(effectiveRunId, results, merge)
     console.log('')
-    console.log(`Ket qua: ${dir}`)
+    console.log(`Kết quả: ${dir}`)
     if (merge) {
-      console.log('Che do merge: luot moi thanh cong da ghi de luot loi cu.')
+      console.log('Chế độ merge: lượt mới thành công đã ghi đè lượt lỗi cũ.')
     }
   }
 
@@ -120,7 +120,7 @@ function printRunSummary(runs: readonly TaskRun[]): void {
   const cost = runs.reduce((sum, run) => sum + (run.costUsd ?? 0), 0)
 
   console.log('')
-  console.log(`Tong hop: ${runs.length} luot chay, ${errors.length} loi`)
+  console.log(`Tổng hợp: ${runs.length} lượt chạy, ${errors.length} lỗi`)
   console.log(`  - TTFT TB: ${average(ttfts)} ms`)
   console.log(`  - Latency TB: ${average(latencies)} ms`)
   console.log(`  - Chi phi: $${cost.toFixed(6)}`)

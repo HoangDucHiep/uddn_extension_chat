@@ -173,7 +173,7 @@ export async function judgeOnce(
     if (payload === undefined) {
       return {
         ...base,
-        error: 'Judge khong tra ve JSON hop le',
+        error: 'Judge không trả về JSON hợp lệ',
         ...(result.errorCode !== undefined ? { error: result.errorCode } : {}),
       }
     }

@@ -162,7 +162,7 @@ describe('buildContinuationMessages', () => {
     // model tu viet "do bi gioi han hien thi" → phai tach rieng.
     expect(instruction).not.toContain('bi ngat')
     expect(instruction).not.toContain('CONTINUE_INSTRUCTION')
-    expect(instruction).toContain('Tiep tuc viet phan con lai')
+    expect(instruction).toContain('Tiếp tục viết phần còn lại')
   })
 })
 

@@ -9,7 +9,7 @@
  *
  * Da co bug (T-M2-23): nhieu noi cat `text.slice(0, 500)` roi **them** `"..."`
  * → tong 503 ky tu → `contextItemSchema` **reject** → `chatRequestSchema`
- * reject → `POST /api/chat` tra **400 "Body chat khong hop le"** → panel
+ * reject → `POST /api/chat` tra **400 "Body chat không hợp lệ"** → panel
  * **khong chat duoc** sau khi dinh kem 1 tai lieu.
  *
  * Dinh nghia "cat + them dau ellipsis" **mot lan** o day de khong noi noi

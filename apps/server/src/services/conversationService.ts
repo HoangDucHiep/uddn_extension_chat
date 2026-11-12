@@ -334,7 +334,7 @@ export async function createConversation(
 
   const row = rows[0]
   if (row === undefined) {
-    throw new AppError(ERROR_CODES.INTERNAL_ERROR, 'Khong tao duoc cuoc tro chuyen')
+    throw new AppError(ERROR_CODES.INTERNAL_ERROR, 'Không tạo được cuộc trò chuyện')
   }
 
   return toSummary(row, 0)
@@ -364,7 +364,7 @@ export async function updateConversation(
   if (patch.archived !== undefined) values.archived = patch.archived
 
   if (Object.keys(values).length === 0) {
-    throw new AppError(ERROR_CODES.VALIDATION_ERROR, 'Khong co truong nao de cap nhat')
+    throw new AppError(ERROR_CODES.VALIDATION_ERROR, 'Không có trường nào để cập nhật')
   }
 
   const rows = await db
@@ -375,7 +375,7 @@ export async function updateConversation(
 
   const row = rows[0]
   if (row === undefined) {
-    throw new AppError(ERROR_CODES.NOT_FOUND, 'Khong tim thay cuoc tro chuyen')
+    throw new AppError(ERROR_CODES.NOT_FOUND, 'Không tìm thấy cuộc trò chuyện')
   }
 
   const counts = await countMessagesByConversation(db, [id])
@@ -392,7 +392,7 @@ export async function deleteConversation(db: Database, id: string): Promise<void
   const rows = await db.delete(conversations).where(eq(conversations.id, id)).returning()
 
   if (rows.length === 0) {
-    throw new AppError(ERROR_CODES.NOT_FOUND, 'Khong tim thay cuoc tro chuyen')
+    throw new AppError(ERROR_CODES.NOT_FOUND, 'Không tìm thấy cuộc trò chuyện')
   }
 }
 
@@ -462,7 +462,7 @@ export async function getConversationMessages(
   const conversationRow = rows[0]
 
   if (conversationRow === undefined) {
-    throw new AppError(ERROR_CODES.NOT_FOUND, 'Khong tim thay cuoc tro chuyen')
+    throw new AppError(ERROR_CODES.NOT_FOUND, 'Không tìm thấy cuộc trò chuyện')
   }
 
   const messageRows = await db
@@ -602,14 +602,14 @@ export async function activateVariant(
 
   const inTurn = normalized.filter((message) => message.turnId === turnId)
   if (inTurn.length === 0) {
-    throw new AppError(ERROR_CODES.NOT_FOUND, 'Khong tim thay luot hoi dap')
+    throw new AppError(ERROR_CODES.NOT_FOUND, 'Không tìm thấy lượt hỏi đáp')
   }
 
   const target = inTurn.find(
     (message) => message.role !== 'user' && message.variantIndex === variantIndex,
   )
   if (target === undefined) {
-    throw new AppError(ERROR_CODES.NOT_FOUND, 'Khong tim thay bien the cau tra loi')
+    throw new AppError(ERROR_CODES.NOT_FOUND, 'Không tìm thấy biến thể câu trả lời')
   }
 
   // Tat bien the active cu, bat bien the moi.

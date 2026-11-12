@@ -294,7 +294,7 @@ export class McpManager {
           ? error.message
           : error instanceof Error
             ? error.message
-            : 'Khong ket noi duoc MCP server'
+            : 'Không kết nối được MCP server'
       server.tools = []
       await client.disconnect().catch(() => undefined)
       server.client = undefined
@@ -325,7 +325,7 @@ export class McpManager {
         requiresApproval,
         ...(requiresApproval
           ? {
-              approvalReason: `Tool "${namespaced}" tu MCP server "${server.name}" can ban duyet truoc khi chay.`,
+              approvalReason: `Tool "${namespaced}" từ MCP server "${server.name}" cần bạn duyệt trước khi chạy.`,
             }
           : {}),
         execute: async (args: unknown): Promise<ToolResult> =>
@@ -355,7 +355,7 @@ export class McpManager {
     if (client === undefined || !client.isConnected) {
       return {
         ok: false,
-        output: `MCP server "${server.name}" khong ket noi.`,
+        output: `MCP server "${server.name}" không kết nối.`,
         error: 'MCP_DISCONNECTED',
       }
     }
@@ -372,7 +372,7 @@ export class McpManager {
         output:
           error instanceof McpClientError
             ? error.message
-            : 'MCP server tra loi loi khi goi tool.',
+            : 'MCP server trả lời lỗi khi gọi tool.',
         error: 'MCP_CALL_FAILED',
       }
     }

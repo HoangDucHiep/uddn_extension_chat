@@ -176,7 +176,7 @@ describe('MockProvider — echo so anh', () => {
       .map((chunk) => chunk.text ?? '')
       .join('')
 
-    expect(text).toContain('1 anh')
+    expect(text).toContain('1 ảnh')
     expect(text).toContain('image/png')
   })
 

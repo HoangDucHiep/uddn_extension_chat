@@ -48,7 +48,7 @@ export async function executeTool(
     return {
       name,
       ok: false,
-      output: `Khong tim thay tool "${name}".`,
+      output: `Không tìm thấy tool "${name}".`,
       error: 'TOOL_NOT_FOUND',
       durationMs: Date.now() - startedAt,
       approvalRequired: false,
@@ -70,7 +70,7 @@ export async function executeTool(
     return {
       name,
       ok: false,
-      output: 'Tool gap loi khong mong doi.',
+      output: 'Tool gặp lỗi không mong đợi.',
       error: 'TOOL_THREW',
       durationMs: Date.now() - startedAt,
       approvalRequired: tool.requiresApproval,
@@ -89,5 +89,5 @@ export function truncateOutput(output: string): string {
     return output
   }
   const kept = output.slice(0, TOOL_LIMITS.MAX_TOOL_OUTPUT_CHARS)
-  return `${kept}\n... (da cat ${output.length - TOOL_LIMITS.MAX_TOOL_OUTPUT_CHARS} ky tu)`
+  return `${kept}\n... (đã cắt ${output.length - TOOL_LIMITS.MAX_TOOL_OUTPUT_CHARS} ký tự)`
 }

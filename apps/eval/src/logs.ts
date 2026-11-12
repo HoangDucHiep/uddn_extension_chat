@@ -62,7 +62,7 @@ export async function fetchLogs(
   })
 
   if (!response.ok) {
-    throw new Error(`GET /api/logs that bai: HTTP ${response.status}`)
+    throw new Error(`GET /api/logs thất bại: HTTP ${response.status}`)
   }
 
   const payload: unknown = await response.json()
@@ -84,7 +84,7 @@ export async function fetchUsage(
   })
 
   if (!response.ok) {
-    throw new Error(`GET /api/usage that bai: HTTP ${response.status}`)
+    throw new Error(`GET /api/usage thất bại: HTTP ${response.status}`)
   }
 
   const payload: unknown = await response.json()

@@ -55,7 +55,7 @@ export async function importSkillsFile(file: File): Promise<CreateSkillInput[]> 
   try {
     payload = JSON.parse(text)
   } catch {
-    throw new Error('File khong phai JSON hop le')
+    throw new Error('File không phải JSON hợp lệ')
   }
 
   const parsed = skillImportPayloadSchema.safeParse(payload)
@@ -63,7 +63,7 @@ export async function importSkillsFile(file: File): Promise<CreateSkillInput[]> 
     const issues = parsed.error.issues
       .map((issue) => `${issue.path.join('.') || '(root)'}: ${issue.message}`)
       .join('; ')
-    throw new Error(`File skill khong hop le — ${issues}`)
+    throw new Error(`File skill không hợp lệ — ${issues}`)
   }
 
   return toImportableSkills(parsed.data)

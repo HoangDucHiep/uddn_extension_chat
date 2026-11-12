@@ -69,23 +69,23 @@ async function main(): Promise<void> {
     console.log(`  - lang ${lang}: ${count}`)
   }
   console.log(
-    `So lan chay moi task: ${EVAL_RUNS_PER_TASK} → tong ${tasks.length * EVAL_RUNS_PER_TASK} luot chay moi he thong`,
+    `Số lần chạy mỗi task: ${EVAL_RUNS_PER_TASK} → tổng ${tasks.length * EVAL_RUNS_PER_TASK} lượt chạy mỗi hệ thống`,
   )
 
   if (tasks.length === 0) {
-    console.warn('Dataset rong — can them task truoc khi chay eval that.')
+    console.warn('Dataset rỗng — cần thêm task trước khi chạy eval thật.')
   }
 
   console.log('')
-  console.log('Lenh khac:')
-  console.log('  pnpm eval:collect            — thu thap snapshot trang that')
-  console.log('  pnpm eval:run -- run         — chay he thong cua nhom')
-  console.log('  pnpm eval:judge -- --run <id> — cham LLM-as-judge')
-  console.log('  pnpm eval:report -- --run <id> — tong hop metric')
-  console.log('  pnpm eval:run logs --limit 20 — doc request_logs tu BFF (T-M1-14)')
+  console.log('Lệnh khác:')
+  console.log('  pnpm eval:collect            — thu thập snapshot trang thật')
+  console.log('  pnpm eval:run -- run         — chạy hệ thống của nhóm')
+  console.log('  pnpm eval:judge -- --run <id> — chấm LLM-as-judge')
+  console.log('  pnpm eval:report -- --run <id> — tổng hợp metric')
+  console.log('  pnpm eval:run logs --limit 20 — đọc request_logs từ BFF (T-M1-14)')
 }
 
 main().catch((error: unknown) => {
-  console.error('Eval CLI loi:', error instanceof Error ? error.message : String(error))
+  console.error('Eval CLI lỗi:', error instanceof Error ? error.message : String(error))
   process.exitCode = 1
 })

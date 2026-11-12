@@ -116,7 +116,7 @@ export async function* streamChat(
   }
 
   if (!response.body) {
-    throw new ChatRequestError('STREAM_ERROR', 'BFF khong tra ve stream', response.status, true)
+    throw new ChatRequestError('STREAM_ERROR', 'BFF không trả về stream', response.status, true)
   }
 
   const reader = response.body.getReader()

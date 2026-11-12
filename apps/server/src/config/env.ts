@@ -94,7 +94,7 @@ export function loadEnv(): AppEnv {
     const issues = parsed.error.issues
       .map((issue) => `  - ${issue.path.join('.')}: ${issue.message}`)
       .join('\n')
-    throw new Error(`Cau hinh moi truong khong hop le:\n${issues}`)
+    throw new Error(`Cấu hình môi trường không hợp lệ:\n${issues}`)
   }
 
   cached = parsed.data

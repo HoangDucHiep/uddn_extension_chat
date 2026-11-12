@@ -60,7 +60,7 @@ export const updateConversationSchema = z
   })
   .refine(
     (value) => Object.keys(value).length > 0,
-    { message: 'Can it nhat mot truong de cap nhat' },
+    { message: 'Cần ít nhất một trường để cập nhật' },
   )
 export type UpdateConversationInput = z.infer<typeof updateConversationSchema>
 

@@ -45,7 +45,7 @@ export function createBudgetRouter(deps: BudgetDeps): Router {
       res.status(400).json({
         error: {
           code: ERROR_CODES.VALIDATION_ERROR,
-          message: 'Body budget khong hop le',
+          message: 'Body budget không hợp lệ',
           details: { issues: parsed.error.issues },
         },
       })
@@ -59,7 +59,7 @@ export function createBudgetRouter(deps: BudgetDeps): Router {
       res.status(400).json({
         error: {
           code: ERROR_CODES.VALIDATION_ERROR,
-          message: 'Body budget khong hop le',
+          message: 'Body budget không hợp lệ',
           details: { issues: merged.error.issues },
         },
       })

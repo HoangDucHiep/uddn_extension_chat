@@ -5,7 +5,7 @@ import './index.css'
 
 const container = document.getElementById('root')
 if (!container) {
-  throw new Error('Khong tim thay #root trong sidepanel.html')
+  throw new Error('Không tìm thấy #root trong sidepanel.html')
 }
 
 createRoot(container).render(

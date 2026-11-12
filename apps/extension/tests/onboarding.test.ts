@@ -95,7 +95,7 @@ describe('preferredProvider', () => {
 
   it('writePreferredProvider nem loi voi provider khong hop le', async () => {
     await expect(writePreferredProvider('anthropic' as never)).rejects.toThrow(
-      /Provider khong hop le/,
+      /Provider không hợp lệ/,
     )
   })
 })

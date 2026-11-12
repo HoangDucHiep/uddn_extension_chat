@@ -82,7 +82,7 @@ export const createSkillSchema = z.object({
     .min(1)
     .max(SKILL_MAX_NAME_CHARS)
     .transform((value) => normalizeSkillName(value))
-    .refine((value) => value.length > 0, { message: 'Ten skill khong hop le' }),
+    .refine((value) => value.length > 0, { message: 'Tên skill không hợp lệ' }),
   description: z.string().max(SKILL_MAX_DESCRIPTION_CHARS).optional().default(''),
   promptTemplate: z.string().min(1).max(SKILL_MAX_PROMPT_CHARS),
   tags: z.array(z.string().min(1).max(SKILL_MAX_TAG_CHARS)).max(SKILL_MAX_TAGS).optional().default([]),
@@ -104,7 +104,7 @@ export const updateSkillSchema = z
       .min(1)
       .max(SKILL_MAX_NAME_CHARS)
       .transform((value) => normalizeSkillName(value))
-      .refine((value) => value.length > 0, { message: 'Ten skill khong hop le' })
+      .refine((value) => value.length > 0, { message: 'Tên skill không hợp lệ' })
       .optional(),
     description: z.string().max(SKILL_MAX_DESCRIPTION_CHARS).optional(),
     promptTemplate: z.string().min(1).max(SKILL_MAX_PROMPT_CHARS).optional(),
@@ -115,7 +115,7 @@ export const updateSkillSchema = z
     tabCondition: skillTabConditionSchema.optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
-    message: 'Can it nhat mot truong de cap nhat',
+    message: 'Cần ít nhất một trường để cập nhật',
   })
 export type UpdateSkillInput = z.infer<typeof updateSkillSchema>
 

@@ -212,17 +212,17 @@ export async function importSettings(json: string): Promise<Settings> {
   try {
     parsedJson = JSON.parse(json)
   } catch {
-    throw new Error('File khong phai JSON hop le')
+    throw new Error('File không phải JSON hợp lệ')
   }
 
   if (typeof parsedJson !== 'object' || parsedJson === null) {
-    throw new Error('File khong chua cai dat hop le')
+    throw new Error('File không chứa cài đặt hợp lệ')
   }
 
   const merged = { ...DEFAULT_SETTINGS, ...(parsedJson as Record<string, unknown>) }
   const parsed = settingsSchema.safeParse(merged)
   if (!parsed.success) {
-    throw new Error('Cai dat trong file khong hop le')
+    throw new Error('Cài đặt trong file không hợp lệ')
   }
 
   await chrome.storage.local.set({ [SETTINGS_STORAGE_KEY]: parsed.data })

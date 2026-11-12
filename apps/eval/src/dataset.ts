@@ -27,7 +27,7 @@ export async function loadDataset(path: string = DEFAULT_DATASET_PATH): Promise<
   const parsed: unknown = JSON.parse(raw)
 
   if (!Array.isArray(parsed)) {
-    throw new Error('Dataset phai la mot JSON array')
+    throw new Error('Dataset phải là một JSON array')
   }
 
   return parsed.map((task, index) => validateTask(task, index))
@@ -48,7 +48,7 @@ function validateTask(value: unknown, index: number): EvalTask {
     const issues = result.error.issues
       .map((issue) => `${issue.path.join('.') || '(root)'}: ${issue.message}`)
       .join('; ')
-    throw new Error(`Task tai index ${index} khong hop le schema — ${issues}`)
+    throw new Error(`Task tại index ${index} không hợp lệ schema — ${issues}`)
   }
 
   return result.data
