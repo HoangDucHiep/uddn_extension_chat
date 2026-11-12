@@ -326,6 +326,21 @@ export const CONTINUE_INSTRUCTION =
   'khong lap lai phan da co.'
 
 /**
+ * Chi dan cho provider khi server **tu noi tiep** cau tra loi bi cat do
+ * gioi han token (FR-CHAT-15 — T-M2-24).
+ *
+ * Khac `CONTINUE_INSTRUCTION` o 2 diem quan trong:
+ *  - **khong** nói "do bi ngat" → model se tu doc lap do la loi cua UI va
+ *    viet loai giai thich thay vi viet tiep noi dung,
+ *  - **cam** model viet loi giai thich / meta → cau tra loi noi lien, dung
+ *    nhu mot lan ghi binh thuong.
+ */
+export const AUTO_CONTINUE_INSTRUCTION =
+  'Tiep tuc viet phan con lai cua bai vua trich dan, theo dung ke hoach da so. ' +
+  'Viet truc tiep noi dung, khong viet loi giai thich, khong ngoi gi bi gioi han, ' +
+  'khong tom tat phan da viet.'
+
+/**
  * Prompt tom tat trang 1-click (FR-UX-04 — T-M1-11).
  *
  * Dung chung wording voi dataset eval `summarize` (docs/EVAL_PLAN.md §3) →

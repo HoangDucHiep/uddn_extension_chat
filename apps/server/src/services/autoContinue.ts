@@ -17,7 +17,7 @@
  * Docs: docs/SYSTEM_DESIGN.md §7.30
  */
 
-import { CONTINUE_INSTRUCTION } from '@sidekick/shared'
+import { AUTO_CONTINUE_INSTRUCTION } from '@sidekick/shared'
 
 /** 1 message gui cho provider trong vong noi tiep. */
 export interface ContinuationMessage {
@@ -63,12 +63,15 @@ export function shouldAutoContinue(decision: AutoContinueDecision): boolean {
  *   tong tich luy) → model biet no vua viet gi.
  * - `user` = chi dan "viet tiep" → model chi viet phan con lai, khong lap lai.
  *
+ * Dung `AUTO_CONTINUE_INSTRUCTION` (khong phai `CONTINUE_INSTRUCTION`) →
+ * model **khong** tu viet loi giai thich "bi gioi han hien thi" (FR-CHAT-15).
+ *
  * @param roundText - Text sinh ra trong vong stream vua roi.
  * @returns 2 message (assistant roi user).
  */
 export function buildContinuationMessages(roundText: string): ContinuationMessage[] {
   return [
     { role: 'assistant', content: roundText },
-    { role: 'user', content: CONTINUE_INSTRUCTION },
+    { role: 'user', content: AUTO_CONTINUE_INSTRUCTION },
   ]
 }

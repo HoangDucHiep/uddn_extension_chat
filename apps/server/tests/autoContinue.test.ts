@@ -153,6 +153,17 @@ describe('buildContinuationMessages', () => {
     expect(messages[1]?.role).toBe('user')
     expect(messages[1]?.content.length).toBeGreaterThan(0)
   })
+
+  it('chi dan KHONG nói "bi ngat" → model khong viet loi giai thich (FR-CHAT-15)', () => {
+    const messages = buildContinuationMessages('Da viet mot phan')
+    const instruction = messages[1]?.content ?? ''
+
+    // `CONTINUE_INSTRUCTION` (dung cho nut "Tiep tuc" tay) co "bi ngat" →
+    // model tu viet "do bi gioi han hien thi" → phai tach rieng.
+    expect(instruction).not.toContain('bi ngat')
+    expect(instruction).not.toContain('CONTINUE_INSTRUCTION')
+    expect(instruction).toContain('Tiep tuc viet phan con lai')
+  })
 })
 
 describe('effectiveMaxOutputTokens', () => {

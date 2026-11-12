@@ -4488,7 +4488,9 @@ const maxTokens = Math.max(
 | Hàm | Việc |
 |---|---|
 | `shouldAutoContinue({ finishReason, autoContinueRounds, budgetOk, maxRounds })` | `true` khi **cả 3**: `finishReason === 'length'` · chưa hết vòng · còn budget |
-| `buildContinuationMessages(roundText)` | Trả 2 message: `assistant(partial)` + `user(CONTINUE_INSTRUCTION)` |
+| `buildContinuationMessages(roundText)` | Trả 2 message: `assistant(partial)` + `user(AUTO_CONTINUE_INSTRUCTION)` |
+
+> **Vì sao cần instruction riêng (`AUTO_CONTINUE_INSTRUCTION`)?** `CONTINUE_INSTRUCTION` (dùng cho nút "Tiếp tục" **tay** — FR-CHAT-07) nói *"từ dừng cho nó bị ngắt"* → khi dùng lại cho auto-continue, model **tưởng bị UI cắt** → mở đầu câu trả lời bằng lời giải thích *"Do giới hạn độ dài của một câu trả lời trực tiếp trong giao diện sidebar…"* rồi mới vào bài (đã quan sát khi verify live). `AUTO_CONTINUE_INSTRUCTION` không nhắc "bị ngắt" và **cấm** model viết lời giải thích / meta → câu trả lời nối liền mạch.
 
 **`apps/server/src/services/chatService.ts`**:
 
